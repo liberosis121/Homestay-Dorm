@@ -1,0 +1,14 @@
+{
+  "name": "homestay-dorm",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Homestay Dorm Management System",
+  "scripts": {
+    "dev": "pnpm --parallel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
