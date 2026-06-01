@@ -154,10 +154,6 @@ export default function RoomDetailPage() {
 
     if (selectedBeds.length === 0) return;
 
-    const chosenNames = isFullRoomSelected 
-      ? 'Trọn gói Nguyên phòng' 
-      : beds.filter(b => selectedBeds.includes(b.id)).map(b => b.name).join(', ');
-
     if (type === 'rent') {
       const selectedBedsNames = isFullRoomSelected 
         ? beds.map(b => b.name) 
@@ -178,13 +174,7 @@ export default function RoomDetailPage() {
         navigate('/customer/register-lease', { state });
       }
     } else if (type === 'deposit') {
-      setNotification({
-        type: 'success',
-        message: `Tạo yêu cầu đặt cọc thành công cho ${chosenNames}! Bạn vui lòng chuẩn bị thông tin thanh toán Momo/Banking tại màn hình tiếp theo.`
-      });
-      setTimeout(() => {
-        navigate('/customer/deposit');
-      }, 3500);
+      navigate('/customer/deposit');
     }
   };
 

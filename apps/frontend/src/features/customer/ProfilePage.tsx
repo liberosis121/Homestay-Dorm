@@ -5,7 +5,7 @@ import {
   User, Shield, Camera, ChevronRight, Lock, Bell, Globe, 
   Compass, Calendar, FileText, CreditCard, LogOut, Info
 } from 'lucide-react';
-import avatarCartoon from '../../assets/avatar-cartoon.png';
+import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 
 export default function ProfilePage() {
   const { user, setLogoutConfirmOpen } = useAuthStore();
@@ -16,26 +16,38 @@ export default function ProfilePage() {
   
   const isNewCustomer = user?.email === 'newcustomer@gmail.com';
 
-  // Profile Form State
+  // Profile Form State (Expanded to match Rental Registration)
   const [formData, setFormData] = useState({
     full_name: '',
-    cccd: '',
-    phone: '',
     email: '',
+    phone: '',
+    cccd: '',
+    dob: '',
+    gender: 'male',
+    issue_date: '',
+    issue_place: '',
+    nationality: 'Việt Nam',
+    permanent_address: '',
   });
 
   useEffect(() => {
     if (user) {
       setFormData({
         full_name: user.full_name || '',
-        cccd: isNewCustomer ? '' : '012345678910',
-        phone: user.phone || '0977889900',
         email: user.email || '',
+        phone: user.phone || '0977889900',
+        cccd: isNewCustomer ? '' : '012345678910',
+        dob: '2000-01-01',
+        gender: 'male',
+        issue_date: '2018-05-10',
+        issue_place: 'Cục CSQLHC về TTXH',
+        nationality: 'Việt Nam',
+        permanent_address: '123 Đường A, Quận B, TP.HCM',
       });
     }
   }, [user, isNewCustomer]);
 
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -72,40 +84,6 @@ export default function ProfilePage() {
         {/* LEFT SIDEBAR */}
         <div className="w-full xl:w-[340px] shrink-0 space-y-6">
           
-          {/* Profile Avatar Card */}
-          <div className="bg-surface-container-lowest rounded-32 p-8 border border-surface-variant text-center shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-28 bg-primary/10"></div>
-            <div className="relative inline-block mb-6 mt-4">
-              <img 
-                src={isNewCustomer ? "https://i.pravatar.cc/150?img=53" : avatarCartoon} 
-                alt="Avatar" 
-                className="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
-              />
-              <button className="absolute bottom-1 right-1 p-2.5 bg-[#4a6549] text-white rounded-full border-[3px] border-surface shadow-sm cursor-pointer hover:bg-[#3a503a] transition-colors z-20">
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
-            <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
-            <p className="text-sm text-on-surface-variant mt-1.5 font-medium">
-              {isNewCustomer ? 'Khách hàng mới' : 'Sinh viên | Phòng 402-B'}
-            </p>
-            
-            <div className="mt-8 space-y-3">
-              <div className="flex justify-between items-center bg-surface-container-low p-4 rounded-24 text-sm border border-surface-variant">
-                <span className="text-on-surface-variant font-label-md">Thành viên từ</span>
-                <span className="font-semibold text-on-surface">
-                  {isNewCustomer ? '06/2026' : '05/2023'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center bg-surface-container-low p-4 rounded-24 text-sm border border-surface-variant">
-                <span className="text-on-surface-variant font-label-md">Hạng phòng</span>
-                <span className={`font-semibold ${isNewCustomer ? 'text-error' : 'text-primary'}`}>
-                  {isNewCustomer ? 'Chưa đăng ký' : 'Premium Eco'}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Navigation Menu */}
           <div className="bg-surface-container-lowest rounded-32 p-4 border border-surface-variant shadow-sm">
             <div className="px-5 pb-3 pt-2">
@@ -206,36 +184,103 @@ export default function ProfilePage() {
           )}
 
           {activeTab === 'profile' && (
-            <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm relative animate-fade-in">
-              <h3 className="font-headline-md text-xl text-on-surface font-bold flex items-center gap-3 mb-8">
-                <User className="w-6 h-6 text-primary" /> Chi tiết hồ sơ
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
-                <InputField label="Họ và tên *" name="full_name" value={formData.full_name} />
-                <InputField label="Email liên lạc *" name="email" value={formData.email} disabled />
-                <InputField label="Số điện thoại *" name="phone" value={formData.phone} />
-                <InputField 
-                  label="Số CCCD / Passport *" 
-                  name="cccd" 
-                  value={formData.cccd} 
-                  placeholder={isNewCustomer ? "Vui lòng nhập CCCD để làm thủ tục thuê" : ""} 
-                />
+            <div className="space-y-6 animate-fade-in">
+              {/* Profile Avatar Card placed on top of profile details */}
+              <div className="bg-surface-container-lowest rounded-32 p-8 border border-surface-variant flex flex-col sm:flex-row items-center gap-8 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 bottom-0 w-32 bg-primary/10 hidden sm:block"></div>
+                
+                <div className="relative shrink-0 sm:ml-4 z-10">
+                  <img 
+                    src={avatarCartoon} 
+                    alt="Avatar" 
+                    className="w-28 h-28 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
+                  />
+                  <button className="absolute bottom-1 right-1 p-2 bg-[#4a6549] text-white rounded-full border-[3px] border-surface shadow-sm cursor-pointer hover:bg-[#3a503a] transition-colors z-20">
+                    <Camera className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="flex-1 text-center sm:text-left z-10">
+                  <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
+                  <p className="text-sm text-on-surface-variant mt-1 font-medium">
+                    {isNewCustomer ? 'Khách hàng mới' : 'Sinh viên | Phòng 402-B'}
+                  </p>
+                  
+                  <div className="mt-4 flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1 flex justify-between sm:justify-start sm:gap-4 items-center bg-surface-container-low p-3.5 rounded-24 text-sm border border-surface-variant">
+                      <span className="text-on-surface-variant font-label-md">Thành viên từ:</span>
+                      <span className="font-semibold text-on-surface">
+                        {isNewCustomer ? '06/2026' : '05/2023'}
+                      </span>
+                    </div>
+                    <div className="flex-1 flex justify-between sm:justify-start sm:gap-4 items-center bg-surface-container-low p-3.5 rounded-24 text-sm border border-surface-variant">
+                      <span className="text-on-surface-variant font-label-md">Hạng phòng:</span>
+                      <span className={`font-semibold ${isNewCustomer ? 'text-error' : 'text-primary'}`}>
+                        {isNewCustomer ? 'Chưa đăng ký' : 'Premium Eco'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              <div className="absolute bottom-8 right-8 md:bottom-10 md:right-10 flex items-center gap-4">
-                {saveSuccess && (
-                  <span className="text-sm text-primary font-semibold animate-fade-in">
-                    ✓ Đã cập nhật thành công!
-                  </span>
-                )}
-                <button 
-                  onClick={saveProfile}
-                  disabled={isSaving}
-                  className="px-8 py-3.5 bg-[#8c7355] hover:bg-[#7a644a] text-white rounded-full font-label-md transition-all shadow-md cursor-pointer disabled:opacity-50"
-                >
-                  {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
+
+              {/* Profile Details Form */}
+              <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm relative">
+                <h3 className="font-headline-md text-xl text-on-surface font-bold flex items-center gap-3 mb-8">
+                  <User className="w-6 h-6 text-primary" /> Chi tiết hồ sơ
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+                  <InputField label="Họ và tên *" name="full_name" value={formData.full_name} />
+                  <InputField label="Email liên lạc *" name="email" value={formData.email} disabled />
+                  
+                  <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-label-md text-on-surface-variant ml-2">Giới tính *</label>
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleProfileChange}
+                      className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface"
+                    >
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                      <option value="other">Khác</option>
+                    </select>
+                  </div>
+                  
+                  <InputField label="Số điện thoại *" name="phone" value={formData.phone} />
+                  <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} />
+
+                  <InputField 
+                    label="Số CCCD / Passport *" 
+                    name="cccd" 
+                    value={formData.cccd} 
+                    placeholder={isNewCustomer ? "Vui lòng nhập CCCD để làm thủ tục thuê" : ""} 
+                  />
+                  <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} />
+                  
+                  <div className="md:col-span-2">
+                    <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} />
+                  </div>
+                </div>
+                
+                <div className="absolute bottom-8 right-8 md:bottom-10 md:right-10 flex items-center gap-4">
+                  {saveSuccess && (
+                    <span className="text-sm text-primary font-semibold animate-fade-in">
+                      ✓ Đã cập nhật thành công!
+                    </span>
+                  )}
+                  <button 
+                    onClick={saveProfile}
+                    disabled={isSaving}
+                    className="px-8 py-3.5 bg-[#8c7355] hover:bg-[#7a644a] text-white rounded-full font-label-md transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
