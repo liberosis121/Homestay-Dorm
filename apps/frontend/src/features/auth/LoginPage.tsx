@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import heroImage from '../../assets/hero.jpg';
+import googleIcon from '../../assets/google-icon.png';
+import Logo from '../../components/ui/Logo';
+import BackButton from '../../components/ui/BackButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -37,55 +41,41 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex bg-surface text-on-surface">
       {/* Left side: Branding & Image (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-2/5 relative flex-col p-10 pt-15 overflow-hidden bg-primary-container/10 justify-start">
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col p-12 pt-0 overflow-hidden bg-primary-container/10 justify-center items-center">
         {/* Background elements */}
         <div className="absolute -top-20 -left-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-tertiary-fixed-dim/20 rounded-full blur-3xl"></div>
 
-        {/* Brand logo aligned with right side top element */}
-        <div className="relative z-10 flex items-center gap-2 mb-10">
-          <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-          <span className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed whitespace-nowrap">HomeStay Dorm</span>
-        </div>
+        <div className="relative z-10 w-full max-w-xl flex flex-col gap-6">
+          {/* Brand logo */}
+          <Logo size="lg" className="mb-1" />
 
-        {/* Left column content: Heading, Subtitle & Image */}
-        <div className="relative z-10 max-w-xl w-full">
-          <h1 className="font-display-lg text-3xl leading-tight text-on-surface mb-6">
-            Chào mừng bạn trở về<br />
-            <span className="text-primary font-bold">tổ ấm xanh</span> tại{' '}
-            <span className="text-timber-accent font-extrabold whitespace-nowrap">HomeStay Dorm</span>
-          </h1>
-          <p className="font-body-md text-on-surface-variant mb-10">
-            Cùng HomeStay Dorm tiếp tục hành trình trải nghiệm không gian lưu trú thông minh, sinh thái và an toàn.
-          </p>
-        </div>
+          <div>
+            <h1 className="font-display-lg text-4xl leading-tight text-on-surface mb-3">
+              Chào mừng bạn trở về <span className="text-primary font-bold">tổ ấm xanh</span> tại <span className="text-timber-accent font-extrabold whitespace-nowrap">HomeStay Dorm</span>
+            </h1>
+            <p className="font-body-lg text-on-surface-variant">
+              Cùng HomeStay Dorm tiếp tục hành trình trải nghiệm không gian lưu trú thông minh, sinh thái và an toàn.
+            </p>
+          </div>
 
-        {/* Brand Image Card with responsive aspect ratio for perfect flow alignment */}
-        <div className="relative z-10 w-full aspect-[4/3] rounded-[32px] overflow-hidden shadow-2xl border border-white/20">
-          <img 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgSOWSBPzZibACRxQygYu1qvDAnOB_S9lxzwZbghYzE0n-T0Y4YhuVidVftQhlQwoQKN5O1DsUDnC-kCvCIIpLtDyibJsUzAI13g1hMkm7hRQtcTo-FhGFP0riNzxYGKjJmEsAkqzOiyV6PNWIZ_-MhjeRieYNtIuA6Rm289yITcgN9HVfMNj6VB5gH8lGspYFT62f1KPn4dwVGl0TmxM6OKrJeP8n7VL8ho4ZwADEJxmwP3eCIkW6YSl4prZfQYa_vOn5tyReEQ" 
-            alt="Dormitory"
-            className="w-full h-full object-cover"
-          />
+          <div className="relative w-full h-[450px] rounded-[32px] overflow-hidden shadow-2xl border border-white/20 mt-2">
+            <img 
+              src={heroImage} 
+              alt="Dormitory"
+              className="w-full h-full object-cover"
+            />
+          </div>
         </div>
       </div>
 
       {/* Right side: Login Form */}
-      <div className="w-full lg:w-3/5 flex justify-center p-6 md:p-12 pt-12 relative z-10">
+      <div className="w-full lg:w-1/2 flex justify-center p-6 md:p-12 pt-12 relative z-10">
         <div className="w-full max-w-md flex flex-col justify-start">
           <div className="mb-6">
-            <a 
-              href="#/" 
-              className="group flex items-center gap-2.5 px-4 py-2 w-fit bg-transparent hover:bg-primary/5 border border-primary/30 hover:border-primary/50 rounded-full text-on-surface hover:text-primary transition-all duration-300 font-bold text-sm active:scale-95 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-lg transition-transform duration-300 group-hover:-translate-x-1">arrow_back</span>
-              Về trang chủ
-            </a>
+            <BackButton to="#/" label="Về trang chủ" />
           </div>
-          <div className="lg:hidden flex items-center gap-2 mb-10 justify-center">
-            <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-            <span className="font-headline-md text-2xl font-bold text-primary whitespace-nowrap">HomeStay Dorm</span>
-          </div>
+          <Logo size="lg" className="lg:hidden mb-10 justify-center" />
 
           <div className="bg-white/80 dark:bg-surface-container-highest/80 backdrop-blur-xl border border-glass-stroke shadow-xl rounded-[32px] p-8 md:p-10">
             <h2 className="font-headline-lg text-2xl font-bold text-on-surface mb-2">Đăng nhập</h2>
@@ -152,7 +142,7 @@ export default function LoginPage() {
                   </div>
                   <span className="font-body-md text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Ghi nhớ đăng nhập</span>
                 </label>
-                <a href="#" className="font-label-md text-sm text-primary hover:underline hover:text-primary-dark transition-colors">Quên mật khẩu?</a>
+                <a href="#/forgot-password" className="font-label-md text-sm text-primary hover:underline hover:text-primary-dark transition-colors">Quên mật khẩu?</a>
               </div>
 
               <button 
@@ -181,7 +171,7 @@ export default function LoginPage() {
               className="w-full h-14 mt-6 bg-white dark:bg-surface-container-low border border-surface-variant/60 hover:border-primary hover:bg-primary/5 rounded-2xl font-bold text-sm md:text-base flex items-center justify-center gap-3.5 transition-all duration-300 text-on-surface shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] group"
             >
               <img 
-                src="https://www.google.com/favicon.ico" 
+                src={googleIcon} 
                 alt="Google" 
                 className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" 
               />
