@@ -31,6 +31,7 @@ import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import ProfilePage from './features/customer/ProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
+import RoomDetailPage from './features/rooms/RoomDetailPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
         <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/rooms" element={<RoomsPage />} />
+        <Route path="/customer/rooms/:roomId" element={<RoomDetailPage />} />
         <Route 
           path="/profile/*" 
           element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 

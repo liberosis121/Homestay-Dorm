@@ -13,6 +13,7 @@ interface RoomCardProps {
   period?: string;
   amenities: Amenity[];
   registerLink?: string;
+  onRegisterClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 export default function RoomCard({
@@ -23,6 +24,7 @@ export default function RoomCard({
   period = '/tháng',
   amenities,
   registerLink = '#/login',
+  onRegisterClick,
 }: RoomCardProps) {
   return (
     <div className="group bg-white rounded-24 overflow-hidden border border-sage-light hover:shadow-2xl hover:shadow-sage-dark/10 transition-all duration-300 transform hover:-translate-y-1">
@@ -59,6 +61,7 @@ export default function RoomCard({
           <a 
             className="px-4 py-2 bg-sage-light text-sage-dark rounded-xl font-label-md text-sm hover:bg-primary hover:text-white transition-colors" 
             href={registerLink}
+            onClick={onRegisterClick}
           >
             Đăng ký
           </a>

@@ -10,6 +10,7 @@ import roomSingle from '../../assets/room-single.jpg';
 import RoomCard from '../../components/ui/RoomCard';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 
 const featuredRooms = [
   {
@@ -63,6 +64,25 @@ export default function LandingPage() {
   const [localPrice, setLocalPrice] = useState('Tất cả');
   const [localRoomType, setLocalRoomType] = useState('Loại phòng');
   const [localGender, setLocalGender] = useState('Giới tính');
+  const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
+
+  const handleRegisterClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user.role === 'customer' && user.renting_room_name) {
+      setNotification({
+        type: 'warning',
+        message: `Hiện bạn đang thuê ${user.renting_room_name}, lưu ý trả phòng theo hợp đồng trước khi thuê phòng mới.`
+      });
+      return;
+    }
+
+    navigate('/rooms');
+  };
 
   const handleSearch = () => {
     setBranch(localBranch);
@@ -116,8 +136,41 @@ export default function LandingPage() {
   return (
     <div className="bg-surface text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col">
       {/* Header: Unified TopNavBar */}
+      {/* Header: Unified TopNavBar */}
       <Navbar />
       
+      {notification && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[150] w-full max-w-xl p-4 animate-fade-in-up">
+          <div className={`backdrop-blur-md p-5 rounded-2xl shadow-2xl flex items-start gap-4 border border-white/20 ${
+            notification.type === 'warning' 
+              ? 'bg-status-warning/95 text-white' 
+              : 'bg-primary/95 text-on-primary'
+          }`}>
+            {notification.type === 'warning' ? (
+              <AlertCircle className="w-6 h-6 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle className="w-6 h-6 shrink-0 mt-0.5" />
+            )}
+            <div className="flex-grow">
+              <h4 className="font-bold text-label-md">
+                {notification.type === 'warning' ? 'Lưu ý' : 'Xử lý thành công'}
+              </h4>
+              <p className="text-xs opacity-90 mt-1 leading-relaxed">{notification.message}</p>
+            </div>
+            <button 
+              onClick={() => setNotification(null)}
+              className={`${
+                notification.type === 'warning' 
+                  ? 'text-white/80 hover:text-white hover:bg-white/10' 
+                  : 'text-on-primary/80 hover:text-on-primary hover:bg-white/10'
+              } p-1 rounded-full cursor-pointer transition-colors`}
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <main className="pt-20">
         {/* Hero Section */}
         <section className="relative overflow-hidden px-margin-mobile md:px-margin-desktop py-12 md:py-24 max-w-container-max mx-auto">
@@ -232,6 +285,7 @@ export default function LandingPage() {
                 tag={room.tag}
                 price={room.price}
                 amenities={room.amenities}
+                onRegisterClick={handleRegisterClick}
               />
             ))}
 

@@ -1,5 +1,7 @@
 
 
+import { useNavigate } from 'react-router-dom';
+
 interface Room {
   id: string;
   branch_id: string;
@@ -20,6 +22,7 @@ interface Props {
 }
 
 export default function ListingRoomCard({ room, onActionClick }: Props) {
+  const navigate = useNavigate();
   const isAvailable = room.status === 'available' || room.status === 'partial';
   const availableBeds = room.capacity - room.current_occupants;
   
@@ -132,7 +135,10 @@ export default function ListingRoomCard({ room, onActionClick }: Props) {
             >
               Đăng ký thuê
             </button>
-            <button className="py-2.5 border border-outline-variant rounded-full text-label-md hover:bg-surface-container-low transition-all">
+            <button 
+              onClick={() => navigate(`/customer/rooms/${room.id}`)}
+              className="py-2.5 border border-outline-variant rounded-full text-label-md hover:bg-surface-container-low transition-all cursor-pointer"
+            >
               Xem chi tiết
             </button>
             <button onClick={onActionClick} className="py-2.5 border border-outline-variant rounded-full text-label-md hover:bg-surface-container-low transition-all">

@@ -14,6 +14,7 @@ export interface Profile {
   full_name: string;
   phone?: string;
   avatar_url?: string;
+  renting_room_name?: string;
 }
 
 export interface Branch {
@@ -55,7 +56,7 @@ const INITIAL_DB = {
     { id: 'u-2', email: 'manager@homestay.com', role: 'manager', full_name: 'Trần Kim Yến (Quản lý)', phone: '0907654321' },
     { id: 'u-3', email: 'sale@homestay.com', role: 'sale', full_name: 'Nguyễn Thị Trúc Hằng (NV Sale)', phone: '0912345678' },
     { id: 'u-4', email: 'accountant@homestay.com', role: 'accountant', full_name: 'Lê Hoàng Nhật Anh (Kế toán)', phone: '0987654321' },
-    { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556' },
+    { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556', renting_room_name: 'Phòng 101 (Nam)' },
     { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900' }
   ] as Profile[],
   branches: [
