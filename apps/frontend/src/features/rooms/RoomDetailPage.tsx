@@ -386,9 +386,12 @@ export default function RoomDetailPage() {
         )}
 
         {/* Back Link */}
-        <div className="mb-6">
-          <Link to="/rooms" className="inline-flex items-center gap-2 text-primary font-semibold hover:opacity-85 transition-opacity font-label-md">
-            <ArrowLeft className="w-4 h-4" /> Quay lại danh sách phòng
+        <div className="mt-6 mb-8">
+          <Link 
+            to="/rooms" 
+            className="inline-flex items-center gap-1.5 px-4 py-2 border border-transparent rounded-full hover:border-primary/25 hover:bg-primary/5 transition-all duration-300 text-primary font-label-md group cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" /> Quay lại danh sách phòng
           </Link>
         </div>
 

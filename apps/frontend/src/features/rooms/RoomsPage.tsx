@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/authStore';
 import { getMockDB } from '../../lib/supabaseClient';
 import { useRoomSearchStore } from './store/useRoomSearchStore';
 import ListingRoomCard from './components/ListingRoomCard';
@@ -14,8 +12,6 @@ import heroImage from '../../assets/hero.jpg';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function RoomsPage() {
-  const { user } = useAuthStore();
-  const navigate = useNavigate();
   const [showExtendedFilters, setShowExtendedFilters] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,28 +79,6 @@ export default function RoomsPage() {
     setCurrentPage(1);
   }, [filteredRooms.length]);
 
-  const handleActionClick = (room: any) => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    if (user.role === 'customer' && user.renting_room_name) {
-      setNotification({
-        type: 'warning',
-        message: `Hiện bạn đang thuê ${user.renting_room_name}, lưu ý trả phòng theo hợp đồng trước khi thuê phòng mới.`
-      });
-      return;
-    }
-
-    const state = { 
-      roomId: room.id, 
-      roomName: room.name,
-      capacity: room.capacity,
-      availableBeds: room.capacity - room.current_occupants
-    };
-    navigate('/customer/register-lease', { state }); // Navigate to register form
-  };
 
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
@@ -177,11 +151,10 @@ export default function RoomsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {paginatedRooms.map(room => (
-                <ListingRoomCard 
-                  key={room.id} 
-                  room={room} 
-                  onActionClick={handleActionClick} 
-                />
+                  <ListingRoomCard 
+                    key={room.id} 
+                    room={room} 
+                  />
               ))}
             </div>
           )}

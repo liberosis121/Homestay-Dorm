@@ -18,10 +18,9 @@ interface Room {
 
 interface Props {
   room: Room;
-  onActionClick: (room: Room) => void;
 }
 
-export default function ListingRoomCard({ room, onActionClick }: Props) {
+export default function ListingRoomCard({ room }: Props) {
   const navigate = useNavigate();
   const isAvailable = room.status === 'available' || room.status === 'partial';
   const availableBeds = room.capacity - room.current_occupants;
@@ -125,24 +124,13 @@ export default function ListingRoomCard({ room, onActionClick }: Props) {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-2">
-            <button 
-              onClick={() => onActionClick(room)}
-              disabled={!isAvailable}
-              className={`col-span-2 py-3 rounded-full font-label-md transition-all ${
-                isAvailable ? 'bg-primary text-on-primary hover:opacity-90' : 'bg-surface-variant text-on-surface-variant cursor-not-allowed'
-              }`}
-            >
-              Đăng ký thuê
-            </button>
+          <div className="flex justify-end mt-2">
             <button 
               onClick={() => navigate(`/customer/rooms/${room.id}`)}
-              className="py-2.5 border border-outline-variant rounded-full text-label-md hover:bg-surface-container-low transition-all cursor-pointer"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-full text-sm font-semibold hover:shadow-[0_8px_20px_-6px_rgba(95,116,93,0.4)] hover:-translate-y-0.5 hover:bg-primary/95 transition-all duration-300 group/btn"
             >
-              Xem chi tiết
-            </button>
-            <button onClick={() => navigate(`/customer/rooms/${room.id}`)} className="py-2.5 border border-outline-variant rounded-full text-label-md hover:bg-surface-container-low transition-all">
-              Hẹn xem
+              <span>Xem chi tiết & Chọn giường</span>
+              <span className="material-symbols-outlined text-[16px] transition-transform duration-300 group-hover/btn:translate-x-1">arrow_forward</span>
             </button>
           </div>
         </div>

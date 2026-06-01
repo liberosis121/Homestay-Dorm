@@ -34,6 +34,7 @@ import RoomsPage from './features/rooms/RoomsPage';
 import RoomDetailPage from './features/rooms/RoomDetailPage';
 import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
 import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
+import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -101,6 +102,7 @@ function CustomerLayout() {
           <Route path="/" element={<ProfilePage />} />
           <Route path="/customer/register-lease" element={<RegisterLeasePage />} />
           <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
+          <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           {/* We can add other customer routes here */}
           <Route path="*" element={<ProfilePage />} />
         </Routes>

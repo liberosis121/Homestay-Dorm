@@ -286,9 +286,12 @@ export default function LandingPage() {
               <span className="text-primary font-label-md tracking-widest uppercase">Phòng trống</span>
               <h2 className="font-headline-lg text-headline-lg text-on-surface">Phòng trống tiêu biểu</h2>
             </div>
-            <button onClick={() => navigate('/rooms')} className="text-primary font-label-md flex items-center gap-1 hover:underline cursor-pointer">
+            <button 
+              onClick={() => navigate('/rooms')} 
+              className="text-primary font-label-md flex items-center gap-1.5 px-4 py-2 border border-transparent rounded-full hover:border-primary/25 hover:bg-primary/5 transition-all duration-300 group cursor-pointer"
+            >
               Xem tất cả phòng
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
