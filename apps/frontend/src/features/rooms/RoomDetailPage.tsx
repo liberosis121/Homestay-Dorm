@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getMockDB } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
+import { useDepositStore } from '../customer/store/useDepositStore';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
 import Gallery from './components/Gallery';
@@ -174,6 +175,46 @@ export default function RoomDetailPage() {
         navigate('/customer/register-lease', { state });
       }
     } else if (type === 'deposit') {
+      if (!room || selectedBeds.length === 0) return;
+
+      const selectedBedObjs = beds.filter(b => selectedBeds.includes(b.id));
+      let depositAmount = 0;
+      if (isFullRoomSelected) {
+        const originalRent = beds.length * room.price;
+        const discount = originalRent * 0.05;
+        depositAmount = originalRent - discount;
+      } else {
+        depositAmount = selectedBedObjs.reduce((sum, b) => sum + b.price, 0);
+      }
+
+      const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const checkInDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      const bedNames = isFullRoomSelected 
+        ? beds.map(b => b.name)
+        : selectedBedObjs.map(b => b.name);
+
+      const roomType = room.room_type === 'Studio' 
+        ? 'Phòng Studio Cao cấp' 
+        : room.room_type === 'Twin' 
+          ? 'Phòng đôi Twin' 
+          : 'Phòng ký túc xá (Dorm)';
+
+      const depositInfo = {
+        roomId: room.id,
+        roomName: room.name,
+        roomType,
+        bedNames,
+        branch: branchName,
+        checkInDate,
+        depositAmount,
+        deadline,
+      };
+
+      // Reset first to clear any old payment proof/status, then set info
+      useDepositStore.getState().reset();
+      useDepositStore.getState().setDepositInfo(depositInfo);
+
       navigate('/customer/deposit');
     }
   };

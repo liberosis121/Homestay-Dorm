@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import { useDepositStore, DepositStatus } from './store/useDepositStore';
 import { CheckCircle2, Copy, UploadCloud, Clock, QrCode, CreditCard, Wallet, FileText, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 const statusMap: Record<DepositStatus, { label: string; desc: string }> = {
   pending: { label: 'Đang chờ thanh toán', desc: 'Cập nhật lúc 09:30, 29/09/2024' },
@@ -12,7 +11,6 @@ const statusMap: Record<DepositStatus, { label: string; desc: string }> = {
 };
 
 export default function DepositRegistrationPage() {
-  const navigate = useNavigate();
   const {
     status,
     depositInfo,
@@ -25,6 +23,13 @@ export default function DepositRegistrationPage() {
   } = useDepositStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [copiedText, setCopiedText] = React.useState<'stk' | 'ndck' | null>(null);
+
+  const copyToClipboard = (text: string, type: 'stk' | 'ndck') => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(type);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
 
   if (!depositInfo) return <div>Loading...</div>;
 
@@ -44,7 +49,29 @@ export default function DepositRegistrationPage() {
   };
 
   const steps: DepositStatus[] = ['pending', 'submitted', 'approved'];
-  // For UI representation, if status is rejected/expired, it's a special case, but timeline shows linear.
+
+  const getStepState = (stepIndex: number, currentStatus: DepositStatus) => {
+    if (currentStatus === 'expired') {
+      if (stepIndex === 0) return 'expired';
+      return 'disabled';
+    }
+    
+    if (currentStatus === 'rejected') {
+      if (stepIndex === 0) return 'completed';
+      if (stepIndex === 1) return 'rejected';
+      return 'disabled';
+    }
+    
+    const currentFlowIndex = ['pending', 'submitted', 'approved'].indexOf(currentStatus);
+    
+    if (stepIndex < currentFlowIndex) {
+      return 'completed';
+    }
+    if (stepIndex === currentFlowIndex) {
+      return 'active';
+    }
+    return 'future';
+  };
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-8">
@@ -107,8 +134,8 @@ export default function DepositRegistrationPage() {
                 
                 {/* QR Code Graphic */}
                 <div className="relative w-48 h-48 rounded-xl bg-gradient-to-br from-[#1b3b3a] to-[#2c524b] flex items-center justify-center flex-shrink-0 p-3 shadow-inner">
-                  {/* Mock QR image */}
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=homestaydorm&color=2c524b&bgcolor=ffffff" alt="QR Code" className="w-full h-full object-cover rounded-lg border-4 border-white shadow-md mix-blend-screen" />
+                  {/* Mock QR image encoding dynamic deposit amount and description */}
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`STK: 1029384756 | Ngan hang: Vietcombank | Chu TK: HOMESTAY DORM CO. | So tien: ${depositInfo.depositAmount} VNĐ | Noi dung: HS DORM ${depositInfo.roomName.replace(/\s+/g, '')} DC`)}&color=2c524b&bgcolor=ffffff`} alt="QR Code" className="w-full h-full object-cover rounded-lg border-4 border-white shadow-md mix-blend-screen" />
                   <div className="absolute -bottom-3 -right-3 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-white">
                     <Check className="w-4 h-4 text-white" />
                   </div>
@@ -124,8 +151,16 @@ export default function DepositRegistrationPage() {
                     <span className="text-on-surface-variant text-sm font-medium">Số tài khoản</span>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-on-surface font-label-md tracking-wide">1029 3847 56</span>
-                      <button className="text-primary hover:bg-primary/10 p-1 rounded transition-colors" title="Copy">
-                        <Copy className="w-3.5 h-3.5" />
+                      <button 
+                        onClick={() => copyToClipboard('1029384756', 'stk')}
+                        className="text-primary hover:bg-primary/10 p-1 rounded transition-colors flex items-center justify-center" 
+                        title="Copy"
+                      >
+                        {copiedText === 'stk' ? (
+                          <Check className="w-3.5 h-3.5 text-status-success" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -135,9 +170,22 @@ export default function DepositRegistrationPage() {
                   </div>
                   <div className="flex justify-between items-center py-3">
                     <span className="text-on-surface-variant text-sm font-medium whitespace-nowrap">Nội dung chuyển khoản:</span>
-                    <span className="font-bold text-timber-accent font-label-md bg-timber-accent/10 px-3 py-1 rounded-md text-sm ml-2">
-                      HS DORM S101 DC
-                    </span>
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className="font-bold text-timber-accent font-label-md bg-timber-accent/10 px-3 py-1 rounded-md text-sm">
+                        {`HS DORM ${depositInfo.roomName.replace(/\s+/g, '')} DC`}
+                      </span>
+                      <button 
+                        onClick={() => copyToClipboard(`HS DORM ${depositInfo.roomName.replace(/\s+/g, '')} DC`, 'ndck')}
+                        className="text-primary hover:bg-primary/10 p-1 rounded transition-colors flex items-center justify-center" 
+                        title="Copy"
+                      >
+                        {copiedText === 'ndck' ? (
+                          <Check className="w-3.5 h-3.5 text-status-success" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -232,7 +280,7 @@ export default function DepositRegistrationPage() {
             <div className="absolute -top-16 -right-16 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
             <p className="font-body-md text-sm text-white/80 mb-1">Số tiền đặt cọc</p>
             <h3 className="font-display-lg text-4xl font-bold mb-6 tracking-tight">
-              5.500.000 VNĐ
+              {depositInfo.depositAmount.toLocaleString('vi-VN')} VNĐ
             </h3>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/15 border border-white/10 rounded-full backdrop-blur-sm text-sm font-label-md">
               <Clock className="w-4 h-4 text-white/90" />
@@ -250,27 +298,29 @@ export default function DepositRegistrationPage() {
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-4 left-4 bg-primary/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold font-label-md">
-                Phòng Studio Cao cấp
+                {depositInfo.roomType}
               </div>
             </div>
             {/* Info */}
             <div className="p-6 space-y-5">
-              <h4 className="font-headline-md text-lg font-bold text-on-surface">Phòng S101 - Giường A</h4>
+              <h4 className="font-headline-md text-lg font-bold text-on-surface">
+                {depositInfo.roomName} - {depositInfo.bedNames.join(', ')}
+              </h4>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-on-surface-variant font-medium mb-0.5">Chi nhánh</p>
-                  <p className="font-label-md text-sm font-semibold text-on-surface">Quận 1, TP. HCM</p>
+                  <p className="font-label-md text-sm font-semibold text-on-surface">{depositInfo.branch}</p>
                 </div>
                 <div>
                   <p className="text-xs text-on-surface-variant font-medium mb-0.5">Loại phòng</p>
-                  <p className="font-label-md text-sm font-semibold text-on-surface">Phòng đơn Cao cấp</p>
+                  <p className="font-label-md text-sm font-semibold text-on-surface">{depositInfo.roomType}</p>
                 </div>
               </div>
               
               <div className="border-t border-outline-variant/20 pt-4">
                 <p className="text-xs text-on-surface-variant font-medium mb-0.5">Thời hạn thuê</p>
-                <p className="font-label-md text-sm font-semibold text-on-surface">12 tháng (01/10/2024 - 01/10/2025)</p>
+                <p className="font-label-md text-sm font-semibold text-on-surface">12 tháng (từ {new Date(depositInfo.checkInDate).toLocaleDateString('vi-VN')})</p>
               </div>
 
               <div className="flex items-center gap-2 pt-2 text-status-success">
@@ -287,65 +337,101 @@ export default function DepositRegistrationPage() {
             <div className="space-y-6">
               {/* Timeline Items */}
               {steps.map((step, index) => {
-                const isActive = status === step;
-                const isPast = steps.indexOf(status) > index;
-                const isRejectedOrExpired = status === 'rejected' || status === 'expired';
+                const stepState = getStepState(index, status);
                 
-                // Determine styling based on status
-                let iconBg = 'bg-surface-container-high border-2 border-outline-variant/40';
-                let iconColor = 'text-on-surface-variant';
-                let lineClass = 'bg-outline-variant/30';
-                let titleColor = 'text-on-surface-variant';
+                let iconBg = '';
+                let iconColor = '';
+                let lineClass = '';
+                let titleColor = '';
+                let descColor = '';
+                let itemOpacity = 'opacity-100';
+                let stepIcon: React.ReactNode = null;
+                let stepLabel = statusMap[step].label;
+                let stepDesc = statusMap[step].desc;
 
-                if (isPast && !isRejectedOrExpired) {
-                  iconBg = 'bg-primary-container border-none';
-                  iconColor = 'text-primary';
-                  lineClass = 'bg-primary-container';
-                  titleColor = 'text-on-surface';
-                } else if (isActive) {
-                  iconBg = 'bg-primary border-none';
-                  iconColor = 'text-white shadow-md shadow-primary/30';
-                  titleColor = 'text-primary font-bold';
+                switch (stepState) {
+                  case 'completed':
+                    iconBg = 'bg-status-success';
+                    iconColor = 'text-white border-none';
+                    lineClass = 'bg-status-success';
+                    titleColor = 'text-on-surface font-semibold';
+                    descColor = 'text-on-surface-variant';
+                    stepIcon = <Check className="w-4.5 h-4.5" />;
+                    if (step === 'pending') {
+                      stepLabel = 'Đăng ký đặt cọc';
+                      stepDesc = 'Đã hoàn thành';
+                    }
+                    break;
+                  case 'active':
+                    iconBg = 'bg-primary border-none';
+                    iconColor = 'text-white shadow-md shadow-primary/30';
+                    lineClass = 'bg-outline-variant/30';
+                    titleColor = 'text-primary font-bold';
+                    descColor = 'text-on-surface-variant';
+                    if (step === 'pending') stepIcon = <CreditCard className="w-4 h-4" />;
+                    else if (step === 'submitted') stepIcon = <FileText className="w-4 h-4" />;
+                    else stepIcon = <CheckCircle2 className="w-4 h-4" />;
+                    break;
+                  case 'rejected':
+                    iconBg = 'bg-status-error';
+                    iconColor = 'text-white border-none';
+                    lineClass = 'bg-outline-variant/30';
+                    titleColor = 'text-status-error font-bold';
+                    descColor = 'text-status-error/80';
+                    stepIcon = <span className="material-symbols-outlined text-[16px]">close</span>;
+                    stepLabel = 'Từ chối minh chứng';
+                    stepDesc = statusMap.rejected.desc;
+                    break;
+                  case 'expired':
+                    iconBg = 'bg-status-error';
+                    iconColor = 'text-white border-none';
+                    lineClass = 'bg-outline-variant/30';
+                    titleColor = 'text-status-error font-bold';
+                    descColor = 'text-status-error/80';
+                    stepIcon = <span className="material-symbols-outlined text-[16px]">close</span>;
+                    stepLabel = 'Đã hết hạn';
+                    stepDesc = statusMap.expired.desc;
+                    break;
+                  case 'future':
+                    iconBg = 'bg-surface-container-high border-2 border-outline-variant/40';
+                    iconColor = 'text-on-surface-variant';
+                    lineClass = 'bg-outline-variant/30';
+                    titleColor = 'text-on-surface-variant';
+                    descColor = 'text-on-surface-variant/60';
+                    if (step === 'pending') stepIcon = <CreditCard className="w-4 h-4" />;
+                    else if (step === 'submitted') stepIcon = <FileText className="w-4 h-4" />;
+                    else stepIcon = <CheckCircle2 className="w-4 h-4" />;
+                    break;
+                  case 'disabled':
+                    iconBg = 'bg-surface-container border border-outline-variant/20';
+                    iconColor = 'text-on-surface-variant/40';
+                    lineClass = 'bg-outline-variant/20';
+                    titleColor = 'text-on-surface-variant/40';
+                    descColor = 'text-on-surface-variant/30';
+                    itemOpacity = 'opacity-40';
+                    if (step === 'pending') stepIcon = <CreditCard className="w-4 h-4" />;
+                    else if (step === 'submitted') stepIcon = <FileText className="w-4 h-4" />;
+                    else stepIcon = <CheckCircle2 className="w-4 h-4" />;
+                    break;
                 }
-
-                // Override for terminal error states (rejected, expired) if they map to current step
-                if ((status === 'rejected' || status === 'expired') && step === 'submitted') {
-                  // highlight the error state instead of normal steps
-                  iconBg = 'bg-error border-none';
-                  iconColor = 'text-white';
-                  titleColor = 'text-error font-bold';
-                }
-
-                // Render Icon Type
-                const getStepIcon = (s: DepositStatus) => {
-                  if ((status === 'rejected' || status === 'expired') && s === 'submitted') {
-                    return <span className="material-symbols-outlined text-[16px]">close</span>;
-                  }
-                  if (s === 'pending') return <CreditCard className="w-4 h-4" />;
-                  if (s === 'submitted') return <FileText className="w-4 h-4" />;
-                  if (s === 'approved') return <CheckCircle2 className="w-4 h-4" />;
-                  return <Check className="w-4 h-4" />;
-                };
 
                 return (
-                  <div key={step} className="relative flex items-start gap-4">
+                  <div key={step} className={`relative flex items-start gap-4 ${itemOpacity} transition-opacity`}>
                     {/* Connecting line to next step */}
                     {index < steps.length - 1 && (
                       <div className={`absolute left-[19px] top-10 bottom-[-24px] w-0.5 ${lineClass}`} />
                     )}
                     
                     <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg} ${iconColor} transition-colors`}>
-                      {getStepIcon(step)}
+                      {stepIcon}
                     </div>
                     
                     <div className="pt-1.5 pb-2">
                       <h4 className={`font-label-md text-[15px] ${titleColor}`}>
-                        {(status === 'rejected' && step === 'submitted') ? 'Từ chối minh chứng' :
-                         (status === 'expired' && step === 'pending') ? 'Đã hết hạn' : 
-                         statusMap[step].label}
+                        {stepLabel}
                       </h4>
-                      <p className="text-xs font-body-md text-on-surface-variant mt-0.5 opacity-90">
-                        {statusMap[step].desc}
+                      <p className={`text-xs font-body-md mt-0.5 opacity-90 ${descColor}`}>
+                        {stepDesc}
                       </p>
                     </div>
                   </div>

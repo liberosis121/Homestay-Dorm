@@ -6,7 +6,8 @@ export type DepositStatus = 'pending' | 'submitted' | 'approved' | 'rejected' | 
 export interface DepositInfo {
   roomId: string;
   roomName: string;
-  bedId: string;
+  roomType: string;
+  bedNames: string[];
   branch: string;
   checkInDate: string;
   depositAmount: number;
@@ -23,12 +24,14 @@ interface DepositState {
   setProofImage: (image: string | null) => void;
   submitDeposit: () => void;
   reset: () => void;
+  setDepositInfo: (depositInfo: DepositInfo) => void;
 }
 
 const mockDepositInfo: DepositInfo = {
   roomId: 'r-1',
   roomName: 'Studio A',
-  bedId: 'G-102',
+  roomType: 'Phòng Studio Cao cấp',
+  bedNames: ['Giường A'],
   branch: 'Chi nhánh Quận 1',
   checkInDate: '2026-07-01',
   depositAmount: 2000000,
@@ -47,6 +50,7 @@ export const useDepositStore = create<DepositState>()(
       setProofImage: (proofImage) => set({ proofImage }),
       submitDeposit: () => set({ status: 'submitted' }),
       reset: () => set({ status: 'pending', proofImage: null, paymentMethod: 'qr' }),
+      setDepositInfo: (depositInfo) => set({ depositInfo }),
     }),
     {
       name: 'deposit-storage',
