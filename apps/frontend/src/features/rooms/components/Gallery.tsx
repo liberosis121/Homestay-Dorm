@@ -36,10 +36,15 @@ export default function Gallery({ images, roomName }: Props) {
         }}
         className="relative aspect-[16/9] rounded-[24px] overflow-hidden group cursor-pointer border border-outline-variant/30 shadow-md bg-surface-container"
       >
+        {/* Blurred background to prevent empty borders and fill space elegantly */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center blur-xl opacity-30 scale-110 pointer-events-none"
+          style={{ backgroundImage: `url(${galleryImages[activeIdx]})` }}
+        />
         <img 
           src={galleryImages[activeIdx]} 
           alt={roomName} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+          className="relative z-10 w-full h-full object-contain transition-transform duration-700 group-hover:scale-102" 
         />
         
         {/* Glassmorphic Overlay Tag */}
