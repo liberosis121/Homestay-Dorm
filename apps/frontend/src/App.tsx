@@ -29,6 +29,7 @@ import {
 import { initializeMockDB, getMockDB, saveMockDB, Profile, Room, Branch } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
+import LoginPage from './features/auth/LoginPage';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -53,114 +54,12 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={!user ? <LandingPage /> : <DashboardLayout />} />
-      <Route path="/login" element={!user ? <LoginScreen /> : <Navigate to="/" replace />} />
+      <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
       <Route 
         path="/*" 
         element={user ? <DashboardLayout /> : <Navigate to="/login" replace />} 
       />
     </Routes>
-  );
-}
-
-// ----------------------------------------------------
-// LOGIN SCREEN WITH DYNAMIC PRESETS
-// ----------------------------------------------------
-function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const { login, error, loading } = useAuthStore();
-  const navigate = useNavigate();
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    const success = await login(email);
-    if (success) {
-      navigate('/');
-    }
-  };
-
-  const fillCredential = (presetEmail: string) => {
-    setEmail(presetEmail);
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 relative overflow-hidden px-4">
-      {/* Background glowing decorations */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[120px]"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px]"></div>
-
-      <div className="w-full max-w-md glass-card rounded-2xl p-8 shadow-2xl relative z-10">
-        <div className="text-center mb-8">
-          <div className="inline-flex p-3 bg-violet-500/10 rounded-xl mb-3 text-violet-400 border border-violet-500/20">
-            <Building className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">
-            HOMESTAY DORM
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">Hệ thống quản lý dịch vụ lưu trú KTX</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex items-start gap-2">
-            <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleLoginSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Email đăng nhập
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="nhap-email@homestay.com"
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg py-3 px-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all text-sm"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-violet-600 hover:bg-violet-500 text-white font-medium py-3 rounded-lg transition-all text-sm shadow-lg shadow-violet-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? 'Đang xác thực...' : 'Đăng nhập vào hệ thống'}
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </form>
-
-        <div className="mt-8 border-t border-slate-800/80 pt-6">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 text-center">
-            Tài khoản dùng thử (Click để chọn nhanh)
-          </h3>
-          <div className="grid grid-cols-1 gap-2">
-            {[
-              { email: 'admin@homestay.com', name: 'Quản trị viên (Admin)', color: 'border-violet-500/20 hover:bg-violet-500/5 text-violet-400' },
-              { email: 'manager@homestay.com', name: 'Quản lý chi nhánh (Manager)', color: 'border-emerald-500/20 hover:bg-emerald-500/5 text-emerald-400' },
-              { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)', color: 'border-blue-500/20 hover:bg-blue-500/5 text-blue-400' },
-              { email: 'accountant@homestay.com', name: 'Kế toán (Accountant)', color: 'border-amber-500/20 hover:bg-amber-500/5 text-amber-400' },
-              { email: 'customer@gmail.com', name: 'Khách hàng (Customer)', color: 'border-rose-500/20 hover:bg-rose-500/5 text-rose-400' }
-            ].map((p) => (
-              <button
-                key={p.email}
-                type="button"
-                onClick={() => fillCredential(p.email)}
-                className={`w-full text-left border rounded-lg p-2.5 flex items-center justify-between text-xs transition-all ${p.color}`}
-              >
-                <div>
-                  <span className="font-semibold">{p.name}</span>
-                  <span className="block text-slate-500 text-[10px] mt-0.5">{p.email}</span>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 opacity-60" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
