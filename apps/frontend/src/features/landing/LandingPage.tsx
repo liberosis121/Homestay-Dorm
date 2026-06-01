@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useAuthStore } from '../../stores/authStore';
 import heroImage from '../../assets/hero.jpg';
 import roomStudio from '../../assets/room-studio.jpg';
 import roomTwin from '../../assets/room-twin.jpg';
@@ -7,6 +8,7 @@ import roomSingle from '../../assets/room-single.jpg';
 import Logo from '../../components/ui/Logo';
 import RoomCard from '../../components/ui/RoomCard';
 import Navbar from '../../components/ui/Navbar';
+import Footer from '../../components/ui/Footer';
 
 const featuredRooms = [
   {
@@ -52,6 +54,8 @@ const featuredRooms = [
 ];
 
 export default function LandingPage() {
+  const { user } = useAuthStore();
+
   useEffect(() => {
     // Micro-interaction: Header scroll effect
     const handleScroll = () => {
@@ -89,7 +93,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="bg-surface text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen">
+    <div className="bg-surface text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col">
       {/* Header: Unified TopNavBar */}
       <Navbar />
       
@@ -196,64 +200,22 @@ export default function LandingPage() {
         </section>
 
         {/* Call to Action for Staff */}
-        <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="bg-primary-container/20 border border-primary-container/30 rounded-[32px] p-8 md:p-12 text-center space-y-6">
-            <h3 className="font-headline-md text-2xl text-on-primary-container">Bạn là nhân viên hệ thống?</h3>
-            <p className="text-on-surface-variant max-w-lg mx-auto">Truy cập vào hệ thống quản lý để thực hiện các thao tác vận hành và quản lý phòng trống.</p>
-            <a className="inline-flex items-center gap-2 bg-primary text-on-primary px-10 py-4 rounded-full font-label-md hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95" href="#/login">
-              Đăng nhập hệ thống quản lý
-              <span className="material-symbols-outlined">login</span>
-            </a>
-          </div>
-        </section>
+        {!user && (
+          <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+            <div className="bg-primary-container/20 border border-primary-container/30 rounded-[32px] p-8 md:p-12 text-center space-y-6">
+              <h3 className="font-headline-md text-2xl text-on-primary-container">Bạn là nhân viên hệ thống?</h3>
+              <p className="text-on-surface-variant max-w-lg mx-auto">Truy cập vào hệ thống quản lý để thực hiện các thao tác vận hành và quản lý phòng trống.</p>
+              <a className="inline-flex items-center gap-2 bg-primary text-on-primary px-10 py-4 rounded-full font-label-md hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95" href="#/login">
+                Đăng nhập hệ thống quản lý
+                <span className="material-symbols-outlined">login</span>
+              </a>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Footer */}
-      <footer className="w-full bg-surface-container-high dark:bg-surface-container-highest mt-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter py-stack-lg px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="space-y-4">
-            <Logo size="md" />
-            <p className="font-caption text-caption text-on-surface-variant leading-relaxed max-w-xs">
-              © 2024 HomeStay Dorm. Eco-friendly Luxury meets User-friendly Utility. Hệ thống ký túc xá cao cấp dành cho sinh viên và người đi làm.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h4 className="font-label-md text-on-surface mb-4">Thông tin</h4>
-              <ul className="space-y-2 font-caption text-caption text-on-surface-variant">
-                <li><a className="hover:underline decoration-primary" href="#">Contact Info</a></li>
-                <li><a className="hover:underline decoration-primary" href="#">Branch Locations</a></li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-label-md text-on-surface mb-4">Mạng xã hội</h4>
-              <ul className="space-y-2 font-caption text-caption text-on-surface-variant">
-                <li><a className="hover:underline decoration-primary" href="#">Facebook</a></li>
-                <li><a className="hover:underline decoration-primary" href="#">Instagram</a></li>
-                <li><a className="hover:underline decoration-primary" href="#">LinkedIn</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <h4 className="font-label-md text-on-surface">Đăng ký nhận tin</h4>
-            <div className="relative">
-              <input className="w-full h-12 px-4 rounded-xl bg-surface-container border-none focus:ring-1 focus:ring-primary font-caption text-caption" placeholder="Email của bạn" type="email"/>
-              <button className="absolute right-1 top-1 h-10 px-4 bg-primary text-on-primary rounded-lg text-caption font-label-md">Gửi</button>
-            </div>
-            <div className="flex gap-4 pt-4">
-              <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">call</span>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">mail</span>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">location_on</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

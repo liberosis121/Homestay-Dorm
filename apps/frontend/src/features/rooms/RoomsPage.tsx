@@ -9,6 +9,7 @@ import ExtendedFilters from './components/ExtendedFilters';
 import RoomListSkeleton from './components/RoomListSkeleton';
 import EmptyState from './components/EmptyState';
 import Navbar from '../../components/ui/Navbar';
+import Footer from '../../components/ui/Footer';
 
 export default function RoomsPage() {
   const { user } = useAuthStore();
@@ -142,29 +143,7 @@ export default function RoomsPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-surface-container-high py-12 px-6 mt-16">
-        <div className="max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="space-y-4">
-            <h3 className="font-display-lg text-xl font-bold text-primary">HomeStay Dorm</h3>
-            <p className="text-sm text-on-surface-variant max-w-xs">Giải pháp lưu trú hiện đại cho sinh viên và người đi làm tại TP. Hồ Chí Minh với tiêu chuẩn xanh và tiện ích cao cấp.</p>
-            <p className="text-xs text-on-surface-variant">© 2024 HomeStay Dorm. Eco-friendly Luxury meets User-friendly Utility.</p>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h4 className="font-label-md text-on-surface mb-2">Khám phá</h4>
-            <span className="text-sm text-on-surface-variant">Chi nhánh Quận 1</span>
-            <span className="text-sm text-on-surface-variant">Chi nhánh Quận 7</span>
-            <span className="text-sm text-on-surface-variant">Thủ Đức - Làng Đại học</span>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h4 className="font-label-md text-on-surface mb-2">Kết nối</h4>
-            <div className="flex gap-4 mb-2">
-              <span className="text-sm text-on-surface-variant">Facebook</span>
-              <span className="text-sm text-on-surface-variant">Instagram</span>
-            </div>
-            <p className="text-sm text-on-surface-variant">Contact Info: (+84) 123 456 789</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

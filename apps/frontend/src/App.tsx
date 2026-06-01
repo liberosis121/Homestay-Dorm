@@ -32,6 +32,7 @@ import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import ProfilePage from './features/customer/ProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
 import Navbar from './components/ui/Navbar';
+import Footer from './components/ui/Footer';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -55,7 +56,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={!user ? <LandingPage /> : (user.role === 'customer' ? <Navigate to="/profile" replace /> : <DashboardLayout />)} />
+      <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
       <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
       <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
       <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
@@ -95,35 +96,7 @@ function CustomerLayout() {
       </main>
       
       {/* Footer */}
-      <footer className="bg-surface-container-high py-12 px-6">
-        <div className="max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-4">
-            <h3 className="font-display-lg text-xl font-bold text-primary">HomeStay Dorm</h3>
-            <p className="text-sm text-on-surface-variant max-w-xs">© 2024 HomeStay Dorm. Eco-friendly Luxury meets User-friendly Utility.</p>
-          </div>
-          <div>
-            <ul className="space-y-3 text-sm text-on-surface-variant font-label-md">
-              <li>Contact Info</li>
-              <li>Branch Locations</li>
-            </ul>
-          </div>
-          <div>
-            <ul className="space-y-3 text-sm text-on-surface-variant font-label-md">
-              <li>Facebook</li>
-              <li>Instagram</li>
-              <li>LinkedIn</li>
-            </ul>
-          </div>
-          <div className="flex flex-col items-end justify-center space-y-4">
-            <p className="text-sm text-on-surface-variant">Trải nghiệm sống xanh, ở sạch.</p>
-            <div className="flex gap-4 text-primary">
-              <span className="material-symbols-outlined">eco</span>
-              <span className="material-symbols-outlined">water_drop</span>
-              <span className="material-symbols-outlined">recycling</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
