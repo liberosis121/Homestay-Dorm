@@ -137,7 +137,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <Link
-                to="/customer/rooms"
+                to="/rooms"
                 className="px-6 py-3 bg-[#4a6549] hover:bg-[#3a503a] text-white rounded-full font-label-md transition-all text-sm whitespace-nowrap shadow-md text-center"
               >
                 Tìm phòng ngay

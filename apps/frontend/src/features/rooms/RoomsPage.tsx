@@ -42,7 +42,7 @@ export default function RoomsPage() {
     if (roomType !== 'Loại phòng' && room.room_type !== roomType) return false;
     if (gender !== 'Giới tính' && gender !== 'Tất cả' && room.gender_type !== gender) return false;
     
-    if (onlyAvailable && room.status !== 'Available' && room.status !== 'Partial') return false;
+    if (onlyAvailable && room.status !== 'available' && room.status !== 'partial') return false;
     
     if (capacity && capacity !== '') {
       if (capacity === '6+' && room.capacity < 6) return false;

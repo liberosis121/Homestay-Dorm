@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function ListingRoomCard({ room, onActionClick }: Props) {
-  const isAvailable = room.status === 'Available' || room.status === 'Partial';
+  const isAvailable = room.status === 'available' || room.status === 'partial';
   const availableBeds = room.capacity - room.current_occupants;
   
   // Tag style based on status

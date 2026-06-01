@@ -23,13 +23,16 @@ export interface Room {
   branch_id: string;
   name: string;
   capacity: number;
+  current_occupants: number;
   floor: number;
-  type: 'standard' | 'premium';
+  room_type: string;
   gender_type: 'male' | 'female' | 'unisex';
   has_ac: boolean;
   has_private_wc: boolean;
   price: number;
-  status: 'available' | 'deposited' | 'occupied' | 'maintenance';
+  amenities: string[];
+  image_url: string;
+  status: 'available' | 'deposited' | 'occupied' | 'maintenance' | 'partial';
 }
 
 export interface Bed {
@@ -55,10 +58,10 @@ const INITIAL_DB = {
     { id: 'b-2', name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM', manager_id: 'u-2' }
   ] as Branch[],
   rooms: [
-    { id: 'r-1', branch_id: 'b-1', name: 'Phòng 101 (Nam)', capacity: 4, floor: 1, type: 'standard', gender_type: 'male', has_ac: true, has_private_wc: true, price: 1500000, status: 'available' },
-    { id: 'r-2', branch_id: 'b-1', name: 'Phòng 102 (Nữ)', capacity: 4, floor: 1, type: 'premium', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2000000, status: 'available' },
-    { id: 'r-3', branch_id: 'b-2', name: 'Phòng 201 (Nam)', capacity: 8, floor: 2, type: 'standard', gender_type: 'male', has_ac: false, has_private_wc: false, price: 900000, status: 'available' },
-    { id: 'r-4', branch_id: 'b-2', name: 'Phòng 202 (Nữ)', capacity: 6, floor: 2, type: 'standard', gender_type: 'female', has_ac: true, has_private_wc: true, price: 1200000, status: 'available' }
+    { id: 'r-1', branch_id: 'b-1', name: 'Phòng 101 (Nam)', capacity: 4, current_occupants: 1, floor: 1, room_type: 'Dorm', gender_type: 'male', has_ac: true, has_private_wc: true, price: 1500000, amenities: ['AC', 'Wifi', 'Private WC'], image_url: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80', status: 'available' },
+    { id: 'r-2', branch_id: 'b-1', name: 'Phòng 102 (Nữ)', capacity: 4, current_occupants: 0, floor: 1, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2000000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen'], image_url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80', status: 'available' },
+    { id: 'r-3', branch_id: 'b-2', name: 'Phòng 201 (Nam)', capacity: 8, current_occupants: 8, floor: 2, room_type: 'Dorm', gender_type: 'male', has_ac: false, has_private_wc: false, price: 900000, amenities: ['Wifi', 'Washing Machine'], image_url: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80', status: 'occupied' },
+    { id: 'r-4', branch_id: 'b-2', name: 'Phòng 202 (Nữ)', capacity: 6, current_occupants: 2, floor: 2, room_type: 'Twin', gender_type: 'female', has_ac: true, has_private_wc: true, price: 1200000, amenities: ['AC', 'Wifi', 'Washing Machine'], image_url: 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=800&q=80', status: 'available' }
   ] as Room[],
   beds: [
     { id: 'bed-1-1', room_id: 'r-1', name: 'Giường A1', price: 1500000, status: 'available' },
@@ -90,6 +93,11 @@ export const initializeMockDB = () => {
             updated = true;
           }
         });
+      }
+      if (db && db.rooms) {
+        // Force update rooms to ensure new properties exist
+        db.rooms = INITIAL_DB.rooms;
+        updated = true;
       }
       if (updated) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
