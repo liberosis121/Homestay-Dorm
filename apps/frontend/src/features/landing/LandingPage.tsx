@@ -10,6 +10,7 @@ import roomSingle from '../../assets/room-single.jpg';
 import RoomCard from '../../components/ui/RoomCard';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
+import CustomSelect from '../../components/ui/CustomSelect';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 
 const featuredRooms = [
@@ -213,53 +214,64 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Chi nhánh</label>
-                <div className="relative">
-                  <select value={localBranch} onChange={(e) => setLocalBranch(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
-                    <option>Tất cả chi nhánh</option>
-                    <option value="b-1">Quận 1</option>
-                    <option value="b-2">Quận 7</option>
-                    <option value="b-3">Thủ Đức</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">expand_more</span>
-                </div>
+                <CustomSelect
+                  value={localBranch}
+                  onChange={setLocalBranch}
+                  options={[
+                    { value: 'Tất cả chi nhánh', label: 'Tất cả chi nhánh' },
+                    { value: 'b-1', label: 'Quận 1' },
+                    { value: 'b-2', label: 'Quận 7' },
+                    { value: 'b-3', label: 'Thủ Đức' }
+                  ]}
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
               </div>
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Khoảng giá</label>
-                <div className="relative">
-                  <select value={localPrice} onChange={(e) => setLocalPrice(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
-                    <option>Tất cả</option>
-                    <option>Dưới 2tr</option>
-                    <option>2tr - 5tr</option>
-                    <option>Trên 5tr</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">payments</span>
-                </div>
+                <CustomSelect
+                  value={localPrice}
+                  onChange={setLocalPrice}
+                  options={[
+                    'Tất cả',
+                    'Dưới 2tr',
+                    '2tr - 5tr',
+                    'Trên 5tr'
+                  ]}
+                  icon="payments"
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
               </div>
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Loại phòng</label>
-                <div className="relative">
-                  <select value={localRoomType} onChange={(e) => setLocalRoomType(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
-                    <option>Loại phòng</option>
-                    <option value="Studio">Studio</option>
-                    <option value="Twin">Twin</option>
-                    <option value="Dorm">KTX (Dorm)</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">bed</span>
-                </div>
+                <CustomSelect
+                  value={localRoomType}
+                  onChange={setLocalRoomType}
+                  options={[
+                    { value: 'Loại phòng', label: 'Loại phòng' },
+                    { value: 'Studio', label: 'Studio' },
+                    { value: 'Twin', label: 'Twin' },
+                    { value: 'Dorm', label: 'KTX (Dorm)' }
+                  ]}
+                  icon="bed"
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
               </div>
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Giới tính</label>
-                <div className="relative">
-                  <select value={localGender} onChange={(e) => setLocalGender(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
-                    <option>Giới tính</option>
-                    <option value="Male">Nam</option>
-                    <option value="Female">Nữ</option>
-                    <option value="All">Tất cả</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">wc</span>
-                </div>
+                <CustomSelect
+                  value={localGender}
+                  onChange={setLocalGender}
+                  options={[
+                    { value: 'Giới tính', label: 'Giới tính' },
+                    { value: 'Male', label: 'Nam' },
+                    { value: 'Female', label: 'Nữ' },
+                    { value: 'All', label: 'Tất cả' }
+                  ]}
+                  icon="wc"
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
               </div>
-              <button onClick={handleSearch} className="h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-lg shadow-primary/10 group cursor-pointer">
+              <button onClick={handleSearch} className="h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-lg shadow-primary/10 group cursor-pointer w-full">
                 <span className="material-symbols-outlined group-hover:rotate-12 transition-transform">search</span>
                 Tìm kiếm
               </button>

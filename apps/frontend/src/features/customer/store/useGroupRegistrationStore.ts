@@ -1,11 +1,17 @@
 import { create } from 'zustand';
 
 export interface GroupMember {
-  id: string;
+  id?: string;
   fullName: string;
   phone: string;
   cccd: string;
-  isRepresentative: boolean;
+  isRepresentative?: boolean;
+  issueDate?: string;
+  issuePlace?: string;
+  dob?: string;
+  gender?: 'male' | 'female' | 'other';
+  nationality?: string;
+  permanentAddress?: string;
 }
 
 export interface GroupDraftData {

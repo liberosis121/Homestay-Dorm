@@ -6,13 +6,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useIndividualLeaseStore } from './store/useIndividualLeaseStore';
 import { CheckCircle, ChevronLeft, ChevronRight, UploadCloud, Info } from 'lucide-react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const personalInfoSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
   phone: z.string().min(10, 'Số điện thoại không hợp lệ'),
   cccd: z.string().min(12, 'CCCD phải có 12 số').max(12, 'CCCD phải có 12 số'),
+  issueDate: z.string().min(1, 'Vui lòng chọn ngày cấp'),
+  issuePlace: z.string().min(1, 'Vui lòng nhập nơi cấp'),
   dob: z.string().min(1, 'Vui lòng chọn ngày sinh'),
   gender: z.enum(['male', 'female', 'other']),
+  nationality: z.string().min(1, 'Vui lòng nhập quốc tịch'),
+  permanentAddress: z.string().min(1, 'Vui lòng nhập địa chỉ thường trú'),
 });
 
 const rentalInfoSchema = z.object({
@@ -28,6 +33,8 @@ export const RegisterLeasePage: React.FC = () => {
   const { draftData, setDraftData, currentStep, setCurrentStep, clearDraft } = useIndividualLeaseStore();
   
   const [roomName, setRoomName] = useState<string>('');
+  const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
+  const [genderType, setGenderType] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -43,26 +50,34 @@ export const RegisterLeasePage: React.FC = () => {
       return;
     }
 
-    const state = location.state as { roomId?: string, roomName?: string };
+    const state = location.state as { roomId?: string, roomName?: string, selectedBedsNames?: string[], genderType?: string };
     if (state?.roomId) {
       setRoomName(state.roomName || 'Phòng không xác định');
+      setSelectedBeds(state.selectedBedsNames || []);
+      setGenderType(state.genderType || '');
     } else {
       navigate('/rooms');
     }
   }, [user, navigate, location]);
 
-  const { register: registerPersonal, handleSubmit: handlePersonal, formState: { errors: errorsPersonal } } = useForm({
+  type PersonalInfo = z.infer<typeof personalInfoSchema>;
+  const { register: registerPersonal, setValue: setPersonalValue, watch: watchPersonal, handleSubmit: handlePersonal, formState: { errors: errorsPersonal } } = useForm<PersonalInfo>({
     resolver: zodResolver(personalInfoSchema),
     defaultValues: {
       fullName: draftData.fullName || user?.full_name || '',
       phone: draftData.phone || user?.phone || '',
       cccd: draftData.cccd || '',
+      issueDate: draftData.issueDate || '',
+      issuePlace: draftData.issuePlace || '',
       dob: draftData.dob || '',
       gender: draftData.gender || 'male' as any,
+      nationality: draftData.nationality || 'Việt Nam',
+      permanentAddress: draftData.permanentAddress || '',
     }
   });
 
-  const { register: registerRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm({
+  type RentalInfo = z.infer<typeof rentalInfoSchema>;
+  const { register: registerRental, setValue: setRentalValue, watch: watchRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm<RentalInfo>({
     resolver: zodResolver(rentalInfoSchema),
     defaultValues: {
       leaseTerm: draftData.leaseTerm || '6',
@@ -77,6 +92,10 @@ export const RegisterLeasePage: React.FC = () => {
   const [docError, setDocError] = useState('');
 
   const handleNextPersonal = (data: any) => {
+    if (genderType && genderType !== 'unisex' && data.gender !== genderType) {
+      alert(`Phòng này dành cho ${genderType === 'female' ? 'Nữ' : 'Nam'}. Giới tính của bạn không phù hợp.`);
+      return;
+    }
     setDraftData(data);
     setCurrentStep(2);
   };
@@ -125,8 +144,13 @@ export const RegisterLeasePage: React.FC = () => {
         
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 font-serif mb-2">Đăng ký thuê phòng</h1>
-          <p className="text-gray-600">Phòng đã chọn: <span className="font-semibold text-[#8BA888]">{roomName}</span></p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng ký thuê phòng</h1>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <p className="text-gray-600">Phòng đã chọn: <span className="font-semibold text-[#8BA888]">{roomName}</span></p>
+            {selectedBeds.length > 0 && (
+              <span className="px-2.5 py-1 bg-[#8BA888]/10 text-[#8BA888] rounded-full font-medium">Giường: {selectedBeds.join(', ')}</span>
+            )}
+          </div>
         </div>
 
         {/* Stepper */}
@@ -184,18 +208,49 @@ export const RegisterLeasePage: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày cấp CCCD</label>
+                    <input type="date" {...registerPersonal('issueDate')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888]" />
+                    {errorsPersonal.issueDate && <p className="text-red-500 text-sm mt-1">{errorsPersonal.issueDate.message as string}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nơi cấp CCCD</label>
+                    <input {...registerPersonal('issuePlace')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888]" placeholder="Cục CSQLHC về TTXH" />
+                    {errorsPersonal.issuePlace && <p className="text-red-500 text-sm mt-1">{errorsPersonal.issuePlace.message as string}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
                     <input type="date" {...registerPersonal('dob')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888]" />
                     {errorsPersonal.dob && <p className="text-red-500 text-sm mt-1">{errorsPersonal.dob.message as string}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
-                    <select {...registerPersonal('gender')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] bg-white">
-                      <option value="male">Nam</option>
-                      <option value="female">Nữ</option>
-                      <option value="other">Khác</option>
-                    </select>
+                    <CustomSelect
+                      value={watchPersonal('gender')}
+                      onChange={(val) => setPersonalValue('gender', val as any)}
+                      options={[
+                        { value: 'male', label: 'Nam' },
+                        { value: 'female', label: 'Nữ' },
+                        { value: 'other', label: 'Khác' }
+                      ]}
+                      triggerClassName="w-full border-gray-200 focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] py-3 text-base font-normal text-gray-900"
+                    />
                     {errorsPersonal.gender && <p className="text-red-500 text-sm mt-1">{errorsPersonal.gender.message as string}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quốc tịch</label>
+                    <input {...registerPersonal('nationality')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888]" placeholder="Việt Nam" />
+                    {errorsPersonal.nationality && <p className="text-red-500 text-sm mt-1">{errorsPersonal.nationality.message as string}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ thường trú</label>
+                    <input {...registerPersonal('permanentAddress')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888]" placeholder="123 Đường A..." />
+                    {errorsPersonal.permanentAddress && <p className="text-red-500 text-sm mt-1">{errorsPersonal.permanentAddress.message as string}</p>}
                   </div>
                 </div>
               </div>
@@ -221,11 +276,16 @@ export const RegisterLeasePage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Thời hạn thuê</label>
-                  <select {...registerRental('leaseTerm')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] bg-white">
-                    <option value="6">6 Tháng</option>
-                    <option value="12">1 Năm</option>
-                    <option value="24">2 Năm</option>
-                  </select>
+                  <CustomSelect
+                    value={watchRental('leaseTerm')}
+                    onChange={(val) => setRentalValue('leaseTerm', val)}
+                    options={[
+                      { value: '6', label: '6 Tháng' },
+                      { value: '12', label: '1 Năm' },
+                      { value: '24', label: '2 Năm' }
+                    ]}
+                    triggerClassName="w-full border-gray-200 focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] py-3 text-base font-normal text-gray-900"
+                  />
                   {errorsRental.leaseTerm && <p className="text-red-500 text-sm mt-1">{errorsRental.leaseTerm.message as string}</p>}
                 </div>
 
@@ -319,12 +379,16 @@ export const RegisterLeasePage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-y-3 text-sm">
                     <div className="text-gray-500">Họ và tên:</div>
                     <div className="font-medium">{draftData.fullName}</div>
+                    <div className="text-gray-500">Giới tính:</div>
+                    <div className="font-medium">{draftData.gender === 'male' ? 'Nam' : draftData.gender === 'female' ? 'Nữ' : 'Khác'}</div>
                     <div className="text-gray-500">Số điện thoại:</div>
                     <div className="font-medium">{draftData.phone}</div>
-                    <div className="text-gray-500">CCCD:</div>
-                    <div className="font-medium">{draftData.cccd}</div>
                     <div className="text-gray-500">Ngày sinh:</div>
                     <div className="font-medium">{draftData.dob}</div>
+                    <div className="text-gray-500">CCCD:</div>
+                    <div className="font-medium">{draftData.cccd}</div>
+                    <div className="text-gray-500">Quốc tịch:</div>
+                    <div className="font-medium">{draftData.nationality}</div>
                   </div>
                 </div>
 

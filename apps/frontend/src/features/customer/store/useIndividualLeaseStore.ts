@@ -7,6 +7,10 @@ export interface DraftData {
   cccd?: string;
   dob?: string;
   gender?: 'male' | 'female' | 'other';
+  issueDate?: string;
+  issuePlace?: string;
+  nationality?: string;
+  permanentAddress?: string;
   // Step 2: Rental Info
   leaseTerm?: string;
   moveInDate?: string;

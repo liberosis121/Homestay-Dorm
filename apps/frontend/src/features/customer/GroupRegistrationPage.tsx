@@ -6,11 +6,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useGroupRegistrationStore } from './store/useGroupRegistrationStore';
 import { CheckCircle, ChevronLeft, ChevronRight, Info, Plus, Trash2, Users } from 'lucide-react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const memberSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
   phone: z.string().min(10, 'Số điện thoại không hợp lệ'),
   cccd: z.string().min(12, 'CCCD phải có 12 số').max(12, 'CCCD phải có 12 số'),
+  issueDate: z.string().min(1, 'Vui lòng chọn ngày cấp'),
+  issuePlace: z.string().min(1, 'Vui lòng nhập nơi cấp'),
+  dob: z.string().min(1, 'Vui lòng chọn ngày sinh'),
+  gender: z.enum(['male', 'female', 'other']),
+  nationality: z.string().min(1, 'Vui lòng nhập quốc tịch'),
+  permanentAddress: z.string().min(1, 'Vui lòng nhập địa chỉ thường trú'),
 });
 
 const groupSchema = z.object({
@@ -32,6 +39,8 @@ export const GroupRegistrationPage: React.FC = () => {
   const [roomName, setRoomName] = useState<string>('');
   const [capacity, setCapacity] = useState<number>(0);
   const [availableBeds, setAvailableBeds] = useState<number>(0);
+  const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
+  const [genderType, setGenderType] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -45,21 +54,34 @@ export const GroupRegistrationPage: React.FC = () => {
       return;
     }
 
-    const state = location.state as { roomId?: string, roomName?: string, capacity?: number, availableBeds?: number };
+    const state = location.state as { roomId?: string, roomName?: string, capacity?: number, availableBeds?: number, selectedBedsNames?: string[], genderType?: string };
     if (state?.roomId) {
       setRoomName(state.roomName || 'Phòng không xác định');
       setCapacity(state.capacity || 4);
       setAvailableBeds(state.availableBeds || 4);
+      setSelectedBeds(state.selectedBedsNames || []);
+      setGenderType(state.genderType || '');
     } else {
       navigate('/rooms');
     }
   }, [user, navigate, location]);
 
-  const { register: registerGroup, control, handleSubmit: handleGroup, formState: { errors: errorsGroup } } = useForm({
+  type GroupSchemaType = z.infer<typeof groupSchema>;
+  const { register: registerGroup, setValue: setGroupValue, watch: watchGroup, control, handleSubmit: handleGroup, formState: { errors: errorsGroup } } = useForm<GroupSchemaType>({
     resolver: zodResolver(groupSchema),
     defaultValues: {
-      members: draftData.members.length > 0 ? draftData.members : [
-        { fullName: user?.full_name || '', phone: user?.phone || '', cccd: '' }
+      members: (draftData.members && draftData.members.length > 0) ? draftData.members as any : [
+        { 
+          fullName: user?.full_name || '', 
+          phone: user?.phone || '', 
+          cccd: '',
+          issueDate: '',
+          issuePlace: '',
+          dob: '',
+          gender: 'male',
+          nationality: 'Việt Nam',
+          permanentAddress: ''
+        }
       ]
     }
   });
@@ -69,7 +91,8 @@ export const GroupRegistrationPage: React.FC = () => {
     name: 'members'
   });
 
-  const { register: registerRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm({
+  type RentalInfoType = z.infer<typeof rentalInfoSchema>;
+  const { register: registerRental, setValue: setRentalValue, watch: watchRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm<RentalInfoType>({
     resolver: zodResolver(rentalInfoSchema),
     defaultValues: {
       leaseTerm: draftData.leaseTerm || '6',
@@ -98,6 +121,14 @@ export const GroupRegistrationPage: React.FC = () => {
     if (!checkDuplicateCccd(membersWithRep)) {
       alert('Phát hiện CCCD trùng lặp giữa các thành viên. Vui lòng kiểm tra lại.');
       return;
+    }
+
+    if (genderType && genderType !== 'unisex') {
+      const invalidGenderMember = membersWithRep.find((m: any) => m.gender !== genderType);
+      if (invalidGenderMember) {
+        alert(`Phòng này dành cho ${genderType === 'female' ? 'Nữ' : 'Nam'}. Giới tính của thành viên "${invalidGenderMember.fullName}" không phù hợp.`);
+        return;
+      }
     }
 
     setDraftData({ members: membersWithRep });
@@ -134,10 +165,13 @@ export const GroupRegistrationPage: React.FC = () => {
         
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 font-serif mb-2">Đăng ký thuê phòng (Nhóm)</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng ký thuê phòng (Nhóm)</h1>
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <p className="text-gray-600">Phòng đã chọn: <span className="font-semibold text-[#8BA888]">{roomName}</span></p>
             <span className="px-2.5 py-1 bg-[#8BA888]/10 text-[#8BA888] rounded-full font-medium">Trống: {availableBeds}/{capacity} giường</span>
+            {selectedBeds.length > 0 && (
+              <span className="px-2.5 py-1 bg-[#8BA888]/10 text-[#8BA888] rounded-full font-medium">Giường: {selectedBeds.join(', ')}</span>
+            )}
           </div>
         </div>
 
@@ -204,7 +238,7 @@ export const GroupRegistrationPage: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
                         <input {...registerGroup(`members.${index}.fullName` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="Nguyễn Văn A" />
@@ -220,6 +254,45 @@ export const GroupRegistrationPage: React.FC = () => {
                         <input {...registerGroup(`members.${index}.cccd` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="012345678901" />
                         {errorsGroup.members?.[index]?.cccd && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.cccd?.message}</p>}
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
+                        <input type="date" {...registerGroup(`members.${index}.dob` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" />
+                        {errorsGroup.members?.[index]?.dob && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.dob?.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
+                        <CustomSelect
+                          value={watchGroup(`members.${index}.gender` as const)}
+                          onChange={(val) => setGroupValue(`members.${index}.gender` as const, val as any)}
+                          options={[
+                            { value: 'male', label: 'Nam' },
+                            { value: 'female', label: 'Nữ' },
+                            { value: 'other', label: 'Khác' }
+                          ]}
+                          triggerClassName="w-full border-gray-200 focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] py-2.5 text-sm font-normal text-gray-900"
+                        />
+                        {errorsGroup.members?.[index]?.gender && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.gender?.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Quốc tịch</label>
+                        <input {...registerGroup(`members.${index}.nationality` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="Việt Nam" />
+                        {errorsGroup.members?.[index]?.nationality && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.nationality?.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ngày cấp CCCD</label>
+                        <input type="date" {...registerGroup(`members.${index}.issueDate` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" />
+                        {errorsGroup.members?.[index]?.issueDate && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.issueDate?.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nơi cấp CCCD</label>
+                        <input {...registerGroup(`members.${index}.issuePlace` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="Cục CSQLHC về TTXH" />
+                        {errorsGroup.members?.[index]?.issuePlace && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.issuePlace?.message}</p>}
+                      </div>
+                      <div className="lg:col-span-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ thường trú</label>
+                        <input {...registerGroup(`members.${index}.permanentAddress` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="123 Đường A..." />
+                        {errorsGroup.members?.[index]?.permanentAddress && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.permanentAddress?.message}</p>}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -228,7 +301,17 @@ export const GroupRegistrationPage: React.FC = () => {
               {fields.length < availableBeds && (
                 <button 
                   type="button" 
-                  onClick={() => append({ fullName: '', phone: '', cccd: '' })}
+                  onClick={() => append({ 
+                    fullName: '', 
+                    phone: '', 
+                    cccd: '',
+                    issueDate: '',
+                    issuePlace: '',
+                    dob: '',
+                    gender: 'male',
+                    nationality: 'Việt Nam',
+                    permanentAddress: ''
+                  })}
                   className="w-full py-4 border-2 border-dashed border-gray-300 rounded-[16px] text-gray-600 font-medium hover:border-[#8BA888] hover:text-[#8BA888] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus size={20} /> Thêm thành viên
@@ -256,11 +339,16 @@ export const GroupRegistrationPage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Thời hạn thuê (chung cho cả nhóm)</label>
-                  <select {...registerRental('leaseTerm')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] bg-white">
-                    <option value="6">6 Tháng</option>
-                    <option value="12">1 Năm</option>
-                    <option value="24">2 Năm</option>
-                  </select>
+                  <CustomSelect
+                    value={watchRental('leaseTerm')}
+                    onChange={(val) => setRentalValue('leaseTerm', val)}
+                    options={[
+                      { value: '6', label: '6 Tháng' },
+                      { value: '12', label: '1 Năm' },
+                      { value: '24', label: '2 Năm' }
+                    ]}
+                    triggerClassName="w-full border-gray-200 focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] py-3 text-base font-normal text-gray-900"
+                  />
                   {errorsRental.leaseTerm && <p className="text-red-500 text-sm mt-1">{errorsRental.leaseTerm.message as string}</p>}
                 </div>
 
@@ -292,12 +380,19 @@ export const GroupRegistrationPage: React.FC = () => {
                   <h3 className="font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">Danh sách thành viên ({draftData.members.length})</h3>
                   <div className="space-y-4">
                     {draftData.members.map((m, idx) => (
-                      <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm items-center">
-                        <div className="font-medium flex items-center gap-2">
-                          {m.fullName} {m.isRepresentative && <span className="px-2 py-0.5 bg-[#8BA888] text-white text-[10px] rounded uppercase font-bold">Đại diện</span>}
+                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white border border-gray-100 rounded-[12px] text-sm">
+                        <div className="flex items-center gap-3 w-full sm:w-1/3">
+                          <div className="font-medium text-gray-900 truncate" title={m.fullName}>
+                            {m.fullName}
+                          </div>
+                          {m.isRepresentative && (
+                            <span className="px-2 py-0.5 bg-[#8BA888] text-white text-[10px] rounded uppercase font-bold whitespace-nowrap shrink-0">
+                              Đại diện
+                            </span>
+                          )}
                         </div>
-                        <div className="text-gray-500">SĐT: <span className="text-gray-900">{m.phone}</span></div>
-                        <div className="text-gray-500">CCCD: <span className="text-gray-900">{m.cccd}</span></div>
+                        <div className="text-gray-500 w-full sm:w-1/3">SĐT: <span className="text-gray-900">{m.phone}</span></div>
+                        <div className="text-gray-500 w-full sm:w-1/3">CCCD: <span className="text-gray-900">{m.cccd}</span></div>
                       </div>
                     ))}
                   </div>

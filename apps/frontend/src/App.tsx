@@ -37,6 +37,7 @@ import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
+import CustomSelect from './components/ui/CustomSelect';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -317,23 +318,25 @@ function DashboardLayout() {
               <span>{user.role === 'customer' ? 'Khu vực thuê: TP.HCM' : 'Chi nhánh làm việc: Quận 1'}</span>
             </div>
           </div>
-
           <div className="flex items-center gap-5">
             {/* Quick switcher helper dropdown (visible in prototype demo) */}
             <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-24 px-3 py-1.5 transition-colors hover:bg-primary/10">
               <span className="text-[10px] font-bold text-primary uppercase tracking-wider hidden md:inline">Demo Mode:</span>
-              <select 
-                value={user.email} 
-                onChange={(e) => handleQuickRoleSwitch(e.target.value)}
-                className="bg-transparent text-on-surface font-label-md focus:outline-none cursor-pointer text-sm appearance-none outline-none"
-              >
-                <option value="admin@homestay.com">Admin</option>
-                <option value="manager@homestay.com">Manager</option>
-                <option value="sale@homestay.com">Sale</option>
-                <option value="accountant@homestay.com">Accountant</option>
-                <option value="customer@gmail.com">Customer (Rented)</option>
-                <option value="newcustomer@gmail.com">Customer (New)</option>
-              </select>
+              <CustomSelect
+                value={user.email}
+                onChange={handleQuickRoleSwitch}
+                options={[
+                  { value: 'admin@homestay.com', label: 'Admin' },
+                  { value: 'manager@homestay.com', label: 'Manager' },
+                  { value: 'sale@homestay.com', label: 'Sale' },
+                  { value: 'accountant@homestay.com', label: 'Accountant' },
+                  { value: 'customer@gmail.com', label: 'Customer (Rented)' },
+                  { value: 'newcustomer@gmail.com', label: 'Customer (New)' },
+                ]}
+                triggerClassName="!bg-transparent !border-none !p-0 !h-auto !shadow-none !ring-0 font-semibold text-primary"
+                className="w-36"
+                dropdownClassName="text-on-surface"
+              />
             </div>
 
             <button className="relative p-2 text-on-surface-variant hover:text-primary transition-colors bg-surface-container-low rounded-full hover:bg-surface-container cursor-pointer">

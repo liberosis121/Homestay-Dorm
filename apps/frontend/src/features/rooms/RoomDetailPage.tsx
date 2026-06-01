@@ -159,11 +159,17 @@ export default function RoomDetailPage() {
       : beds.filter(b => selectedBeds.includes(b.id)).map(b => b.name).join(', ');
 
     if (type === 'rent') {
+      const selectedBedsNames = isFullRoomSelected 
+        ? beds.map(b => b.name) 
+        : beds.filter(b => selectedBeds.includes(b.id)).map(b => b.name);
+        
       const state = { 
         roomId: room?.id, 
         roomName: room?.name, 
         capacity: room?.capacity,
-        availableBeds: beds.filter(b => b.status === 'available').length 
+        availableBeds: beds.filter(b => b.status === 'available').length,
+        selectedBedsNames,
+        genderType: room?.gender_type
       };
       
       if (selectedBeds.length > 1 || isFullRoomSelected) {
