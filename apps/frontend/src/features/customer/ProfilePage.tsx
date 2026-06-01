@@ -72,18 +72,29 @@ export default function ProfilePage() {
               <Link to="/profile" className="flex items-center gap-3 px-5 py-3.5 rounded-24 bg-primary-container text-on-primary-container font-bold shadow-sm">
                 <User className="w-5 h-5" /> Hồ sơ cá nhân
               </Link>
-              <Link to="/customer/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                <Compass className="w-5 h-5" /> Tra cứu & Thuê phòng
-              </Link>
-              <Link to="/customer/schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
-              </Link>
-              <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                <FileText className="w-5 h-5" /> Hợp đồng của tôi
-              </Link>
-              <Link to="/customer/invoices" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                <CreditCard className="w-5 h-5" /> Hóa đơn & Thanh toán
-              </Link>
+              
+              {isNewCustomer ? (
+                <>
+                  <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                    <Compass className="w-5 h-5" /> Tra cứu & Thuê phòng
+                  </Link>
+                  <Link to="/customer/schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                    <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/customer/invoices" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                    <CreditCard className="w-5 h-5" /> Hóa đơn & Thanh toán
+                  </Link>
+                  <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                    <FileText className="w-5 h-5" /> Hợp đồng của tôi
+                  </Link>
+                  <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
+                    <Compass className="w-5 h-5" /> Tìm phòng khác
+                  </Link>
+                </>
+              )}
               
               <div className="h-px bg-surface-variant my-4 mx-4"></div>
               

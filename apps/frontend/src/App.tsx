@@ -30,6 +30,7 @@ import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import ProfilePage from './features/customer/ProfilePage';
+import RoomsPage from './features/rooms/RoomsPage';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -58,6 +59,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
       <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
       <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
+      <Route path="/rooms" element={<RoomsPage />} />
       <Route 
         path="/profile/*" 
         element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
@@ -191,7 +193,7 @@ function DashboardLayout() {
       case 'customer':
         return [
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
-          { path: '/customer/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
+          { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
           { path: '/customer/schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
           { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
           { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard }
@@ -383,7 +385,7 @@ function DashboardLayout() {
           <Routes>
             <Route path="/" element={<DashboardDispatcher />} />
             <Route path="/profile" element={<ProfilePage />} />
-            {user.role === 'customer' && <Route path="/customer/rooms" element={<CustomerRoomsScreen />} />}
+            <Route path="/rooms" element={<RoomsPage />} />
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
             {user.role === 'sale' && <Route path="/sale/registrations" element={<SaleRegistrationsScreen />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
@@ -463,7 +465,7 @@ function DashboardDispatcher() {
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <Link 
-                to="/customer/rooms" 
+                to="/rooms" 
                 className="px-6 py-3 bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container rounded-24 font-label-md text-sm transition-all shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 flex items-center gap-2 group cursor-pointer"
               >
                 Trải nghiệm Thuê phòng
@@ -472,125 +474,6 @@ function DashboardDispatcher() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------
-// SCREEN: CUSTOMER - ROOMS BROWSE & REGISTER (UC8, UC1)
-// ----------------------------------------------------
-function CustomerRoomsScreen() {
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [genderFilter, setGenderFilter] = useState('all');
-  const [bookingSuccess, setBookingSuccess] = useState(false);
-
-  useEffect(() => {
-    const db = getMockDB();
-    setRooms(db.rooms || []);
-  }, []);
-
-  const handleRegisterLease = () => {
-    setBookingSuccess(true);
-    setTimeout(() => setBookingSuccess(false), 5000);
-  };
-
-  const filteredRooms = rooms.filter((r) => {
-    if (genderFilter === 'all') return true;
-    return r.gender_type === genderFilter;
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-white">Tra cứu & Tìm kiếm KTX</h1>
-          <p className="text-slate-400 text-sm mt-1">Tìm phòng, giường ghép an toàn, đầy đủ tiện ích.</p>
-        </div>
-
-        <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 border border-slate-800">
-          <button 
-            onClick={() => setGenderFilter('all')} 
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${genderFilter === 'all' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Tất cả
-          </button>
-          <button 
-            onClick={() => setGenderFilter('male')} 
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${genderFilter === 'male' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Nam
-          </button>
-          <button 
-            onClick={() => setGenderFilter('female')} 
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${genderFilter === 'female' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Nữ
-          </button>
-        </div>
-      </div>
-
-      {bookingSuccess && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-sm flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 flex-shrink-0" />
-          <span>**Đăng ký thuê thành công!** Phiếu đăng ký đã được chuyển đến nhân viên Sale chi nhánh xử lý.</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRooms.map((room) => (
-          <div key={room.id} className="glass-card rounded-xl overflow-hidden flex flex-col border border-slate-800/80">
-            <div className="p-5 border-b border-slate-800/60 bg-slate-900/20">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-extrabold text-white text-lg">{room.name}</h3>
-                <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
-                  room.gender_type === 'male' ? 'bg-blue-500/10 text-blue-400' : 'bg-rose-500/10 text-rose-400'
-                }`}>
-                  Phòng {room.gender_type === 'male' ? 'Nam' : 'Nữ'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-500 text-xs mt-1">
-                <Building className="w-3.5 h-3.5" />
-                <span>Chi nhánh Quận 1</span>
-              </div>
-            </div>
-
-            <div className="p-5 flex-1 space-y-4">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-slate-900/40 p-2.5 rounded-lg">
-                  <span className="block text-slate-500 mb-0.5">Sức chứa</span>
-                  <span className="font-semibold text-slate-200">{room.capacity} Giường</span>
-                </div>
-                <div className="bg-slate-900/40 p-2.5 rounded-lg">
-                  <span className="block text-slate-500 mb-0.5">Loại phòng</span>
-                  <span className="font-semibold text-slate-200 uppercase">{room.type}</span>
-                </div>
-                <div className="bg-slate-900/40 p-2.5 rounded-lg">
-                  <span className="block text-slate-500 mb-0.5">Điều hòa</span>
-                  <span className="font-semibold text-slate-200">{room.has_ac ? 'Có sẵn' : 'Không'}</span>
-                </div>
-                <div className="bg-slate-900/40 p-2.5 rounded-lg">
-                  <span className="block text-slate-500 mb-0.5">WC riêng</span>
-                  <span className="font-semibold text-slate-200">{room.has_private_wc ? 'Có sẵn' : 'Chung'}</span>
-                </div>
-              </div>
-
-              <div className="flex items-end justify-between border-t border-slate-800/40 pt-4">
-                <div>
-                  <span className="block text-[10px] text-slate-500 uppercase font-semibold">Đơn giá thuê</span>
-                  <span className="text-lg font-black text-violet-400">{room.price.toLocaleString('vi-VN')}đ<span className="text-slate-500 text-xs font-normal">/tháng</span></span>
-                </div>
-                <button
-                  onClick={() => handleRegisterLease()}
-                  className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Đăng ký ở ngay
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
