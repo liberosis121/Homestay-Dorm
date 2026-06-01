@@ -8,6 +8,7 @@ import FilterBar from './components/FilterBar';
 import ExtendedFilters from './components/ExtendedFilters';
 import RoomListSkeleton from './components/RoomListSkeleton';
 import EmptyState from './components/EmptyState';
+import Navbar from '../../components/ui/Navbar';
 
 export default function RoomsPage() {
   const { user } = useAuthStore();
@@ -78,38 +79,8 @@ export default function RoomsPage() {
 
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
-      {/* Top NavBar (Standalone) */}
-      <nav className="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-sm h-20">
-        <div className="flex justify-between items-center h-full px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="flex items-center gap-2">
-            <Link to="/">
-              <span className="font-headline-md text-2xl font-bold text-primary dark:text-primary-fixed">HomeStay Dorm</span>
-            </Link>
-          </div>
-          <div className="hidden md:flex items-center gap-8">
-            <Link className="font-body-md text-on-surface-variant hover:text-primary transition-colors" to="/">Giới thiệu</Link>
-            <Link className="font-body-md text-on-surface-variant hover:text-primary transition-colors" to="/">Dịch vụ</Link>
-            <Link className="font-body-md text-primary font-bold border-b-2 border-primary pb-1" to="/rooms">Phòng trống</Link>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {!user ? (
-              <Link to="/login" className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md hover:opacity-90 transition-opacity">
-                Đăng nhập
-              </Link>
-            ) : (
-              <div className="flex items-center gap-4">
-                <Link to="/profile" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
-                    {user.email[0].toUpperCase()}
-                  </div>
-                  <span className="hidden sm:block font-label-md">{user.full_name || 'Khách hàng'}</span>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </nav>
+      {/* Unified Top NavBar */}
+      <Navbar />
 
       <main className="pt-20 flex-1">
         {/* Hero Section */}

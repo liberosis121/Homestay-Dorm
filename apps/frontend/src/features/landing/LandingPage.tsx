@@ -6,6 +6,7 @@ import roomDorm from '../../assets/room-dorm.jpg';
 import roomSingle from '../../assets/room-single.jpg';
 import Logo from '../../components/ui/Logo';
 import RoomCard from '../../components/ui/RoomCard';
+import Navbar from '../../components/ui/Navbar';
 
 const featuredRooms = [
   {
@@ -89,24 +90,8 @@ export default function LandingPage() {
 
   return (
     <div className="bg-surface text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen">
-      {/* Header: TopNavBar */}
-      <header className="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-sm dark:shadow-none transition-shadow duration-300">
-        <nav className="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <Logo size="md" />
-          {/* Desktop Links */}
-          <div className="hidden md:flex items-center gap-8 font-body-md text-body-md">
-            <a className="text-primary dark:text-primary-fixed font-bold border-b-2 border-primary dark:border-primary-fixed pb-1" href="#">Giới thiệu</a>
-            <a className="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Dịch vụ</a>
-            <a className="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Phòng trống</a>
-          </div>
-          <div className="flex items-center gap-4">
-            <a href="#/login" className="px-8 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-all active:scale-95 text-base md:text-lg shadow-sm hover:shadow">Đăng nhập</a>
-            <button className="md:hidden text-on-surface-variant">
-              <span className="material-symbols-outlined">menu</span>
-            </button>
-          </div>
-        </nav>
-      </header>
+      {/* Header: Unified TopNavBar */}
+      <Navbar />
       
       <main className="pt-20">
         {/* Hero Section */}

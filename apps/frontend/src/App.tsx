@@ -31,6 +31,7 @@ import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import ProfilePage from './features/customer/ProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
+import Navbar from './components/ui/Navbar';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -82,27 +83,10 @@ function CustomerLayout() {
 
   return (
     <div className="bg-surface text-on-surface font-body-md min-h-screen flex flex-col">
-      {/* Header: Matches LandingPage header style */}
-      <header className="sticky top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm transition-shadow duration-300">
-        <nav className="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display-lg text-2xl font-bold text-primary">HomeStay Dorm</h1>
-          </div>
-          {/* Desktop Links */}
-          <div className="hidden md:flex items-center gap-8 font-body-md text-sm font-semibold">
-            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors">Giới thiệu</Link>
-            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors">Dịch vụ</Link>
-            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors">Phòng trống</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => logout()} className="px-6 py-2.5 rounded-24 bg-primary text-on-primary font-bold hover:opacity-90 transition-all text-sm shadow-sm cursor-pointer">
-              Đăng xuất
-            </button>
-          </div>
-        </nav>
-      </header>
+      {/* Unified Top NavBar */}
+      <Navbar />
 
-      <main className="flex-1 bg-background pt-8 pb-16">
+      <main className="flex-1 bg-background pt-24 pb-16">
         <Routes>
           <Route path="/" element={<ProfilePage />} />
           {/* We can add other customer routes here */}
