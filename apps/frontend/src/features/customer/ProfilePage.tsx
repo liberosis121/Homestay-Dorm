@@ -109,7 +109,7 @@ export default function ProfilePage() {
                   <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                     <Compass className="w-5 h-5" /> Tra cứu & Thuê phòng
                   </Link>
-                  <Link to="/customer/schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                  <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                     <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
                   </Link>
                 </>

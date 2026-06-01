@@ -49,6 +49,24 @@ export interface Bed {
   status: 'available' | 'deposited' | 'occupied' | 'maintenance';
 }
 
+export interface ViewingSchedule {
+  id: string;
+  customer_id: string;
+  room_id: string;
+  room_name: string;
+  room_image_url: string;
+  branch_name: string;
+  branch_address: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  staff_name: string;
+  staff_phone: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  timeline_step: 1 | 2 | 3;
+  note?: string;
+  created_at: string;
+}
+
 // Initial dummy database
 const INITIAL_DB = {
   profiles: [
@@ -82,7 +100,49 @@ const INITIAL_DB = {
     { id: 'bed-2-4', room_id: 'r-2', name: 'Giường B4', price: 2000000, status: 'available' },
     { id: 'bed-3-1', room_id: 'r-3', name: 'Giường G1', price: 900000, status: 'available' },
     { id: 'bed-3-2', room_id: 'r-3', name: 'Giường G2', price: 900000, status: 'available' }
-  ] as Bed[]
+  ] as Bed[],
+  viewing_schedules: [
+    {
+      id: 'vs-1', customer_id: 'u-6', room_id: 'r-2',
+      room_name: 'Phòng Studio A (Phòng 102 - Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Quận 1, TP.HCM',
+      scheduled_date: '2026-06-15', scheduled_time: '09:30',
+      staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
+      status: 'confirmed', timeline_step: 2,
+      created_at: '2026-06-01T08:00:00Z'
+    },
+    {
+      id: 'vs-2', customer_id: 'u-6', room_id: 'r-4',
+      room_name: 'Phòng Suite B (Phòng 202 - Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Thủ Đức',
+      scheduled_date: '2026-06-20', scheduled_time: '14:00',
+      staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
+      status: 'pending', timeline_step: 1,
+      created_at: '2026-06-02T10:00:00Z'
+    },
+    {
+      id: 'vs-3', customer_id: 'u-6', room_id: 'r-1',
+      room_name: 'Phòng Dorm A (Phòng 101 - Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Quận 1, TP.HCM',
+      scheduled_date: '2026-04-20', scheduled_time: '10:00',
+      staff_name: 'NV. Minh Anh', staff_phone: '0912300001',
+      status: 'completed', timeline_step: 3,
+      created_at: '2026-04-15T09:00:00Z'
+    },
+    {
+      id: 'vs-4', customer_id: 'u-6', room_id: 'r-6',
+      room_name: 'Phòng Studio C (Phòng 203 - Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Thủ Đức',
+      scheduled_date: '2026-03-01', scheduled_time: '11:00',
+      staff_name: 'NV. Lê Thị Hương', staff_phone: '0998765432',
+      status: 'cancelled', timeline_step: 1,
+      created_at: '2026-02-25T14:00:00Z'
+    }
+  ] as ViewingSchedule[]
 };
 
 // Initialize Mock Database in LocalStorage
