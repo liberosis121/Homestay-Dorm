@@ -167,3 +167,56 @@ Dự án ưu tiên hoàn thiện lớp giao diện và trải nghiệm tương t
 *   **Giai đoạn 1 — Database & Supabase Setup**: Khởi tạo database Supabase local/cloud, viết mã migrations SQL khởi tạo 25 bảng thực thể, enums, indexes và chính sách bảo mật RLS.
 *   **Giai đoạn 2 — Backend API Services**: Phát triển API server bằng Express (Node.js) với cơ chế xác thực JWT, cấu trúc phân tầng Repository (DAL) và Service (BLL) xử lý tính toán hóa đơn, hoàn cọc, phạt vi phạm và scheduled job hủy cọc sau 24h.
 *   **Giai đoạn 3 — Tích hợp API & Kiểm thử**: Thay thế mock database bằng API thực tế, kiểm thử bảo mật phân quyền chéo, chạy E2E tests bằng Playwright và đóng gói triển khai.
+
+---
+
+## 🔁 Git Workflow
+
+Quy trình làm việc với Git cho các thành viên trong dự án nhằm đảm bảo quản lý mã nguồn an toàn và tránh xung đột:
+
+### 1. Phân loại nhánh (Branch Strategy)
+*   **`main`**: Nhánh stable chỉ dùng cho sản phẩm cuối cùng (báo cáo, triển khai thực tế). **Tuyệt đối không commit hay phát triển trực tiếp trên nhánh này**.
+*   **`dev`**: Nhánh tích hợp (integration) của cả nhóm. Mọi tính năng hoàn thành sẽ được merge vào đây trước để kiểm thử. **Không commit trực tiếp lên dev**.
+*   **Các nhánh tính năng (`feature branches`)**: Nhánh làm việc riêng của từng thành viên, được tạo ra từ `dev`.
+    *   *Quy tắc đặt tên nhánh tính năng:* `<tên-thành-viên>-<tên-chức-năng>`. Ví dụ: `kyen-fe`, `member-login`, `member-booking`, `member-backend`.
+
+### 2. Sơ đồ nhánh
+```
+main
+└── dev
+    ├── kyen-fe
+    ├── member-login
+    ├── member-backend
+    └── member-admin
+```
+
+### 3. Quy trình phát triển (Workflow các bước)
+
+#### Bước 1: Chuẩn bị nhánh làm việc
+Trước khi code bất kỳ chức năng nào, hãy chuyển sang nhánh cá nhân của bạn và kéo code mới nhất từ nhánh `dev` về để tránh xung đột:
+```bash
+# Chuyển sang nhánh cá nhân (ví dụ kyen-fe)
+git checkout kyen-fe
+
+# Cập nhật code mới nhất từ dev
+git pull origin dev
+```
+
+#### Bước 2: Commit và Push thay đổi
+Chỉ làm việc trên nhánh cá nhân của bạn, sau đó commit kèm theo commit message có ý nghĩa:
+```bash
+# Add file thay đổi
+git add .
+
+# Commit thay đổi
+git commit -m "feat: thêm giao diện đăng nhập và đổi mật khẩu"
+
+# Push nhánh lên remote repository
+git push origin kyen-fe
+```
+
+#### Bước 3: Tạo Pull Request (PR)
+Khi tính năng hoàn thành và đã kiểm thử chạy tốt ở local:
+1. Tạo một Pull Request trên GitHub từ nhánh tính năng của bạn vào nhánh `dev` (ví dụ: `kyen-fe` -> `dev`).
+2. Nhóm sẽ review code, giải quyết xung đột (conflict nếu có) và duyệt PR để tích hợp.
+3. Sau khi tích hợp và chạy thử ổn định trên nhánh `dev`, code từ `dev` mới được merge vào nhánh `main` để release (`dev` -> `main`).
