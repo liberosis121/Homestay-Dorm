@@ -132,7 +132,17 @@ export const mockSupabase = {
   auth: {
     getUser: () => {
       const userStr = localStorage.getItem('homestay_session_user');
-      return userStr ? JSON.parse(userStr) as Profile : null;
+      if (userStr) {
+        const parsedUser = JSON.parse(userStr) as Profile;
+        const db = getMockDB();
+        const freshUser = db.profiles?.find((p: Profile) => p.email === parsedUser.email);
+        if (freshUser) {
+          localStorage.setItem('homestay_session_user', JSON.stringify(freshUser));
+          return freshUser;
+        }
+        return parsedUser;
+      }
+      return null;
     },
     login: (email: string): { user: Profile | null; error: string | null } => {
       const db = getMockDB();

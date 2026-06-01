@@ -14,6 +14,7 @@ import { AlertCircle, CheckCircle } from 'lucide-react';
 
 const featuredRooms = [
   {
+    id: 'r-2',
     title: 'Phòng Studio Quận 1',
     image: roomStudio,
     tag: 'Studio',
@@ -24,6 +25,7 @@ const featuredRooms = [
     ]
   },
   {
+    id: 'r-4',
     title: 'Phòng Twin Quận 7',
     image: roomTwin,
     tag: 'Phòng đôi',
@@ -34,6 +36,7 @@ const featuredRooms = [
     ]
   },
   {
+    id: 'r-3',
     title: 'KTX Thủ Đức',
     image: roomDorm,
     tag: 'KTX 4 Giường',
@@ -44,6 +47,7 @@ const featuredRooms = [
     ]
   },
   {
+    id: 'r-6',
     title: 'Luxury Single Quận 7',
     image: roomSingle,
     tag: 'Phòng đơn',
@@ -66,7 +70,7 @@ export default function LandingPage() {
   const [localGender, setLocalGender] = useState('Giới tính');
   const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
 
-  const handleRegisterClick = (e: React.MouseEvent) => {
+  const handleRegisterClick = (e: React.MouseEvent, roomId: string) => {
     e.preventDefault();
     if (!user) {
       navigate('/login');
@@ -81,7 +85,7 @@ export default function LandingPage() {
       return;
     }
 
-    navigate('/rooms');
+    navigate(`/customer/rooms/${roomId}`);
   };
 
   const handleSearch = () => {
@@ -285,7 +289,7 @@ export default function LandingPage() {
                 tag={room.tag}
                 price={room.price}
                 amenities={room.amenities}
-                onRegisterClick={handleRegisterClick}
+                onRegisterClick={(e) => handleRegisterClick(e, room.id)}
               />
             ))}
 
