@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { initializeMockDB, getMockDB, saveMockDB, Profile, Room, Branch } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
+import LandingPage from './features/landing/LandingPage';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -51,6 +52,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/" element={!user ? <LandingPage /> : <DashboardLayout />} />
       <Route path="/login" element={!user ? <LoginScreen /> : <Navigate to="/" replace />} />
       <Route 
         path="/*" 
