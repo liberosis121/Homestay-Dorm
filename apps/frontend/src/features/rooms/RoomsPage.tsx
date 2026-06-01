@@ -83,7 +83,7 @@ export default function RoomsPage() {
     setCurrentPage(1);
   }, [filteredRooms.length]);
 
-  const handleActionClick = () => {
+  const handleActionClick = (room: any) => {
     if (!user) {
       navigate('/login');
       return;
@@ -97,7 +97,13 @@ export default function RoomsPage() {
       return;
     }
 
-    navigate('/customer/register-lease'); // Navigate to register form
+    const state = { 
+      roomId: room.id, 
+      roomName: room.name,
+      capacity: room.capacity,
+      availableBeds: room.capacity - room.current_occupants
+    };
+    navigate('/customer/register-lease', { state }); // Navigate to register form
   };
 
   return (

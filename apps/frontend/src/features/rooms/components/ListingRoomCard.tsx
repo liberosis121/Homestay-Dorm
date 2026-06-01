@@ -18,7 +18,7 @@ interface Room {
 
 interface Props {
   room: Room;
-  onActionClick: () => void;
+  onActionClick: (room: Room) => void;
 }
 
 export default function ListingRoomCard({ room, onActionClick }: Props) {
@@ -127,7 +127,7 @@ export default function ListingRoomCard({ room, onActionClick }: Props) {
           
           <div className="grid grid-cols-2 gap-2">
             <button 
-              onClick={onActionClick}
+              onClick={() => onActionClick(room)}
               disabled={!isAvailable}
               className={`col-span-2 py-3 rounded-full font-label-md transition-all ${
                 isAvailable ? 'bg-primary text-on-primary hover:opacity-90' : 'bg-surface-variant text-on-surface-variant cursor-not-allowed'
@@ -141,7 +141,7 @@ export default function ListingRoomCard({ room, onActionClick }: Props) {
             >
               Xem chi tiết
             </button>
-            <button onClick={onActionClick} className="py-2.5 border border-outline-variant rounded-full text-label-md hover:bg-surface-container-low transition-all">
+            <button onClick={() => navigate(`/customer/rooms/${room.id}`)} className="py-2.5 border border-outline-variant rounded-full text-label-md hover:bg-surface-container-low transition-all">
               Hẹn xem
             </button>
           </div>

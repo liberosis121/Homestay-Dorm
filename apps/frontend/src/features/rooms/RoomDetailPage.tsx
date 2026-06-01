@@ -159,13 +159,18 @@ export default function RoomDetailPage() {
       : beds.filter(b => selectedBeds.includes(b.id)).map(b => b.name).join(', ');
 
     if (type === 'rent') {
-      setNotification({
-        type: 'success',
-        message: `Đăng ký thuê thành công cho ${chosenNames}! Hệ thống đang kết xuất hợp đồng điện tử và chuyển tiếp sang trang hồ sơ cá nhân...`
-      });
-      setTimeout(() => {
-        navigate('/profile');
-      }, 3500);
+      const state = { 
+        roomId: room?.id, 
+        roomName: room?.name, 
+        capacity: room?.capacity,
+        availableBeds: beds.filter(b => b.status === 'available').length 
+      };
+      
+      if (selectedBeds.length > 1 || isFullRoomSelected) {
+        navigate('/customer/register-group', { state });
+      } else {
+        navigate('/customer/register-lease', { state });
+      }
     } else if (type === 'deposit') {
       setNotification({
         type: 'success',

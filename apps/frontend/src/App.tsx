@@ -32,6 +32,8 @@ import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import ProfilePage from './features/customer/ProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
 import RoomDetailPage from './features/rooms/RoomDetailPage';
+import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
+import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -96,6 +98,8 @@ function CustomerLayout() {
       <main className="flex-1 bg-background pt-24 pb-16">
         <Routes>
           <Route path="/" element={<ProfilePage />} />
+          <Route path="/customer/register-lease" element={<RegisterLeasePage />} />
+          <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
           {/* We can add other customer routes here */}
           <Route path="*" element={<ProfilePage />} />
         </Routes>
