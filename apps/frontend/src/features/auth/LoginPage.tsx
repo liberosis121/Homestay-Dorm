@@ -41,7 +41,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex bg-surface text-on-surface">
       {/* Left side: Branding & Image (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col p-12 pt-0 overflow-hidden bg-primary-container/10 justify-center items-center">
+      <div className="hidden lg:flex lg:w-1/2 h-screen sticky top-0 relative flex-col p-12 pt-10 overflow-hidden bg-primary-container/10 justify-center items-center">
         {/* Background elements */}
         <div className="absolute -top-20 -left-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-tertiary-fixed-dim/20 rounded-full blur-3xl"></div>
@@ -193,7 +193,8 @@ export default function LoginPage() {
                     { email: 'manager@homestay.com', name: 'Quản lý (Manager)' },
                     { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)' },
                     { email: 'accountant@homestay.com', name: 'Kế toán (Accountant)' },
-                    { email: 'customer@gmail.com', name: 'Khách hàng (Customer)' }
+                    { email: 'customer@gmail.com', name: 'Khách hàng cũ (Đã thuê)' },
+                    { email: 'newcustomer@gmail.com', name: 'Khách hàng mới (Chưa thuê)' }
                   ].map((p) => (
                     <button
                       key={p.email}

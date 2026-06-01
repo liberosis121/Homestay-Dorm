@@ -47,7 +47,8 @@ const INITIAL_DB = {
     { id: 'u-2', email: 'manager@homestay.com', role: 'manager', full_name: 'Trần Kim Yến (Quản lý)', phone: '0907654321' },
     { id: 'u-3', email: 'sale@homestay.com', role: 'sale', full_name: 'Nguyễn Thị Trúc Hằng (NV Sale)', phone: '0912345678' },
     { id: 'u-4', email: 'accountant@homestay.com', role: 'accountant', full_name: 'Lê Hoàng Nhật Anh (Kế toán)', phone: '0987654321' },
-    { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556' }
+    { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556' },
+    { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900' }
   ] as Profile[],
   branches: [
     { id: 'b-1', name: 'Chi nhánh Quận 1', address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM', manager_id: 'u-2' },
@@ -75,8 +76,27 @@ const INITIAL_DB = {
 
 // Initialize Mock Database in LocalStorage
 export const initializeMockDB = () => {
-  if (!localStorage.getItem(STORAGE_KEY)) {
+  const existing = localStorage.getItem(STORAGE_KEY);
+  if (!existing) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
+  } else {
+    try {
+      const db = JSON.parse(existing);
+      let updated = false;
+      if (db && db.profiles) {
+        INITIAL_DB.profiles.forEach((p) => {
+          if (!db.profiles.some((ep: any) => ep.email.toLowerCase() === p.email.toLowerCase())) {
+            db.profiles.push(p);
+            updated = true;
+          }
+        });
+      }
+      if (updated) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      }
+    } catch (e) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
+    }
   }
 };
 

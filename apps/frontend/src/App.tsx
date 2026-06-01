@@ -29,6 +29,7 @@ import LoginPage from './features/auth/LoginPage';
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
+import ProfilePage from './features/customer/ProfilePage';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -52,16 +53,92 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={!user ? <LandingPage /> : <DashboardLayout />} />
+      <Route path="/" element={!user ? <LandingPage /> : (user.role === 'customer' ? <Navigate to="/profile" replace /> : <DashboardLayout />)} />
       <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
       <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
       <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
       <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
       <Route 
+        path="/profile/*" 
+        element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
+      />
+      <Route 
         path="/*" 
-        element={user ? <DashboardLayout /> : <Navigate to="/login" replace />} 
+        element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
       />
     </Routes>
+  );
+}
+
+// ----------------------------------------------------
+// CUSTOMER LAYOUT (Public Header + Customer Content)
+// ----------------------------------------------------
+function CustomerLayout() {
+  const { user, logout } = useAuthStore();
+  
+  if (!user) return <Navigate to="/login" replace />;
+
+  return (
+    <div className="bg-surface text-on-surface font-body-md min-h-screen flex flex-col">
+      {/* Header: Matches LandingPage header style */}
+      <header className="sticky top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm transition-shadow duration-300">
+        <nav className="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full">
+          <div className="flex items-center gap-2">
+            <h1 className="font-display-lg text-2xl font-bold text-primary">HomeStay Dorm</h1>
+          </div>
+          {/* Desktop Links */}
+          <div className="hidden md:flex items-center gap-8 font-body-md text-sm font-semibold">
+            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors">Giới thiệu</Link>
+            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors">Dịch vụ</Link>
+            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors">Phòng trống</Link>
+          </div>
+          <div className="flex items-center gap-4">
+            <button onClick={() => logout()} className="px-6 py-2.5 rounded-24 bg-primary text-on-primary font-bold hover:opacity-90 transition-all text-sm shadow-sm cursor-pointer">
+              Đăng xuất
+            </button>
+          </div>
+        </nav>
+      </header>
+
+      <main className="flex-1 bg-background pt-8 pb-16">
+        <Routes>
+          <Route path="/" element={<ProfilePage />} />
+          {/* We can add other customer routes here */}
+          <Route path="*" element={<ProfilePage />} />
+        </Routes>
+      </main>
+      
+      {/* Footer */}
+      <footer className="bg-surface-container-high py-12 px-6">
+        <div className="max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-4">
+            <h3 className="font-display-lg text-xl font-bold text-primary">HomeStay Dorm</h3>
+            <p className="text-sm text-on-surface-variant max-w-xs">© 2024 HomeStay Dorm. Eco-friendly Luxury meets User-friendly Utility.</p>
+          </div>
+          <div>
+            <ul className="space-y-3 text-sm text-on-surface-variant font-label-md">
+              <li>Contact Info</li>
+              <li>Branch Locations</li>
+            </ul>
+          </div>
+          <div>
+            <ul className="space-y-3 text-sm text-on-surface-variant font-label-md">
+              <li>Facebook</li>
+              <li>Instagram</li>
+              <li>LinkedIn</li>
+            </ul>
+          </div>
+          <div className="flex flex-col items-end justify-center space-y-4">
+            <p className="text-sm text-on-surface-variant">Trải nghiệm sống xanh, ở sạch.</p>
+            <div className="flex gap-4 text-primary">
+              <span className="material-symbols-outlined">eco</span>
+              <span className="material-symbols-outlined">water_drop</span>
+              <span className="material-symbols-outlined">recycling</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
 
@@ -113,7 +190,7 @@ function DashboardLayout() {
         ];
       case 'customer':
         return [
-          { path: '/', label: 'Bảng tin cá nhân', icon: Home },
+          { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
           { path: '/customer/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
           { path: '/customer/schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
           { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
@@ -126,11 +203,11 @@ function DashboardLayout() {
 
   const getRoleLabel = () => {
     switch (user.role) {
-      case 'admin': return { text: 'Quản trị viên', bg: 'bg-violet-500/10 text-violet-400 border-violet-500/20' };
-      case 'manager': return { text: 'Quản lý chi nhánh', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
-      case 'sale': return { text: 'Nhân viên Sale', bg: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
-      case 'accountant': return { text: 'Kế toán', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
-      case 'customer': return { text: 'Khách thuê', bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+      case 'admin': return { text: 'Quản trị viên', bg: 'bg-primary-container text-on-primary-container border-primary/20' };
+      case 'manager': return { text: 'Quản lý chi nhánh', bg: 'bg-primary-fixed-dim/20 text-primary border-primary/20' };
+      case 'sale': return { text: 'Nhân viên Sale', bg: 'bg-secondary-container text-on-secondary-container border-secondary/20' };
+      case 'accountant': return { text: 'Kế toán', bg: 'bg-tertiary-container text-on-tertiary-container border-tertiary/20' };
+      case 'customer': return { text: 'Khách thuê', bg: 'bg-error-container text-on-error-container border-error/20' };
     }
   };
 
@@ -144,23 +221,23 @@ function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex relative">
+    <div className="min-h-screen bg-surface text-on-surface flex relative font-body-md selection:bg-primary-container selection:text-on-primary-container">
       
       {/* ----------------------------------------------------
           SIDEBAR (Desktop)
          ---------------------------------------------------- */}
-      <aside className="w-64 bg-slate-900/60 border-r border-slate-800/80 hidden md:flex flex-col flex-shrink-0">
-        <div className="p-6 border-b border-slate-800/80 flex items-center gap-3">
-          <div className="p-2 bg-violet-600/10 rounded-lg text-violet-400 border border-violet-500/10">
+      <aside className="w-64 bg-surface-container-low border-r border-surface-variant/50 hidden md:flex flex-col flex-shrink-0 relative z-30 shadow-lg shadow-primary/5">
+        <div className="p-6 border-b border-surface-variant/50 flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-xl text-primary border border-primary/20">
             <Building className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="font-black text-sm tracking-tight text-white">HOMESTAY DORM</h2>
-            <span className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">Phân hệ quản lý</span>
+            <h2 className="font-display-lg text-base tracking-tight text-on-surface">HOMESTAY DORM</h2>
+            <span className="text-[10px] text-primary font-bold tracking-wider uppercase">Phân hệ quản lý</span>
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -168,13 +245,13 @@ function DashboardLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-24 text-sm font-label-md transition-all duration-300 ${
                   isActive 
-                    ? 'bg-violet-600/10 text-violet-400 border-l-2 border-violet-500' 
-                    : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'
+                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20' 
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-violet-400' : 'text-slate-500'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'text-on-primary' : 'text-on-surface-variant'}`} />
                 {item.label}
               </Link>
             );
@@ -182,23 +259,23 @@ function DashboardLayout() {
         </nav>
 
         {/* User Info footer in Sidebar */}
-        <div className="p-4 border-t border-slate-800/80 bg-slate-950/40">
+        <div className="p-4 border-t border-surface-variant/50 bg-surface-container-lowest">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 font-semibold border border-slate-700">
+            <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-headline-md shadow-inner">
               {user.full_name.charAt(0)}
             </div>
             <div className="min-w-0 flex-1">
-              <span className="block text-xs font-semibold text-slate-200 truncate">{user.full_name}</span>
-              <span className={`inline-block text-[10px] px-2 py-0.5 rounded border mt-1 font-medium ${roleTheme.bg}`}>
+              <span className="block text-sm font-label-md text-on-surface truncate">{user.full_name}</span>
+              <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full border mt-1 font-bold tracking-wide ${roleTheme.bg}`}>
                 {roleTheme.text}
               </span>
             </div>
           </div>
           <button
             onClick={() => logout()}
-            className="w-full py-2.5 px-3 bg-slate-800/50 hover:bg-slate-800 hover:text-rose-400 border border-slate-700/50 rounded-lg text-xs font-semibold text-slate-400 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 px-3 bg-surface hover:bg-error/10 hover:text-error border border-surface-variant rounded-24 text-sm font-label-md text-on-surface-variant transition-all flex items-center justify-center gap-2 group cursor-pointer"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
             Đăng xuất phiên
           </button>
         </div>
@@ -253,50 +330,51 @@ function DashboardLayout() {
       {/* ----------------------------------------------------
           MAIN CONTENT CONTAINER
          ---------------------------------------------------- */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-background">
         
         {/* HEADER */}
-        <header className="h-16 border-b border-slate-800/60 flex items-center justify-between px-6 bg-slate-900/40 backdrop-blur-md relative z-20">
+        <header className="h-20 border-b border-surface-variant/50 flex items-center justify-between px-6 bg-surface/80 backdrop-blur-xl relative z-20 transition-all">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setMobileMenuOpen(true)}
-              className="text-slate-400 hover:text-white md:hidden"
+              className="text-on-surface-variant hover:text-primary md:hidden cursor-pointer"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-6 h-6" />
             </button>
             
             {/* Branch display for Managers/Sales */}
-            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-400">
-              <Building className="w-4 h-4 text-slate-500" />
+            <div className="hidden sm:flex items-center gap-2 text-sm font-label-md text-on-surface-variant bg-surface-container-low px-4 py-2 rounded-24 border border-surface-variant/50">
+              <Building className="w-4 h-4 text-primary" />
               <span>{user.role === 'customer' ? 'Khu vực thuê: TP.HCM' : 'Chi nhánh làm việc: Quận 1'}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             {/* Quick switcher helper dropdown (visible in prototype demo) */}
-            <div className="flex items-center gap-1.5 border border-violet-500/20 bg-violet-500/5 rounded-lg px-2 py-1 text-xs">
-              <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider hidden md:inline">Demo Switch:</span>
+            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-24 px-3 py-1.5 transition-colors hover:bg-primary/10">
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider hidden md:inline">Demo Mode:</span>
               <select 
                 value={user.email} 
                 onChange={(e) => handleQuickRoleSwitch(e.target.value)}
-                className="bg-transparent text-violet-300 font-semibold focus:outline-none cursor-pointer text-xs"
+                className="bg-transparent text-on-surface font-label-md focus:outline-none cursor-pointer text-sm appearance-none outline-none"
               >
-                <option className="bg-slate-900 text-slate-200" value="admin@homestay.com">Admin Mode</option>
-                <option className="bg-slate-900 text-slate-200" value="manager@homestay.com">Manager Mode</option>
-                <option className="bg-slate-900 text-slate-200" value="sale@homestay.com">Sale Mode</option>
-                <option className="bg-slate-900 text-slate-200" value="accountant@homestay.com">Accountant Mode</option>
-                <option className="bg-slate-900 text-slate-200" value="customer@gmail.com">Customer Mode</option>
+                <option value="admin@homestay.com">Admin</option>
+                <option value="manager@homestay.com">Manager</option>
+                <option value="sale@homestay.com">Sale</option>
+                <option value="accountant@homestay.com">Accountant</option>
+                <option value="customer@gmail.com">Customer (Rented)</option>
+                <option value="newcustomer@gmail.com">Customer (New)</option>
               </select>
             </div>
 
-            <button className="relative p-2 text-slate-400 hover:text-white transition-colors">
-              <Bell className="w-4.5 h-4.5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+            <button className="relative p-2 text-on-surface-variant hover:text-primary transition-colors bg-surface-container-low rounded-full hover:bg-surface-container cursor-pointer">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface"></span>
             </button>
 
-            <div className="w-8 h-8 rounded-full bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-400">
+            <Link to="/profile" className="w-10 h-10 rounded-full bg-primary-container hover:bg-primary hover:text-on-primary text-on-primary-container border border-primary/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer">
               {user.full_name.charAt(0)}
-            </div>
+            </Link>
           </div>
         </header>
 
@@ -304,6 +382,7 @@ function DashboardLayout() {
         <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
           <Routes>
             <Route path="/" element={<DashboardDispatcher />} />
+            <Route path="/profile" element={<ProfilePage />} />
             {user.role === 'customer' && <Route path="/customer/rooms" element={<CustomerRoomsScreen />} />}
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
             {user.role === 'sale' && <Route path="/sale/registrations" element={<SaleRegistrationsScreen />} />}
@@ -327,52 +406,70 @@ function DashboardDispatcher() {
   if (!user) return null;
 
   const cards = [
-    { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-emerald-400' },
-    { title: 'Hợp đồng hoạt động', val: '45 hợp đồng', desc: '12 hợp đồng hết hạn tuần tới', icon: FileText, color: 'text-violet-400' },
-    { title: 'Doanh thu cọc khả dụng', val: '45,000,000đ', desc: 'Có 3 cọc chưa được phê duyệt', icon: CreditCard, color: 'text-amber-400' },
-    { title: 'Phòng đang bảo trì', val: '3 phòng', desc: '2 phòng dự kiến sửa xong hôm nay', icon: Layers, color: 'text-rose-400' }
+    { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },
+    { title: 'Hợp đồng hoạt động', val: '45', desc: '12 hợp đồng hết hạn tuần tới', icon: FileText, color: 'text-tertiary bg-tertiary/10', border: 'border-tertiary/20' },
+    { title: 'Doanh thu cọc khả dụng', val: '45Mđ', desc: 'Có 3 cọc chưa được phê duyệt', icon: CreditCard, color: 'text-timber-accent bg-timber-accent/10', border: 'border-timber-accent/20' },
+    { title: 'Phòng đang bảo trì', val: '3', desc: '2 phòng dự kiến sửa xong hôm nay', icon: Layers, color: 'text-error bg-error/10', border: 'border-error/20' }
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-white">Xin chào, {user.full_name}!</h1>
-        <p className="text-slate-400 text-sm mt-1">Hệ thống ghi nhận phiên đăng nhập quyền [{user.role.toUpperCase()}]. Đây là bàn làm việc của bạn.</p>
+    <div className="space-y-8 animate-fade-in-up">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface">Xin chào, {user.full_name}!</h1>
+          <p className="font-body-lg text-on-surface-variant mt-2 max-w-2xl">
+            Hệ thống ghi nhận phiên đăng nhập quyền <span className="font-bold text-primary">[{user.role.toUpperCase()}]</span>. Đây là bảng điều khiển và thống kê hoạt động của bạn.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
         {cards.map((c, i) => {
           const Icon = c.icon;
           return (
-            <div key={i} className="glass-card rounded-xl p-5 relative overflow-hidden">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{c.title}</span>
-                <Icon className={`w-5 h-5 ${c.color}`} />
+            <div key={i} className={`bg-surface-container-lowest rounded-32 p-6 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow border ${c.border}`}>
+              <div className="flex justify-between items-start mb-6">
+                <span className="font-label-md text-sm text-on-surface-variant uppercase tracking-wider">{c.title}</span>
+                <div className={`p-3 rounded-24 ${c.color}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
               </div>
-              <div className="text-2xl font-extrabold text-white mb-1">{c.val}</div>
-              <span className="text-xs text-slate-400">{c.desc}</span>
+              <div className="font-display-lg text-4xl text-on-surface mb-2">{c.val}</div>
+              <span className="font-body-md text-sm text-on-surface-variant">{c.desc}</span>
             </div>
           );
         })}
       </div>
 
-      <div className="glass-card rounded-xl p-6 border border-slate-800/80">
-        <h3 className="text-lg font-bold text-white mb-4">Trình quản lý Phase 0 & Thử nghiệm Prototype</h3>
-        <p className="text-sm text-slate-300 leading-relaxed mb-4">
-          Hệ thống hiện đang hoạt động ở chế độ **Frontend-First (Mock Mode)**. Tất cả dữ liệu bạn thao tác (chọn phòng đăng ký thuê, cập nhật trạng thái giường, tạo hóa đơn, hay chạy backup hệ thống) đều được lưu trữ trực tiếp ở Local Storage của trình duyệt này.
-        </p>
-        <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-850 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h4 className="text-sm font-semibold text-slate-200">Trải nghiệm Flow Đăng ký & Vận hành phòng:</h4>
-            <p className="text-xs text-slate-500 mt-1">Chuyển sang "Customer Mode" ở góc trên bên phải để vào trang Tìm kiếm & Đăng ký phòng mẫu.</p>
+      <div className="bg-surface-container-low rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm relative overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-tertiary-fixed-dim/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-primary text-on-primary rounded-full">
+              <span className="material-symbols-outlined text-sm">science</span>
+            </div>
+            <h3 className="font-headline-md text-2xl text-on-surface">Trình quản lý Phase 0 & Thử nghiệm Prototype</h3>
           </div>
-          <div className="flex items-center gap-3">
-            <Link 
-              to="/customer/rooms" 
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all"
-            >
-              Trải nghiệm Thuê phòng
-            </Link>
+          <p className="font-body-lg text-on-surface-variant leading-relaxed mb-8 max-w-3xl">
+            Hệ thống hiện đang hoạt động ở chế độ <strong>Frontend-First (Mock Mode)</strong>. Tất cả dữ liệu bạn thao tác (chọn phòng đăng ký thuê, cập nhật trạng thái giường, tạo hóa đơn, hay chạy backup hệ thống) đều được lưu trữ trực tiếp ở Local Storage của trình duyệt này.
+          </p>
+          <div className="p-6 bg-surface-container-highest rounded-24 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-glass-stroke shadow-inner">
+            <div>
+              <h4 className="font-label-md text-base text-on-surface">Trải nghiệm Flow Đăng ký & Vận hành phòng:</h4>
+              <p className="font-body-md text-sm text-on-surface-variant mt-1">Chuyển sang "Customer Mode" ở góc trên bên phải để vào trang Tìm kiếm & Đăng ký phòng mẫu.</p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <Link 
+                to="/customer/rooms" 
+                className="px-6 py-3 bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container rounded-24 font-label-md text-sm transition-all shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 flex items-center gap-2 group cursor-pointer"
+              >
+                Trải nghiệm Thuê phòng
+                <span className="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
