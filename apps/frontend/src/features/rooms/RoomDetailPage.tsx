@@ -183,7 +183,7 @@ export default function RoomDetailPage() {
         message: `Tạo yêu cầu đặt cọc thành công cho ${chosenNames}! Bạn vui lòng chuẩn bị thông tin thanh toán Momo/Banking tại màn hình tiếp theo.`
       });
       setTimeout(() => {
-        navigate('/profile');
+        navigate('/customer/deposit');
       }, 3500);
     }
   };

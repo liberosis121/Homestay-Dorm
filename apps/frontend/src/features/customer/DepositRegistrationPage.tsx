@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useDepositStore, DepositStatus } from './store/useDepositStore';
 import { ArrowLeft, CheckCircle2, Clock, FileImage, CreditCard, Wallet, QrCode, Upload, XCircle, AlertCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const statusMap: Record<DepositStatus, { label: string; icon: any; color: string }> = {
   pending: { label: 'Chờ thanh toán', icon: Clock, color: 'text-amber-500 bg-amber-50' },
