@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
   const strengthDetails = getStrengthDetails();
 
   return (
-    <AuthBackground showBackButton={false}>
+    <AuthBackground backTo="#/verify-otp">
       {/* Main Container */}
       <div className="w-full max-w-md relative z-10 flex flex-col items-center">
         
