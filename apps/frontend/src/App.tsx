@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   Home, 
@@ -14,22 +14,21 @@ import {
   Building, 
   CheckCircle, 
   Calendar, 
-  FileText, 
+  FileText,
   Plus, 
   Search, 
-  User, 
-  Bell, 
-  Compass, 
-  ShieldAlert, 
-  ArrowRight,
+  Bell,
+  Compass,
   ClipboardList,
-  Activity,
-  UserCheck
+  Activity
 } from 'lucide-react';
-import { initializeMockDB, getMockDB, saveMockDB, Profile, Room, Branch } from './lib/supabaseClient';
+import { initializeMockDB, getMockDB, saveMockDB, Room } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
+import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
+import OTPVerificationPage from './features/auth/OTPVerificationPage';
+import ResetPasswordPage from './features/auth/ResetPasswordPage';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -55,6 +54,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={!user ? <LandingPage /> : <DashboardLayout />} />
       <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
+      <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
+      <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
+      <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
       <Route 
         path="/*" 
         element={user ? <DashboardLayout /> : <Navigate to="/login" replace />} 
@@ -391,7 +393,7 @@ function CustomerRoomsScreen() {
     setRooms(db.rooms || []);
   }, []);
 
-  const handleRegisterLease = (roomName: string) => {
+  const handleRegisterLease = () => {
     setBookingSuccess(true);
     setTimeout(() => setBookingSuccess(false), 5000);
   };
@@ -482,7 +484,7 @@ function CustomerRoomsScreen() {
                   <span className="text-lg font-black text-violet-400">{room.price.toLocaleString('vi-VN')}đ<span className="text-slate-500 text-xs font-normal">/tháng</span></span>
                 </div>
                 <button
-                  onClick={() => handleRegisterLease(room.name)}
+                  onClick={() => handleRegisterLease()}
                   className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
