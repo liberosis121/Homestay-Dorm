@@ -37,48 +37,51 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex bg-surface text-on-surface">
       {/* Left side: Branding & Image (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col p-12 overflow-hidden bg-primary-container/10">
+      <div className="hidden lg:flex lg:w-2/5 relative flex-col p-10 pt-12 overflow-hidden bg-primary-container/10 justify-start">
         {/* Background elements */}
         <div className="absolute -top-20 -left-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-tertiary-fixed-dim/20 rounded-full blur-3xl"></div>
 
-        {/* Brand logo at the top */}
-        <div className="relative z-10 flex items-center gap-2 mb-6">
+        {/* Brand logo aligned with right side top element */}
+        <div className="relative z-10 flex items-center gap-2 mb-8">
           <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
           <span className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">HomeStay Dorm</span>
         </div>
 
-        {/* Grouped content (Text & Image) centered vertically in the remaining space */}
-        <div className="relative z-10 flex-1 flex flex-col justify-center max-w-xl w-full">
-          <div>
-            <h1 className="font-display-lg text-4xl leading-tight text-on-surface mb-4">
-              Chào mừng bạn trở về<br />
-              <span className="text-primary font-bold">tổ ấm xanh</span> tại{' '}
-              <span className="text-timber-accent font-extrabold">HomeStay Dorm</span>
-            </h1>
-            <p className="font-body-lg text-on-surface-variant">
-              Cùng HomeStay Dorm tiếp tục hành trình trải nghiệm không gian lưu trú thông minh, sinh thái và an toàn.
-            </p>
-          </div>
+        {/* Left column content: Heading, Subtitle & Image */}
+        <div className="relative z-10 max-w-xl w-full">
+          <h1 className="font-display-lg text-3xl leading-tight text-on-surface mb-4">
+            Chào mừng bạn trở về<br />
+            <span className="text-primary font-bold">tổ ấm xanh</span> tại{' '}
+            <span className="text-timber-accent font-extrabold whitespace-nowrap">HomeStay Dorm</span>
+          </h1>
+          <p className="font-body-md text-on-surface-variant mb-8">
+            Cùng HomeStay Dorm tiếp tục hành trình trải nghiệm không gian lưu trú thông minh, sinh thái và an toàn.
+          </p>
+        </div>
 
-          <div className="relative w-full h-[55%] mt-8 rounded-[32px] overflow-hidden shadow-2xl border border-white/20">
-            <img 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgSOWSBPzZibACRxQygYu1qvDAnOB_S9lxzwZbghYzE0n-T0Y4YhuVidVftQhlQwoQKN5O1DsUDnC-kCvCIIpLtDyibJsUzAI13g1hMkm7hRQtcTo-FhGFP0riNzxYGKjJmEsAkqzOiyV6PNWIZ_-MhjeRieYNtIuA6Rm289yITcgN9HVfMNj6VB5gH8lGspYFT62f1KPn4dwVGl0TmxM6OKrJeP8n7VL8ho4ZwADEJxmwP3eCIkW6YSl4prZfQYa_vOn5tyReEQ" 
-              alt="Dormitory"
-              className="w-full h-full object-cover"
-            />
-          </div>
+        {/* Brand Image Card with responsive aspect ratio for perfect flow alignment */}
+        <div className="relative z-10 w-full aspect-[4/3] rounded-[32px] overflow-hidden shadow-2xl border border-white/20">
+          <img 
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgSOWSBPzZibACRxQygYu1qvDAnOB_S9lxzwZbghYzE0n-T0Y4YhuVidVftQhlQwoQKN5O1DsUDnC-kCvCIIpLtDyibJsUzAI13g1hMkm7hRQtcTo-FhGFP0riNzxYGKjJmEsAkqzOiyV6PNWIZ_-MhjeRieYNtIuA6Rm289yITcgN9HVfMNj6VB5gH8lGspYFT62f1KPn4dwVGl0TmxM6OKrJeP8n7VL8ho4ZwADEJxmwP3eCIkW6YSl4prZfQYa_vOn5tyReEQ" 
+            alt="Dormitory"
+            className="w-full h-full object-cover"
+          />
         </div>
       </div>
 
       {/* Right side: Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 pt-20 md:pt-24 lg:pt-12 relative z-10">
-        <a href="#/" className="absolute top-8 left-6 md:left-12 flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-md">
-          <span className="material-symbols-outlined">arrow_back</span>
-          Về trang chủ
-        </a>
-
-        <div className="w-full max-w-md">
+      <div className="w-full lg:w-3/5 flex justify-center p-6 md:p-12 pt-12 relative z-10">
+        <div className="w-full max-w-md flex flex-col justify-start">
+          <div className="mb-6">
+            <a 
+              href="#/" 
+              className="group flex items-center gap-2.5 px-4 py-2 w-fit bg-primary/5 dark:bg-white/5 hover:bg-primary/10 border border-primary/20 hover:border-primary/40 rounded-full text-on-surface hover:text-primary transition-all duration-300 font-bold text-sm shadow-sm hover:shadow active:scale-95 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-lg transition-transform duration-300 group-hover:-translate-x-1">arrow_back</span>
+              Về trang chủ
+            </a>
+          </div>
           <div className="lg:hidden flex items-center gap-2 mb-10 justify-center">
             <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
             <span className="font-headline-md text-2xl font-bold text-primary">HomeStay Dorm</span>
@@ -173,9 +176,16 @@ export default function LoginPage() {
               <span className="relative bg-white dark:bg-surface-container-highest px-4 text-caption text-on-surface-variant font-label-md">Hoặc đăng nhập bằng</span>
             </div>
 
-            <button type="button" className="w-full h-14 mt-6 bg-surface-container border border-surface-variant hover:bg-surface-container-high rounded-2xl font-label-md flex items-center justify-center gap-3 transition-colors text-on-surface">
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-              <span>Google</span>
+            <button 
+              type="button" 
+              className="w-full h-14 mt-6 bg-white dark:bg-surface-container-low border border-surface-variant/60 hover:border-primary hover:bg-primary/5 rounded-2xl font-bold text-sm md:text-base flex items-center justify-center gap-3.5 transition-all duration-300 text-on-surface shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] group"
+            >
+              <img 
+                src="https://www.google.com/favicon.ico" 
+                alt="Google" 
+                className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" 
+              />
+              <span className="tracking-wide">Đăng nhập với Google account</span>
             </button>
 
             {/* Test credentials for demo */}

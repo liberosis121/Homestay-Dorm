@@ -67,7 +67,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-fade-in-up">
               <h1 className="font-display-lg text-[40px] md:text-display-lg leading-tight text-on-surface">
-                Trải nghiệm không gian sống xanh tại <span className="text-primary">HomeStay Dorm</span>
+                Trải nghiệm không gian sống xanh tại <span className="text-primary whitespace-nowrap">HomeStay Dorm</span>
               </h1>
               <p className="font-body-lg text-body-lg text-on-surface-variant max-w-lg">
                 Nơi ký túc xá gặp gỡ sự sang trọng và tiện nghi. Chúng tôi tái định nghĩa không gian lưu trú cho thế hệ trẻ hiện đại.
