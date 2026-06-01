@@ -12,16 +12,53 @@ Toàn bộ file đề bài và báo cáo phân tích thiết kế chi tiết đ�
 
 ---
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
-Dự án được tổ chức theo cấu trúc **Monorepo** sử dụng `pnpm workspace`:
-*   **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS v4 + shadcn/ui.
-    *   State Management: Zustand.
-    *   Data Fetching: TanStack Query.
-    *   Routing: React Router v7.
-*   **Backend** (Dự kiến): Node.js + Express + TypeScript.
-*   **Database / BaaS**: Supabase (PostgreSQL + Auth + Storage).
+## 🏗️ Kiến trúc hệ thống (System Architecture)
 
-Hiện tại dự án đang được phát triển theo mô hình **Frontend-First / Mock-Driven** nhằm xây dựng toàn bộ giao diện tương tác và nghiệp vụ của 35 Use Cases trước khi ráp API thật. Toàn bộ dữ liệu được lưu trữ và đồng bộ thông qua LocalStorage giả lập DB.
+Hệ thống được thiết kế theo mô hình client-server 3 lớp (3-tier) kết hợp với dịch vụ đám mây (BaaS) từ Supabase nhằm tăng tốc thời gian phát triển và đảm bảo hiệu năng.
+
+```mermaid
+flowchart TB
+    subgraph Client ["🖥️ Frontend (React + Vite)"]
+        UI["React 19 + TypeScript"]
+        TW["Tailwind CSS v4 + shadcn/ui"]
+        RQ["TanStack Query (data fetching)"]
+        ZD["Zustand (state management)"]
+        RR["React Router v7"]
+    end
+
+    subgraph API ["⚙️ Backend (Node.js + Express)"]
+        EX["Express.js API Server"]
+        MW["Middleware (Auth, Validation)"]
+        BL["Business Logic Layer"]
+        SC["Scheduled Jobs (node-cron)"]
+    end
+
+    subgraph Supabase ["☁️ Supabase (BaaS)"]
+        AU["Supabase Auth (5 roles)"]
+        DB["PostgreSQL Database"]
+        RLS["Row Level Security"]
+        ST["Supabase Storage (files)"]
+        EF["Edge Functions (webhooks)"]
+        RT["Realtime (notifications)"]
+    end
+
+    UI --> RQ
+    RQ --> EX
+    RQ --> DB
+    EX --> DB
+    EX --> AU
+    SC --> DB
+    UI --> AU
+    UI --> ST
+    EF --> DB
+```
+
+### Chi tiết các quyết định kiến trúc:
+
+*   **Supabase Auth**: Sử dụng xác thực người dùng tích hợp sẵn cho 5 nhóm vai trò (Customer, Sale, Accountant, Manager, Admin). Tiết kiệm thời gian tự thiết lập JWT và mã hóa mật khẩu.
+*   **Supabase Row Level Security (RLS)**: Cơ chế phân quyền bảo mật dữ liệu trực tiếp ở mức cơ sở dữ liệu. Khách hàng chỉ truy cập được dữ liệu của chính mình, nhân viên chi nhánh nào chỉ thấy dữ liệu của chi nhánh đó.
+*   **Express.js API Server**: Dành riêng cho việc xử lý các nghiệp vụ (Business Logic) phức tạp như tính toán tỷ lệ hoàn cọc khi hủy hợp đồng trước hạn, tính toán khấu trừ tài sản hư hỏng, lập hóa đơn tự động định kỳ, và xuất các file PDF/biên bản bàn giao.
+*   **TanStack Query & Zustand**: Tận dụng cơ chế caching và đồng bộ hóa server state của TanStack Query, kết hợp Zustand gọn nhẹ để quản lý client state (auth session, cấu hình theme, trạng thái sidebar/filter).
 
 ---
 
@@ -37,7 +74,7 @@ cd ProjectPTTK
 # 2. Cài đặt các package phụ thuộc cho toàn bộ workspace
 pnpm install
 
-# 3. Khởi chạy dự án ở chế độ phát triển (chỉ chạy Frontend Demo)
+# 3. Khởi chạy dự án ở chế độ phát triển (chạy Frontend Demo)
 pnpm --filter frontend dev
 ```
 
@@ -113,13 +150,20 @@ ProjectPTTK/
 
 ---
 
-## 📅 Kế hoạch triển khai Frontend dự án (6 Phases)
+## 📅 Kế hoạch triển khai dự án (Chiến lược Frontend-First / Mock-Driven)
 
-*   **Pha 0 — Foundation, Setup & Landing Page**: Cấu hình khung dự án monorepo, tích hợp UI Landing Page từ Stitch, dựng layout shell sidebar co giãn và cấu trúc mock client.
-*   **Pha 1 — Auth & Phân quyền Router**: Phát triển form đăng nhập, lưu session và xây dựng router guard chặn truy cập chéo vai trò.
-*   **Pha 2 — Luồng Đăng ký & Đặt cọc**: Xây dựng trang tra cứu bộ lọc phòng, form đăng ký thuê, màn hình xếp lịch xem phòng của Sale.
-*   **Pha 3 — Admin CRUD**: Hoàn thiện Reusable DataTable và viết 8 trang quản trị danh mục dữ liệu của Admin.
-*   **Pha 4 — Nghiệp vụ Nhận phòng & Hợp đồng**: Phê duyệt chứng từ cọc, kiểm tra điều kiện lưu trú, wizard form lập hợp đồng và checklist bàn giao tài sản có chữ ký điện tử.
-*   **Pha 5 — Hóa đơn, Kiểm kê & Trả phòng**: Lập hóa đơn định kỳ (điện nước), thanh toán trực tuyến qua QR, checklist kiểm kê hư hỏng và bảng đối soát thanh lý hợp đồng.
-*   **Pha 6 — Polish & Deployment**: Tối ưu UI/UX, responsive toàn bộ màn hình, xử lý loading/empty state và deploy lên Vercel/Supabase.
+Dự án ưu tiên hoàn thiện lớp giao diện và trải nghiệm tương tác (Frontend UI/UX) để demo nghiệp vụ trước, sau đó xây dựng hệ thống cơ sở dữ liệu và tích hợp API thật ở các bước tiếp theo.
 
+### PHẦN 1: PHÁT TRIỂN FRONTEND MOCK-DRIVEN (Mô phỏng 35 Use Cases)
+*   **Phase 0 — Foundation, Setup & Landing Page**: Cấu hình khung monorepo, tích hợp thiết kế Landing Page từ Stitch, dựng layout shell sidebar co giãn và cấu trúc mock client.
+*   **Phase 1 — Auth & Phân quyền Router**: Phát triển form đăng nhập kính mờ, lưu session giả lập ở LocalStorage và xây dựng router guard chặn truy cập chéo vai trò.
+*   **Phase 2 — Luồng Đăng ký & Đặt cọc**: Xây dựng trang tra cứu bộ lọc phòng, form đăng ký thuê, màn hình xếp lịch xem phòng của Sale.
+*   **Phase 3 — Admin CRUD**: Hoàn thiện Component `DataTable` dùng chung và viết 8 trang quản trị danh mục dữ liệu của Admin.
+*   **Phase 4 — Nghiệp vụ Nhận phòng & Hợp đồng**: Phê duyệt chứng từ cọc, kiểm tra điều kiện lưu trú, wizard form lập hợp đồng và checklist bàn giao tài sản hỗ trợ chữ ký điện tử.
+*   **Phase 5 — Hóa đơn, Kiểm kê & Trả phòng**: Lập hóa đơn định kỳ (điện nước), thanh toán trực tuyến qua QR, checklist kiểm kê hư hỏng và bảng đối soát thanh lý hợp đồng.
+*   **Phase 6 — Polish & Deployment**: Tối ưu UI/UX, responsive toàn bộ màn hình, xử lý loading/empty state và tạo trang `/demo-setup` (1-click tạo data mẫu).
+
+### PHẦN 2: PHÁT TRIỂN BACKEND & TÍCH HỢP HỆ THỐNG
+*   **Giai đoạn 1 — Database & Supabase Setup**: Khởi tạo database Supabase local/cloud, viết mã migrations SQL khởi tạo 25 bảng thực thể, enums, indexes và chính sách bảo mật RLS.
+*   **Giai đoạn 2 — Backend API Services**: Phát triển API server bằng Express (Node.js) với cơ chế xác thực JWT, cấu trúc phân tầng Repository (DAL) và Service (BLL) xử lý tính toán hóa đơn, hoàn cọc, phạt vi phạm và scheduled job hủy cọc sau 24h.
+*   **Giai đoạn 3 — Tích hợp API & Kiểm thử**: Thay thế mock database bằng API thực tế, kiểm thử bảo mật phân quyền chéo, chạy E2E tests bằng Playwright và đóng gói triển khai.
