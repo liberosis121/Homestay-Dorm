@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
+  const { user, setLogoutConfirmOpen } = useAuthStore();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   
@@ -98,7 +98,7 @@ export default function ProfilePage() {
               
               <div className="h-px bg-surface-variant my-4 mx-4"></div>
               
-              <button onClick={() => logout()} className="w-full flex items-center gap-3 px-5 py-3.5 rounded-24 text-error hover:bg-error-container/50 transition-colors font-label-md cursor-pointer text-left">
+              <button onClick={() => setLogoutConfirmOpen(true)} className="w-full flex items-center gap-3 px-5 py-3.5 rounded-24 text-error hover:bg-error-container/50 transition-colors font-label-md cursor-pointer text-left">
                 <LogOut className="w-5 h-5" /> Đăng xuất
               </button>
             </nav>

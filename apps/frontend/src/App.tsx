@@ -33,6 +33,7 @@ import ProfilePage from './features/customer/ProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
+import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -55,22 +56,25 @@ function AppRoutes() {
   }, [initialize]);
 
   return (
-    <Routes>
-      <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
-      <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
-      <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
-      <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
-      <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
-      <Route path="/rooms" element={<RoomsPage />} />
-      <Route 
-        path="/profile/*" 
-        element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
-      />
-      <Route 
-        path="/*" 
-        element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
-      />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
+        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
+        <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
+        <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
+        <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
+        <Route path="/rooms" element={<RoomsPage />} />
+        <Route 
+          path="/profile/*" 
+          element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
+        />
+        <Route 
+          path="/*" 
+          element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
+        />
+      </Routes>
+      <ConfirmLogoutModal />
+    </>
   );
 }
 
@@ -78,7 +82,7 @@ function AppRoutes() {
 // CUSTOMER LAYOUT (Public Header + Customer Content)
 // ----------------------------------------------------
 function CustomerLayout() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   
   if (!user) return <Navigate to="/login" replace />;
 
@@ -105,7 +109,7 @@ function CustomerLayout() {
 // SIDEBAR & HEADER MAIN DASHBOARD LAYOUT
 // ----------------------------------------------------
 function DashboardLayout() {
-  const { user, logout, login } = useAuthStore();
+  const { user, setLogoutConfirmOpen, login } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -231,7 +235,7 @@ function DashboardLayout() {
             </div>
           </div>
           <button
-            onClick={() => logout()}
+            onClick={() => setLogoutConfirmOpen(true)}
             className="w-full py-3 px-3 bg-surface hover:bg-error/10 hover:text-error border border-surface-variant rounded-24 text-sm font-label-md text-on-surface-variant transition-all flex items-center justify-center gap-2 group cursor-pointer"
           >
             <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
@@ -275,7 +279,7 @@ function DashboardLayout() {
             </nav>
             <div className="p-4 border-t border-slate-800 bg-slate-950/40">
               <button
-                onClick={() => logout()}
+                onClick={() => setLogoutConfirmOpen(true)}
                 className="w-full py-2.5 px-3 bg-slate-800/50 hover:bg-slate-850 hover:text-rose-400 border border-slate-700/50 rounded-lg text-xs font-semibold text-slate-400 transition-all flex items-center justify-center gap-2"
               >
                 <LogOut className="w-3.5 h-3.5" />

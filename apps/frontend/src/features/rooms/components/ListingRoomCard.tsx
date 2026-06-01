@@ -94,12 +94,12 @@ export default function ListingRoomCard({ room, onActionClick }: Props) {
         
         <div className="flex flex-wrap gap-2 mb-6">
           {room.amenities.slice(0, 3).map((am, idx) => (
-            <div key={idx} className="flex items-center gap-1 bg-[#E8EDE7] text-[#5F745D] px-2.5 py-1 rounded-lg text-[12px] font-medium">
-              <span className="material-symbols-outlined text-[16px]">{getAmenityIcon(am)}</span> {getAmenityLabel(am)}
+            <div key={idx} className="flex items-center gap-1 bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-caption font-medium">
+              <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>{getAmenityIcon(am)}</span> {getAmenityLabel(am)}
             </div>
           ))}
           {room.amenities.length > 3 && (
-            <div className="flex items-center gap-1 bg-[#E8EDE7] text-[#5F745D] px-2.5 py-1 rounded-lg text-[12px] font-medium">
+            <div className="flex items-center gap-1 bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-caption font-medium">
               +{room.amenities.length - 3}
             </div>
           )}

@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import Logo from './Logo';
 
 export default function Navbar() {
-  const { user, logout } = useAuthStore();
+  const { user, setLogoutConfirmOpen } = useAuthStore();
   const location = useLocation();
-  const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -21,8 +20,7 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    setLogoutConfirmOpen(true);
     setIsDropdownOpen(false);
   };
 

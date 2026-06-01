@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB } from '../../lib/supabaseClient';
 import { useRoomSearchStore } from './store/useRoomSearchStore';
@@ -10,6 +10,7 @@ import RoomListSkeleton from './components/RoomListSkeleton';
 import EmptyState from './components/EmptyState';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
+import heroImage from '../../assets/hero.jpg';
 
 export default function RoomsPage() {
   const { user } = useAuthStore();
@@ -70,6 +71,16 @@ export default function RoomsPage() {
     return 0;
   });
 
+  // Pagination Logic
+  const ITEMS_PER_PAGE = 4;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(sortedRooms.length / ITEMS_PER_PAGE);
+  const paginatedRooms = sortedRooms.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredRooms.length]);
+
   const handleActionClick = () => {
     if (!user) {
       navigate('/login');
@@ -89,12 +100,12 @@ export default function RoomsPage() {
           <img 
             alt="Phòng Homestay Dorm cao cấp" 
             className="absolute inset-0 w-full h-full object-cover" 
-            src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2000&auto=format&fit=crop"
+            src={heroImage}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/30"></div>
           <div className="relative z-10 text-center px-margin-mobile">
             <h1 className="font-display-lg text-4xl md:text-5xl text-white mb-4">Khám phá không gian sống lý tưởng</h1>
-            <p className="font-body-lg text-lg text-white/90 max-w-2xl mx-auto">Sự kết hợp hoàn hảo giữa tiện nghi khách sạn và sự ấm cúng của ngôi nhà thứ hai.</p>
+            <p className="font-body-lg text-lg text-white/90 max-w-4xl mx-auto">Sự kết hợp hoàn hảo giữa tiện nghi khách sạn và sự ấm cúng của ngôi nhà thứ hai.</p>
           </div>
         </section>
 
@@ -116,7 +127,7 @@ export default function RoomsPage() {
             <EmptyState />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {sortedRooms.map(room => (
+              {paginatedRooms.map(room => (
                 <ListingRoomCard 
                   key={room.id} 
                   room={room} 
@@ -127,14 +138,35 @@ export default function RoomsPage() {
           )}
 
           {/* Pagination */}
-          {!isLoading && sortedRooms.length > 0 && (
+          {!isLoading && totalPages > 1 && (
             <div className="mt-16 flex items-center justify-center gap-2">
-              <button className="w-12 h-12 rounded-full flex items-center justify-center border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all">
+              <button 
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="w-12 h-12 rounded-full flex items-center justify-center border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-50 disabled:hover:border-outline-variant disabled:hover:text-on-surface-variant cursor-pointer"
+              >
                 <span className="material-symbols-outlined">chevron_left</span>
               </button>
-              <button className="w-12 h-12 rounded-full flex items-center justify-center bg-primary text-on-primary font-label-md">1</button>
-              <button className="w-12 h-12 rounded-full flex items-center justify-center border border-transparent text-on-surface-variant font-label-md hover:bg-surface-container-low">2</button>
-              <button className="w-12 h-12 rounded-full flex items-center justify-center border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all">
+              
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button 
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center font-label-md transition-all cursor-pointer ${
+                    currentPage === i + 1 
+                      ? 'bg-primary text-on-primary' 
+                      : 'border border-transparent text-on-surface-variant hover:bg-surface-container-low'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+
+              <button 
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="w-12 h-12 rounded-full flex items-center justify-center border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-50 disabled:hover:border-outline-variant disabled:hover:text-on-surface-variant cursor-pointer"
+              >
                 <span className="material-symbols-outlined">chevron_right</span>
               </button>
             </div>

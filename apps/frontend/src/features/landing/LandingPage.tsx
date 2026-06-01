@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useRoomSearchStore } from '../rooms/store/useRoomSearchStore';
 import heroImage from '../../assets/hero.jpg';
 import roomStudio from '../../assets/room-studio.jpg';
 import roomTwin from '../../assets/room-twin.jpg';
 import roomDorm from '../../assets/room-dorm.jpg';
 import roomSingle from '../../assets/room-single.jpg';
-import Logo from '../../components/ui/Logo';
 import RoomCard from '../../components/ui/RoomCard';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
@@ -55,6 +56,26 @@ const featuredRooms = [
 
 export default function LandingPage() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { setBranch, setPriceRange, setRoomType, setGender } = useRoomSearchStore();
+
+  const [localBranch, setLocalBranch] = useState('Tất cả chi nhánh');
+  const [localPrice, setLocalPrice] = useState('Tất cả');
+  const [localRoomType, setLocalRoomType] = useState('Loại phòng');
+  const [localGender, setLocalGender] = useState('Giới tính');
+
+  const handleSearch = () => {
+    setBranch(localBranch);
+    setRoomType(localRoomType);
+    setGender(localGender);
+    
+    if (localPrice === 'Dưới 2tr') setPriceRange([0, 2000000]);
+    else if (localPrice === '2tr - 5tr') setPriceRange([2000000, 5000000]);
+    else if (localPrice === 'Trên 5tr') setPriceRange([5000000, 50000000]);
+    else setPriceRange([0, 50000000]); // Tất cả
+
+    navigate('/rooms');
+  };
 
   useEffect(() => {
     // Micro-interaction: Header scroll effect
@@ -109,10 +130,13 @@ export default function LandingPage() {
                 Nơi ký túc xá gặp gỡ sự sang trọng và tiện nghi. Chúng tôi tái định nghĩa không gian lưu trú cho thế hệ trẻ hiện đại.
               </p>
               <div className="flex flex-wrap gap-4">
-                <a className="inline-flex items-center gap-2 bg-timber-accent text-white px-8 py-4 rounded-24 font-label-md text-label-md shadow-lg shadow-timber-accent/20 hover:scale-[1.02] transition-transform" href="#search-section">
+                <button 
+                  onClick={() => document.getElementById('search-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-2 bg-timber-accent text-white px-8 py-4 rounded-24 font-label-md text-label-md shadow-lg shadow-timber-accent/20 hover:scale-[1.02] transition-transform cursor-pointer"
+                >
                   Tìm phòng ngay
                   <span className="material-symbols-outlined">arrow_downward</span>
-                </a>
+                </button>
               </div>
             </div>
             <div className="relative">
@@ -129,14 +153,15 @@ export default function LandingPage() {
         {/* Search Section */}
         <section className="px-margin-mobile md:px-margin-desktop -mt-12 relative z-20 max-w-container-max mx-auto" id="search-section">
           <div className="bg-white/80 dark:bg-surface-container-highest/80 backdrop-blur-xl border border-glass-stroke shadow-xl rounded-[32px] p-6 md:p-10">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Chi nhánh</label>
                 <div className="relative">
-                  <select className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none">
-                    <option>Quận 1</option>
-                    <option>Quận 7</option>
-                    <option>Thủ Đức</option>
+                  <select value={localBranch} onChange={(e) => setLocalBranch(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
+                    <option>Tất cả chi nhánh</option>
+                    <option value="b-1">Quận 1</option>
+                    <option value="b-2">Quận 7</option>
+                    <option value="b-3">Thủ Đức</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">expand_more</span>
                 </div>
@@ -144,7 +169,8 @@ export default function LandingPage() {
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Khoảng giá</label>
                 <div className="relative">
-                  <select className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none">
+                  <select value={localPrice} onChange={(e) => setLocalPrice(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
+                    <option>Tất cả</option>
                     <option>Dưới 2tr</option>
                     <option>2tr - 5tr</option>
                     <option>Trên 5tr</option>
@@ -155,15 +181,28 @@ export default function LandingPage() {
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Loại phòng</label>
                 <div className="relative">
-                  <select className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none">
-                    <option>Phòng đơn</option>
-                    <option>Phòng đôi</option>
-                    <option>KTX 4 giường</option>
+                  <select value={localRoomType} onChange={(e) => setLocalRoomType(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
+                    <option>Loại phòng</option>
+                    <option value="Studio">Studio</option>
+                    <option value="Twin">Twin</option>
+                    <option value="Dorm">KTX (Dorm)</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">bed</span>
                 </div>
               </div>
-              <button className="h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-lg shadow-primary/10 group">
+              <div className="space-y-2">
+                <label className="block font-label-md text-caption text-on-surface-variant ml-2">Giới tính</label>
+                <div className="relative">
+                  <select value={localGender} onChange={(e) => setLocalGender(e.target.value)} className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
+                    <option>Giới tính</option>
+                    <option value="Male">Nam</option>
+                    <option value="Female">Nữ</option>
+                    <option value="All">Tất cả</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">wc</span>
+                </div>
+              </div>
+              <button onClick={handleSearch} className="h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-lg shadow-primary/10 group cursor-pointer">
                 <span className="material-symbols-outlined group-hover:rotate-12 transition-transform">search</span>
                 Tìm kiếm
               </button>
@@ -178,7 +217,7 @@ export default function LandingPage() {
               <span className="text-primary font-label-md tracking-widest uppercase">Phòng trống</span>
               <h2 className="font-headline-lg text-headline-lg text-on-surface">Phòng trống tiêu biểu</h2>
             </div>
-            <button className="text-primary font-label-md flex items-center gap-1 hover:underline">
+            <button onClick={() => navigate('/rooms')} className="text-primary font-label-md flex items-center gap-1 hover:underline cursor-pointer">
               Xem tất cả phòng
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>
