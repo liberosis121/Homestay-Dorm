@@ -37,25 +37,25 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex bg-surface text-on-surface">
       {/* Left side: Branding & Image (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-2/5 relative flex-col p-10 pt-12 overflow-hidden bg-primary-container/10 justify-start">
+      <div className="hidden lg:flex lg:w-2/5 relative flex-col p-10 pt-15 overflow-hidden bg-primary-container/10 justify-start">
         {/* Background elements */}
         <div className="absolute -top-20 -left-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-tertiary-fixed-dim/20 rounded-full blur-3xl"></div>
 
         {/* Brand logo aligned with right side top element */}
-        <div className="relative z-10 flex items-center gap-2 mb-8">
+        <div className="relative z-10 flex items-center gap-2 mb-10">
           <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-          <span className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">HomeStay Dorm</span>
+          <span className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed whitespace-nowrap">HomeStay Dorm</span>
         </div>
 
         {/* Left column content: Heading, Subtitle & Image */}
         <div className="relative z-10 max-w-xl w-full">
-          <h1 className="font-display-lg text-3xl leading-tight text-on-surface mb-4">
+          <h1 className="font-display-lg text-3xl leading-tight text-on-surface mb-6">
             Chào mừng bạn trở về<br />
             <span className="text-primary font-bold">tổ ấm xanh</span> tại{' '}
             <span className="text-timber-accent font-extrabold whitespace-nowrap">HomeStay Dorm</span>
           </h1>
-          <p className="font-body-md text-on-surface-variant mb-8">
+          <p className="font-body-md text-on-surface-variant mb-10">
             Cùng HomeStay Dorm tiếp tục hành trình trải nghiệm không gian lưu trú thông minh, sinh thái và an toàn.
           </p>
         </div>
@@ -76,7 +76,7 @@ export default function LoginPage() {
           <div className="mb-6">
             <a 
               href="#/" 
-              className="group flex items-center gap-2.5 px-4 py-2 w-fit bg-primary/5 dark:bg-white/5 hover:bg-primary/10 border border-primary/20 hover:border-primary/40 rounded-full text-on-surface hover:text-primary transition-all duration-300 font-bold text-sm shadow-sm hover:shadow active:scale-95 cursor-pointer"
+              className="group flex items-center gap-2.5 px-4 py-2 w-fit bg-transparent hover:bg-primary/5 border border-primary/30 hover:border-primary/50 rounded-full text-on-surface hover:text-primary transition-all duration-300 font-bold text-sm active:scale-95 cursor-pointer"
             >
               <span className="material-symbols-outlined text-lg transition-transform duration-300 group-hover:-translate-x-1">arrow_back</span>
               Về trang chủ
@@ -84,7 +84,7 @@ export default function LoginPage() {
           </div>
           <div className="lg:hidden flex items-center gap-2 mb-10 justify-center">
             <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-            <span className="font-headline-md text-2xl font-bold text-primary">HomeStay Dorm</span>
+            <span className="font-headline-md text-2xl font-bold text-primary whitespace-nowrap">HomeStay Dorm</span>
           </div>
 
           <div className="bg-white/80 dark:bg-surface-container-highest/80 backdrop-blur-xl border border-glass-stroke shadow-xl rounded-[32px] p-8 md:p-10">
