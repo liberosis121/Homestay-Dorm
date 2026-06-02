@@ -1,6 +1,107 @@
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
+import { useRoomSearchStore } from '../rooms/store/useRoomSearchStore';
+import heroImage from '../../assets/hero.jpg';
+import roomStudio from '../../assets/room-studio.jpg';
+import roomTwin from '../../assets/room-twin.jpg';
+import roomDorm from '../../assets/room-dorm.jpg';
+import roomSingle from '../../assets/room-single.jpg';
+import RoomCard from '../../components/ui/RoomCard';
+import Navbar from '../../components/ui/Navbar';
+import Footer from '../../components/ui/Footer';
+import CustomSelect from '../../components/ui/CustomSelect';
+import { AlertCircle, CheckCircle } from 'lucide-react';
+
+const featuredRooms = [
+  {
+    id: 'r-2',
+    title: 'Phòng Studio Quận 1',
+    image: roomStudio,
+    tag: 'Studio',
+    price: '5.500.000đ',
+    amenities: [
+      { icon: 'ac_unit', text: 'Điều hòa' },
+      { icon: 'wc', text: 'WC riêng' }
+    ]
+  },
+  {
+    id: 'r-4',
+    title: 'Phòng Twin Quận 7',
+    image: roomTwin,
+    tag: 'Phòng đôi',
+    price: '3.200.000đ',
+    amenities: [
+      { icon: 'ac_unit', text: 'Điều hòa' },
+      { icon: 'wifi', text: 'Wifi' }
+    ]
+  },
+  {
+    id: 'r-3',
+    title: 'KTX Thủ Đức',
+    image: roomDorm,
+    tag: 'KTX 4 Giường',
+    price: '1.800.000đ',
+    amenities: [
+      { icon: 'cleaning_services', text: 'Dọn dẹp' },
+      { icon: 'wc', text: 'WC riêng' }
+    ]
+  },
+  {
+    id: 'r-6',
+    title: 'Luxury Single Quận 7',
+    image: roomSingle,
+    tag: 'Phòng đơn',
+    price: '4.000.000đ',
+    amenities: [
+      { icon: 'balcony', text: 'Ban công' },
+      { icon: 'ac_unit', text: 'Điều hòa' }
+    ]
+  }
+];
 
 export default function LandingPage() {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { setBranch, setPriceRange, setRoomType, setGender } = useRoomSearchStore();
+
+  const [localBranch, setLocalBranch] = useState('Tất cả chi nhánh');
+  const [localPrice, setLocalPrice] = useState('Tất cả');
+  const [localRoomType, setLocalRoomType] = useState('Loại phòng');
+  const [localGender, setLocalGender] = useState('Giới tính');
+  const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
+
+  const handleRegisterClick = (e: React.MouseEvent, roomId: string) => {
+    e.preventDefault();
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user.role === 'customer' && user.renting_room_name) {
+      setNotification({
+        type: 'warning',
+        message: `Hiện bạn đang thuê ${user.renting_room_name}, lưu ý trả phòng theo hợp đồng trước khi thuê phòng mới.`
+      });
+      return;
+    }
+
+    navigate(`/customer/rooms/${roomId}`);
+  };
+
+  const handleSearch = () => {
+    setBranch(localBranch);
+    setRoomType(localRoomType);
+    setGender(localGender);
+    
+    if (localPrice === 'Dưới 2tr') setPriceRange([0, 2000000]);
+    else if (localPrice === '2tr - 5tr') setPriceRange([2000000, 5000000]);
+    else if (localPrice === 'Trên 5tr') setPriceRange([5000000, 50000000]);
+    else setPriceRange([0, 50000000]); // Tất cả
+
+    navigate('/rooms');
+  };
+
   useEffect(() => {
     // Micro-interaction: Header scroll effect
     const handleScroll = () => {
@@ -38,50 +139,67 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="bg-surface text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen">
-      {/* Header: TopNavBar */}
-      <header className="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-sm dark:shadow-none transition-shadow duration-300">
-        <nav className="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-            <span className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">HomeStay Dorm</span>
-          </div>
-          {/* Desktop Links */}
-          <div className="hidden md:flex items-center gap-8 font-body-md text-body-md">
-            <a className="text-primary dark:text-primary-fixed font-bold border-b-2 border-primary dark:border-primary-fixed pb-1" href="#">Giới thiệu</a>
-            <a className="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Dịch vụ</a>
-            <a className="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Phòng trống</a>
-          </div>
-          <div className="flex items-center gap-4">
-            <a href="#/login" className="px-6 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all active:scale-95">Đăng nhập</a>
-            <button className="md:hidden text-on-surface-variant">
-              <span className="material-symbols-outlined">menu</span>
+    <div className="bg-surface text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col">
+      {/* Header: Unified TopNavBar */}
+      {/* Header: Unified TopNavBar */}
+      <Navbar />
+      
+      {notification && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[150] w-full max-w-xl p-4 animate-fade-in-up">
+          <div className={`backdrop-blur-md p-5 rounded-2xl shadow-2xl flex items-start gap-4 border border-white/20 ${
+            notification.type === 'warning' 
+              ? 'bg-status-warning/95 text-white' 
+              : 'bg-primary/95 text-on-primary'
+          }`}>
+            {notification.type === 'warning' ? (
+              <AlertCircle className="w-6 h-6 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle className="w-6 h-6 shrink-0 mt-0.5" />
+            )}
+            <div className="flex-grow">
+              <h4 className="font-bold text-label-md">
+                {notification.type === 'warning' ? 'Lưu ý' : 'Xử lý thành công'}
+              </h4>
+              <p className="text-xs opacity-90 mt-1 leading-relaxed">{notification.message}</p>
+            </div>
+            <button 
+              onClick={() => setNotification(null)}
+              className={`${
+                notification.type === 'warning' 
+                  ? 'text-white/80 hover:text-white hover:bg-white/10' 
+                  : 'text-on-primary/80 hover:text-on-primary hover:bg-white/10'
+              } p-1 rounded-full cursor-pointer transition-colors`}
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
-        </nav>
-      </header>
-      
+        </div>
+      )}
+
       <main className="pt-20">
         {/* Hero Section */}
         <section className="relative overflow-hidden px-margin-mobile md:px-margin-desktop py-12 md:py-24 max-w-container-max mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-fade-in-up">
               <h1 className="font-display-lg text-[40px] md:text-display-lg leading-tight text-on-surface">
-                Trải nghiệm không gian sống xanh tại <span className="text-primary">HomeStay Dorm</span>
+                Trải nghiệm không gian sống xanh tại <span className="text-primary whitespace-nowrap">HomeStay Dorm</span>
               </h1>
               <p className="font-body-lg text-body-lg text-on-surface-variant max-w-lg">
                 Nơi ký túc xá gặp gỡ sự sang trọng và tiện nghi. Chúng tôi tái định nghĩa không gian lưu trú cho thế hệ trẻ hiện đại.
               </p>
               <div className="flex flex-wrap gap-4">
-                <a className="inline-flex items-center gap-2 bg-timber-accent text-white px-8 py-4 rounded-24 font-label-md text-label-md shadow-lg shadow-timber-accent/20 hover:scale-[1.02] transition-transform" href="#search-section">
+                <button 
+                  onClick={() => document.getElementById('search-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-2 bg-timber-accent text-white px-8 py-4 rounded-24 font-label-md text-label-md shadow-lg shadow-timber-accent/20 hover:scale-[1.02] transition-transform cursor-pointer"
+                >
                   Tìm phòng ngay
                   <span className="material-symbols-outlined">arrow_downward</span>
-                </a>
+                </button>
               </div>
             </div>
             <div className="relative">
               <div className="aspect-[4/3] rounded-[40px] overflow-hidden shadow-2xl relative z-10">
-                <img alt="Modern dorm" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgSOWSBPzZibACRxQygYu1qvDAnOB_S9lxzwZbghYzE0n-T0Y4YhuVidVftQhlQwoQKN5O1DsUDnC-kCvCIIpLtDyibJsUzAI13g1hMkm7hRQtcTo-FhGFP0riNzxYGKjJmEsAkqzOiyV6PNWIZ_-MhjeRieYNtIuA6Rm289yITcgN9HVfMNj6VB5gH8lGspYFT62f1KPn4dwVGl0TmxM6OKrJeP8n7VL8ho4ZwADEJxmwP3eCIkW6YSl4prZfQYa_vOn5tyReEQ"/>
+                <img alt="Modern dorm" className="w-full h-full object-cover" src={heroImage}/>
               </div>
               {/* Decorative Elements */}
               <div className="absolute -top-6 -right-6 w-32 h-32 bg-primary-fixed-dim/30 rounded-full blur-3xl"></div>
@@ -93,41 +211,67 @@ export default function LandingPage() {
         {/* Search Section */}
         <section className="px-margin-mobile md:px-margin-desktop -mt-12 relative z-20 max-w-container-max mx-auto" id="search-section">
           <div className="bg-white/80 dark:bg-surface-container-highest/80 backdrop-blur-xl border border-glass-stroke shadow-xl rounded-[32px] p-6 md:p-10">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Chi nhánh</label>
-                <div className="relative">
-                  <select className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none">
-                    <option>Quận 1</option>
-                    <option>Quận 7</option>
-                    <option>Thủ Đức</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">expand_more</span>
-                </div>
+                <CustomSelect
+                  value={localBranch}
+                  onChange={setLocalBranch}
+                  options={[
+                    { value: 'Tất cả chi nhánh', label: 'Tất cả chi nhánh' },
+                    { value: 'b-1', label: 'Quận 1' },
+                    { value: 'b-2', label: 'Quận 7' },
+                    { value: 'b-3', label: 'Thủ Đức' }
+                  ]}
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
               </div>
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Khoảng giá</label>
-                <div className="relative">
-                  <select className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none">
-                    <option>Dưới 2tr</option>
-                    <option>2tr - 5tr</option>
-                    <option>Trên 5tr</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">payments</span>
-                </div>
+                <CustomSelect
+                  value={localPrice}
+                  onChange={setLocalPrice}
+                  options={[
+                    'Tất cả',
+                    'Dưới 2tr',
+                    '2tr - 5tr',
+                    'Trên 5tr'
+                  ]}
+                  icon="payments"
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
               </div>
               <div className="space-y-2">
                 <label className="block font-label-md text-caption text-on-surface-variant ml-2">Loại phòng</label>
-                <div className="relative">
-                  <select className="w-full h-14 pl-4 pr-10 bg-surface-container-low border-none rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 appearance-none">
-                    <option>Phòng đơn</option>
-                    <option>Phòng đôi</option>
-                    <option>KTX 4 giường</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-4 pointer-events-none text-on-surface-variant">bed</span>
-                </div>
+                <CustomSelect
+                  value={localRoomType}
+                  onChange={setLocalRoomType}
+                  options={[
+                    { value: 'Loại phòng', label: 'Loại phòng' },
+                    { value: 'Studio', label: 'Studio' },
+                    { value: 'Twin', label: 'Twin' },
+                    { value: 'Dorm', label: 'KTX (Dorm)' }
+                  ]}
+                  icon="bed"
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
               </div>
-              <button className="h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-lg shadow-primary/10 group">
+              <div className="space-y-2">
+                <label className="block font-label-md text-caption text-on-surface-variant ml-2">Giới tính</label>
+                <CustomSelect
+                  value={localGender}
+                  onChange={setLocalGender}
+                  options={[
+                    { value: 'Giới tính', label: 'Giới tính' },
+                    { value: 'Male', label: 'Nam' },
+                    { value: 'Female', label: 'Nữ' },
+                    { value: 'All', label: 'Tất cả' }
+                  ]}
+                  icon="wc"
+                  triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
+                />
+              </div>
+              <button onClick={handleSearch} className="h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-lg shadow-primary/10 group cursor-pointer w-full">
                 <span className="material-symbols-outlined group-hover:rotate-12 transition-transform">search</span>
                 Tìm kiếm
               </button>
@@ -142,170 +286,48 @@ export default function LandingPage() {
               <span className="text-primary font-label-md tracking-widest uppercase">Phòng trống</span>
               <h2 className="font-headline-lg text-headline-lg text-on-surface">Phòng trống tiêu biểu</h2>
             </div>
-            <button className="text-primary font-label-md flex items-center gap-1 hover:underline">
+            <button 
+              onClick={() => navigate('/rooms')} 
+              className="text-primary font-label-md flex items-center gap-1.5 px-4 py-2 border border-transparent rounded-full hover:border-primary/25 hover:bg-primary/5 transition-all duration-300 group cursor-pointer"
+            >
               Xem tất cả phòng
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
             
-            {/* Room Card 1 */}
-            <div className="group bg-white rounded-24 overflow-hidden border border-sage-light hover:shadow-2xl hover:shadow-sage-dark/10 transition-all duration-300 transform hover:-translate-y-1">
-              <div className="aspect-[4/3] overflow-hidden relative">
-                <img alt="Room 1" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9VoLp9e5msCc5wKqAM4XBKLiAa8vGorAl4zC7qrpSO3Jw6aR51FmBOkCruFWm_ttRriBnwS_qHxrJbpNrwqS_qc_-CgVuX0uz5WDx5wJuwxNKYr4YQ0uTBoO6-GIxmdAmtuylRyLwD5P6vBiRdjqLcCncovbXcpASwuvw1eIQpOA2ZXrONwzYcxQC3nFFNHVNtVdqmLJZyyxDNwS_jyUqae4dPz1iMxd_BLefONF9ADc4MnwJQ-RlIyn_dWgvA5nFb2ZKpJwgbg"/>
-                <div className="absolute top-4 right-4 bg-primary text-on-primary px-3 py-1 rounded-full text-caption font-label-md">Studio</div>
-              </div>
-              <div className="p-6 space-y-4">
-                <h3 className="font-headline-md text-xl text-on-surface">Phòng Studio Quận 1</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">ac_unit</span> Điều hòa
-                  </span>
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">wc</span> WC riêng
-                  </span>
-                </div>
-                <div className="pt-4 border-t border-surface-variant flex items-center justify-between">
-                  <span className="text-primary font-bold text-lg">5.500.000đ<span className="text-caption font-normal text-on-surface-variant">/tháng</span></span>
-                  <a className="px-4 py-2 bg-sage-light text-sage-dark rounded-xl font-label-md text-sm hover:bg-primary hover:text-white transition-colors" href="#/login">Đăng ký</a>
-                </div>
-              </div>
-            </div>
-
-            {/* Room Card 2 */}
-            <div className="group bg-white rounded-24 overflow-hidden border border-sage-light hover:shadow-2xl hover:shadow-sage-dark/10 transition-all duration-300 transform hover:-translate-y-1">
-              <div className="aspect-[4/3] overflow-hidden relative">
-                <img alt="Room 2" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDS-wWqvTcUXUsyOBK2iRwWzNn1gAA-V6yK3DOAEZIbjtRhv_kkIU67S4BOI9Z-eNYnmfPlPc4W9Gyf3TFLu16_-2jCQYM0kZGAxfBfDAJP35cdTTfw_avhzDjU0vk-DFGTLdrlyUH_uYA0_P8TxtRd-Cy0ejMlFGsc4V_g_YvwwKXtW8wkoJ5YXbSZor9BpvL6mim1Za0MEStJoQ0TUDHvMgCEDQVczcMeNiiS2gjPItMncTl2bieZ7vwaLZ3YT4AnKyJyJylr1g"/>
-                <div className="absolute top-4 right-4 bg-primary text-on-primary px-3 py-1 rounded-full text-caption font-label-md">Phòng đôi</div>
-              </div>
-              <div className="p-6 space-y-4">
-                <h3 className="font-headline-md text-xl text-on-surface">Phòng Twin Quận 7</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">ac_unit</span> Điều hòa
-                  </span>
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">wifi</span> Wifi
-                  </span>
-                </div>
-                <div className="pt-4 border-t border-surface-variant flex items-center justify-between">
-                  <span className="text-primary font-bold text-lg">3.200.000đ<span className="text-caption font-normal text-on-surface-variant">/tháng</span></span>
-                  <a className="px-4 py-2 bg-sage-light text-sage-dark rounded-xl font-label-md text-sm hover:bg-primary hover:text-white transition-colors" href="#/login">Đăng ký</a>
-                </div>
-              </div>
-            </div>
-
-            {/* Room Card 3 */}
-            <div className="group bg-white rounded-24 overflow-hidden border border-sage-light hover:shadow-2xl hover:shadow-sage-dark/10 transition-all duration-300 transform hover:-translate-y-1">
-              <div className="aspect-[4/3] overflow-hidden relative">
-                <img alt="Room 3" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc4on6VPwYcPdcWUMc2Zf7J2Bf3b-lJ1EDaHM5lcquSfNnjCE2YqkMJ7yj54NAubmgGTt_E8yL8aFHK7xFxqLAYiBW3k__OymcEFUYm692whQkxOorjGYggMF05FFvaozFFESgDEid9EJ6LSGWPZWcVZRvvBI6Dv4ERkEthuT59O-JhUqv9Z5UtKcV9Mx6zve91EDgxvt1AeodWvHo2kfu3Rm_Olt6Bh1uSBPWHwJ_19A1QFcebmuV-t7yBHLacuDIpP9Jvz3vHg"/>
-                <div className="absolute top-4 right-4 bg-primary text-on-primary px-3 py-1 rounded-full text-caption font-label-md">KTX 4 Giường</div>
-              </div>
-              <div className="p-6 space-y-4">
-                <h3 className="font-headline-md text-xl text-on-surface">KTX Thủ Đức</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">cleaning_services</span> Dọn dẹp
-                  </span>
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">wc</span> WC riêng
-                  </span>
-                </div>
-                <div className="pt-4 border-t border-surface-variant flex items-center justify-between">
-                  <span className="text-primary font-bold text-lg">1.800.000đ<span className="text-caption font-normal text-on-surface-variant">/tháng</span></span>
-                  <a className="px-4 py-2 bg-sage-light text-sage-dark rounded-xl font-label-md text-sm hover:bg-primary hover:text-white transition-colors" href="#/login">Đăng ký</a>
-                </div>
-              </div>
-            </div>
-
-            {/* Room Card 4 */}
-            <div className="group bg-white rounded-24 overflow-hidden border border-sage-light hover:shadow-2xl hover:shadow-sage-dark/10 transition-all duration-300 transform hover:-translate-y-1">
-              <div className="aspect-[4/3] overflow-hidden relative">
-                <img alt="Room 4" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiYYlGJ4z4E9tt_aurd5KQAIVfuxWe3iu5Qd6PA_SLzWoHMWoeCFRJwG7iS670pbPeQU1XNl9kgUhLusFafrBiaehyQrTNOmO9BMpL5BI1DmgERoXFm36JvovET4ucpMC9tiWQdyUMS8dSDT_Kxr4Y20xbWD8-uvchl7-KLgxnCnzzUDGDe1JmLgOYvYbnhHsN6WyksR19bDuCywjG7pwriM2gL4mOc89es4-d4yyFkq_jUANxV9cQCqhO9mzxoI7W9_uhi31QQQ"/>
-                <div className="absolute top-4 right-4 bg-primary text-on-primary px-3 py-1 rounded-full text-caption font-label-md">Phòng đơn</div>
-              </div>
-              <div className="p-6 space-y-4">
-                <h3 className="font-headline-md text-xl text-on-surface">Luxury Single Quận 7</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">balcony</span> Ban công
-                  </span>
-                  <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-caption flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">ac_unit</span> Điều hòa
-                  </span>
-                </div>
-                <div className="pt-4 border-t border-surface-variant flex items-center justify-between">
-                  <span className="text-primary font-bold text-lg">4.000.000đ<span className="text-caption font-normal text-on-surface-variant">/tháng</span></span>
-                  <a className="px-4 py-2 bg-sage-light text-sage-dark rounded-xl font-label-md text-sm hover:bg-primary hover:text-white transition-colors" href="#/login">Đăng ký</a>
-                </div>
-              </div>
-            </div>
+            {featuredRooms.map((room, index) => (
+              <RoomCard
+                key={index}
+                title={room.title}
+                image={room.image}
+                tag={room.tag}
+                price={room.price}
+                amenities={room.amenities}
+                onRegisterClick={(e) => handleRegisterClick(e, room.id)}
+              />
+            ))}
 
           </div>
         </section>
 
         {/* Call to Action for Staff */}
-        <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="bg-primary-container/20 border border-primary-container/30 rounded-[32px] p-8 md:p-12 text-center space-y-6">
-            <h3 className="font-headline-md text-2xl text-on-primary-container">Bạn là nhân viên hệ thống?</h3>
-            <p className="text-on-surface-variant max-w-lg mx-auto">Truy cập vào hệ thống quản lý để thực hiện các thao tác vận hành và quản lý phòng trống.</p>
-            <a className="inline-flex items-center gap-2 bg-primary text-on-primary px-10 py-4 rounded-full font-label-md hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95" href="#/login">
-              Đăng nhập hệ thống quản lý
-              <span className="material-symbols-outlined">login</span>
-            </a>
-          </div>
-        </section>
+        {!user && (
+          <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+            <div className="bg-primary-container/20 border border-primary-container/30 rounded-[32px] p-8 md:p-12 text-center space-y-6">
+              <h3 className="font-headline-md text-2xl text-on-primary-container">Bạn là nhân viên hệ thống?</h3>
+              <p className="text-on-surface-variant max-w-lg mx-auto">Truy cập vào hệ thống quản lý để thực hiện các thao tác vận hành và quản lý phòng trống.</p>
+              <a className="inline-flex items-center gap-2 bg-primary text-on-primary px-10 py-4 rounded-full font-label-md hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95" href="#/login">
+                Đăng nhập hệ thống quản lý
+                <span className="material-symbols-outlined">login</span>
+              </a>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Footer */}
-      <footer className="w-full bg-surface-container-high dark:bg-surface-container-highest mt-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter py-stack-lg px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-              <span className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">HomeStay Dorm</span>
-            </div>
-            <p className="font-caption text-caption text-on-surface-variant leading-relaxed max-w-xs">
-              © 2024 HomeStay Dorm. Eco-friendly Luxury meets User-friendly Utility. Hệ thống ký túc xá cao cấp dành cho sinh viên và người đi làm.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h4 className="font-label-md text-on-surface mb-4">Thông tin</h4>
-              <ul className="space-y-2 font-caption text-caption text-on-surface-variant">
-                <li><a className="hover:underline decoration-primary" href="#">Contact Info</a></li>
-                <li><a className="hover:underline decoration-primary" href="#">Branch Locations</a></li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-label-md text-on-surface mb-4">Mạng xã hội</h4>
-              <ul className="space-y-2 font-caption text-caption text-on-surface-variant">
-                <li><a className="hover:underline decoration-primary" href="#">Facebook</a></li>
-                <li><a className="hover:underline decoration-primary" href="#">Instagram</a></li>
-                <li><a className="hover:underline decoration-primary" href="#">LinkedIn</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <h4 className="font-label-md text-on-surface">Đăng ký nhận tin</h4>
-            <div className="relative">
-              <input className="w-full h-12 px-4 rounded-xl bg-surface-container border-none focus:ring-1 focus:ring-primary font-caption text-caption" placeholder="Email của bạn" type="email"/>
-              <button className="absolute right-1 top-1 h-10 px-4 bg-primary text-on-primary rounded-lg text-caption font-label-md">Gửi</button>
-            </div>
-            <div className="flex gap-4 pt-4">
-              <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">call</span>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">mail</span>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">location_on</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
