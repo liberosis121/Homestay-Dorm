@@ -37,6 +37,10 @@ import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
 import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
+import CustomerContractsPage from './features/customer/CustomerContractsPage';
+import InvoicesDashboardPage from './features/customer/InvoicesDashboardPage';
+import InvoicePaymentPage from './features/customer/InvoicePaymentPage';
+
 import SaleDashboardPage from './features/sale/SaleDashboardPage';
 import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
 import CustomerLookupPage from './features/sale/CustomerLookupPage';
@@ -109,7 +113,9 @@ function CustomerLayout() {
           <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
-          {/* We can add other customer routes here */}
+          <Route path="/customer/contracts" element={<CustomerContractsPage />} />
+          <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
+          <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
           <Route path="*" element={<ProfilePage />} />
         </Routes>
       </main>
