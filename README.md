@@ -1,7 +1,17 @@
-# Luxe Green Dormitory — Hệ thống Quản lý Dịch vụ Lưu trú HomeStay Dorm
+# Hệ thống Quản lý Dịch vụ Lưu trú HomeStay Dorm
 
 Đồ án thực hành môn **Phân tích Thiết kế Hệ thống Thông tin (PTTK HTTT)** - Nhóm 3 - Lớp CQ2023/1.
 Hệ thống được thiết kế để quản lý toàn bộ quy trình vận hành ký túc xá/homestay dorm từ lúc khách hàng tìm phòng, đặt cọc, ký hợp đồng, bàn giao tài sản cho đến khi trả phòng và thanh lý đối soát hoàn cọc.
+
+## 👥 Thông Tin Nhóm (Nhóm 3 - CQ2023/1)
+
+| MSSV | Họ và tên | Vai trò |
+|------|-----------|---------|
+| 23120189 | Hoàng Quốc Việt | Thành viên |
+| 23120193 | Trần Kim Yến | **Trưởng nhóm** |
+| 23120201 | Nguyễn Thị Trúc Hằng | Phó nhóm |
+| 23120209 | Lê Hoàng Nhật Anh | Thành viên |
+| 23120237 | Lê Lâm Trí Đức | Thành viên |
 
 ---
 
