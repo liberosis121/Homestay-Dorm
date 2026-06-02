@@ -1,32 +1,29 @@
 import { useState } from 'react';
 import {
   Search, FileText, Clock, CheckCircle2, User, Phone, Building2,
-  CalendarDays, Banknote, ChevronRight, Filter, SlidersHorizontal
+  CalendarDays, Banknote, ChevronRight, Filter, MapPin
 } from 'lucide-react';
 import { DepositRecord } from '../SaleContractsPage';
 
 interface Props {
   deposits: DepositRecord[];
   onSelect: (deposit: DepositRecord) => void;
+  staffBranch: string;
+  onViewContracts: () => void;
 }
 
-const BRANCH_FILTER_OPTIONS = ['Tất cả chi nhánh', 'Quận 1', 'Bình Thạnh', 'Gò Vấp', 'Thủ Đức', 'Phú Nhuận'];
-
-export default function DepositPendingList({ deposits, onSelect }: Props) {
+export default function DepositPendingList({ deposits, onSelect, staffBranch, onViewContracts }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState('Tất cả chi nhánh');
 
   const filtered = deposits.filter((d) => {
     const q = searchQuery.toLowerCase();
-    const matchSearch =
+    return (
       !q ||
       d.customerName.toLowerCase().includes(q) ||
       d.depositCode.toLowerCase().includes(q) ||
       d.customerPhone.includes(q) ||
-      d.roomCode.toLowerCase().includes(q);
-    const matchBranch =
-      branchFilter === 'Tất cả chi nhánh' || d.branch === branchFilter;
-    return matchSearch && matchBranch;
+      d.roomCode.toLowerCase().includes(q)
+    );
   });
 
   return (
@@ -44,18 +41,29 @@ export default function DepositPendingList({ deposits, onSelect }: Props) {
             </span>{' '}
             và đang chờ nhận phòng.
           </p>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-[#6f583c] font-semibold">
+            <MapPin className="w-3.5 h-3.5" />
+            Chi nhánh của bạn: <span className="bg-[#faf2ec] border border-[#d1c4b9] px-2 py-0.5 rounded-full ml-1">{staffBranch}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="bg-[#fef3c7] text-[#92400e] px-3 py-1.5 rounded-full font-semibold border border-[#fcd34d]">
+        <div className="flex items-center gap-2 text-sm flex-wrap">
+          <button
+            onClick={onViewContracts}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-xs font-semibold hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Hợp đồng & Bản nháp
+          </button>
+          <span className="bg-[#fef3c7] text-[#92400e] px-3 py-1.5 rounded-full font-semibold border border-[#fcd34d] text-xs">
             <Clock className="w-3.5 h-3.5 inline mr-1" />
             {filtered.length} phiếu chờ xử lý
           </span>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-4 flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative">
+      {/* Search */}
+      <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-4">
+        <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9d8879]" />
           <input
             type="text"
@@ -64,18 +72,6 @@ export default function DepositPendingList({ deposits, onSelect }: Props) {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#d1c4b9] text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition placeholder-[#b5a89c]"
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-[#9d8879]" />
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="pl-3 pr-8 py-2.5 rounded-xl border border-[#d1c4b9] text-sm bg-[#fff8f3] text-[#1e1b17] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition cursor-pointer"
-          >
-            {BRANCH_FILTER_OPTIONS.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
         </div>
       </div>
 
@@ -206,11 +202,11 @@ export default function DepositPendingList({ deposits, onSelect }: Props) {
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-3 bg-[#faf2ec] border-t border-[#d1c4b9] flex items-center justify-between text-xs text-[#9d8879]">
-            <span>Hiển thị <strong className="text-[#1e1b17]">{filtered.length}</strong> / {deposits.length} phiếu đặt cọc</span>
+          <div className="px-5 py-3 bg-[#faf2ec] border-t border-[#d1c4b9] flex items-center justify-between text-xs text-[#9d8879] flex-wrap gap-2">
+            <span>Hiển thị <strong className="text-[#1e1b17]">{filtered.length}</strong> / {deposits.length} phiếu – Chi nhánh <strong className="text-[#6f583c]">{staffBranch}</strong></span>
             <span className="flex items-center gap-1">
               <User className="w-3 h-3" />
-              Chỉ hiển thị phiếu đã được kiểm tra điều kiện lưu trú đạt
+              Chỉ hiển thị phiếu kiểm tra lưu trú đạt của chi nhánh bạn
             </span>
           </div>
         </div>

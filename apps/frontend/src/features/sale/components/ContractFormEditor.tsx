@@ -443,7 +443,6 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
             <ContractReceiptWidget
               deposit={deposit}
               formData={formData}
-              checklistChecked={checklistChecked}
             />
             {/* Checklist (desktop) */}
             <div className={`bg-white rounded-2xl border shadow-sm p-5 ${errors.checklist ? 'border-red-400' : 'border-[#d1c4b9]'}`}>

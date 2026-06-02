@@ -1,27 +1,17 @@
-import { CreditCard, Banknote, CheckCircle2, AlertCircle, Wallet, Home, Wrench } from 'lucide-react';
+import { CreditCard, Banknote, Wallet, Home, Wrench } from 'lucide-react';
 import { ContractFormData, DepositRecord } from '../SaleContractsPage';
 
 interface Props {
   deposit: DepositRecord;
   formData: Partial<ContractFormData>;
-  checklistChecked: boolean[];
 }
 
 const SERVICE_FEE = 250_000;
 
-export default function ContractReceiptWidget({ deposit, formData, checklistChecked }: Props) {
+export default function ContractReceiptWidget({ deposit, formData }: Props) {
   const monthlyRent = formData.rentPrice ?? deposit.roomMonthlyRent;
   const depositAmount = deposit.depositAmount;
   const total = monthlyRent + depositAmount + SERVICE_FEE;
-  const allChecked = checklistChecked.every(Boolean);
-  const checkedCount = checklistChecked.filter(Boolean).length;
-
-  const checklistItems = [
-    'Đã xác minh danh tính khách thuê',
-    'Đã xác minh tình trạng phòng',
-    'Đã giải thích đầy đủ điều khoản hợp đồng',
-    'Khách hàng đồng ý và sẵn sàng ký hợp đồng',
-  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -106,40 +96,6 @@ export default function ContractReceiptWidget({ deposit, formData, checklistChec
               {deposit.roomMonthlyRent.toLocaleString('vi-VN')} đ/tháng
             </span>
           </div>
-        </div>
-      </div>
-
-      {/* Checklist xác nhận */}
-      <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${allChecked ? 'border-[#2d6a4f]' : 'border-[#d1c4b9]'}`}>
-        <div className={`px-5 py-3.5 border-b flex justify-between items-center ${allChecked ? 'border-[#d8f3dc] bg-[#f0faf2]' : 'border-[#eee7e1]'}`}>
-          <h3 className="font-bold text-sm text-[#1e1b17] flex items-center gap-2">
-            {allChecked
-              ? <CheckCircle2 className="w-4 h-4 text-[#2d6a4f]" />
-              : <AlertCircle className="w-4 h-4 text-[#d97706]" />
-            }
-            Checklist xác nhận
-          </h3>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${allChecked ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
-            {checkedCount}/{checklistItems.length}
-          </span>
-        </div>
-        <div className="p-4 space-y-2.5">
-          {checklistItems.map((item, i) => (
-            <div key={i} className="flex items-start gap-2.5 text-sm">
-              <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 ${checklistChecked[i] ? 'bg-[#2d6a4f]' : 'bg-[#eee7e1]'}`}>
-                {checklistChecked[i] && <CheckCircle2 className="w-3 h-3 text-white" />}
-              </div>
-              <span className={checklistChecked[i] ? 'text-[#1e1b17]' : 'text-[#9d8879]'}>
-                {item}
-              </span>
-            </div>
-          ))}
-          {!allChecked && (
-            <p className="text-[11px] text-[#d97706] mt-2 font-medium flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Hoàn tất checklist để kích hoạt nút lập hợp đồng
-            </p>
-          )}
         </div>
       </div>
     </div>

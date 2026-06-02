@@ -2,6 +2,8 @@ import { useState } from 'react';
 import DepositPendingList from './components/DepositPendingList';
 import ContractFormEditor from './components/ContractFormEditor';
 import ContractSuccessModal from './components/ContractSuccessModal';
+import ContractListView, { DraftContract } from './components/ContractListView';
+import DraftToast from './components/DraftToast';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
@@ -46,6 +48,10 @@ export interface CreatedContract {
   branch: string;
   startDate: string;
 }
+
+// ─── Simulated current staff session ─────────────────────────────────────────
+// Trong thực tế, giá trị này lấy từ auth context / store (chi nhánh của nhân viên đang đăng nhập)
+const STAFF_BRANCH = 'Quận 1';
 
 // ─── Mock Data: 15 phiếu cọc đủ điều kiện ───────────────────────────────────
 
@@ -302,17 +308,28 @@ function genInvoiceCode() {
 function genHandoverCode() {
   return `BG-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
 }
+function getCurrentTime() {
+  return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) +
+    ' – ' + new Date().toLocaleDateString('vi-VN');
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-type PageState = 'list' | 'form' | 'success';
+type PageState = 'list' | 'form' | 'success' | 'contracts';
+type ContractListTab = 'contracts' | 'drafts';
 
 export default function SaleContractsPage() {
   const [pageState, setPageState] = useState<PageState>('list');
   const [selectedDeposit, setSelectedDeposit] = useState<DepositRecord | null>(null);
   const [createdContract, setCreatedContract] = useState<CreatedContract | null>(null);
   const [completedDepositIds, setCompletedDepositIds] = useState<string[]>([]);
+  const [completedContracts, setCompletedContracts] = useState<CreatedContract[]>([]);
+  const [draftContracts, setDraftContracts] = useState<DraftContract[]>([]);
+  const [showDraftToast, setShowDraftToast] = useState(false);
+  const [contractListTab, setContractListTab] = useState<ContractListTab>('contracts');
 
-  const pendingDeposits = MOCK_DEPOSITS.filter((d) => !completedDepositIds.includes(d.id));
+  // Filter deposits by staff branch (implicit - no manual filter)
+  const branchDeposits = MOCK_DEPOSITS.filter((d) => d.branch === STAFF_BRANCH);
+  const pendingDeposits = branchDeposits.filter((d) => !completedDepositIds.includes(d.id));
 
   const handleSelectDeposit = (deposit: DepositRecord) => {
     setSelectedDeposit(deposit);
@@ -322,8 +339,6 @@ export default function SaleContractsPage() {
 
   const handleSubmitContract = (data: ContractFormData) => {
     if (!selectedDeposit) return;
-
-    // Simulate contract creation
     const contract: CreatedContract = {
       contractCode: genContractCode(),
       invoiceCode: genInvoiceCode(),
@@ -336,14 +351,33 @@ export default function SaleContractsPage() {
         : '—',
     };
     setCreatedContract(contract);
+    setCompletedContracts((prev) => [contract, ...prev]);
     setCompletedDepositIds((prev) => [...prev, selectedDeposit.id]);
+    // Remove draft for this deposit if exists
+    setDraftContracts((prev) => prev.filter((d) => d.depositCode !== selectedDeposit.depositCode));
     setPageState('success');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSaveDraft = (_data: ContractFormData) => {
-    // Simulate draft save with a toast-style feedback
-    alert('Hợp đồng nháp đã được lưu thành công!');
+  const handleSaveDraft = (data: ContractFormData) => {
+    if (!selectedDeposit) return;
+    const draft: DraftContract = {
+      id: `draft-${selectedDeposit.id}-${Date.now()}`,
+      depositCode: selectedDeposit.depositCode,
+      customerName: selectedDeposit.customerName,
+      roomCode: selectedDeposit.roomCode,
+      branch: selectedDeposit.branch,
+      savedAt: getCurrentTime(),
+      rentPrice: data.rentPrice ?? selectedDeposit.roomMonthlyRent,
+      contractType: data.contractType ?? 'long_term',
+      startDate: data.startDate ?? '',
+    };
+    // Replace existing draft for same deposit if exists
+    setDraftContracts((prev) => {
+      const filtered = prev.filter((d) => d.depositCode !== selectedDeposit.depositCode);
+      return [draft, ...filtered];
+    });
+    setShowDraftToast(true);
   };
 
   const handleCloseSuccess = () => {
@@ -353,15 +387,40 @@ export default function SaleContractsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleViewContracts = (tab: ContractListTab = 'contracts') => {
+    setContractListTab(tab);
+    setPageState('contracts');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteDraft = (draftId: string) => {
+    setDraftContracts((prev) => prev.filter((d) => d.id !== draftId));
+  };
+
+  const handleResumeDraft = (draftId: string) => {
+    const draft = draftContracts.find((d) => d.id === draftId);
+    if (!draft) return;
+    const deposit = branchDeposits.find((d) => d.depositCode === draft.depositCode);
+    if (deposit) {
+      setSelectedDeposit(deposit);
+      setPageState('form');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* ── Deposit pending list ── */}
       {pageState === 'list' && (
         <DepositPendingList
           deposits={pendingDeposits}
           onSelect={handleSelectDeposit}
+          staffBranch={STAFF_BRANCH}
+          onViewContracts={() => handleViewContracts('contracts')}
         />
       )}
 
+      {/* ── Contract form editor ── */}
       {pageState === 'form' && selectedDeposit && (
         <ContractFormEditor
           deposit={selectedDeposit}
@@ -374,21 +433,43 @@ export default function SaleContractsPage() {
         />
       )}
 
+      {/* ── Success state: list in background + modal on top ── */}
       {pageState === 'success' && createdContract && (
         <>
-          {/* Render list in background, modal on top */}
           <DepositPendingList
             deposits={pendingDeposits}
             onSelect={handleSelectDeposit}
+            staffBranch={STAFF_BRANCH}
+            onViewContracts={() => handleViewContracts('contracts')}
           />
           <ContractSuccessModal
             {...createdContract}
             onClose={handleCloseSuccess}
-            onViewInvoice={handleCloseSuccess}
+            onViewContracts={() => handleViewContracts('contracts')}
             onPrint={() => window.print()}
           />
         </>
       )}
+
+      {/* ── Contracts & Drafts list view ── */}
+      {pageState === 'contracts' && (
+        <ContractListView
+          completedContracts={completedContracts}
+          draftContracts={draftContracts}
+          activeTab={contractListTab}
+          onBack={() => setPageState('list')}
+          onNewContract={() => setPageState('list')}
+          onResumeDraft={handleResumeDraft}
+          onDeleteDraft={handleDeleteDraft}
+        />
+      )}
+
+      {/* ── Custom draft toast (global, above all) ── */}
+      <DraftToast
+        show={showDraftToast}
+        onClose={() => setShowDraftToast(false)}
+        onViewDrafts={() => handleViewContracts('drafts')}
+      />
     </div>
   );
 }
