@@ -168,7 +168,6 @@ function DashboardLayout() {
       case 'sale':
         return [
           { path: '/sale/dashboard', label: 'Tổng quan', icon: Home },
-          { path: '/sale/registrations', label: 'Đăng ký thuê phòng', icon: ClipboardList },
           { path: '/sale/schedules', label: 'Lịch hẹn xem phòng', icon: Calendar },
           { path: '/sale/contracts', label: 'Lập hợp đồng thuê', icon: FileText },
           { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
@@ -447,7 +446,6 @@ function DashboardLayout() {
             <Route path="/rooms" element={<RoomsPage />} />
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
-            {user.role === 'sale' && <Route path="/sale/registrations" element={<SaleRegistrationsScreen />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
             {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupScreen />} />}
             
@@ -677,77 +675,7 @@ function ManagerFloorMapScreen() {
   );
 }
 
-// ----------------------------------------------------
-// SCREEN: SALE - LEASE REGISTRATIONS (UC12)
-// ----------------------------------------------------
-function SaleRegistrationsScreen() {
-  const registrations = [
-    { id: 'reg-101', name: 'Nguyễn Văn Hải', phone: '0901112223', room: 'Phòng 101', date: '01/06/2026', type: 'Cá nhân', status: 'Đang xử lý' },
-    { id: 'reg-102', name: 'Đặng Thị Lan + 2 thành viên', phone: '0983334445', room: 'Phòng 102', date: '31/05/2026', type: 'Nhóm (3 người)', status: 'Chờ lịch hẹn' },
-    { id: 'reg-103', name: 'Phạm Minh Khoa', phone: '0917778889', room: 'Phòng 201', date: '29/05/2026', type: 'Cá nhân', status: 'Đã lập lịch' }
-  ];
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-white">Yêu cầu đăng ký thuê phòng</h1>
-        <p className="text-slate-400 text-sm mt-1">Quản lý và tiếp nhận hồ sơ đăng ký từ cổng thông tin khách hàng.</p>
-      </div>
-
-      <div className="glass-card rounded-xl border border-slate-800/80 overflow-hidden">
-        <div className="p-4 border-b border-slate-800/80 bg-slate-900/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative max-w-sm w-full">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm phiếu đăng ký..."
-              className="w-full bg-slate-950 border border-slate-850 rounded-lg py-2 pl-9 pr-4 text-slate-300 placeholder-slate-500 focus:outline-none text-xs"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-800">
-                <th className="p-4">Mã phiếu</th>
-                <th className="p-4">Khách hàng</th>
-                <th className="p-4">SĐT</th>
-                <th className="p-4">Nhu cầu phòng</th>
-                <th className="p-4">Ngày đăng ký</th>
-                <th className="p-4">Hình thức</th>
-                <th className="p-4">Trạng thái</th>
-                <th className="p-4 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-850 text-slate-300">
-              {registrations.map((reg) => (
-                <tr key={reg.id} className="hover:bg-slate-900/20 transition-all">
-                  <td className="p-4 font-mono font-bold text-violet-400">{reg.id}</td>
-                  <td className="p-4 font-semibold text-slate-200">{reg.name}</td>
-                  <td className="p-4">{reg.phone}</td>
-                  <td className="p-4">{reg.room}</td>
-                  <td className="p-4">{reg.date}</td>
-                  <td className="p-4">{reg.type}</td>
-                  <td className="p-4">
-                    <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
-                      {reg.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold transition-colors">
-                      Xử lý hồ sơ
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ----------------------------------------------------
 // SCREEN: ACCOUNTANT - INVOICES DASHBOARD (UC15, UC16)
