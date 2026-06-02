@@ -104,9 +104,9 @@ const INITIAL_DB = {
   viewing_schedules: [
     {
       id: 'vs-1', customer_id: 'u-6', room_id: 'r-2',
-      room_name: 'Phòng Studio A (Phòng 102 - Nữ)',
+      room_name: 'Phòng 102 (Nữ)',
       room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
-      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Quận 1, TP.HCM',
+      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
       scheduled_date: '2026-06-15', scheduled_time: '09:30',
       staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
       status: 'confirmed', timeline_step: 2,
@@ -114,9 +114,9 @@ const INITIAL_DB = {
     },
     {
       id: 'vs-2', customer_id: 'u-6', room_id: 'r-4',
-      room_name: 'Phòng Suite B (Phòng 202 - Nữ)',
+      room_name: 'Phòng 202 (Nữ)',
       room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
-      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Thủ Đức',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
       scheduled_date: '2026-06-20', scheduled_time: '14:00',
       staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
       status: 'pending', timeline_step: 1,
@@ -124,23 +124,80 @@ const INITIAL_DB = {
     },
     {
       id: 'vs-3', customer_id: 'u-6', room_id: 'r-1',
-      room_name: 'Phòng Dorm A (Phòng 101 - Nam)',
+      room_name: 'Phòng 101 (Nam)',
       room_image_url: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=400&q=80',
-      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Quận 1, TP.HCM',
+      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
       scheduled_date: '2026-04-20', scheduled_time: '10:00',
       staff_name: 'NV. Minh Anh', staff_phone: '0912300001',
       status: 'completed', timeline_step: 3,
+      note: 'Khách hàng đã xem phòng, đánh giá cao sự sạch sẽ và thoáng mát của phòng Dorm. Đã tư vấn quy trình đăng ký thuê.',
       created_at: '2026-04-15T09:00:00Z'
     },
     {
       id: 'vs-4', customer_id: 'u-6', room_id: 'r-6',
-      room_name: 'Phòng Studio C (Phòng 203 - Nữ)',
+      room_name: 'Phòng 203 (Nữ)',
       room_image_url: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80',
-      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Thủ Đức',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
       scheduled_date: '2026-03-01', scheduled_time: '11:00',
       staff_name: 'NV. Lê Thị Hương', staff_phone: '0998765432',
       status: 'cancelled', timeline_step: 1,
+      note: 'Khách hàng yêu cầu hủy lịch hẹn do thay đổi kế hoạch chuyển chỗ ở.',
       created_at: '2026-02-25T14:00:00Z'
+    },
+    {
+      id: 'vs-5', customer_id: 'u-6', room_id: 'r-5',
+      room_name: 'Phòng 103 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
+      scheduled_date: '2026-06-03', scheduled_time: '10:00',
+      staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
+      status: 'confirmed', timeline_step: 2,
+      note: 'Lịch hẹn ngày mai. Nhắc khách mang theo CCCD khi đến xem phòng.',
+      created_at: '2026-05-30T10:00:00Z'
+    },
+    {
+      id: 'vs-6', customer_id: 'u-6', room_id: 'r-3',
+      room_name: 'Phòng 201 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
+      scheduled_date: '2026-06-04', scheduled_time: '15:30',
+      staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
+      status: 'pending', timeline_step: 1,
+      note: 'Khách muốn xem thử chất lượng wifi và khu vực giặt giũ công cộng.',
+      created_at: '2026-06-01T11:00:00Z'
+    },
+    {
+      id: 'vs-7', customer_id: 'u-6', room_id: 'r-6',
+      room_name: 'Phòng 203 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
+      scheduled_date: '2026-06-08', scheduled_time: '08:30',
+      staff_name: 'NV. Lê Thị Hương', staff_phone: '0998765432',
+      status: 'confirmed', timeline_step: 2,
+      note: 'Lịch hẹn đầu buổi sáng. Đã xác nhận khách đi xe máy và cần chỗ đỗ xe.',
+      created_at: '2026-06-01T15:00:00Z'
+    },
+    {
+      id: 'vs-8', customer_id: 'u-6', room_id: 'r-2',
+      room_name: 'Phòng 102 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
+      scheduled_date: '2026-05-28', scheduled_time: '14:30',
+      staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
+      status: 'completed', timeline_step: 3,
+      note: 'Khách rất ưng ý với thiết kế tủ đồ âm tường và bàn trang điểm có sẵn. Đang thảo luận thêm với gia đình về giá.',
+      created_at: '2026-05-25T09:30:00Z'
+    },
+    {
+      id: 'vs-9', customer_id: 'u-6', room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
+      scheduled_date: '2026-05-31', scheduled_time: '16:00',
+      staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
+      status: 'cancelled', timeline_step: 1,
+      note: 'Không liên lạc được với khách hàng sau 3 cuộc gọi xác nhận trước giờ hẹn.',
+      created_at: '2026-05-30T14:00:00Z'
     }
   ] as ViewingSchedule[]
 };
@@ -165,6 +222,11 @@ export const initializeMockDB = () => {
       if (db && db.rooms) {
         // Force update rooms to ensure new properties exist
         db.rooms = INITIAL_DB.rooms;
+        updated = true;
+      }
+      if (db && (!db.viewing_schedules || db.viewing_schedules.length < 8)) {
+        // Force update viewing_schedules to seed the new diverse mock data
+        db.viewing_schedules = INITIAL_DB.viewing_schedules;
         updated = true;
       }
       if (updated) {

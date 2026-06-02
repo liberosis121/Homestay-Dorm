@@ -105,7 +105,7 @@ const CalendarWidget = ({ schedules }: { schedules: ViewingSchedule[] }) => {
   const pad = (n: number) => String(n).padStart(2, '0');
 
   return (
-    <div className="bg-surface-container-lowest rounded-[24px] border border-outline-variant/40 shadow-sm p-5 sticky top-28">
+    <div className="bg-surface-container-lowest rounded-[24px] border border-outline-variant/40 shadow-sm p-5 sticky top-20">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-on-surface">
@@ -472,9 +472,9 @@ export default function ViewingSchedulePage() {
     <div className="bg-background min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 pt-24 pb-16 max-w-[1280px] mx-auto w-full px-4 md:px-10">
+      <main className="flex-1 pt-7 pb-16 max-w-[1280px] mx-auto w-full px-4 md:px-10">
         {/* ─── Hero Search ──────────────────────────── */}
-        <section className="bg-white rounded-[24px] border border-outline-variant/40 shadow-sm p-8 mb-8">
+        <section className="bg-white rounded-[24px] border border-outline-variant/40 shadow-sm p-6 mb-6">
           <h1 className="text-3xl font-bold text-primary mb-1">Tra cứu lịch xem phòng</h1>
           <p className="text-on-surface-variant text-sm mb-5">
             Quản lý các cuộc hẹn hoặc tìm chi tiết đặt phòng bằng thông tin liên hệ của bạn.
@@ -500,7 +500,7 @@ export default function ViewingSchedulePage() {
         </section>
 
         {/* ─── Stats Row ────────────────────────────── */}
-        <section className="grid grid-cols-4 gap-4 mb-8">
+        <section className="grid grid-cols-4 gap-4 mb-6">
           {statsCards.map(s => (
             <div key={s.label} className={`rounded-[20px] p-5 text-center shadow-sm border ${
               s.highlight
