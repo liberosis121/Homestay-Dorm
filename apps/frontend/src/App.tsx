@@ -20,7 +20,8 @@ import {
   Bell,
   Compass,
   ClipboardList,
-  Activity
+  Activity,
+  Zap
 } from 'lucide-react';
 import { initializeMockDB, getMockDB, saveMockDB, Room } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
@@ -38,6 +39,7 @@ import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
 import CustomerContractsPage from './features/customer/CustomerContractsPage';
+import CustomerServicesPage from './features/customer/CustomerServicesPage';
 import InvoicesDashboardPage from './features/customer/InvoicesDashboardPage';
 import InvoicePaymentPage from './features/customer/InvoicePaymentPage';
 
@@ -114,6 +116,7 @@ function CustomerLayout() {
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
           <Route path="/customer/contracts" element={<CustomerContractsPage />} />
+          <Route path="/customer/services" element={<CustomerServicesPage />} />
           <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
           <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
           <Route path="*" element={<ProfilePage />} />
@@ -196,6 +199,7 @@ function DashboardLayout() {
         return [
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
           { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
+          { path: '/customer/services', label: user.renting_room_name ? 'Dịch vụ của tôi' : 'Dịch vụ & Bảng giá', icon: Zap },
           { path: '/customer/schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
           { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
           { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard }
