@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { 
   Home, 
   Folder, 
-  Users, 
+  Users, User,
   CreditCard, 
   Layers, 
   Settings, 
@@ -30,6 +30,7 @@ import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import ProfilePage from './features/customer/ProfilePage';
+import StaffProfilePage from './features/staff/StaffProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
 import RoomDetailPage from './features/rooms/RoomDetailPage';
 import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
@@ -40,7 +41,6 @@ import SaleDashboardPage from './features/sale/SaleDashboardPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
-import CustomSelect from './components/ui/CustomSelect';
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -121,12 +121,28 @@ function CustomerLayout() {
 // SIDEBAR & HEADER MAIN DASHBOARD LAYOUT
 // ----------------------------------------------------
 function DashboardLayout() {
-  const { user, setLogoutConfirmOpen, login } = useAuthStore();
+  const { user, setLogoutConfirmOpen } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const navigate = useNavigate();
 
   if (!user) return <Navigate to="/login" replace />;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Dynamic Sidebar Menu Items based on User Role
   const getMenuItems = () => {
@@ -189,26 +205,35 @@ function DashboardLayout() {
   const roleTheme = getRoleLabel();
   const menuItems = getMenuItems();
 
-  const handleQuickRoleSwitch = async (newRoleEmail: string) => {
-    await login(newRoleEmail);
-    navigate('/');
-    setMobileMenuOpen(false);
+  const getSidebarSubtitle = () => {
+    switch (user.role) {
+      case 'sale': return 'PHÂN HỆ NHÂN VIÊN SALE';
+      case 'manager': return 'PHÂN HỆ QUẢN LÝ CHI NHÁNH';
+      case 'accountant': return 'PHÂN HỆ KẾ TOÁN';
+      case 'admin': return 'PHÂN HỆ QUẢN TRỊ VIÊN';
+      default: return 'PHÂN HỆ QUẢN LÝ';
+    }
   };
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface flex relative font-body-md selection:bg-primary-container selection:text-on-primary-container">
+    <div className="min-h-screen bg-[#fff8f3] text-[#1e1b17] flex relative font-body-md selection:bg-[#6f583c]/20 selection:text-[#6f583c]">
       
       {/* ----------------------------------------------------
           SIDEBAR (Desktop)
          ---------------------------------------------------- */}
-      <aside className="w-64 bg-surface-container-low border-r border-surface-variant/50 hidden md:flex flex-col flex-shrink-0 relative z-30 shadow-lg shadow-primary/5">
-        <div className="p-6 border-b border-surface-variant/50 flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-xl text-primary border border-primary/20">
-            <Building className="w-5 h-5" />
+      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col flex-shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
+        <div className="p-6 border-b border-[#d1c4b9] flex items-center gap-3">
+          <div className="p-2 bg-[#4a6549]/10 rounded-xl text-[#4a6549] border border-[#4a6549]/20 flex items-center justify-center shrink-0">
+            <span 
+              className="material-symbols-outlined text-xl" 
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              eco
+            </span>
           </div>
           <div>
-            <h2 className="font-display-lg text-base tracking-tight text-on-surface">HOMESTAY DORM</h2>
-            <span className="text-[10px] text-primary font-bold tracking-wider uppercase">Phân hệ quản lý</span>
+            <h2 className="font-display-lg text-base tracking-tight text-[#4a6549] font-bold">HOMESTAY DORM</h2>
+            <span className="text-[10px] text-[#4a6549] font-bold tracking-wider uppercase">{getSidebarSubtitle()}</span>
           </div>
         </div>
 
@@ -222,38 +247,26 @@ function DashboardLayout() {
                 to={item.path}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-24 text-sm font-label-md transition-all duration-300 ${
                   isActive 
-                    ? 'bg-primary text-on-primary shadow-md shadow-primary/20' 
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                    ? 'bg-[#6f583c] text-white shadow-md shadow-[#6f583c]/20' 
+                    : 'text-[#4e453c] hover:bg-[#fff8f3] hover:text-[#1e1b17]'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-on-primary' : 'text-on-surface-variant'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#7f756b]'}`} />
                 {item.label}
               </Link>
             );
           })}
-        </nav>
 
-        {/* User Info footer in Sidebar */}
-        <div className="p-4 border-t border-surface-variant/50 bg-surface-container-lowest">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-headline-md shadow-inner">
-              {user.full_name.charAt(0)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="block text-sm font-label-md text-on-surface truncate">{user.full_name}</span>
-              <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full border mt-1 font-bold tracking-wide ${roleTheme.bg}`}>
-                {roleTheme.text}
-              </span>
-            </div>
-          </div>
+          <div className="h-px bg-[#d1c4b9] my-4 mx-2"></div>
+
           <button
             onClick={() => setLogoutConfirmOpen(true)}
-            className="w-full py-3 px-3 bg-surface hover:bg-error/10 hover:text-error border border-surface-variant rounded-24 text-sm font-label-md text-on-surface-variant transition-all flex items-center justify-center gap-2 group cursor-pointer"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-24 text-sm font-label-md text-error hover:bg-error/10 transition-all cursor-pointer text-left"
           >
-            <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            Đăng xuất phiên
+            <LogOut className="w-5 h-5 text-error" />
+            Đăng xuất
           </button>
-        </div>
+        </nav>
       </aside>
 
       {/* ----------------------------------------------------
@@ -261,14 +274,22 @@ function DashboardLayout() {
          ---------------------------------------------------- */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 md:hidden">
-          <div className="w-64 bg-slate-900 h-full border-r border-slate-800 flex flex-col">
-            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
-              <span className="font-extrabold text-sm text-white">HOMESTAY DORM</span>
-              <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
+          <div className="w-64 bg-[#faf2ec] h-full border-r border-[#d1c4b9] flex flex-col">
+            <div className="p-6 border-b border-[#d1c4b9] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span 
+                  className="material-symbols-outlined text-[#4a6549] text-xl" 
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  eco
+                </span>
+                <span className="font-extrabold text-sm text-[#4a6549]">HOMESTAY DORM</span>
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="text-[#7f756b] hover:text-[#6f583c]">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <nav className="flex-1 p-4 space-y-1">
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -279,8 +300,8 @@ function DashboardLayout() {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                       isActive 
-                        ? 'bg-violet-600/10 text-violet-400 border-l-2 border-violet-500' 
-                        : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'
+                        ? 'bg-[#6f583c]/10 text-[#6f583c] border-l-2 border-[#6f583c]' 
+                        : 'text-[#4e453c] hover:bg-[#fff8f3] hover:text-[#1e1b17]'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -288,16 +309,20 @@ function DashboardLayout() {
                   </Link>
                 );
               })}
-            </nav>
-            <div className="p-4 border-t border-slate-800 bg-slate-950/40">
+
+              <div className="h-px bg-[#d1c4b9] my-4 mx-2"></div>
+
               <button
-                onClick={() => setLogoutConfirmOpen(true)}
-                className="w-full py-2.5 px-3 bg-slate-800/50 hover:bg-slate-850 hover:text-rose-400 border border-slate-700/50 rounded-lg text-xs font-semibold text-slate-400 transition-all flex items-center justify-center gap-2"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setLogoutConfirmOpen(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-all cursor-pointer text-left"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-4 h-4 text-error" />
                 Đăng xuất
               </button>
-            </div>
+            </nav>
           </div>
         </div>
       )}
@@ -305,61 +330,115 @@ function DashboardLayout() {
       {/* ----------------------------------------------------
           MAIN CONTENT CONTAINER
          ---------------------------------------------------- */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#fff8f3]">
         
         {/* HEADER */}
-        <header className="h-20 border-b border-surface-variant/50 flex items-center justify-between px-6 bg-surface/80 backdrop-blur-xl relative z-20 transition-all">
+        <header className="h-20 border-b border-[#d1c4b9] flex items-center justify-between px-6 bg-white/80 backdrop-blur-xl relative z-20 transition-all">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setMobileMenuOpen(true)}
-              className="text-on-surface-variant hover:text-primary md:hidden cursor-pointer"
+              className="text-[#4e453c] hover:text-[#6f583c] md:hidden cursor-pointer"
             >
               <Menu className="w-6 h-6" />
             </button>
             
             {/* Branch display for Managers/Sales */}
-            <div className="hidden sm:flex items-center gap-2 text-sm font-label-md text-on-surface-variant bg-surface-container-low px-4 py-2 rounded-24 border border-surface-variant/50">
-              <Building className="w-4 h-4 text-primary" />
+            <div className="hidden sm:flex items-center gap-2 text-sm font-label-md text-[#4e453c] bg-[#faf2ec] px-4 py-2 rounded-24 border border-[#d1c4b9]">
+              <Building className="w-4 h-4 text-[#6f583c]" />
               <span>{user.role === 'customer' ? 'Khu vực thuê: TP.HCM' : 'Chi nhánh làm việc: Quận 1'}</span>
             </div>
           </div>
           <div className="flex items-center gap-5">
-            {/* Quick switcher helper dropdown (visible in prototype demo) */}
-            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-24 px-3 py-1.5 transition-colors hover:bg-primary/10">
-              <span className="text-[10px] font-bold text-primary uppercase tracking-wider hidden md:inline">Demo Mode:</span>
-              <CustomSelect
-                value={user.email}
-                onChange={handleQuickRoleSwitch}
-                options={[
-                  { value: 'admin@homestay.com', label: 'Admin' },
-                  { value: 'manager@homestay.com', label: 'Manager' },
-                  { value: 'sale@homestay.com', label: 'Sale' },
-                  { value: 'accountant@homestay.com', label: 'Accountant' },
-                  { value: 'customer@gmail.com', label: 'Customer (Rented)' },
-                  { value: 'newcustomer@gmail.com', label: 'Customer (New)' },
-                ]}
-                triggerClassName="!bg-transparent !border-none !p-0 !h-auto !shadow-none !ring-0 font-semibold text-primary"
-                className="w-36"
-                dropdownClassName="text-on-surface"
-              />
+            {/* Notifications Dropdown */}
+            <div className="relative" ref={notificationsRef}>
+              <button 
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className="relative p-2 text-[#4e453c] hover:text-[#6f583c] transition-colors bg-[#faf2ec] rounded-full hover:bg-[#f4ede6] cursor-pointer flex items-center justify-center"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface"></span>
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-3 w-80 bg-white border border-[#d1c4b9] rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 animate-fade-in-up">
+                  <div className="p-4 border-b border-[#d1c4b9] bg-[#faf2ec] flex justify-between items-center">
+                    <h4 className="text-xs font-bold text-[#1e1b17] uppercase tracking-wider">Thông báo hoạt động</h4>
+                    <span className="bg-error text-white text-[10px] font-bold px-2 py-0.5 rounded-full">3 mới</span>
+                  </div>
+                  
+                  <div className="p-2 max-h-64 overflow-y-auto divide-y divide-[#eee7e1] bg-white">
+                    <div className="p-3 hover:bg-[#faf2ec] rounded-xl cursor-pointer transition-colors text-left" onClick={() => setNotificationsOpen(false)}>
+                      <p className="text-sm font-semibold text-[#1e1b17]">Lịch hẹn mới chờ duyệt</p>
+                      <p className="text-xs text-[#4e453c] mt-0.5">Khách hàng Nguyễn Văn A vừa đặt lịch xem phòng vào 09:30 hôm nay.</p>
+                      <p className="text-[10px] text-[#6f583c] mt-1">5 phút trước</p>
+                    </div>
+                    <div className="p-3 hover:bg-[#faf2ec] rounded-xl cursor-pointer transition-colors text-left" onClick={() => setNotificationsOpen(false)}>
+                      <p className="text-sm font-semibold text-[#1e1b17]">Hợp đồng đã kích hoạt</p>
+                      <p className="text-xs text-[#4e453c] mt-0.5">Hợp đồng thuê phòng Studio A của Trần Minh Tuấn đã ký số thành công.</p>
+                      <p className="text-[10px] text-[#6f583c] mt-1">1 giờ trước</p>
+                    </div>
+                    <div className="p-3 hover:bg-[#faf2ec] rounded-xl cursor-pointer transition-colors text-left" onClick={() => setNotificationsOpen(false)}>
+                      <p className="text-sm font-semibold text-[#1e1b17]">Hệ thống bảo trì</p>
+                      <p className="text-xs text-[#4e453c] mt-0.5">Sao lưu dữ liệu định kỳ tuần 23 hoàn tất tự động vào hệ thống.</p>
+                      <p className="text-[10px] text-[#6f583c] mt-1">08:00 AM</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <button className="relative p-2 text-on-surface-variant hover:text-primary transition-colors bg-surface-container-low rounded-full hover:bg-surface-container cursor-pointer">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface"></span>
-            </button>
+            {/* Profile Dropdown for Header Avatar */}
+            <div className="relative" ref={profileDropdownRef}>
+              <button 
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer"
+              >
+                {user.full_name.charAt(0)}
+              </button>
 
-            <Link to="/profile" className="w-10 h-10 rounded-full bg-primary-container hover:bg-primary hover:text-on-primary text-on-primary-container border border-primary/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer">
-              {user.full_name.charAt(0)}
-            </Link>
+              {profileDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-72 bg-white border border-[#d1c4b9] rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 animate-fade-in-up">
+                  {/* User Info Header */}
+                  <div className="p-4 border-b border-[#d1c4b9] bg-[#faf2ec]">
+                    <p className="font-bold text-[#1e1b17] truncate">{user.full_name}</p>
+                    <p className="text-xs text-[#4e453c] truncate">{user.email}</p>
+                    <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full border mt-2 font-bold tracking-wide ${roleTheme.bg}`}>
+                      {roleTheme.text}
+                    </span>
+                  </div>
+
+                  {/* Profile & Logout Links */}
+                  <div className="p-2 bg-white">
+                    <Link 
+                      to="/profile" 
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-[#1e1b17] font-label-md hover:bg-[#faf2ec] rounded-xl transition-colors cursor-pointer"
+                    >
+                      <User className="w-5 h-5 text-[#6f583c]" />
+                      Hồ sơ cá nhân
+                    </Link>
+                    <button 
+                      onClick={() => {
+                        setLogoutConfirmOpen(true);
+                        setProfileDropdownOpen(false);
+                      }} 
+                      className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-error font-label-md hover:bg-error/10 rounded-xl transition-colors cursor-pointer mt-1 text-left"
+                    >
+                      <LogOut className="w-5 h-5 text-error" />
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
         {/* PAGE BODY */}
         <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
           <Routes>
-            <Route path="/" element={<DashboardDispatcher />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/" element={location.pathname === '/profile' ? (user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />) : <DashboardDispatcher />} />
+            <Route path="/profile" element={user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />} />
             <Route path="/rooms" element={<RoomsPage />} />
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
