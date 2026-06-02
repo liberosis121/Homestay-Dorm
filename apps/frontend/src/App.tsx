@@ -42,6 +42,7 @@ import CustomerContractsPage from './features/customer/CustomerContractsPage';
 import CustomerServicesPage from './features/customer/CustomerServicesPage';
 import InvoicesDashboardPage from './features/customer/InvoicesDashboardPage';
 import InvoicePaymentPage from './features/customer/InvoicePaymentPage';
+import CustomerCheckoutPage from './features/customer/CustomerCheckoutPage';
 
 import SaleDashboardPage from './features/sale/SaleDashboardPage';
 import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
@@ -119,6 +120,7 @@ function CustomerLayout() {
           <Route path="/customer/services" element={<CustomerServicesPage />} />
           <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
           <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
+          <Route path="/customer/checkout-request" element={<CustomerCheckoutPage />} />
           <Route path="*" element={<ProfilePage />} />
         </Routes>
       </main>
@@ -202,7 +204,8 @@ function DashboardLayout() {
           { path: '/customer/services', label: user.renting_room_name ? 'Dịch vụ của tôi' : 'Dịch vụ & Bảng giá', icon: Zap },
           { path: '/customer/schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
           { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
-          { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard }
+          { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
+          { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
         ];
       default:
         return [];
