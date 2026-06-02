@@ -162,22 +162,25 @@ function DashboardLayout() {
           { path: '/manager/rooms', label: 'Bản đồ phòng (Floor Map)', icon: Layers },
           { path: '/manager/deposits', label: 'Kiểm duyệt đặt cọc', icon: ClipboardList },
           { path: '/manager/handovers', label: 'Biên bản bàn giao', icon: FileText },
-          { path: '/manager/assets', label: 'Quản lý Tài sản', icon: Settings }
+          { path: '/manager/assets', label: 'Quản lý Tài sản', icon: Settings },
+          { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'sale':
         return [
           { path: '/sale/dashboard', label: 'Tổng quan', icon: Home },
-          { path: '/sale/registrations', label: 'Hồ sơ cá nhân', icon: ClipboardList },
+          { path: '/sale/registrations', label: 'Đăng ký thuê phòng', icon: ClipboardList },
           { path: '/sale/schedules', label: 'Lịch hẹn xem phòng', icon: Calendar },
           { path: '/sale/contracts', label: 'Lập hợp đồng thuê', icon: FileText },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search }
+          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
+          { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'accountant':
         return [
           { path: '/', label: 'Bàn làm việc Kế toán', icon: Home },
           { path: '/accountant/invoices', label: 'Quản lý Hóa đơn', icon: CreditCard },
           { path: '/accountant/refunds', label: 'Đối soát hoàn cọc', icon: FileText },
-          { path: '/accountant/payouts', label: 'Xử lý thanh lý', icon: CheckCircle }
+          { path: '/accountant/payouts', label: 'Xử lý thanh lý', icon: CheckCircle },
+          { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
         return [
@@ -409,14 +412,16 @@ function DashboardLayout() {
 
                   {/* Profile & Logout Links */}
                   <div className="p-2 bg-white">
-                    <Link 
-                      to="/profile" 
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-[#1e1b17] font-label-md hover:bg-[#faf2ec] rounded-xl transition-colors cursor-pointer"
-                    >
-                      <User className="w-5 h-5 text-[#6f583c]" />
-                      Hồ sơ cá nhân
-                    </Link>
+                    {user.role !== 'admin' && (
+                      <Link 
+                        to="/profile" 
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-[#1e1b17] font-label-md hover:bg-[#faf2ec] rounded-xl transition-colors cursor-pointer"
+                      >
+                        <User className="w-5 h-5 text-[#6f583c]" />
+                        Hồ sơ cá nhân
+                      </Link>
+                    )}
                     <button 
                       onClick={() => {
                         setLogoutConfirmOpen(true);

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import {
   User, Shield, Lock, Bell, Globe, ChevronRight,
-  X, Eye, EyeOff, Check, Camera, Briefcase, MapPin, Phone,
-  Award, Activity
+  X, Eye, EyeOff, Check, Camera, Briefcase, MapPin, Phone
 } from 'lucide-react';
 
 // ─── Brown Tone Palette (Staff Dashboard) ─────────────────────────────────────
@@ -360,6 +359,20 @@ export default function StaffProfilePage() {
 
   if (!user) return null;
 
+  if (user.role === 'admin') {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white rounded-[28px] border border-[#d1c4b9] shadow-sm animate-fade-in-up">
+        <div className="p-4 bg-amber-50/50 rounded-full text-[#6f583c] border border-[#d1c4b9] mb-4 flex items-center justify-center">
+          <Shield className="w-10 h-10" />
+        </div>
+        <h2 className="text-xl font-extrabold text-[#1e1b17] mb-2">Không có quyền truy cập</h2>
+        <p className="text-sm text-[#4e453c] max-w-sm mb-4">
+          Tài khoản Quản trị viên (Admin) không sử dụng chức năng Hồ sơ cá nhân này.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Modals */}
@@ -467,23 +480,7 @@ export default function StaffProfilePage() {
               </div>
             </div>
 
-            {/* KPI / Stats quick-row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Lịch hẹn tháng này', value: '24', icon: <Activity className="w-5 h-5" />, color: 'text-[#6f583c] bg-[#6f583c]/10' },
-                { label: 'Hợp đồng đã ký', value: '12', icon: <Award className="w-5 h-5" />, color: 'text-[#5a7a58] bg-[#5a7a58]/10' },
-                { label: 'Khách hàng mới', value: '8', icon: <User className="w-5 h-5" />, color: 'text-[#8c7355] bg-[#8c7355]/10' },
-                { label: 'Chi nhánh', value: '1', icon: <MapPin className="w-5 h-5" />, color: 'text-[#3d6b8a] bg-[#3d6b8a]/10' },
-              ].map(stat => (
-                <div key={stat.label} className="bg-white rounded-[20px] border border-[#d1c4b9] p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <div className={`inline-flex p-2.5 rounded-xl mb-3 ${stat.color}`}>
-                    {stat.icon}
-                  </div>
-                  <p className="text-2xl font-extrabold text-[#1e1b17]">{stat.value}</p>
-                  <p className="text-xs text-[#4e453c] font-medium mt-0.5">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+            {/* Removed KPI / Stats quick-row */}
 
             {/* Profile Details Form */}
             <div className="bg-white rounded-[28px] border border-[#d1c4b9] shadow-sm p-8 md:p-10">
