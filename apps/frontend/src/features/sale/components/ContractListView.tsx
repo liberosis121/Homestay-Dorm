@@ -5,6 +5,8 @@ import {
   CalendarDays, Banknote, User
 } from 'lucide-react';
 import { CreatedContract } from '../SaleContractsPage';
+import ContractDetailModal from './ContractDetailModal';
+
 
 export interface DraftContract {
   id: string;
@@ -48,6 +50,8 @@ export default function ContractListView({
 }: Props) {
   const [tab, setTab] = useState<Tab>(activeTab);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedContract, setSelectedContract] = useState<CreatedContract | null>(null);
+
 
   const filteredContracts = completedContracts.filter((c) => {
     const q = searchQuery.toLowerCase();
@@ -227,7 +231,8 @@ export default function ContractListView({
                         </td>
                         <td className="px-5 py-4 text-center">
                           <button
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-xs font-semibold hover:bg-[#faf2ec] transition hover:border-[#6f583c] hover:text-[#6f583c] group-hover:border-[#9d8879]"
+                            onClick={() => setSelectedContract(c)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-xs font-semibold hover:bg-[#faf2ec] transition hover:border-[#6f583c] hover:text-[#6f583c] group-hover:border-[#9d8879] cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             Chi tiết
@@ -339,6 +344,14 @@ export default function ContractListView({
           </>
         )}
       </div>
+
+      {selectedContract && (
+        <ContractDetailModal
+          contract={selectedContract}
+          onClose={() => setSelectedContract(null)}
+          onPrint={() => window.print()}
+        />
+      )}
     </div>
   );
 }
