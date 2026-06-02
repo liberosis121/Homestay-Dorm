@@ -38,6 +38,7 @@ import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
 import SaleDashboardPage from './features/sale/SaleDashboardPage';
+import CustomerLookupPage from './features/sale/CustomerLookupPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -163,6 +164,7 @@ function DashboardLayout() {
           { path: '/manager/deposits', label: 'Kiểm duyệt đặt cọc', icon: ClipboardList },
           { path: '/manager/handovers', label: 'Biên bản bàn giao', icon: FileText },
           { path: '/manager/assets', label: 'Quản lý Tài sản', icon: Settings },
+          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'sale':
@@ -179,6 +181,7 @@ function DashboardLayout() {
           { path: '/accountant/invoices', label: 'Quản lý Hóa đơn', icon: CreditCard },
           { path: '/accountant/refunds', label: 'Đối soát hoàn cọc', icon: FileText },
           { path: '/accountant/payouts', label: 'Xử lý thanh lý', icon: CheckCircle },
+          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
@@ -448,6 +451,9 @@ function DashboardLayout() {
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
             {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupScreen />} />}
+            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
+              <Route path="/sale/customers" element={<CustomerLookupPage />} />
+            )}
             
             {/* Fallback route for unimplemented layout pages */}
             <Route path="*" element={<PlaceholderPage />} />
