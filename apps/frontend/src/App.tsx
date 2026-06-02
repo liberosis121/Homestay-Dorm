@@ -36,6 +36,7 @@ import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
 import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
+import SaleDashboardPage from './features/sale/SaleDashboardPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -149,8 +150,8 @@ function DashboardLayout() {
         ];
       case 'sale':
         return [
-          { path: '/', label: 'Bàn làm việc Sale', icon: Home },
-          { path: '/sale/registrations', label: 'Danh sách đăng ký', icon: ClipboardList },
+          { path: '/sale/dashboard', label: 'Tổng quan', icon: Home },
+          { path: '/sale/registrations', label: 'Hồ sơ cá nhân', icon: ClipboardList },
           { path: '/sale/schedules', label: 'Lịch hẹn xem phòng', icon: Calendar },
           { path: '/sale/contracts', label: 'Lập hợp đồng thuê', icon: FileText },
           { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search }
@@ -361,6 +362,7 @@ function DashboardLayout() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/rooms" element={<RoomsPage />} />
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
+            {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
             {user.role === 'sale' && <Route path="/sale/registrations" element={<SaleRegistrationsScreen />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
             {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupScreen />} />}
@@ -380,6 +382,9 @@ function DashboardLayout() {
 function DashboardDispatcher() {
   const { user } = useAuthStore();
   if (!user) return null;
+
+  // Auto-redirect role-based dashboards
+  if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
 
   const cards = [
     { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },
