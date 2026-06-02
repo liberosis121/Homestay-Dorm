@@ -41,8 +41,8 @@ export default function Navbar() {
             Giới thiệu
           </Link>
           <Link 
-            className="font-body-md text-on-surface-variant hover:text-primary transition-colors" 
-            to="/"
+            className={`font-body-md transition-colors ${location.pathname === '/customer/services' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`}
+            to={user?.role === 'customer' ? '/customer/services' : '/'}
           >
             Dịch vụ
           </Link>
