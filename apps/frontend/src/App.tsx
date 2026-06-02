@@ -38,7 +38,9 @@ import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
 import SaleDashboardPage from './features/sale/SaleDashboardPage';
+import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
 import CustomerLookupPage from './features/sale/CustomerLookupPage';
+import SaleContractsPage from './features/sale/SaleContractsPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -449,6 +451,8 @@ function DashboardLayout() {
             <Route path="/rooms" element={<RoomsPage />} />
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
+            {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
+            {user.role === 'sale' && <Route path="/sale/contracts" element={<SaleContractsPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
             {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupScreen />} />}
             {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (

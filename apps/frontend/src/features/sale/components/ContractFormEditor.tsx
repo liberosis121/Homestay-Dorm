@@ -1,0 +1,521 @@
+import { useState, useEffect } from 'react';
+import {
+  User, Phone, Mail, MapPin, Home, Building2, CalendarDays,
+  FileText, Banknote, ChevronLeft, Save, FileSignature,
+  AlertCircle, CheckCircle2, Info, Edit3
+} from 'lucide-react';
+import { ContractFormData, DepositRecord } from '../SaleContractsPage';
+import ContractReceiptWidget from './ContractReceiptWidget';
+
+interface Props {
+  deposit: DepositRecord;
+  onBack: () => void;
+  onSubmit: (data: ContractFormData) => void;
+  onSaveDraft: (data: ContractFormData) => void;
+}
+
+type ContractType = 'long_term' | 'short_term';
+type PaymentCycle = '1_month' | '3_months' | '6_months';
+
+const DEFAULT_TERMS = `ĐIỀU KHOẢN HỢP ĐỒNG THUÊ PHÒNG HOMESTAY
+
+1. NGHĨA VỤ THANH TOÁN
+   • Tiền thuê phòng phải được thanh toán đúng hạn vào ngày 01 hằng tháng.
+   • Thanh toán chậm quá 07 ngày sẽ bị phạt 0.5%/ngày trên số tiền còn thiếu.
+   • Tiền cọc được hoàn trả trong vòng 07 ngày làm việc sau khi kết thúc hợp đồng (trừ các khoản khấu trừ hợp lệ).
+
+2. SỬ DỤNG PHÒNG & TÀI SẢN
+   • Bên thuê có trách nhiệm giữ gìn cơ sở vật chất và trang thiết bị trong phòng.
+   • Không được tự ý sửa chữa, lắp đặt thêm thiết bị hoặc thay đổi kết cấu phòng.
+   • Hư hỏng do lỗi của bên thuê sẽ được khấu trừ từ tiền cọc hoặc bồi thường.
+
+3. NỘI QUY HOMESTAY
+   • Giữ yên tĩnh từ 22:00 đến 07:00. Không gây ồn ào, ảnh hưởng đến các cư dân khác.
+   • Không hút thuốc lá, sử dụng chất cấm trong khuôn viên homestay.
+   • Khách vãng lai phải đăng ký với Ban quản lý. Không cho người ngoài ở lại qua đêm khi chưa được phép.
+   • Phân loại và đổ rác đúng nơi quy định.
+
+4. CHẤM DỨT HỢP ĐỒNG
+   • Bên thuê thông báo trước tối thiểu 30 ngày bằng văn bản khi muốn chấm dứt hợp đồng trước hạn.
+   • Chấm dứt trước hạn mà không thông báo sẽ dẫn đến mất tiền cọc.
+   • Bên cho thuê có quyền chấm dứt hợp đồng ngay lập tức nếu bên thuê vi phạm nghiêm trọng nội quy.`;
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
+      <AlertCircle className="w-3 h-3" /> {message}
+    </p>
+  );
+}
+
+function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <div className="w-8 h-8 rounded-lg bg-[#6f583c]/10 flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-[#6f583c]" />
+      </div>
+      <h3 className="font-bold text-[#1e1b17] text-sm">{title}</h3>
+    </div>
+  );
+}
+
+export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDraft }: Props) {
+  // Form state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [contractType, setContractType] = useState<ContractType>('long_term');
+  const [rentPrice, setRentPrice] = useState(deposit.roomMonthlyRent);
+  const [paymentCycle, setPaymentCycle] = useState<PaymentCycle>('1_month');
+  const [terms, setTerms] = useState(DEFAULT_TERMS);
+  const [notes, setNotes] = useState('');
+  const [checklistChecked, setChecklistChecked] = useState([false, false, false, false]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  // Auto-calculate end date based on contract type
+  useEffect(() => {
+    if (startDate) {
+      const d = new Date(startDate);
+      if (contractType === 'long_term') {
+        d.setFullYear(d.getFullYear() + 1);
+      } else {
+        d.setMonth(d.getMonth() + 3);
+      }
+      setEndDate(d.toISOString().split('T')[0]);
+    }
+  }, [startDate, contractType]);
+
+  const formData: Partial<ContractFormData> = {
+    startDate,
+    endDate,
+    contractType,
+    rentPrice,
+    paymentCycle,
+    terms,
+    notes,
+  };
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!startDate) errs.startDate = 'Vui lòng chọn ngày bắt đầu';
+    if (!endDate) errs.endDate = 'Vui lòng chọn ngày kết thúc';
+    if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+      errs.endDate = 'Ngày kết thúc phải sau ngày bắt đầu';
+    }
+    if (!rentPrice || rentPrice <= 0) errs.rentPrice = 'Giá thuê phải là số dương';
+    if (!checklistChecked.every(Boolean)) errs.checklist = 'Hoàn tất toàn bộ checklist xác nhận';
+    return errs;
+  };
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    onSubmit({
+      depositId: deposit.id,
+      customerId: deposit.customerId,
+      roomCode: deposit.roomCode,
+      startDate,
+      endDate,
+      contractType,
+      rentPrice,
+      paymentCycle,
+      terms,
+      notes,
+    } as ContractFormData);
+  };
+
+  const handleSaveDraft = () => {
+    onSaveDraft({
+      depositId: deposit.id,
+      customerId: deposit.customerId,
+      roomCode: deposit.roomCode,
+      startDate,
+      endDate,
+      contractType,
+      rentPrice,
+      paymentCycle,
+      terms,
+      notes,
+    } as ContractFormData);
+  };
+
+  const toggleChecklist = (i: number) => {
+    const next = [...checklistChecked];
+    next[i] = !next[i];
+    setChecklistChecked(next);
+    if (submitted && next.every(Boolean)) {
+      setErrors((e) => { const c = { ...e }; delete c.checklist; return c; });
+    }
+  };
+
+  const allChecklistDone = checklistChecked.every(Boolean);
+
+  const checklistLabels = [
+    'Đã xác minh danh tính khách thuê',
+    'Đã xác minh tình trạng phòng',
+    'Đã giải thích đầy đủ điều khoản hợp đồng',
+    'Khách hàng đồng ý và sẵn sàng ký hợp đồng',
+  ];
+
+  return (
+    <div className="animate-fade-in-up">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 mb-6">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-[#6f583c] hover:text-[#5c4830] font-medium transition"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Danh sách phiếu cọc
+        </button>
+        <span className="text-[#9d8879]">/</span>
+        <span className="text-sm text-[#1e1b17] font-semibold">Lập hợp đồng – {deposit.depositCode}</span>
+      </div>
+
+      {/* Main layout: 8/4 columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT: Form editor */}
+        <div className="lg:col-span-8 space-y-5">
+
+          {/* Section 1: Thông tin khách thuê */}
+          <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6">
+            <SectionHeader icon={User} title="Thông tin khách thuê" />
+            <div className="bg-[#fff8f3] rounded-xl p-4 border border-[#eee7e1]">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#6f583c] to-[#8C7355] flex items-center justify-center text-white font-bold text-lg shrink-0">
+                  {deposit.customerName.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-[#1e1b17] text-base">{deposit.customerName}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-2">
+                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                      <User className="w-3.5 h-3.5 text-[#9d8879]" />
+                      <span>CCCD: <strong className="font-mono">{deposit.customerCCCD}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                      <Phone className="w-3.5 h-3.5 text-[#9d8879]" />
+                      <span>{deposit.customerPhone}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                      <Mail className="w-3.5 h-3.5 text-[#9d8879]" />
+                      <span>{deposit.customerEmail}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                      <MapPin className="w-3.5 h-3.5 text-[#9d8879]" />
+                      <span className="truncate">{deposit.customerAddress}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-1.5 text-xs text-[#9d8879] bg-[#faf2ec] rounded-lg px-3 py-2">
+                <Info className="w-3.5 h-3.5 shrink-0" />
+                Thông tin khách thuê được tự động điền từ phiếu đặt cọc. Liên hệ quản lý nếu cần cập nhật.
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Thông tin phòng */}
+          <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6">
+            <SectionHeader icon={Home} title="Thông tin phòng thuê" />
+            <div className="bg-[#fff8f3] rounded-xl p-4 border border-[#eee7e1]">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#6f583c]/10 flex items-center justify-center shrink-0">
+                  <Building2 className="w-6 h-6 text-[#6f583c]" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-[#1e1b17] text-base">{deposit.roomCode}</p>
+                  <p className="text-sm text-[#4e453c]">{deposit.roomType}</p>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="flex items-center gap-1.5 text-sm text-[#4e453c]">
+                      <MapPin className="w-3.5 h-3.5 text-[#9d8879]" />
+                      Chi nhánh {deposit.branch}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-[#2d6a4f]">
+                      <Banknote className="w-3.5 h-3.5" />
+                      {deposit.roomMonthlyRent.toLocaleString('vi-VN')} đ/tháng
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Thông tin hợp đồng */}
+          <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6">
+            <SectionHeader icon={FileText} title="Thông tin hợp đồng" />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Loại hợp đồng */}
+              <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
+                  Loại hợp đồng <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { val: 'long_term', label: 'Dài hạn', desc: '≥ 12 tháng' },
+                    { val: 'short_term', label: 'Ngắn hạn', desc: '3 – 11 tháng' },
+                  ] as const).map(({ val, label, desc }) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setContractType(val)}
+                      className={`px-4 py-3 rounded-xl border-2 text-left transition-all ${
+                        contractType === val
+                          ? 'border-[#6f583c] bg-[#fff8f3]'
+                          : 'border-[#d1c4b9] bg-white hover:border-[#9d8879]'
+                      }`}
+                    >
+                      <p className={`font-semibold text-sm ${contractType === val ? 'text-[#6f583c]' : 'text-[#1e1b17]'}`}>
+                        {label}
+                      </p>
+                      <p className="text-xs text-[#9d8879]">{desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ngày bắt đầu */}
+              <div>
+                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
+                  Ngày bắt đầu <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9d8879]" />
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition ${
+                      errors.startDate ? 'border-red-400 bg-red-50' : 'border-[#d1c4b9]'
+                    }`}
+                  />
+                </div>
+                <FieldError message={errors.startDate} />
+              </div>
+
+              {/* Ngày kết thúc */}
+              <div>
+                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
+                  Ngày kết thúc <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9d8879]" />
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || new Date().toISOString().split('T')[0]}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition ${
+                      errors.endDate ? 'border-red-400 bg-red-50' : 'border-[#d1c4b9]'
+                    }`}
+                  />
+                </div>
+                <FieldError message={errors.endDate} />
+              </div>
+
+              {/* Giá thuê */}
+              <div>
+                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
+                  Giá thuê thực tế (đ/tháng) <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9d8879]" />
+                  <input
+                    type="number"
+                    value={rentPrice}
+                    onChange={(e) => setRentPrice(Number(e.target.value))}
+                    min={0}
+                    step={100000}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition ${
+                      errors.rentPrice ? 'border-red-400 bg-red-50' : 'border-[#d1c4b9]'
+                    }`}
+                  />
+                </div>
+                <p className="text-[11px] text-[#9d8879] mt-1">
+                  Giá chuẩn phòng: {deposit.roomMonthlyRent.toLocaleString('vi-VN')} đ/tháng
+                </p>
+                <FieldError message={errors.rentPrice} />
+              </div>
+
+              {/* Kỳ thanh toán */}
+              <div>
+                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
+                  Kỳ thanh toán <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={paymentCycle}
+                  onChange={(e) => setPaymentCycle(e.target.value as PaymentCycle)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-[#d1c4b9] text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition"
+                >
+                  <option value="1_month">Hàng tháng (1 tháng/kỳ)</option>
+                  <option value="3_months">Hàng quý (3 tháng/kỳ)</option>
+                  <option value="6_months">Nửa năm (6 tháng/kỳ)</option>
+                </select>
+              </div>
+
+              {/* Tiền cọc (read-only) */}
+              <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
+                  Tiền đặt cọc (tự động từ phiếu cọc)
+                </label>
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#d1c4b9] bg-[#f0faf2] text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-[#2d6a4f] shrink-0" />
+                  <span className="font-bold text-[#2d6a4f]">
+                    {deposit.depositAmount.toLocaleString('vi-VN')} đ
+                  </span>
+                  <span className="text-[#9d8879]">– Đã xác nhận từ phiếu {deposit.depositCode}</span>
+                </div>
+              </div>
+
+              {/* Ghi chú */}
+              <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
+                  Ghi chú (không bắt buộc)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Thêm ghi chú, yêu cầu đặc biệt của khách hàng..."
+                  className="w-full px-4 py-3 rounded-xl border border-[#d1c4b9] text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition placeholder-[#b5a89c] resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Điều khoản & nội quy */}
+          <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <SectionHeader icon={Edit3} title="Điều khoản & Nội quy" />
+              <span className="text-xs text-[#9d8879] flex items-center gap-1">
+                <Edit3 className="w-3 h-3" /> Có thể chỉnh sửa
+              </span>
+            </div>
+            <textarea
+              value={terms}
+              onChange={(e) => setTerms(e.target.value)}
+              rows={16}
+              className="w-full px-4 py-3 rounded-xl border border-[#d1c4b9] text-xs text-[#1e1b17] bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition font-mono leading-relaxed resize-y"
+            />
+            <p className="text-[11px] text-[#9d8879] mt-2 flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              Mẫu điều khoản chuẩn của HomeStay Dorm. Bạn có thể chỉnh sửa trực tiếp nếu cần.
+            </p>
+          </div>
+
+          {/* Section 5: Checklist xác nhận (mobile only - widget for desktop) */}
+          <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6 lg:hidden">
+            <div className="flex items-center justify-between mb-4">
+              <SectionHeader icon={CheckCircle2} title="Checklist xác nhận bắt buộc" />
+              <span className={`text-xs font-bold px-2 py-1 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+                {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {checklistLabels.map((label, i) => (
+                <label key={i} className="flex items-start gap-3 cursor-pointer group">
+                  <div
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition ${
+                      checklistChecked[i] ? 'bg-[#2d6a4f] border-[#2d6a4f]' : 'border-[#d1c4b9] group-hover:border-[#6f583c]'
+                    }`}
+                    onClick={() => toggleChecklist(i)}
+                  >
+                    {checklistChecked[i] && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className={`text-sm ${checklistChecked[i] ? 'text-[#1e1b17] font-medium' : 'text-[#9d8879]'}`}>
+                    {label}
+                  </span>
+                </label>
+              ))}
+            </div>
+            {errors.checklist && <FieldError message={errors.checklist} />}
+          </div>
+        </div>
+
+        {/* RIGHT: Sticky widget */}
+        <div className="lg:col-span-4 hidden lg:block">
+          <div className="sticky top-6 space-y-4">
+            <ContractReceiptWidget
+              deposit={deposit}
+              formData={formData}
+              checklistChecked={checklistChecked}
+            />
+            {/* Checklist (desktop) */}
+            <div className={`bg-white rounded-2xl border shadow-sm p-5 ${errors.checklist ? 'border-red-400' : 'border-[#d1c4b9]'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-bold text-sm text-[#1e1b17] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#6f583c]" />
+                  Checklist xác nhận
+                </h4>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+                  {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
+                </span>
+              </div>
+              <div className="space-y-2.5">
+                {checklistLabels.map((label, i) => (
+                  <label key={i} className="flex items-start gap-2.5 cursor-pointer group">
+                    <div
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition ${
+                        checklistChecked[i] ? 'bg-[#2d6a4f] border-[#2d6a4f]' : 'border-[#d1c4b9] group-hover:border-[#6f583c]'
+                      }`}
+                      onClick={() => toggleChecklist(i)}
+                    >
+                      {checklistChecked[i] && <CheckCircle2 className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className={`text-xs ${checklistChecked[i] ? 'text-[#1e1b17] font-medium' : 'text-[#9d8879]'}`}>
+                      {label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {errors.checklist && <FieldError message={errors.checklist} />}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky Footer Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-[#d1c4b9] shadow-lg px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-sm font-semibold hover:bg-[#faf2ec] transition"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Hủy bỏ
+          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSaveDraft}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#6f583c] text-[#6f583c] text-sm font-semibold hover:bg-[#fff8f3] transition"
+            >
+              <Save className="w-4 h-4" />
+              Lưu nháp
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!allChecklistDone}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-md ${
+                allChecklistDone
+                  ? 'bg-[#6f583c] text-white hover:bg-[#5c4830] hover:shadow-lg active:scale-95'
+                  : 'bg-[#d1c4b9] text-[#9d8879] cursor-not-allowed'
+              }`}
+            >
+              <FileSignature className="w-4 h-4" />
+              Lập hợp đồng & Kích hoạt
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Spacer for footer */}
+      <div className="h-20" />
+    </div>
+  );
+}
