@@ -531,11 +531,13 @@ export default function CustomerLookupPage() {
     const hasEmail = searchEmail.trim().length > 0;
 
     if (!hasName && !hasID && !hasPhone && !hasEmail) {
-      // Nếu không nhập gì, chuyển sang rỗng (hoặc báo lỗi, theo thiết kế là tìm kiếm rỗng thì ra empty)
+      // Nếu không nhập gì, hiển thị toàn bộ khách hàng
       setUiState('loading');
       setTimeout(() => {
-        setUiState('empty');
-      }, 700);
+        setSearchResults(MOCK_CUSTOMERS);
+        setActiveCustomer(MOCK_CUSTOMERS[0]);
+        setUiState('success');
+      }, 800);
       return;
     }
 
