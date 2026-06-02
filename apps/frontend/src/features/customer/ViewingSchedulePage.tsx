@@ -7,8 +7,141 @@ import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
 import {
   Search, MapPin, Calendar, User, Phone, ChevronLeft, ChevronRight,
-  CheckCircle, Clock, X, CalendarCheck, MessageCircle, AlertTriangle
+  CheckCircle, Clock, X, CalendarCheck, MessageCircle, AlertTriangle,
+  Navigation, Clock3
 } from 'lucide-react';
+
+// ─── Branch Map Modal ──────────────────────────────────────────────────────────
+const BRANCHES = [
+  {
+    id: 'q1',
+    name: 'Chi nhánh Quận 1',
+    shortName: 'Q.1 — Bến Thành',
+    address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
+    phone: '028 3822 1234',
+    hours: 'T2–T7: 8:00 – 18:00  |  CN: 9:00 – 15:00',
+    // Google Maps embed for 120 Le Loi, Q1, HCMC
+    mapSrc: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4521!2d106.6983!3d10.7717!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f3a9d8d1bb3%3A0x9d0804a3d4eac0e0!2zMTIwIEzDqiBM4bujaSwgQuG6v24gVGjDoG5oLCBRdeG6rW4gMSwgVGjDoG5oIHBo4buRIEjhu5MgQ2jDrSBNaW5o!5e0!3m2!1svi!2svn!4v1717000000000!5m2!1svi!2svn',
+    mapsLink: 'https://maps.google.com/?q=120+Le+Loi+Ben+Thanh+Quan+1+Ho+Chi+Minh',
+    color: '#4a6549',
+    badge: '🏙️',
+  },
+  {
+    id: 'td',
+    name: 'Chi nhánh Thủ Đức',
+    shortName: 'Thủ Đức — Khu ĐHQG',
+    address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
+    phone: '028 3724 5678',
+    hours: 'T2–CN: 7:30 – 18:30',
+    // Google Maps embed for Ta Quang Buu, Linh Trung, Thu Duc
+    mapSrc: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.6093!2d106.8024!3d10.8700!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317527b0d7c93765%3A0xee9d8adead2c0f09!2zxJDGsOG7nW5nIFThuqEgUXVhbmcgQuG7rXUsIExpbmggVHJ1bmcsIFRo4bunIMSQ4bupYywgVGjDoG5oIHBo4buRIEjhu5MgQ2jDrSBNaW5o!5e0!3m2!1svi!2svn!4v1717000000001!5m2!1svi!2svn',
+    mapsLink: 'https://maps.google.com/?q=Ta+Quang+Buu+Linh+Trung+Thu+Duc+Ho+Chi+Minh',
+    color: '#8c7355',
+    badge: '🎓',
+  },
+];
+
+function BranchMapModal({ onClose }: { onClose: () => void }) {
+  const [selected, setSelected] = React.useState(0);
+  const branch = BRANCHES[selected];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="bg-surface w-full max-w-3xl rounded-[32px] shadow-2xl border border-surface-variant overflow-hidden animate-fade-in-up flex flex-col" style={{ maxHeight: '90vh' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 py-5 border-b border-surface-variant shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-full">
+              <MapPin className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg text-on-surface">Bản đồ chi nhánh HomeStay Dorm</h2>
+              <p className="text-xs text-on-surface-variant mt-0.5">Chọn chi nhánh để xem vị trí trên bản đồ</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer text-on-surface-variant hover:text-on-surface">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Branch Tabs */}
+        <div className="flex gap-3 px-8 pt-5 shrink-0">
+          {BRANCHES.map((b, i) => (
+            <button
+              key={b.id}
+              onClick={() => setSelected(i)}
+              className={`flex-1 flex items-center gap-3 px-5 py-3.5 rounded-[20px] border transition-all cursor-pointer text-left ${
+                selected === i
+                  ? 'border-primary/30 bg-primary/8 shadow-sm'
+                  : 'border-surface-variant hover:bg-surface-container-low'
+              }`}
+            >
+              <span className="text-2xl">{b.badge}</span>
+              <div>
+                <p className={`font-bold text-sm ${selected === i ? 'text-primary' : 'text-on-surface'}`}>{b.shortName}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-1">{b.address}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Map */}
+        <div className="px-8 pt-4 flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+          <div className="w-full h-[300px] rounded-[20px] overflow-hidden border border-surface-variant shadow-inner bg-surface-container-low">
+            <iframe
+              key={branch.id}
+              src={branch.mapSrc}
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title={`Bản đồ ${branch.name}`}
+            />
+          </div>
+        </div>
+
+        {/* Branch Info */}
+        <div className="px-8 py-5 shrink-0">
+          <div className="bg-surface-container-low rounded-[20px] border border-surface-variant p-5 space-y-3">
+            <h3 className="font-bold text-on-surface text-base">{branch.name}</h3>
+            <div className="space-y-2">
+              <div className="flex items-start gap-3 text-sm text-on-surface-variant">
+                <MapPin className="w-4 h-4 shrink-0 text-primary mt-0.5" />
+                <span>{branch.address}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-on-surface-variant">
+                <Clock3 className="w-4 h-4 shrink-0 text-primary" />
+                <span>{branch.hours}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-on-surface-variant">
+                <Phone className="w-4 h-4 shrink-0 text-primary" />
+                <span>{branch.phone}</span>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <a
+                href={branch.mapsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-primary text-on-primary font-semibold text-sm hover:opacity-90 transition-all shadow-md cursor-pointer"
+              >
+                <Navigation className="w-4 h-4" /> Chỉ đường
+              </a>
+              <a
+                href={`tel:${branch.phone.replace(/\s/g, '')}`}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full border border-primary text-primary font-semibold text-sm hover:bg-primary/5 transition-all cursor-pointer"
+              >
+                <Phone className="w-4 h-4" /> Gọi ngay
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Helper: Format ngày Việt ─────────────────────────────────────────────────
 const formatDateVN = (dateStr: string) => {
@@ -83,7 +216,13 @@ const Timeline = ({ step, status }: { step: 1 | 2 | 3; status: ViewingSchedule['
 // ─── CalendarWidget ────────────────────────────────────────────────────────────
 const MAINTENANCE_DATES = ['2026-06-24', '2026-06-10'];
 
-const CalendarWidget = ({ schedules }: { schedules: ViewingSchedule[] }) => {
+const CalendarWidget = ({
+  schedules,
+  onShowMap,
+}: {
+  schedules: ViewingSchedule[];
+  onShowMap: () => void;
+}) => {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
@@ -170,8 +309,12 @@ const CalendarWidget = ({ schedules }: { schedules: ViewingSchedule[] }) => {
         <p className="text-xs text-on-surface-variant leading-relaxed">
           Các chi nhánh của chúng tôi mở cửa đón khách tham quan từ 8:00 đến 18:00 hàng ngày.
         </p>
-        <button className="mt-2 text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1">
-          Xem bản đồ chi nhánh <ChevronRight className="w-3 h-3" />
+        <button
+          onClick={onShowMap}
+          className="mt-2 text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1 group"
+        >
+          Xem bản đồ chi nhánh
+          <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
         </button>
       </div>
     </div>
@@ -405,6 +548,7 @@ export default function ViewingSchedulePage() {
 
   const [allSchedules, setAllSchedules] = useState<ViewingSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showMapModal, setShowMapModal] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
@@ -471,6 +615,7 @@ export default function ViewingSchedulePage() {
   return (
     <div className="bg-background min-h-screen flex flex-col">
       <Navbar />
+      {showMapModal && <BranchMapModal onClose={() => setShowMapModal(false)} />}
 
       <main className="flex-1 pt-7 pb-16 max-w-[1280px] mx-auto w-full px-4 md:px-10">
         {/* ─── Hero Search ──────────────────────────── */}
@@ -513,6 +658,27 @@ export default function ViewingSchedulePage() {
           ))}
         </section>
 
+        {/* Mobile Map Banner */}
+        <div className="block lg:hidden mb-6 animate-fade-in">
+          <div className="bg-primary/8 border border-primary/15 rounded-[24px] p-5 flex items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 rounded-full text-primary shrink-0">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-semibold text-sm text-on-surface">Bạn muốn tìm vị trí chi nhánh?</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">Xem bản đồ Google Maps và hướng dẫn chỉ đường chi tiết.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowMapModal(true)}
+              className="px-5 py-2.5 bg-primary text-on-primary rounded-full text-xs font-semibold hover:opacity-90 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+            >
+              Xem bản đồ
+            </button>
+          </div>
+        </div>
+
         {/* ─── 2-Column Layout ─────────────────────── */}
         <div className="flex gap-8 items-start">
 
@@ -550,10 +716,10 @@ export default function ViewingSchedulePage() {
               <div className="space-y-5">
                 {filtered.map(s => (
                   <AppointmentCard
-                    key={s.id}
-                    schedule={s}
-                    onCancel={handleCancel}
-                    onReschedule={handleReschedule}
+                     key={s.id}
+                     schedule={s}
+                     onCancel={handleCancel}
+                     onReschedule={handleReschedule}
                   />
                 ))}
               </div>
@@ -562,7 +728,7 @@ export default function ViewingSchedulePage() {
 
           {/* RIGHT: Calendar + Info */}
           <div className="w-[320px] shrink-0 hidden lg:block">
-            <CalendarWidget schedules={allSchedules} />
+            <CalendarWidget schedules={allSchedules} onShowMap={() => setShowMapModal(true)} />
           </div>
         </div>
       </main>

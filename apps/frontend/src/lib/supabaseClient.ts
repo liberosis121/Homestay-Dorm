@@ -67,7 +67,31 @@ export interface ViewingSchedule {
   created_at: string;
 }
 
-// Initial dummy database
+// ─── Sale Dashboard Interfaces ────────────────────────────────────────────────
+export interface TodayAppointment {
+  id: string;
+  time: string;             // "09:30"
+  customer_name: string;
+  room_type: string;
+  status: 'confirmed' | 'pending' | 'cancelled';
+  branch: string;
+}
+
+export interface RecentRegistration {
+  id: string;
+  customer_name: string;
+  time_ago: string;         // "2 phút trước"
+  room_name: string;
+  created_at: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  title: string;
+  detail: string;
+  type: 'contract' | 'schedule' | 'system' | 'registration';
+}
+
 const INITIAL_DB = {
   profiles: [
     { id: 'u-1', email: 'admin@homestay.com', role: 'admin', full_name: 'Hoàng Quốc Việt (Admin)', phone: '0901234567' },
@@ -199,7 +223,27 @@ const INITIAL_DB = {
       note: 'Không liên lạc được với khách hàng sau 3 cuộc gọi xác nhận trước giờ hẹn.',
       created_at: '2026-05-30T14:00:00Z'
     }
-  ] as ViewingSchedule[]
+  ] as ViewingSchedule[],
+  today_appointments: [
+    { id: 'ta-1', time: '09:30', customer_name: 'Nguyễn Văn A', room_type: 'Phòng Đơn Premium', status: 'confirmed', branch: 'Quận 1' },
+    { id: 'ta-2', time: '11:00', customer_name: 'Lê Thị Minh Châu', room_type: 'Phòng Dorm Nam 4 người', status: 'confirmed', branch: 'Thủ Đức' },
+    { id: 'ta-3', time: '14:00', customer_name: 'Trần Thị B', room_type: 'Phòng Đôi Eco', status: 'pending', branch: 'Quận 1' },
+    { id: 'ta-4', time: '15:30', customer_name: 'Phạm Hoàng Tuấn', room_type: 'Studio Cao cấp', status: 'pending', branch: 'Quận 1' },
+    { id: 'ta-5', time: '16:00', customer_name: 'Đinh Thị Hoa', room_type: 'Phòng Nữ 2 người', status: 'cancelled', branch: 'Thủ Đức' }
+  ] as TodayAppointment[],
+  recent_registrations: [
+    { id: 'rr-1', customer_name: 'Lê Minh Tuấn', time_ago: '2 phút trước', room_name: 'Studio A', created_at: '2026-06-02T07:00:00Z' },
+    { id: 'rr-2', customer_name: 'Hoàng Thu Thủy', time_ago: '45 phút trước', room_name: 'Suite B', created_at: '2026-06-02T06:15:00Z' },
+    { id: 'rr-3', customer_name: 'Nguyễn Bảo Long', time_ago: '1 giờ trước', room_name: 'Dorm Nam 101', created_at: '2026-06-02T06:00:00Z' },
+    { id: 'rr-4', customer_name: 'Trịnh Hoài An', time_ago: '2 giờ trước', room_name: 'Phòng Đôi 203', created_at: '2026-06-02T05:00:00Z' }
+  ] as RecentRegistration[],
+  activity_logs: [
+    { id: 'al-1', title: 'Hợp đồng #HD2026-08 hoàn tất', detail: 'Khách: Phạm Gia Bảo • 10:45 AM', type: 'contract' },
+    { id: 'al-2', title: 'Lịch xem phòng đã xác nhận', detail: 'Khách: Nguyễn Văn A • 09:15 AM', type: 'schedule' },
+    { id: 'al-3', title: 'Email nhắc hẹn đã gửi', detail: 'Hệ thống tự động • 08:00 AM', type: 'system' },
+    { id: 'al-4', title: 'Phiếu đăng ký mới từ khách hàng', detail: 'Khách: Lê Minh Tuấn • 07:30 AM', type: 'registration' },
+    { id: 'al-5', title: 'Hủy lịch hẹn bởi khách hàng', detail: 'Khách: Đinh Thị Hoa • 06:15 AM', type: 'schedule' }
+  ] as ActivityLog[]
 };
 
 // Initialize Mock Database in LocalStorage
@@ -225,8 +269,14 @@ export const initializeMockDB = () => {
         updated = true;
       }
       if (db && (!db.viewing_schedules || db.viewing_schedules.length < 8)) {
-        // Force update viewing_schedules to seed the new diverse mock data
         db.viewing_schedules = INITIAL_DB.viewing_schedules;
+        updated = true;
+      }
+      // Seed Sale Dashboard mock data
+      if (db && !db.today_appointments) {
+        db.today_appointments = INITIAL_DB.today_appointments;
+        db.recent_registrations = INITIAL_DB.recent_registrations;
+        db.activity_logs = INITIAL_DB.activity_logs;
         updated = true;
       }
       if (updated) {
