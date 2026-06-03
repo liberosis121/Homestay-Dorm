@@ -66,8 +66,12 @@ export default function Navbar() {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
               >
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
-                  {user.email[0].toUpperCase()}
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold overflow-hidden border border-surface-variant/20">
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    user.email[0].toUpperCase()
+                  )}
                 </div>
                 <span className="hidden sm:block font-label-md">{user.full_name || 'Khách hàng'}</span>
                 <span className={`material-symbols-outlined transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>

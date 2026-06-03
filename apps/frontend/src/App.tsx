@@ -77,6 +77,15 @@ import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
 
+// ScrollToTop: cuộn về đầu trang khi chuyển route
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+}
+
 // App Wrapper to handle initialization
 export default function App() {
   useEffect(() => {
@@ -99,6 +108,7 @@ function AppRoutes() {
 
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
@@ -443,9 +453,13 @@ function DashboardLayout() {
             <div className="relative" ref={profileDropdownRef}>
               <button 
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer"
+                className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer overflow-hidden"
               >
-                {user.full_name.charAt(0)}
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  user.full_name.charAt(0)
+                )}
               </button>
 
               {profileDropdownOpen && (

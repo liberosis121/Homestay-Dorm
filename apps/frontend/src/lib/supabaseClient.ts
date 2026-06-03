@@ -2,6 +2,13 @@ import roomDorm from '../assets/room-dorm.jpg';
 import roomSingle from '../assets/room-single.jpg';
 import roomStudio from '../assets/room-studio.jpg';
 import roomTwin from '../assets/room-twin.jpg';
+import avatarAdmin from '../assets/avatar-admin.png';
+import avatarManager from '../assets/avatar-manager.png';
+import avatarSale from '../assets/avatar-sale.png';
+import avatarAccountant from '../assets/avatar-accountant.png';
+import avatarCustomer from '../assets/avatar-customer.png';
+import avatarNewCustomer from '../assets/avatar-newcustomer.png';
+
 
 // Mock database key in Local Storage
 const STORAGE_KEY = 'homestay_dorm_mock_db';
@@ -506,12 +513,12 @@ const generatePayoutRecords = (): PayoutRecord[] => {
 
 const INITIAL_DB = {
   profiles: [
-    { id: 'u-1', email: 'admin@homestay.com', role: 'admin', full_name: 'Hoàng Quốc Việt (Admin)', phone: '0901234567' },
-    { id: 'u-2', email: 'manager@homestay.com', role: 'manager', full_name: 'Trần Kim Yến (Quản lý)', phone: '0907654321' },
-    { id: 'u-3', email: 'sale@homestay.com', role: 'sale', full_name: 'Nguyễn Thị Trúc Hằng (NV Sale)', phone: '0912345678' },
-    { id: 'u-4', email: 'accountant@homestay.com', role: 'accountant', full_name: 'Lê Hoàng Nhật Anh (Kế toán)', phone: '0987654321' },
-    { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556', renting_room_name: 'Phòng 101 (Nam)' },
-    { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900' }
+    { id: 'u-1', email: 'admin@homestay.com', role: 'admin', full_name: 'Hoàng Quốc Việt (Admin)', phone: '0901234567', avatar_url: avatarAdmin },
+    { id: 'u-2', email: 'manager@homestay.com', role: 'manager', full_name: 'Trần Kim Yến (Quản lý)', phone: '0907654321', avatar_url: avatarManager },
+    { id: 'u-3', email: 'sale@homestay.com', role: 'sale', full_name: 'Nguyễn Thị Trúc Hằng (NV Sale)', phone: '0912345678', avatar_url: avatarSale },
+    { id: 'u-4', email: 'accountant@homestay.com', role: 'accountant', full_name: 'Lê Hoàng Nhật Anh (Kế toán)', phone: '0987654321', avatar_url: avatarAccountant },
+    { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556', renting_room_name: 'Phòng 101 (Nam)', avatar_url: avatarCustomer },
+    { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900', avatar_url: avatarNewCustomer }
   ] as Profile[],
   branches: [
     { id: 'b-1', name: 'Chi nhánh Quận 1', address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM', manager_id: 'u-2' },
@@ -897,12 +904,8 @@ export const initializeMockDB = () => {
       const db = JSON.parse(existing);
       let updated = false;
       if (db && db.profiles) {
-        INITIAL_DB.profiles.forEach((p) => {
-          if (!db.profiles.some((ep: any) => ep.email.toLowerCase() === p.email.toLowerCase())) {
-            db.profiles.push(p);
-            updated = true;
-          }
-        });
+        db.profiles = INITIAL_DB.profiles;
+        updated = true;
       }
       if (db && db.rooms) {
         // Force update rooms to ensure new properties exist

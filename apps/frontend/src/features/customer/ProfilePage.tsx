@@ -451,7 +451,7 @@ export default function ProfilePage() {
                   
                   <div className="relative shrink-0 sm:ml-4 z-10">
                     <img 
-                      src={avatarCartoon} 
+                      src={user?.avatar_url || avatarCartoon} 
                       alt="Avatar" 
                       className="w-28 h-28 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
                     />

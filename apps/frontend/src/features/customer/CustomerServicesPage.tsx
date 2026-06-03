@@ -627,6 +627,215 @@ function GuestServicesView({
   );
 }
 
+// ─── Consumption Chart ────────────────────────────────────────────────────────
+type ChartMonth = {
+  period: string;
+  label: string;
+  labelFull: string;
+  elec: number;
+  water: number;
+  elecCost: number;
+  waterCost: number;
+};
+
+function ConsumptionChart({
+  chartMonths,
+  maxValues,
+}: {
+  chartMonths: ChartMonth[];
+  maxValues: { elec: number; water: number };
+}) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  if (chartMonths.length === 0) {
+    return (
+      <div className="bg-white border border-outline-variant rounded-2xl p-6 flex flex-col items-center justify-center py-16 gap-3">
+        <Info className="w-10 h-10 text-outline" />
+        <p className="text-on-surface-variant font-bold text-sm">Chưa có dữ liệu tiêu thụ.</p>
+      </div>
+    );
+  }
+
+  // Palette matching the web's green-brown theme
+  const COLOR_ELEC        = '#3d6b35';
+  const COLOR_ELEC_HOVER  = '#2a4d25';
+  const COLOR_WATER       = '#b89a72';
+  const COLOR_WATER_HOVER = '#9a7d59';
+
+  const BAR_H = 160; // px – usable chart height
+
+  return (
+    <div className="bg-white border border-outline-variant rounded-2xl p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <h4 className="font-headline-md text-sm font-bold font-lexend">
+          Lịch sử tiêu thụ ({chartMonths.length} tháng)
+        </h4>
+        <div className="flex gap-4 text-xs font-semibold">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_ELEC }} />
+            <span className="text-on-surface-variant">Điện (kWh)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_WATER }} />
+            <span className="text-on-surface-variant">Nước (m³)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart area */}
+      <div className="overflow-x-auto">
+        <div
+          className="relative border-b border-outline-variant/30"
+          style={{ height: BAR_H + 32 }}
+        >
+          {/* Horizontal gridlines */}
+          {[25, 50, 75, 100].map((pct) => (
+            <div
+              key={pct}
+              className="absolute left-0 right-0 border-t border-outline-variant/20"
+              style={{ bottom: 28 + (pct / 100) * BAR_H }}
+            />
+          ))}
+
+          {/* Month columns row */}
+          <div className="absolute inset-0 flex items-end px-1" style={{ paddingBottom: 28 }}>
+            {chartMonths.map((m, idx) => {
+              const hElec  = Math.max(Math.round((m.elec  / maxValues.elec)  * BAR_H), m.elec  > 0 ? 4 : 0);
+              const hWater = Math.max(Math.round((m.water / maxValues.water) * BAR_H), m.water > 0 ? 4 : 0);
+              const isHovered = hoveredIdx === idx;
+
+              return (
+                <div
+                  key={m.period}
+                  className="flex-1 flex flex-col items-center relative"
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                >
+                  {/* ── Light-theme tooltip ── */}
+                  {isHovered && (
+                    <div
+                      className="absolute z-30 pointer-events-none animate-fade-in-up"
+                      style={{
+                        bottom: Math.max(hElec, hWater) + 16,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        animationDuration: '100ms',
+                      }}
+                    >
+                      <div
+                        className="w-52 rounded-2xl border shadow-xl overflow-hidden"
+                        style={{ background: '#fff', borderColor: '#e8e0d4' }}
+                      >
+                        <div className="px-4 pt-3 pb-2 border-b" style={{ borderColor: '#f0ebe4' }}>
+                          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#7a6a58' }}>
+                            {m.labelFull}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_ELEC }} />
+                            <span className="text-[12px] font-semibold" style={{ color: '#444' }}>Điện</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[13px] font-bold block" style={{ color: COLOR_ELEC }}>{m.elec} kWh</span>
+                            <span className="text-[10px] font-semibold" style={{ color: '#999' }}>{m.elecCost.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        </div>
+                        <div className="mx-4 border-t" style={{ borderColor: '#f0ebe4' }} />
+                        <div className="flex items-center justify-between px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_WATER }} />
+                            <span className="text-[12px] font-semibold" style={{ color: '#444' }}>Nước</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[13px] font-bold block" style={{ color: COLOR_WATER }}>{m.water} m³</span>
+                            <span className="text-[10px] font-semibold" style={{ color: '#999' }}>{m.waterCost.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between px-4 py-2 border-t" style={{ background: '#faf7f3', borderColor: '#f0ebe4' }}>
+                          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#9a8878' }}>Tổng</span>
+                          <span className="text-[12px] font-bold" style={{ color: COLOR_ELEC }}>
+                            {(m.elecCost + m.waterCost).toLocaleString('vi-VN')} đ
+                          </span>
+                        </div>
+                      </div>
+                      {/* Caret */}
+                      <div
+                        className="mx-auto"
+                        style={{
+                          width: 0, height: 0,
+                          borderLeft: '6px solid transparent',
+                          borderRight: '6px solid transparent',
+                          borderTop: '6px solid #fff',
+                          filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.07))',
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* ── Bar pair (slim, touching, breathing room via padding) ── */}
+                  <div
+                    className="flex items-end"
+                    style={{ height: BAR_H, gap: 1, paddingLeft: 7, paddingRight: 7 }}
+                  >
+                    {/* Electricity bar */}
+                    <div className="flex flex-col items-center justify-end" style={{ height: BAR_H, width: 7 }}>
+                      {m.elec > 0 && (
+                        <span
+                          className="text-[7.5px] font-bold leading-none mb-0.5"
+                          style={{ color: COLOR_ELEC, opacity: isHovered ? 1 : 0.6, transition: 'opacity 0.2s' }}
+                        >
+                          {m.elec}
+                        </span>
+                      )}
+                      <div style={{
+                        width: 7, height: hElec,
+                        background: isHovered ? COLOR_ELEC_HOVER : COLOR_ELEC,
+                        borderRadius: '3px 3px 0 0',
+                        transition: 'height 0.5s ease, background 0.15s ease',
+                        minHeight: m.elec > 0 ? 3 : 0,
+                      }} />
+                    </div>
+
+                    {/* Water bar */}
+                    <div className="flex flex-col items-center justify-end" style={{ height: BAR_H, width: 7 }}>
+                      {m.water > 0 && (
+                        <span
+                          className="text-[7.5px] font-bold leading-none mb-0.5"
+                          style={{ color: COLOR_WATER, opacity: isHovered ? 1 : 0.6, transition: 'opacity 0.2s' }}
+                        >
+                          {m.water}
+                        </span>
+                      )}
+                      <div style={{
+                        width: 7, height: hWater,
+                        background: isHovered ? COLOR_WATER_HOVER : COLOR_WATER,
+                        borderRadius: '3px 3px 0 0',
+                        transition: 'height 0.5s ease, background 0.15s ease',
+                        minHeight: m.water > 0 ? 3 : 0,
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* X-axis label */}
+                  <span
+                    className="text-[9px] font-bold leading-none pt-2 select-none whitespace-nowrap"
+                    style={{ color: isHovered ? COLOR_ELEC : '#9ca3af', transition: 'color 0.15s' }}
+                  >
+                    {m.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── View 2: RENTER VIEW (Dịch vụ của tôi) ────────────────────────────────────
 function RenterServicesView({
   services,
@@ -673,30 +882,35 @@ function RenterServicesView({
     });
   }, [services, renterSearch, renterCategory]);
 
-  // Chart data calculation
-  // August, September, October (Kỳ 2025-08, 2025-09, 2025-10)
-  const last3Months = useMemo(() => {
-    const months = ['2025-08', '2025-09', '2025-10'];
-    return months.map((m) => {
-      const rec = consumptionRecords.find((r) => r.period === m);
+  // Chart data: derive up to 12 months from actual consumptionRecords only
+  const chartMonths = useMemo(() => {
+    if (!consumptionRecords.length) return [];
+    // Sort ascending by period string (YYYY-MM)
+    const sorted = [...consumptionRecords].sort((a, b) => a.period.localeCompare(b.period));
+    // Take last 12 records at most
+    const slice = sorted.slice(-12);
+    return slice.map((r) => {
+      const [year, month] = r.period.split('-');
       return {
-        label: m === '2025-08' ? 'Tháng 8' : m === '2025-09' ? 'Tháng 9' : 'Tháng 10',
-        elec: rec?.electricity_kwh ?? 0,
-        water: rec?.water_m3 ?? 0,
-        elecCost: rec?.electricity_cost ?? 0,
-        waterCost: rec?.water_cost ?? 0,
+        period: r.period,
+        label: `T.${parseInt(month)}/${year.slice(2)}`,
+        labelFull: `Tháng ${parseInt(month)}/${year}`,
+        elec: r.electricity_kwh,
+        water: r.water_m3,
+        elecCost: r.electricity_cost,
+        waterCost: r.water_cost,
       };
     });
   }, [consumptionRecords]);
 
   const maxValues = useMemo(() => {
-    const elecs = last3Months.map((m) => m.elec);
-    const waters = last3Months.map((m) => m.water);
+    const elecs = chartMonths.map((m) => m.elec);
+    const waters = chartMonths.map((m) => m.water);
     return {
       elec: Math.max(...elecs, 1),
       water: Math.max(...waters, 1),
     };
-  }, [last3Months]);
+  }, [chartMonths]);
 
   return (
     <div className="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8">
@@ -882,52 +1096,9 @@ function RenterServicesView({
           {/* Tab content 3: Chỉ số Điện & Nước */}
           {activeTab === 'consumption' && (
             <div className="space-y-6">
-              
-              {/* CSS Consumption chart block */}
-              <div className="bg-white border border-outline-variant rounded-2xl p-6">
-                <h4 className="font-headline-md text-sm font-bold mb-6 font-lexend">Lịch sử tiêu thụ 3 tháng</h4>
-                <div className="h-[200px] flex items-end justify-around gap-6 px-4 mb-6 border-b border-outline-variant/60 pb-2">
-                  {last3Months.map((m, idx) => {
-                    const hElec = Math.round((m.elec / maxValues.elec) * 100);
-                    const hWater = Math.round((m.water / maxValues.water) * 100);
-                    return (
-                      <div key={idx} className="flex-1 max-w-[80px] flex flex-col items-center gap-2">
-                        <div className="w-full flex items-end justify-center gap-3 h-[150px]">
-                          {/* Electricity bar */}
-                          <div className="w-4 flex flex-col items-center justify-end h-full">
-                            <div 
-                              className="bg-primary rounded-t-sm w-full transition-all duration-500" 
-                              style={{ height: `${hElec}%` }}
-                              title={`${m.elec} kWh`}
-                            />
-                          </div>
-                          {/* Water bar */}
-                          <div className="w-4 flex flex-col items-center justify-end h-full">
-                            <div 
-                              className="bg-primary/40 rounded-t-sm w-full transition-all duration-500" 
-                              style={{ height: `${hWater}%` }}
-                              title={`${m.water} m³`}
-                            />
-                          </div>
-                        </div>
-                        <span className="text-xs text-on-surface-variant font-bold">{m.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Legends */}
-                <div className="flex justify-center gap-8 text-xs font-bold">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 bg-primary rounded-sm" />
-                    <span className="text-on-surface">Điện (kWh)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 bg-primary/40 rounded-sm" />
-                    <span className="text-on-surface">Nước (m³)</span>
-                  </div>
-                </div>
-              </div>
+
+              {/* 12-Month Bar Chart */}
+              <ConsumptionChart chartMonths={chartMonths} maxValues={maxValues} />
 
               {/* History Table */}
               <div className="bg-white border border-outline-variant rounded-2xl overflow-hidden">
