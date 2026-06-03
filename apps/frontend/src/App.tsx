@@ -15,13 +15,15 @@ import {
   CheckCircle, 
   Calendar, 
   FileText,
-  Plus, 
   Search, 
   Bell,
   Compass,
   ClipboardList,
   Activity,
-  Zap
+  Zap,
+  Receipt,
+  ArrowLeftRight,
+  LogIn
 } from 'lucide-react';
 import { initializeMockDB, getMockDB, saveMockDB, Room } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
@@ -48,6 +50,11 @@ import SaleDashboardPage from './features/sale/SaleDashboardPage';
 import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
 import CustomerLookupPage from './features/sale/CustomerLookupPage';
 import SaleContractsPage from './features/sale/SaleContractsPage';
+import AccountantDepositPage from './features/accountant/AccountantDepositPage';
+import AccountantCheckinPage from './features/accountant/AccountantCheckinPage';
+import AccountantMonthlyPage from './features/accountant/AccountantMonthlyPage';
+import AccountantRefundsPage from './features/accountant/AccountantRefundsPage';
+import AccountantPayoutsPage from './features/accountant/AccountantPayoutsPage';
 import AdminUsersPage from './features/admin/AdminUsersPage';
 import AdminEmployeesPage from './features/admin/AdminEmployeesPage';
 import AdminBranchesPage from './features/admin/AdminBranchesPage';
@@ -203,10 +210,11 @@ function DashboardLayout() {
       case 'accountant':
         return [
           { path: '/', label: 'Bàn làm việc Kế toán', icon: Home },
-          { path: '/accountant/invoices', label: 'Quản lý Hóa đơn', icon: CreditCard },
-          { path: '/accountant/refunds', label: 'Đối soát hoàn cọc', icon: FileText },
-          { path: '/accountant/payouts', label: 'Xử lý thanh lý', icon: CheckCircle },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
+          { path: '/accountant/invoices/deposit', label: 'Hóa đơn Đặt cọc', icon: Receipt },
+          { path: '/accountant/invoices/checkin', label: 'Hóa đơn Nhận phòng', icon: LogIn },
+          { path: '/accountant/invoices/monthly', label: 'Hóa đơn Định kỳ', icon: CreditCard },
+          { path: '/accountant/refunds', label: 'Đối soát Hoàn cọc', icon: ArrowLeftRight },
+          { path: '/accountant/payouts', label: 'Chi tiền Thanh lý', icon: CheckCircle },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
@@ -478,7 +486,11 @@ function DashboardLayout() {
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
             {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
             {user.role === 'sale' && <Route path="/sale/contracts" element={<SaleContractsPage />} />}
-            {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
+            {user.role === 'accountant' && <Route path="/accountant/invoices/deposit" element={<AccountantDepositPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/invoices/checkin" element={<AccountantCheckinPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/invoices/monthly" element={<AccountantMonthlyPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/refunds" element={<AccountantRefundsPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/payouts" element={<AccountantPayoutsPage />} />}
             {/* Admin Routes (UC25-UC32) */}
             {user.role === 'admin' && <Route path="/admin/users" element={<AdminUsersPage />} />}
             {user.role === 'admin' && <Route path="/admin/employees" element={<AdminEmployeesPage />} />}
@@ -510,6 +522,7 @@ function DashboardDispatcher() {
 
   // Auto-redirect role-based dashboards
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
+  if (user.role === 'accountant') return <Navigate to="/accountant/invoices/deposit" replace />;
   if (user.role === 'admin') return <AdminDashboardPage />;
 
   const cards = [
@@ -721,78 +734,6 @@ function ManagerFloorMapScreen() {
 
 
 
-// ----------------------------------------------------
-// SCREEN: ACCOUNTANT - INVOICES DASHBOARD (UC15, UC16)
-// ----------------------------------------------------
-function AccountantInvoicesScreen() {
-  const invoices = [
-    { id: 'inv-8912', type: 'Đặt cọc', amount: '1,500,000đ', customer: 'Lê Lâm Trí Đức', date: '01/06/2026', status: 'Chưa thanh toán' },
-    { id: 'inv-8911', type: 'Nhận phòng', amount: '3,200,000đ', customer: 'Nguyễn Văn Hải', date: '30/05/2026', status: 'Đã thanh toán' },
-    { id: 'inv-8910', type: 'Định kỳ tháng 5', amount: '1,750,000đ', customer: 'Phạm Minh Khoa', date: '25/05/2026', status: 'Quá hạn' }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-white">Quản lý Hóa đơn & Thu phí</h1>
-          <p className="text-slate-400 text-sm mt-1">Lập hóa đơn cọc, hóa đơn định kỳ dịch vụ điện nước và đối soát hoàn cọc.</p>
-        </div>
-        <button className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
-          <Plus className="w-3.5 h-3.5" />
-          Tạo hóa đơn định kỳ
-        </button>
-      </div>
-
-      <div className="glass-card rounded-xl border border-slate-800/80 overflow-hidden">
-        <div className="p-4 border-b border-slate-800/80 bg-slate-900/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <span className="text-xs font-bold text-slate-400">Danh sách hóa đơn gần đây</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-800">
-                <th className="p-4">Mã hóa đơn</th>
-                <th className="p-4">Loại hóa đơn</th>
-                <th className="p-4">Khách hàng</th>
-                <th className="p-4">Số tiền</th>
-                <th className="p-4">Hạn lập</th>
-                <th className="p-4">Trạng thái</th>
-                <th className="p-4 text-right">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-850 text-slate-300">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-900/20 transition-all">
-                  <td className="p-4 font-mono font-bold text-violet-400">{inv.id}</td>
-                  <td className="p-4">{inv.type}</td>
-                  <td className="p-4 font-semibold text-slate-200">{inv.customer}</td>
-                  <td className="p-4 font-black text-slate-200">{inv.amount}</td>
-                  <td className="p-4">{inv.date}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      inv.status === 'Đã thanh toán' ? 'bg-emerald-500/10 text-emerald-400' :
-                      inv.status === 'Chưa thanh toán' ? 'bg-amber-500/10 text-amber-400' :
-                      'bg-rose-500/10 text-rose-400'
-                    }`}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold transition-colors">
-                      Xem chi tiết
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ----------------------------------------------------
 // PLACEHOLDER PAGE FOR UNIMPLEMENTED MENU ITEMS

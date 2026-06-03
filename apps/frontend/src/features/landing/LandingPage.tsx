@@ -180,7 +180,7 @@ export default function LandingPage() {
 
       <main className="pt-20">
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-margin-mobile md:px-margin-desktop py-12 md:py-24 max-w-container-max mx-auto">
+        <section className="relative overflow-hidden px-margin-mobile md:px-margin-desktop py-10 md:py-24 max-w-container-max mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-fade-in-up">
               <h1 className="font-display-lg text-[40px] md:text-display-lg leading-tight text-on-surface">
@@ -314,14 +314,30 @@ export default function LandingPage() {
         </section>
 
         {/* Services Showcase Section */}
-        <section className="py-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto border-t border-outline-variant/10">
+        <section className="py-15 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto border-t border-outline-variant/10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* Left Content Column */}
+            {/* Left Image Column */}
+            <div className="lg:col-span-5 relative">
+              <div className="aspect-[4/3] sm:aspect-[16/10] lg:aspect-square rounded-[40px] overflow-hidden shadow-2xl relative z-10 border border-outline-variant/20">
+                <img
+                  alt="Co-living services"
+                  className="w-full h-full object-cover transform hover:scale-[1.03] transition-transform duration-700"
+                  src={servicesImage}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none"></div>
+              </div>
+              
+              {/* Decorative glows */}
+              <div className="absolute -bottom-8 -left-8 w-48 h-48 bg-primary/10 rounded-full blur-3xl -z-10"></div>
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-secondary/15 rounded-full blur-3xl -z-10"></div>
+            </div>
+
+            {/* Right Content Column */}
             <div className="lg:col-span-7 space-y-8 animate-fade-in-up">
               <div className="space-y-3">
                 <span className="text-primary font-label-md tracking-widest uppercase block">Hệ sinh thái tiện ích</span>
-                <h2 className="font-headline-lg text-headline-lg text-on-surface leading-tight">
+                <h2 className="font-headline-lg text-headline-lg text-on-surface leading-relaxed">
                   Dịch vụ đa dạng,<br />Cuộc sống tiện nghi vượt trội
                 </h2>
               </div>
@@ -391,22 +407,6 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
                 </button>
               </div>
-            </div>
-
-            {/* Right Image Column */}
-            <div className="lg:col-span-5 relative">
-              <div className="aspect-[4/3] sm:aspect-[16/10] lg:aspect-square rounded-[40px] overflow-hidden shadow-2xl relative z-10 border border-outline-variant/20">
-                <img
-                  alt="Co-living services"
-                  className="w-full h-full object-cover transform hover:scale-[1.03] transition-transform duration-700"
-                  src={servicesImage}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none"></div>
-              </div>
-              
-              {/* Decorative glows */}
-              <div className="absolute -bottom-8 -right-8 w-48 h-48 bg-primary/10 rounded-full blur-3xl -z-10"></div>
-              <div className="absolute -top-8 -left-8 w-32 h-32 bg-secondary/15 rounded-full blur-3xl -z-10"></div>
             </div>
 
           </div>
