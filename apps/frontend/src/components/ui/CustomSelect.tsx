@@ -15,6 +15,7 @@ interface CustomSelectProps {
   placeholder?: string;
   icon?: string;
   pill?: boolean;
+  theme?: 'default' | 'accountant';
 }
 
 export default function CustomSelect({
@@ -27,6 +28,7 @@ export default function CustomSelect({
   placeholder = '',
   icon = '',
   pill = false,
+  theme = 'default',
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,16 +61,23 @@ export default function CustomSelect({
     setIsOpen(false);
   };
 
+  const isAccountant = theme === 'accountant';
+  const borderClass = isAccountant ? 'border-[#7f756c]' : 'border-[#c3c8bf]';
+  const focusRingClass = isAccountant 
+    ? 'ring-2 ring-[#5a462d] border-transparent shadow-sm' 
+    : 'ring-2 ring-primary border-transparent shadow-sm';
+  const hoverBorderClass = isAccountant ? 'hover:border-[#5a462d]/50' : 'hover:border-primary/50';
+
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {/* Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between bg-white border border-[#c3c8bf] px-4 py-2.5 outline-none transition-all cursor-pointer font-label-md text-on-surface text-sm ${
+        className={`w-full flex items-center justify-between bg-white border ${borderClass} px-4 py-2.5 outline-none transition-all cursor-pointer font-label-md text-on-surface text-sm ${
           pill ? 'rounded-[24px]' : 'rounded-[12px]'
         } ${
-          isOpen ? 'ring-2 ring-primary border-transparent shadow-sm' : 'hover:border-primary/50'
+          isOpen ? focusRingClass : hoverBorderClass
         } ${triggerClassName}`}
       >
         <div className="flex items-center gap-2 truncate">
@@ -98,15 +107,20 @@ export default function CustomSelect({
           ) : (
             normalizedOptions.map((opt) => {
               const isSelected = opt.value === value;
+              const itemActiveStyle = isAccountant 
+                ? 'bg-[#5a462d]/10 text-[#5a462d] font-bold' 
+                : 'bg-primary/10 text-primary font-bold';
+              const itemHoverStyle = isAccountant
+                ? 'text-[#1b1c1c] hover:bg-[#faf2ec] hover:text-[#5a462d]'
+                : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface';
+
               return (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => handleSelect(opt.value)}
                   className={`w-full text-left px-4 py-2 text-sm font-body-md transition-colors flex items-center justify-between ${
-                    isSelected
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                    isSelected ? itemActiveStyle : itemHoverStyle
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>

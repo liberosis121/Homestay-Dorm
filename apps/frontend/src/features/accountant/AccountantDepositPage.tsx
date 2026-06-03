@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Search, CreditCard, Save, Eye, QrCode
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, DepositInvoice, Profile, Room } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function AccountantDepositPage() {
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
@@ -127,6 +128,27 @@ export default function AccountantDepositPage() {
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
   const selectedRoom = rooms.find(r => r.id === selectedRoomId);
 
+  const customerOptions = useMemo(() => customers.map((c) => ({
+    value: c.id,
+    label: `${c.full_name}${c.phone ? ` (${c.phone})` : ''}`
+  })), [customers]);
+
+  const roomOptions = useMemo(() => rooms.map((r) => ({
+    value: r.id,
+    label: `${r.name} - ${r.room_type} (${r.price.toLocaleString('vi-VN')} đ/tháng)`
+  })), [rooms]);
+
+  const deadlineOptions = [
+    { value: '24h', label: '24 giờ (Mặc định)' },
+    { value: '48h', label: '48 giờ' },
+    { value: '72h', label: '72 giờ' }
+  ];
+
+  const paymentOptions = [
+    { value: 'transfer', label: 'Chuyển khoản (Mã QR)' },
+    { value: 'cash', label: 'Tiền mặt' }
+  ];
+
   return (
     <div className="space-y-6 text-[#1b1c1c] font-body-md">
       {/* Page Header */}
@@ -172,19 +194,13 @@ export default function AccountantDepositPage() {
                 <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">
                   Khách hàng <span className="text-[#ba1a1a]">*</span>
                 </label>
-                <select
+                <CustomSelect
                   value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#1b1c1c] text-sm rounded py-2 px-3 focus:outline-none focus:border-[#5a462d] focus:ring-1 focus:ring-[#5a462d]"
-                  required
-                >
-                  <option value="">Chọn hoặc tìm kiếm khách hàng...</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.full_name} {c.phone ? `(${c.phone})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedCustomerId}
+                  options={customerOptions}
+                  placeholder="Chọn hoặc tìm kiếm khách hàng..."
+                  theme="accountant"
+                />
               </div>
 
               {/* Phòng / Giường */}
@@ -192,19 +208,13 @@ export default function AccountantDepositPage() {
                 <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">
                   Phòng / Giường <span className="text-[#ba1a1a]">*</span>
                 </label>
-                <select
+                <CustomSelect
                   value={selectedRoomId}
-                  onChange={(e) => setSelectedRoomId(e.target.value)}
-                  className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#1b1c1c] text-sm rounded py-2 px-3 focus:outline-none focus:border-[#5a462d] focus:ring-1 focus:ring-[#5a462d]"
-                  required
-                >
-                  <option value="">Chọn phòng...</option>
-                  {rooms.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} - {r.room_type} ({(r.price).toLocaleString('vi-VN')} đ/tháng)
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedRoomId}
+                  options={roomOptions}
+                  placeholder="Chọn phòng..."
+                  theme="accountant"
+                />
               </div>
 
               {/* Tiền cọc */}
@@ -217,7 +227,7 @@ export default function AccountantDepositPage() {
                     type="text"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#1b1c1c] text-sm rounded py-2 px-3 pr-8 text-right focus:outline-none focus:border-[#5a462d] focus:ring-1 focus:ring-[#5a462d]"
+                    className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#1b1c1c] text-sm rounded-[12px] py-2 px-3 pr-8 text-right focus:outline-none focus:border-[#5a462d] focus:ring-1 focus:ring-[#5a462d]"
                     placeholder="0"
                     required
                   />
@@ -228,28 +238,23 @@ export default function AccountantDepositPage() {
               {/* Hạn thanh toán */}
               <div>
                 <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">Hạn thanh toán</label>
-                <select
+                <CustomSelect
                   value={deadlineType}
-                  onChange={(e) => setDeadlineType(e.target.value)}
-                  className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#1b1c1c] text-sm rounded py-2 px-3 focus:outline-none focus:border-[#5a462d] focus:ring-1 focus:ring-[#5a462d]"
-                >
-                  <option value="24h">24 giờ (Mặc định)</option>
-                  <option value="48h">48 giờ</option>
-                  <option value="72h">72 giờ</option>
-                </select>
+                  onChange={setDeadlineType}
+                  options={deadlineOptions}
+                  theme="accountant"
+                />
               </div>
 
               {/* Phương thức thu */}
               <div>
                 <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">Phương thức thu</label>
-                <select
+                <CustomSelect
                   value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'transfer' | 'cash')}
-                  className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#1b1c1c] text-sm rounded py-2 px-3 focus:outline-none focus:border-[#5a462d] focus:ring-1 focus:ring-[#5a462d]"
-                >
-                  <option value="transfer">Chuyển khoản (Mã QR)</option>
-                  <option value="cash">Tiền mặt</option>
-                </select>
+                  onChange={(val) => setPaymentMethod(val as 'transfer' | 'cash')}
+                  options={paymentOptions}
+                  theme="accountant"
+                />
               </div>
 
               {/* Ghi chú */}

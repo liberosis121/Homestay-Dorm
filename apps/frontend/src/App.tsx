@@ -117,6 +117,15 @@ function AppRoutes() {
         <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/customer/rooms/:roomId" element={<RoomDetailPage />} />
+        <Route path="/customer/services" element={
+          <div className="bg-surface text-on-surface font-body-md min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1 bg-background pt-24 pb-16">
+              <CustomerServicesPage />
+            </main>
+            <Footer />
+          </div>
+        } />
         <Route 
           path="/profile/*" 
           element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
@@ -151,7 +160,6 @@ function CustomerLayout() {
           <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
-          <Route path="/customer/services" element={<CustomerServicesPage />} />
           <Route path="/customer/contracts" element={<CustomerContractsPage />} />
           <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
           <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
@@ -272,7 +280,7 @@ function DashboardLayout() {
   const getSidebarSubtitle = () => {
     switch (user.role) {
       case 'sale': return 'PHÂN HỆ NHÂN VIÊN SALE';
-      case 'manager': return 'PHÂN HỆ QUẢN LÝ CHI NHÁNH';
+      case 'manager': return 'PHÂN HỆ QUẢN LÝ';
       case 'accountant': return 'PHÂN HỆ KẾ TOÁN';
       case 'admin': return 'PHÂN HỆ QUẢN TRỊ VIÊN';
       default: return 'PHÂN HỆ QUẢN LÝ';

@@ -3,6 +3,7 @@ import {
   Receipt, Search, Check, Eye, Printer, X
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, MonthlyInvoice, Room } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function AccountantMonthlyPage() {
   const [invoices, setInvoices] = useState<MonthlyInvoice[]>([]);
@@ -130,6 +131,24 @@ export default function AccountantMonthlyPage() {
   const debtMonthlySum = expectedMonthlySum - paidMonthlySum;
   const paymentRate = expectedMonthlySum > 0 ? ((paidMonthlySum / expectedMonthlySum) * 100).toFixed(1) : '0';
 
+  const periodOptions = [
+    { value: '06/2026', label: 'Tháng 06/2026' },
+    { value: '05/2026', label: 'Tháng 05/2026' }
+  ];
+
+  const branchOptions = [
+    { value: 'all', label: 'Tất cả chi nhánh' },
+    { value: 'b1', label: 'Chi nhánh Q1' },
+    { value: 'b2', label: 'Chi nhánh Thủ Đức' }
+  ];
+
+  const statusOptions = [
+    { value: 'all', label: 'Tất cả trạng thái' },
+    { value: 'paid', label: 'Đã thanh toán' },
+    { value: 'pending', label: 'Chờ thanh toán' },
+    { value: 'overdue', label: 'Quá hạn' }
+  ];
+
   return (
     <div className="space-y-6 text-[#1b1c1c] font-body-md relative">
       {/* Page Header */}
@@ -138,36 +157,28 @@ export default function AccountantMonthlyPage() {
           <h2 className="font-headline-md text-2xl text-[#5a462d] font-semibold">Hóa đơn định kỳ</h2>
           <p className="text-[#5e5f5d] text-sm mt-1">Quản lý và chốt chỉ số điện/nước hàng tháng</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 bg-[#fbf9f8] p-1.5 rounded border border-[#d1c4b9]">
-          <select
+        <div className="flex flex-wrap items-center gap-3">
+          <CustomSelect
             value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer text-[#1b1c1c] py-1 px-3 pr-8"
-          >
-            <option value="06/2026">Tháng 06/2026</option>
-            <option value="05/2026">Tháng 05/2026</option>
-          </select>
-          <div className="w-[1px] h-4 bg-[#d1c4b9]"></div>
-          <select
+            onChange={setSelectedPeriod}
+            options={periodOptions}
+            theme="accountant"
+            className="w-40"
+          />
+          <CustomSelect
             value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="bg-transparent border-none text-xs focus:ring-0 cursor-pointer text-[#1b1c1c] py-1 px-3 pr-8"
-          >
-            <option value="all">Tất cả chi nhánh</option>
-            <option value="b1">Chi nhánh Q1</option>
-            <option value="b2">Chi nhánh Thủ Đức</option>
-          </select>
-          <div className="w-[1px] h-4 bg-[#d1c4b9]"></div>
-          <select
+            onChange={setSelectedBranch}
+            options={branchOptions}
+            theme="accountant"
+            className="w-44"
+          />
+          <CustomSelect
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="bg-transparent border-none text-xs focus:ring-0 cursor-pointer text-[#1b1c1c] py-1 px-3 pr-8"
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="paid">Đã thanh toán</option>
-            <option value="pending">Chờ thanh toán</option>
-            <option value="overdue">Quá hạn</option>
-          </select>
+            onChange={setSelectedStatus}
+            options={statusOptions}
+            theme="accountant"
+            className="w-48"
+          />
         </div>
       </div>
 
