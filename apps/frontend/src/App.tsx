@@ -91,6 +91,7 @@ function AppRoutes() {
         <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/customer/rooms/:roomId" element={<RoomDetailPage />} />
+        <Route path="/customer/services" element={<CustomerServicesPage />} />
         <Route 
           path="/profile/*" 
           element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
@@ -126,7 +127,6 @@ function CustomerLayout() {
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
           <Route path="/customer/contracts" element={<CustomerContractsPage />} />
-          <Route path="/customer/services" element={<CustomerServicesPage />} />
           <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
           <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
           <Route path="/customer/checkout-request" element={<CustomerCheckoutPage />} />

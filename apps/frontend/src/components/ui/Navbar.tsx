@@ -42,7 +42,7 @@ export default function Navbar() {
           </Link>
           <Link 
             className={`font-body-md transition-colors ${location.pathname === '/customer/services' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`}
-            to={user?.role === 'customer' ? '/customer/services' : '/'}
+            to="/customer/services"
           >
             Dịch vụ
           </Link>
