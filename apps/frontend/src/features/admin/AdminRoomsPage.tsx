@@ -1,10 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { getMockDB } from '../../lib/supabaseClient';
 
 const A = {
-  bg: '#F7F4EF', sidebar: '#F3EFE8', surface: '#ffffff',
-  primary: '#1E2A44', accent: '#2F7A8A', badgeBg: '#E8F3F5',
-  border: '#DDD6CC', textPrimary: '#1E2A44', textMuted: '#5C6370',
+  bg: '#fff8f3',          // Sand background
+  sidebar: '#faf2ec',     // Warm Cream
+  surface: '#ffffff',
+  primary: '#6f583c',     // Wood Brown
+  accent: '#5f745d',      // Sage Green
+  badgeBg: '#e8ede7',     // Sage Light
+  border: '#d1c4b9',      // Border Brownish
+  textPrimary: '#1e1b17', // Dark Wood
+  textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
 interface RoomCatalog {
@@ -21,7 +27,7 @@ interface RoomCatalog {
 
 const STATUS_ROOM: Record<string, { label: string; cls: string }> = {
   available:   { label: 'Phòng trống', cls: 'bg-emerald-50 text-emerald-700' },
-  occupied:    { label: 'Đang thuê',   cls: 'bg-[#E8F3F5] text-[#2F7A8A]' },
+  occupied:    { label: 'Đang thuê',   cls: 'bg-[#e8ede7] text-[#5f745d]' },
   deposited:   { label: 'Đã đặt cọc', cls: 'bg-amber-50 text-amber-700' },
   maintenance: { label: 'Bảo trì',    cls: 'bg-gray-100 text-gray-600' },
   partial:     { label: 'Trống một phần', cls: 'bg-blue-50 text-blue-700' },
@@ -51,6 +57,8 @@ export default function AdminRoomsPage() {
     { id: 'P201', name: 'Phòng 201', branch: 'Quận 3', floor: 2, capacity: 6, gender_type: 'mixed', price: 1200000, status: 'deposited', amenities: ['Wifi'] },
     { id: 'P202', name: 'Phòng 202', branch: 'Quận 3', floor: 2, capacity: 2, gender_type: 'female', price: 2000000, status: 'maintenance', amenities: ['Điều hòa', 'Wifi', 'Máy giặt'] },
   ]);
+  // @ts-ignore
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
@@ -59,13 +67,21 @@ export default function AdminRoomsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<RoomCatalog>>({});
 
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
   const kpis = useMemo(() => {
     const total = rooms.length;
     const byStatus = (s: string) => rooms.filter(r => r.status === s).length;
     return [
       { icon: 'meeting_room', label: 'Tổng phòng', val: total },
       { icon: 'check_circle', label: 'Phòng trống', val: byStatus('available'), iconCls: 'bg-emerald-50 text-emerald-700' },
-      { icon: 'bed', label: 'Đang có khách', val: byStatus('occupied'), iconCls: 'bg-[#E8F3F5] text-[#2F7A8A]' },
+      { icon: 'bed', label: 'Đang có khách', val: byStatus('occupied'), iconCls: 'bg-[#e8ede7] text-[#5f745d]' },
       { icon: 'construction', label: 'Đang bảo trì', val: byStatus('maintenance'), iconCls: 'bg-gray-100 text-gray-600' },
     ];
   }, [rooms]);
@@ -187,10 +203,28 @@ export default function AdminRoomsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="py-16 text-center text-sm" style={{ color: A.textMuted }}>
-                  Không tìm thấy phòng phù hợp.
-                </td></tr>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-[#d1c4b9] animate-pulse">
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-10"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                    <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
+                    <td className="px-4 py-4"><div className="h-8 bg-gray-200 rounded-full w-16"></div></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-16 text-center">
+                    <span className="material-symbols-outlined text-5xl block mb-3 animate-bounce" style={{ color: A.border }}>manage_search</span>
+                    <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>Không tìm thấy phòng phù hợp.</p>
+                    <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+                  </td>
+                </tr>
               ) : filtered.map((r, i) => {
                 const si = STATUS_ROOM[r.status] || STATUS_ROOM.available;
                 return (
@@ -210,7 +244,7 @@ export default function AdminRoomsPage() {
                       {r.price.toLocaleString('vi-VN')}đ
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${si.cls}`}>{si.label}</span>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${si.cls}`}>{si.label}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

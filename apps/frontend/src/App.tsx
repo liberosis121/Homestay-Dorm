@@ -117,7 +117,6 @@ function AppRoutes() {
         <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/customer/rooms/:roomId" element={<RoomDetailPage />} />
-        <Route path="/customer/services" element={<CustomerServicesPage />} />
         <Route 
           path="/profile/*" 
           element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
@@ -152,6 +151,7 @@ function CustomerLayout() {
           <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
+          <Route path="/customer/services" element={<CustomerServicesPage />} />
           <Route path="/customer/contracts" element={<CustomerContractsPage />} />
           <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
           <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
@@ -206,6 +206,7 @@ function DashboardLayout() {
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
           { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
           { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
+          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/admin/backup', label: 'Sao lưu & Khôi phục', icon: Database }
         ];
       case 'manager':
@@ -237,6 +238,7 @@ function DashboardLayout() {
           { path: '/accountant/invoices/monthly', label: 'Hóa đơn Định kỳ', icon: CreditCard },
           { path: '/accountant/refunds', label: 'Đối soát Hoàn cọc', icon: ArrowLeftRight },
           { path: '/accountant/payouts', label: 'Chi tiền Thanh lý', icon: CheckCircle },
+          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
@@ -244,7 +246,7 @@ function DashboardLayout() {
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
           { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
           { path: '/customer/services', label: user.renting_room_name ? 'Dịch vụ của tôi' : 'Dịch vụ & Bảng giá', icon: Zap },
-          { path: '/customer/schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
+          { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
           { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
           { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
           { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
@@ -534,7 +536,7 @@ function DashboardLayout() {
             {user.role === 'admin' && <Route path="/admin/conditions" element={<AdminConditionsPage />} />}
             {user.role === 'admin' && <Route path="/admin/assets" element={<AdminAssetsPage />} />}
             {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupPage />} />}
-            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
+            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant' || user.role === 'admin') && (
               <Route path="/sale/customers" element={<CustomerLookupPage />} />
             )}
             
@@ -638,15 +640,18 @@ function DashboardDispatcher() {
 function PlaceholderPage() {
   const location = useLocation();
   return (
-    <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-6">
-      <div className="p-4 bg-slate-900 rounded-2xl text-slate-500 border border-slate-850 mb-4">
-        <Compass className="w-10 h-10" />
+    <div className="min-h-[450px] flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
+      <div className="p-5 bg-[#6f583c]/10 rounded-2xl text-[#6f583c] border border-[#6f583c]/20 mb-6 flex items-center justify-center">
+        <Compass className="w-12 h-12" />
       </div>
-      <h2 className="text-xl font-extrabold text-white mb-2">Trang đang xây dựng</h2>
-      <p className="text-sm text-slate-400 max-w-sm mb-4">
-        Đường dẫn `{location.pathname}` thuộc phạm vi các Phase tiếp theo. Giao diện này sẽ được bổ sung đầy đủ logic ở các bước tiếp theo.
+      <h2 className="text-xl font-extrabold text-[#1e1b17] mb-3 font-lexend">Trang đang xây dựng</h2>
+      <p className="text-sm text-[#4e453c] max-w-md mb-6 leading-relaxed">
+        Đường dẫn <code className="bg-[#6f583c]/5 px-2 py-1 rounded text-xs font-mono text-[#6f583c]">{location.pathname}</code> đang trong quá trình phát triển và hoàn thiện. Giao diện này sẽ sớm được cập nhật đầy đủ nghiệp vụ.
       </p>
-      <Link to="/" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-colors">
+      <Link 
+        to="/" 
+        className="px-6 py-3 bg-[#6f583c] hover:bg-[#5a4630] text-white rounded-full text-xs font-bold transition-all shadow-md shadow-[#6f583c]/15 hover:scale-[1.02] active:scale-95"
+      >
         Quay lại Trang chính
       </Link>
     </div>

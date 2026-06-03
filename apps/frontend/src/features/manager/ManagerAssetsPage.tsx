@@ -26,6 +26,7 @@ const LOCATIONS = ['Phòng 101', 'Phòng 102', 'Phòng 201', 'Phòng 202', 'Phò
 
 export default function ManagerAssetsPage() {
   const [assets, setAssets] = useState<ManagedAsset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selected, setSelected] = useState<ManagedAsset | null>(null);
   const [filterCat, setFilterCat] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -35,8 +36,13 @@ export default function ManagerAssetsPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    const db = getMockDB();
-    setAssets(db.managed_assets || []);
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      const db = getMockDB();
+      setAssets(db.managed_assets || []);
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
   }, []);
 
   const showToast = (msg: string) => {
@@ -111,7 +117,30 @@ export default function ManagerAssetsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAssets.map((asset) => {
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }} className="animate-pulse">
+                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-8"></div></td>
+                        <td style={{ padding: '11px 14px' }}>
+                          <div className="space-y-2">
+                            <div className="h-4 bg-gray-200 rounded w-24"></div>
+                            <div className="h-3 bg-gray-200 rounded w-16"></div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                        <td style={{ padding: '11px 14px' }}><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
+                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-4"></div></td>
+                      </tr>
+                    ))
+                  ) : filteredAssets.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: T.textFaint }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 8, color: T.textFaint }}>inventory_2</span>
+                        <p style={{ fontSize: 13, fontWeight: 500 }}>Không tìm thấy tài sản nào phù hợp bộ lọc.</p>
+                      </td>
+                    </tr>
+                  ) : filteredAssets.map((asset) => {
                     const meta = STATUS_META[asset.status];
                     const isSelected = selected?.id === asset.id;
                     return (

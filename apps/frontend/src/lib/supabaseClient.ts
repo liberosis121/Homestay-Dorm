@@ -8,6 +8,7 @@ import avatarSale from '../assets/avatar-sale.png';
 import avatarAccountant from '../assets/avatar-accountant.png';
 import avatarCustomer from '../assets/avatar-customer.png';
 import avatarNewCustomer from '../assets/avatar-newcustomer.png';
+import { MOCK_CUSTOMERS } from './mockCustomers';
 
 
 // Mock database key in Local Storage
@@ -512,6 +513,7 @@ const generatePayoutRecords = (): PayoutRecord[] => {
 };
 
 const INITIAL_DB = {
+  customers: MOCK_CUSTOMERS,
   profiles: [
     { id: 'u-1', email: 'admin@homestay.com', role: 'admin', full_name: 'Hoàng Quốc Việt (Admin)', phone: '0901234567', avatar_url: avatarAdmin },
     { id: 'u-2', email: 'manager@homestay.com', role: 'manager', full_name: 'Trần Kim Yến (Quản lý)', phone: '0907654321', avatar_url: avatarManager },
@@ -905,6 +907,10 @@ export const initializeMockDB = () => {
       let updated = false;
       if (db && db.profiles) {
         db.profiles = INITIAL_DB.profiles;
+        updated = true;
+      }
+      if (db && (!db.customers || db.customers.length < 25)) {
+        db.customers = INITIAL_DB.customers;
         updated = true;
       }
       if (db && db.rooms) {

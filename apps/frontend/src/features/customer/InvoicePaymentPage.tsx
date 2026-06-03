@@ -32,6 +32,19 @@ export default function InvoicePaymentPage() {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
 
+  const isCardFormValid = useMemo(() => {
+    return cardNumber.length === 16 && cardExpiry.length === 5 && cardCvv.length === 3;
+  }, [cardNumber, cardExpiry, cardCvv]);
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 4) val = val.slice(0, 4);
+    if (val.length > 2) {
+      val = val.slice(0, 2) + '/' + val.slice(2);
+    }
+    setCardExpiry(val);
+  };
+
   // Fetch current invoice
   const invoice = useMemo(() => {
     return invoices.find((inv) => inv.id === invoiceId) || null;
@@ -74,11 +87,8 @@ export default function InvoicePaymentPage() {
 
   const handleCardSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cardNumber || !cardExpiry || !cardCvv) {
-      alert('Vui lòng nhập đầy đủ thông tin thẻ tín dụng/ghi nợ!');
-      return;
-    }
-    startPaymentSimulation('card');
+    if (!isCardFormValid) return;
+    alert('Chức năng thanh toán thẻ nội địa/quốc tế đang được phát triển. Vui lòng thanh toán bằng phương thức Chuyển khoản QR!');
   };
 
   return (
@@ -257,7 +267,7 @@ export default function InvoicePaymentPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <button 
-                      onClick={() => startPaymentSimulation('wallet')}
+                      onClick={() => alert('Chức năng ví điện tử MoMo đang được phát triển. Vui lòng thanh toán bằng phương thức Chuyển khoản QR!')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
                       <svg className="w-16 h-16 shadow-md rounded-2xl group-hover:scale-105 transition-transform shrink-0" viewBox="0 0 100 100">
@@ -273,7 +283,7 @@ export default function InvoicePaymentPage() {
                       <span className="font-bold text-sm text-on-surface">Ví điện tử MoMo</span>
                     </button>
                     <button 
-                      onClick={() => startPaymentSimulation('wallet')}
+                      onClick={() => alert('Chức năng ví điện tử ZaloPay đang được phát triển. Vui lòng thanh toán bằng phương thức Chuyển khoản QR!')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
                       <svg className="w-16 h-16 shadow-md rounded-2xl group-hover:scale-105 transition-transform shrink-0" viewBox="0 0 100 100">
@@ -319,9 +329,9 @@ export default function InvoicePaymentPage() {
                         required
                         type="text" 
                         value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value.substring(0, 5))}
+                        onChange={handleExpiryChange}
                         className="w-full border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium bg-surface-container-low text-center" 
-                        placeholder="MM/YY" 
+                        placeholder="mm/dd" 
                       />
                     </div>
                     <div>
@@ -342,7 +352,8 @@ export default function InvoicePaymentPage() {
                   <div className="pt-4">
                     <button 
                       type="submit" 
-                      className="w-full py-3.5 bg-primary hover:bg-[#253228] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                      disabled={!isCardFormValid}
+                      className="w-full py-3.5 bg-primary hover:bg-[#253228] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
                     >
                       Xác nhận thanh toán {invoice.totalAmount.toLocaleString('vi-VN')}đ
                     </button>

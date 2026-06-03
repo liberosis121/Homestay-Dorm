@@ -1,15 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 const A = {
-  bg: '#F7F4EF',
-  sidebar: '#F3EFE8',
+  bg: '#fff8f3',          // Sand background
+  sidebar: '#faf2ec',     // Warm Cream
   surface: '#ffffff',
-  primary: '#1E2A44',
-  accent: '#2F7A8A',
-  badgeBg: '#E8F3F5',
-  border: '#DDD6CC',
-  textPrimary: '#1E2A44',
-  textMuted: '#5C6370',
+  primary: '#6f583c',     // Wood Brown
+  accent: '#5f745d',      // Sage Green
+  badgeBg: '#e8ede7',     // Sage Light
+  border: '#d1c4b9',      // Border Brownish
+  textPrimary: '#1e1b17', // Dark Wood
+  textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
 type Role = 'sale' | 'manager' | 'accountant' | 'admin';
@@ -29,7 +29,7 @@ const ROLES: Record<Role, { label: string; cls: string }> = {
   sale:       { label: 'Nhân viên Sale',   cls: 'bg-blue-50 text-blue-700 border border-blue-200' },
   manager:    { label: 'Quản lý CN',       cls: 'bg-purple-50 text-purple-700 border border-purple-200' },
   accountant: { label: 'Kế toán',          cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  admin:      { label: 'Quản trị viên',    cls: 'bg-[#E8F3F5] text-[#2F7A8A]' },
+  admin:      { label: 'Quản trị viên',    cls: 'bg-[#e8ede7] text-[#5f745d]' },
 };
 
 const MOCK_EMPLOYEES: Employee[] = [
@@ -42,12 +42,21 @@ const MOCK_EMPLOYEES: Employee[] = [
 
 export default function AdminEmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>(MOCK_EMPLOYEES);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
   const [selected, setSelected] = useState<Employee | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEmp, setNewEmp] = useState({ full_name: '', email: '', phone: '', role: 'sale' as Role, branch: 'Quận 1' });
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const kpis = useMemo(() => {
     const total = employees.length;
@@ -177,10 +186,40 @@ export default function AdminEmployeesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="py-16 text-center text-sm" style={{ color: A.textMuted }}>
-                  Không tìm thấy nhân viên nào.
-                </td></tr>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-[#d1c4b9] animate-pulse">
+                    <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-8"></div></td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gray-200"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-24"></div>
+                          <div className="h-3 bg-gray-200 rounded w-16"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        <div className="h-3 bg-gray-200 rounded w-32"></div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4"><div className="h-6 bg-gray-200 rounded-full w-24"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td className="px-5 py-4"><div className="h-8 bg-gray-200 rounded-full w-24"></div></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-16 text-center">
+                    <span className="material-symbols-outlined text-5xl block mb-3 animate-bounce" style={{ color: A.border }}>manage_search</span>
+                    <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>Không tìm thấy nhân viên nào.</p>
+                    <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+                  </td>
+                </tr>
               ) : filtered.map((emp, i) => {
                 const roleInfo = ROLES[emp.role];
                 return (
@@ -194,7 +233,7 @@ export default function AdminEmployeesPage() {
                     <td className="px-5 py-3 text-sm font-medium" style={{ color: A.textMuted }}>{emp.id}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
                           style={{ background: A.primary }}>{emp.full_name.charAt(0)}</div>
                         <div>
                           <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>{emp.full_name}</p>
@@ -207,12 +246,12 @@ export default function AdminEmployeesPage() {
                       <p className="text-xs opacity-70" style={{ color: A.textMuted }}>{emp.email}</p>
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${roleInfo.cls}`}>{roleInfo.label}</span>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${roleInfo.cls}`}>{roleInfo.label}</span>
                     </td>
                     <td className="px-5 py-3 text-sm" style={{ color: A.textPrimary }}>{emp.branch}</td>
                     <td className="px-5 py-3 text-sm" style={{ color: A.textMuted }}>{emp.joinDate}</td>
                     <td className="px-5 py-3">
-                      <span className={`flex items-center gap-1.5 text-xs font-medium ${emp.status === 'active' ? 'text-emerald-600' : 'text-red-600'}`}>
+                      <span className={`flex items-center gap-1.5 text-xs font-semibold ${emp.status === 'active' ? 'text-emerald-600' : 'text-red-600'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                         {emp.status === 'active' ? 'Hoạt động' : 'Bị khóa'}
                       </span>

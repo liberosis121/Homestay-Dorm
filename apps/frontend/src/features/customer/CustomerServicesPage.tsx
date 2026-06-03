@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useCustomerServicesStore } from './store/useCustomerServicesStore';
 import ServiceCard from './components/ServiceCard';
-import Navbar from '../../components/ui/Navbar';
-import Footer from '../../components/ui/Footer';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
@@ -1358,31 +1356,25 @@ export default function CustomerServicesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 pt-16 pb-12">
-        {isRenting ? (
-          <RenterServicesView
-            services={services}
-            subscriptions={subscriptions}
-            consumptionRecords={consumptionRecords}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            onRegister={openRegistration}
-            onViewDetail={openDetail}
-            onCancelSub={openCancelConfirm}
-            userRoomName={userRoomName}
-          />
-        ) : (
-          <GuestServicesView
-            services={services}
-            onViewDetail={openDetail}
-          />
-        )}
-      </main>
-
-      <Footer />
+    <div className="w-full">
+      {isRenting ? (
+        <RenterServicesView
+          services={services}
+          subscriptions={subscriptions}
+          consumptionRecords={consumptionRecords}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onRegister={openRegistration}
+          onViewDetail={openDetail}
+          onCancelSub={openCancelConfirm}
+          userRoomName={userRoomName}
+        />
+      ) : (
+        <GuestServicesView
+          services={services}
+          onViewDetail={openDetail}
+        />
+      )}
 
       {/* ─── Modals ─── */}
       {registrationModal.open && registrationModal.service && (
