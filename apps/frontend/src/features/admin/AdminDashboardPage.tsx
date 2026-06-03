@@ -12,10 +12,14 @@ import {
   TrendingUp,
   Activity,
   UserCheck,
-  FileClock
+  FileClock,
+  Calendar,
+  RefreshCw
 } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function AdminDashboardPage() {
+  const { user } = useAuthStore();
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
@@ -101,36 +105,22 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
       
-      {/* ── Welcome Banner ─────────────────────────────────────────────────── */}
-      <section className="bg-gradient-to-r from-[#6f583c] via-[#8c7355] to-[#5f745d] rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-        {/* Decorative circle shapes */}
-        <div className="absolute right-0 top-0 w-80 h-80 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl pointer-events-none"></div>
-        <div className="absolute left-1/3 bottom-0 w-64 h-64 bg-white/5 rounded-full -mb-20 blur-xl pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold tracking-wide uppercase border border-white/10">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Hệ thống hoạt động ổn định
-            </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Chào mừng trở lại, Admin!</h1>
-            <p className="text-white/85 text-sm md:text-base max-w-xl font-light">
-              Bảng điều khiển quản trị hệ thống Homestay Dorm. Theo dõi chi nhánh, cấu hình danh mục và quản lý sao lưu dữ liệu tập trung.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-sm">
-            <div>
-              <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Thời gian hệ thống</p>
-              <p className="font-semibold mt-0.5">{todayLabel}</p>
-            </div>
-            <div className="w-px bg-white/20 hidden sm:block h-8 self-center"></div>
-            <div>
-              <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Phiên bản</p>
-              <p className="font-semibold mt-0.5">v2.4.0 (Frontend-First)</p>
-            </div>
-          </div>
+      {/* ── Greeting Header ───────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[#6f583c]">Xin chào, {user?.full_name?.split(' (')[0] || 'Admin'}!</h1>
+          <p className="text-sm text-[#4e453c] mt-1 flex items-center gap-2 font-medium">
+            <Calendar className="w-4 h-4 text-[#6f583c]" />
+            {todayLabel}
+          </p>
         </div>
-      </section>
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 text-sm text-[#6f583c] hover:text-[#4d614b] transition-colors cursor-pointer font-bold"
+        >
+          <RefreshCw className="w-4 h-4" /> Làm mới dữ liệu
+        </button>
+      </div>
 
       {/* ── KPI Grid ──────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

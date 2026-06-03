@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getMockDB } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
+import { Calendar, RefreshCw } from 'lucide-react';
 
 const T = {
   bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -16,6 +17,15 @@ export default function ManagerDashboardPage() {
   const { user } = useAuthStore();
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+
+  const todayLabel = useMemo(() => {
+    return new Date().toLocaleDateString('vi-VN', { 
+      weekday: 'long', 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  }, []);
 
   useEffect(() => {
     const db = getMockDB();
@@ -64,20 +74,21 @@ export default function ManagerDashboardPage() {
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-8 animate-fade-in-up">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+      {/* Greeting Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ fontFamily: "'Lexend', sans-serif" }}>
         <div>
-          <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>
-            Xin chào, {user?.full_name}! 👋
-          </h1>
-          <p style={{ color: T.textMuted, marginTop: 6, fontSize: 14 }}>
-            Bàn vận hành chi nhánh — Quận 1. Hôm nay, {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
+          <h1 className="text-2xl font-bold text-[#6f583c]">Xin chào, {user?.full_name?.split(' (')[0] || 'Quản lý'}!</h1>
+          <p className="text-sm text-[#4e453c] mt-1 flex items-center gap-2 font-medium">
+            <Calendar className="w-4 h-4 text-[#6f583c]" />
+            {todayLabel} · <span className="text-[#7f756b]">Bàn vận hành chi nhánh — Quận 1</span>
           </p>
         </div>
-        <div style={{ background: T.primaryLight, border: `1px solid ${T.border}`, borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="material-symbols-outlined" style={{ color: T.primary, fontSize: 18 }}>schedule</span>
-          <span style={{ color: T.primary, fontSize: 13, fontWeight: 600 }}>{new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 text-sm text-[#6f583c] hover:text-[#4d614b] transition-colors cursor-pointer font-bold"
+        >
+          <RefreshCw className="w-4 h-4" /> Làm mới dữ liệu
+        </button>
       </div>
 
       {/* KPI Cards */}

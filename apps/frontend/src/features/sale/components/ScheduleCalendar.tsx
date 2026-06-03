@@ -36,7 +36,7 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     return `${y}-${m}-${dateVal}`;
   };
 
-  const today = '2026-06-02';
+  const today = useMemo(() => formatLocalDate(new Date()), []);
 
   // Build calendar grid
   const { calendarDays, monthLabel } = useMemo(() => {

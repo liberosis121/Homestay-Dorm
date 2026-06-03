@@ -494,7 +494,7 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
   getScheduleById: (id) => get().schedules.find((s) => s.id === id),
 
   getUpcoming24h: () => {
-    const now = new Date('2026-06-02T09:05:37');
+    const now = new Date();
     const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const currentUser = useAuthStore.getState().user;
     const isSale = currentUser?.role === 'sale';

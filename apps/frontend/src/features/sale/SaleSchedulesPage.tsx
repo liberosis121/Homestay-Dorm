@@ -510,7 +510,7 @@ interface Upcoming24hWidgetProps {
 const Upcoming24hWidget: React.FC<Upcoming24hWidgetProps> = ({ schedules }) => {
   const formatTime = (date: string, time: string) => {
     const dt = new Date(`${date}T${time}:00`);
-    const now = new Date('2026-06-02T09:05:37');
+    const now = new Date();
     const diffMs = dt.getTime() - now.getTime();
     const diffH = Math.floor(diffMs / 3600000);
     const diffM = Math.floor((diffMs % 3600000) / 60000);
