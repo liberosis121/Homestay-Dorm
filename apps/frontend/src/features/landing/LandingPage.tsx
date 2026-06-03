@@ -211,7 +211,7 @@ export default function LandingPage() {
         </section>
 
         {/* Search Section */}
-        <section className="px-margin-mobile md:px-margin-desktop -mt-12 relative z-20 max-w-container-max mx-auto" id="search-section">
+        <section className="px-margin-mobile md:px-margin-desktop -mt-3 relative z-20 max-w-container-max mx-auto" id="search-section">
           <div className="bg-white/80 dark:bg-surface-container-highest/80 backdrop-blur-xl border border-glass-stroke shadow-xl rounded-[32px] p-6 md:p-10">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
               <div className="space-y-2">
@@ -319,7 +319,7 @@ export default function LandingPage() {
             
             {/* Left Image Column */}
             <div className="lg:col-span-5 relative">
-              <div className="aspect-[4/3] sm:aspect-[16/10] lg:aspect-square rounded-[40px] overflow-hidden shadow-2xl relative z-10 border border-outline-variant/20">
+              <div className="aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/4.5] rounded-[40px] overflow-hidden shadow-2xl relative z-10 border border-outline-variant/20">
                 <img
                   alt="Co-living services"
                   className="w-full h-full object-cover transform hover:scale-[1.03] transition-transform duration-700"
@@ -335,7 +335,7 @@ export default function LandingPage() {
 
             {/* Right Content Column */}
             <div className="lg:col-span-7 space-y-8 animate-fade-in-up">
-              <div className="space-y-3">
+              <div className="space-y-0.5">
                 <span className="text-primary font-label-md tracking-widest uppercase block">Hệ sinh thái tiện ích</span>
                 <h2 className="font-headline-lg text-headline-lg text-on-surface leading-relaxed">
                   Dịch vụ đa dạng,<br />Cuộc sống tiện nghi vượt trội
