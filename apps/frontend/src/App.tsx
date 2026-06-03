@@ -48,6 +48,15 @@ import SaleDashboardPage from './features/sale/SaleDashboardPage';
 import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
 import CustomerLookupPage from './features/sale/CustomerLookupPage';
 import SaleContractsPage from './features/sale/SaleContractsPage';
+import AdminUsersPage from './features/admin/AdminUsersPage';
+import AdminEmployeesPage from './features/admin/AdminEmployeesPage';
+import AdminBranchesPage from './features/admin/AdminBranchesPage';
+import AdminRoomsPage from './features/admin/AdminRoomsPage';
+import AdminServicesPage from './features/admin/AdminServicesPage';
+import AdminConditionsPage from './features/admin/AdminConditionsPage';
+import AdminAssetsPage from './features/admin/AdminAssetsPage';
+import AdminBackupPage from './features/admin/AdminBackupPage';
+import AdminDashboardPage from './features/admin/AdminDashboardPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -164,10 +173,13 @@ function DashboardLayout() {
       case 'admin':
         return [
           { path: '/', label: 'Tổng quan hệ thống', icon: Home },
-          { path: '/admin/branches', label: 'Quản lý Chi nhánh', icon: Building },
-          { path: '/admin/employees', label: 'Quản lý Nhân viên', icon: Users },
-          { path: '/admin/rooms', label: 'Danh mục Phòng/Giường', icon: Layers },
+          { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
+          { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
+          { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
+          { path: '/admin/rooms-catalog', label: 'Danh mục Phòng/Giường', icon: Layers },
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
+          { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
+          { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
           { path: '/admin/backup', label: 'Sao lưu & Khôi phục', icon: Database }
         ];
       case 'manager':
@@ -467,7 +479,15 @@ function DashboardLayout() {
             {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
             {user.role === 'sale' && <Route path="/sale/contracts" element={<SaleContractsPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
-            {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupScreen />} />}
+            {/* Admin Routes (UC25-UC32) */}
+            {user.role === 'admin' && <Route path="/admin/users" element={<AdminUsersPage />} />}
+            {user.role === 'admin' && <Route path="/admin/employees" element={<AdminEmployeesPage />} />}
+            {user.role === 'admin' && <Route path="/admin/branches" element={<AdminBranchesPage />} />}
+            {user.role === 'admin' && <Route path="/admin/rooms-catalog" element={<AdminRoomsPage />} />}
+            {user.role === 'admin' && <Route path="/admin/services" element={<AdminServicesPage />} />}
+            {user.role === 'admin' && <Route path="/admin/conditions" element={<AdminConditionsPage />} />}
+            {user.role === 'admin' && <Route path="/admin/assets" element={<AdminAssetsPage />} />}
+            {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupPage />} />}
             {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
               <Route path="/sale/customers" element={<CustomerLookupPage />} />
             )}
@@ -490,6 +510,7 @@ function DashboardDispatcher() {
 
   // Auto-redirect role-based dashboards
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
+  if (user.role === 'admin') return <AdminDashboardPage />;
 
   const cards = [
     { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },
@@ -761,127 +782,6 @@ function AccountantInvoicesScreen() {
                   <td className="p-4 text-right">
                     <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold transition-colors">
                       Xem chi tiết
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------
-// SCREEN: ADMIN - BACKUP & SYSTEM CONTROL (UC32)
-// ----------------------------------------------------
-function AdminBackupScreen() {
-  const [backups, setBackups] = useState([
-    { id: 'b-992', name: 'homestay_dorm_backup_2026-05-30.sql', size: '2.4 MB', date: '30/05/2026 18:30', status: 'Hoàn tất' },
-    { id: 'b-991', name: 'homestay_dorm_backup_2026-05-15.sql', size: '2.3 MB', date: '15/05/2026 18:30', status: 'Hoàn tất' }
-  ]);
-  const [backingUp, setBackingUp] = useState(false);
-  const [backupProgress, setBackupProgress] = useState(0);
-
-  const triggerBackup = () => {
-    if (backingUp) return;
-    setBackingUp(true);
-    setBackupProgress(10);
-  };
-
-  useEffect(() => {
-    if (backingUp) {
-      const interval = setInterval(() => {
-        setBackupProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-              setBackingUp(false);
-              setBackups((prevList) => [
-                {
-                  id: `b-${Date.now().toString().slice(-3)}`,
-                  name: `homestay_dorm_backup_${new Date().toISOString().slice(0, 10)}.sql`,
-                  size: '2.4 MB',
-                  date: new Date().toLocaleString(),
-                  status: 'Hoàn tất'
-                },
-                ...prevList
-              ]);
-            }, 500);
-            return 100;
-          }
-          return prev + 15;
-        });
-      }, 300);
-      return () => clearInterval(interval);
-    }
-  }, [backingUp]);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-white">Sao lưu & Khôi phục (Backup & Restore)</h1>
-          <p className="text-slate-400 text-sm mt-1">Đảm bảo an toàn dữ liệu hệ thống Homestay Dorm thông qua các tệp tin SQL backup định kỳ.</p>
-        </div>
-        <button
-          onClick={triggerBackup}
-          disabled={backingUp}
-          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
-        >
-          <Database className="w-3.5 h-3.5" />
-          Tạo bản sao lưu mới
-        </button>
-      </div>
-
-      {backingUp && (
-        <div className="glass-card rounded-xl p-5 border border-slate-800/80 space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-violet-400 font-semibold">Đang tiến hành sao lưu cơ sở dữ liệu Postgres...</span>
-            <span className="font-bold">{backupProgress}%</span>
-          </div>
-          <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-violet-500 h-full transition-all duration-300"
-              style={{ width: `${backupProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      <div className="glass-card rounded-xl border border-slate-800/80 overflow-hidden">
-        <div className="p-4 border-b border-slate-800/80 bg-slate-900/20">
-          <span className="text-xs font-bold text-slate-400">Các bản sao lưu cơ sở dữ liệu đã có</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-800">
-                <th className="p-4">Mã</th>
-                <th className="p-4">Tên file</th>
-                <th className="p-4">Kích thước</th>
-                <th className="p-4">Thời điểm sao lưu</th>
-                <th className="p-4">Trạng thái</th>
-                <th className="p-4 text-right">Khôi phục</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-850 text-slate-300">
-              {backups.map((b) => (
-                <tr key={b.id} className="hover:bg-slate-900/20 transition-all">
-                  <td className="p-4 font-mono font-bold text-violet-400">{b.id}</td>
-                  <td className="p-4 font-mono">{b.name}</td>
-                  <td className="p-4">{b.size}</td>
-                  <td className="p-4">{b.date}</td>
-                  <td className="p-4">
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
-                      {b.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold transition-colors">
-                      Restore
                     </button>
                   </td>
                 </tr>

@@ -1,0 +1,351 @@
+import { useState, useMemo } from 'react';
+
+const A = {
+  bg: '#F7F4EF', sidebar: '#F3EFE8', surface: '#ffffff',
+  primary: '#1E2A44', accent: '#2F7A8A', badgeBg: '#E8F3F5',
+  border: '#DDD6CC', textPrimary: '#1E2A44', textMuted: '#5C6370',
+};
+
+interface Condition {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  effectiveDate: string;
+  isActive: boolean;
+  priority: 'high' | 'medium' | 'low';
+}
+
+const PRIORITY_MAP: Record<string, { label: string; cls: string }> = {
+  high:   { label: 'Bắt buộc',     cls: 'bg-red-50 text-red-700 border border-red-200' },
+  medium: { label: 'Quan trọng',   cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  low:    { label: 'Khuyến nghị',  cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+};
+
+const MOCK_CONDITIONS: Condition[] = [
+  { id: 'DC001', title: 'Đăng ký tạm trú', category: 'Pháp lý', description: 'Khách thuê người nước ngoài phải hoàn thành thủ tục đăng ký tạm trú với cơ quan công an địa phương trong vòng 24 giờ kể từ ngày nhận phòng.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
+  { id: 'DC002', title: 'Giờ giấc ra vào', category: 'Nội quy', description: 'Cổng chính đóng cửa lúc 23:00 và mở cửa lúc 06:00. Khách thuê về muộn hơn 23:00 phải thông báo trước cho bảo vệ và sử dụng thẻ từ cá nhân.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
+  { id: 'DC003', title: 'Không hút thuốc trong phòng', category: 'Vệ sinh', description: 'Nghiêm cấm hút thuốc lá trong tất cả các khu vực có mái che. Khu vực hút thuốc được quy định riêng ngoài sân.', effectiveDate: '01/03/2023', isActive: true, priority: 'high' },
+  { id: 'DC004', title: 'Giữ yên lặng sau 22:00', category: 'Nội quy', description: 'Không gây tiếng ồn lớn, tụ tập đông người trong phòng sau 22:00 để đảm bảo quyền nghỉ ngơi của các khách hàng khác.', effectiveDate: '01/01/2024', isActive: true, priority: 'medium' },
+  { id: 'DC005', title: 'Giấy tờ tùy thân', category: 'Pháp lý', description: 'Khách hàng phải cung cấp bản sao CCCD/CMND/Hộ chiếu còn hiệu lực khi ký hợp đồng. Không chấp nhận giấy tờ hết hạn.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
+  { id: 'DC006', title: 'Đưa khách ngoài ở lại qua đêm', category: 'Nội quy', description: 'Khách ngoài muốn ở lại qua đêm phải đăng ký với quản lý và đóng phí phụ thu là 50,000đ/đêm. Tối đa 2 đêm/tháng.', effectiveDate: '15/06/2023', isActive: true, priority: 'medium' },
+  { id: 'DC007', title: 'Vật nuôi', category: 'Nội quy', description: 'Không được phép nuôi vật nuôi trong các phòng ký túc xá. Áp dụng cho tất cả các loại động vật.', effectiveDate: '01/01/2022', isActive: false, priority: 'low' },
+];
+
+export default function AdminConditionsPage() {
+  const [conditions, setConditions] = useState<Condition[]>(MOCK_CONDITIONS);
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterPriority, setFilterPriority] = useState('');
+  const [selected, setSelected] = useState<Condition | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [form, setForm] = useState<Partial<Condition>>({});
+
+  const categories = useMemo(() => [...new Set(conditions.map(c => c.category))], [conditions]);
+
+  const kpis = useMemo(() => {
+    const total = conditions.length;
+    const active = conditions.filter(c => c.isActive).length;
+    const high = conditions.filter(c => c.priority === 'high').length;
+    return [
+      { icon: 'policy', label: 'Tổng điều kiện', val: total },
+      { icon: 'check_circle', label: 'Đang áp dụng', val: active, iconCls: 'bg-emerald-50 text-emerald-700' },
+      { icon: 'priority_high', label: 'Quy định bắt buộc', val: high, iconCls: 'bg-red-50 text-red-700' },
+      { icon: 'category', label: 'Danh mục', val: categories.length, iconCls: '' },
+    ];
+  }, [conditions, categories]);
+
+  const filtered = useMemo(() => conditions.filter(c => {
+    const q = search.toLowerCase();
+    const matchQ = !q || c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
+    const matchCat = !filterCategory || c.category === filterCategory;
+    const matchPrio = !filterPriority || c.priority === filterPriority;
+    return matchQ && matchCat && matchPrio;
+  }), [conditions, search, filterCategory, filterPriority]);
+
+  const openAdd = () => {
+    setModalMode('add');
+    setForm({ title: '', category: 'Nội quy', description: '', effectiveDate: new Date().toLocaleDateString('vi-VN'), isActive: true, priority: 'medium' });
+    setShowModal(true);
+  };
+
+  const openEdit = (c: Condition) => {
+    setModalMode('edit');
+    setForm({ ...c });
+    setShowModal(true);
+  };
+
+  const saveForm = () => {
+    if (modalMode === 'add') {
+      const nc: Condition = { ...(form as Condition), id: `DC${String(conditions.length + 1).padStart(3, '0')}` };
+      setConditions(prev => [...prev, nc]);
+    } else {
+      setConditions(prev => prev.map(c => c.id === form.id ? { ...c, ...form } as Condition : c));
+      if (selected?.id === form.id) setSelected(prev => prev ? { ...prev, ...form } as Condition : null);
+    }
+    setShowModal(false);
+  };
+
+  const toggleActive = (id: string) => {
+    setConditions(prev => prev.map(c => c.id === id ? { ...c, isActive: !c.isActive } : c));
+    if (selected?.id === id) setSelected(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight" style={{ color: A.primary }}>Quản trị điều kiện lưu trú</h1>
+          <p className="text-sm mt-1" style={{ color: A.textMuted }}>
+            Quản lý các quy chế, nội quy và điều kiện lưu trú của ký túc xá/homestay.
+          </p>
+        </div>
+        <button onClick={openAdd}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
+          style={{ background: A.primary }}>
+          <span className="material-symbols-outlined text-[18px]">add_circle</span>
+          Thêm điều kiện
+        </button>
+      </header>
+
+      {/* KPI */}
+      <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {kpis.map((kpi, i) => (
+          <div key={i} className="rounded-xl p-5 flex flex-col gap-3"
+            style={{ background: A.surface, border: `1px solid ${A.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div className={`p-2 rounded-lg w-fit ${kpi.iconCls}`}
+              style={!kpi.iconCls ? { background: A.badgeBg, color: A.accent } : {}}>
+              <span className="material-symbols-outlined text-xl">{kpi.icon}</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium" style={{ color: A.textMuted }}>{kpi.label}</p>
+              <p className="text-3xl font-bold" style={{ color: A.primary }}>{kpi.val}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* Filter */}
+      <section className="rounded-xl p-4 flex flex-wrap items-center gap-3"
+        style={{ background: A.surface, border: `1px solid ${A.border}` }}>
+        <div className="flex-1 min-w-[200px] relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px]"
+            style={{ color: A.textMuted }}>search</span>
+          <input placeholder="Tìm theo tiêu đề hoặc nội dung..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
+            style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+        </div>
+        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
+          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
+          <option value="">Tất cả danh mục</option>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
+          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
+          <option value="">Tất cả mức độ</option>
+          <option value="high">Bắt buộc</option>
+          <option value="medium">Quan trọng</option>
+          <option value="low">Khuyến nghị</option>
+        </select>
+        <button onClick={() => { setSearch(''); setFilterCategory(''); setFilterPriority(''); }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          style={{ color: A.accent }}>
+          <span className="material-symbols-outlined text-[18px]">refresh</span>
+          Làm mới
+        </button>
+      </section>
+
+      {/* Condition Cards */}
+      <section className="flex flex-col gap-3">
+        {filtered.map(c => (
+          <div key={c.id}
+            onClick={() => setSelected(c)}
+            className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
+            style={{ background: A.surface, border: `1px solid ${A.border}`, opacity: c.isActive ? 1 : 0.6 }}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_MAP[c.priority].cls}`}>
+                    {PRIORITY_MAP[c.priority].label}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    style={{ background: A.bg, color: A.textMuted, border: `1px solid ${A.border}` }}>
+                    {c.category}
+                  </span>
+                  {!c.isActive && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Đã tắt</span>
+                  )}
+                </div>
+                <h3 className="text-base font-bold mb-1" style={{ color: A.primary }}>{c.title}</h3>
+                <p className="text-sm line-clamp-2" style={{ color: A.textMuted }}>{c.description}</p>
+                <p className="text-xs mt-2" style={{ color: A.textMuted }}>
+                  Có hiệu lực từ: {c.effectiveDate}
+                </p>
+              </div>
+              <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={e => { e.stopPropagation(); openEdit(c); }}
+                  className="p-1.5 rounded-full" style={{ color: A.accent }}>
+                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+                <button onClick={e => { e.stopPropagation(); toggleActive(c.id); }}
+                  className="p-1.5 rounded-full" style={{ color: A.textMuted }}>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {c.isActive ? 'toggle_on' : 'toggle_off'}
+                  </span>
+                </button>
+                <button onClick={e => { e.stopPropagation(); setConditions(prev => prev.filter(x => x.id !== c.id)); if (selected?.id === c.id) setSelected(null); }}
+                  className="p-1.5 rounded-full text-red-600">
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {filtered.length === 0 && (
+          <div className="py-16 text-center rounded-xl" style={{ background: A.surface, border: `1px solid ${A.border}` }}>
+            <span className="material-symbols-outlined text-5xl block mb-3" style={{ color: A.border }}>policy</span>
+            <p className="text-sm" style={{ color: A.textMuted }}>Không tìm thấy điều kiện lưu trú phù hợp.</p>
+          </div>
+        )}
+      </section>
+
+      {/* Detail Drawer */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex justify-end"
+          style={{ background: `${A.primary}66` }}
+          onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
+          <div className="w-full max-w-[480px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
+            style={{ background: A.surface }}>
+            <div className="px-6 py-4 flex items-center justify-between"
+              style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
+              <h2 className="text-lg font-bold" style={{ color: A.primary }}>Chi tiết điều kiện</h2>
+              <button onClick={() => setSelected(null)}>
+                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+              </button>
+            </div>
+            <div className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${PRIORITY_MAP[selected.priority].cls}`}>
+                  {PRIORITY_MAP[selected.priority].label}
+                </span>
+                <span className="text-xs px-2 py-1 rounded-full font-medium"
+                  style={{ background: A.bg, color: A.textMuted, border: `1px solid ${A.border}` }}>
+                  {selected.category}
+                </span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-3" style={{ color: A.primary }}>{selected.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>{selected.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Mã điều kiện</p>
+                  <p className="text-sm font-medium" style={{ color: A.textPrimary }}>{selected.id}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Hiệu lực từ</p>
+                  <p className="text-sm font-medium" style={{ color: A.textPrimary }}>{selected.effectiveDate}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Trạng thái</p>
+                  <p className={`text-sm font-medium ${selected.isActive ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    {selected.isActive ? 'Đang áp dụng' : 'Đã tắt'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 flex gap-3" style={{ background: A.sidebar, borderTop: `1px solid ${A.border}` }}>
+              <button onClick={() => openEdit(selected)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
+                style={{ background: A.primary }}>Sửa điều kiện</button>
+              <button onClick={() => toggleActive(selected.id)}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium border"
+                style={{ borderColor: A.border, color: A.textMuted }}>
+                {selected.isActive ? 'Tắt áp dụng' : 'Bật áp dụng'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: `${A.primary}66` }}
+          onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
+            style={{ background: A.surface }}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold" style={{ color: A.primary }}>
+                {modalMode === 'add' ? 'Thêm điều kiện mới' : 'Sửa điều kiện'}
+              </h2>
+              <button onClick={() => setShowModal(false)}>
+                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+              </button>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tiêu đề</label>
+              <input value={form.title || ''} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Tiêu đề điều kiện..."
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Nội dung quy định</label>
+              <textarea value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                rows={5} placeholder="Mô tả chi tiết điều kiện..."
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
+                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Danh mục</label>
+                <select value={form.category || 'Nội quy'} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
+                  <option>Nội quy</option>
+                  <option>Pháp lý</option>
+                  <option>Vệ sinh</option>
+                  <option>An ninh</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mức độ</label>
+                <select value={form.priority || 'medium'} onChange={e => setForm(prev => ({ ...prev, priority: e.target.value as any }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
+                  <option value="high">Bắt buộc</option>
+                  <option value="medium">Quan trọng</option>
+                  <option value="low">Khuyến nghị</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setShowModal(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                style={{ borderColor: A.border, color: A.textMuted }}>Hủy</button>
+              <button onClick={saveForm}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
+                style={{ background: A.primary }}>
+                {modalMode === 'add' ? 'Thêm điều kiện' : 'Lưu thay đổi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
