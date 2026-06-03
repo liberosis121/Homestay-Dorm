@@ -1,0 +1,256 @@
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useInvoiceStore } from './store/useInvoiceStore';
+import InvoiceTable from './components/InvoiceTable';
+import InvoiceDetail from './components/InvoiceDetail';
+import CustomSelect from '../../components/ui/CustomSelect';
+import { FileClock, DollarSign, CalendarDays, CheckCircle } from 'lucide-react';
+
+const MONTH_OPTIONS = [
+  { value: 'Tất cả', label: 'Tất cả các tháng' },
+  { value: '05', label: 'Tháng 05' },
+  { value: '06', label: 'Tháng 06' },
+  { value: '07', label: 'Tháng 07' },
+  { value: '08', label: 'Tháng 08' },
+  { value: '09', label: 'Tháng 09' },
+  { value: '10', label: 'Tháng 10' },
+];
+
+const YEAR_OPTIONS = [
+  { value: 'Tất cả', label: 'Tất cả năm' },
+  { value: '2024', label: 'Năm 2024' },
+];
+
+export default function InvoicesDashboardPage() {
+  const navigate = useNavigate();
+  const { invoices, filters, setFilters, selectedInvoiceId, setSelectedInvoiceId } = useInvoiceStore();
+
+  // Local state for filter inputs until "Tìm kiếm" is pressed
+  const [selectedMonth, setSelectedMonth] = useState(filters.month);
+  const [selectedYear, setSelectedYear] = useState(filters.year);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const handleSelectInvoice = (id: string) => {
+    setSelectedInvoiceId(id);
+    setIsDetailModalOpen(true);
+  };
+
+  // 1. KPI Calculations (on ALL invoices)
+  const unpaidCount = useMemo(() => {
+    return invoices.filter((inv) => inv.status === 'unpaid' || inv.status === 'overdue').length;
+  }, [invoices]);
+
+  const currentMonthCost = useMemo(() => {
+    // Current month is 10 (October) in our mock database
+    return invoices
+      .filter((inv) => inv.month === 10 && inv.year === 2024)
+      .reduce((sum, inv) => sum + inv.totalAmount, 0);
+  }, [invoices]);
+
+  const closestDueDate = useMemo(() => {
+    const activeInvoices = invoices.filter((inv) => inv.status === 'unpaid' || inv.status === 'overdue');
+    if (activeInvoices.length === 0) return 'Không có';
+    
+    // Sort by due date ascending
+    const sorted = [...activeInvoices].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    const dateParts = sorted[0].dueDate.split('-');
+    return `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+  }, [invoices]);
+
+  const overdueCount = useMemo(() => {
+    return invoices.filter((inv) => inv.status === 'overdue').length;
+  }, [invoices]);
+
+  // 2. Applying Filter logic (on invoices displayed in the table)
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      // Month
+      if (filters.month !== 'Tất cả' && inv.month !== parseInt(filters.month)) return false;
+      // Year
+      if (filters.year !== 'Tất cả' && inv.year !== parseInt(filters.year)) return false;
+      // Status
+      if (filters.status !== 'Tất cả') {
+        if (filters.status === 'paid' && inv.status !== 'paid') return false;
+        if (filters.status === 'unpaid' && inv.status !== 'unpaid') return false;
+        if (filters.status === 'overdue' && inv.status !== 'overdue') return false;
+      }
+      return true;
+    });
+  }, [invoices, filters]);
+
+  // Selected Invoice Object
+  const selectedInvoice = useMemo(() => {
+    return invoices.find((inv) => inv.id === selectedInvoiceId) || null;
+  }, [invoices, selectedInvoiceId]);
+
+  const handleSearch = () => {
+    setFilters({ month: selectedMonth, year: selectedYear });
+  };
+
+  const handleStatusFilterChange = (status: string) => {
+    setFilters({ status });
+  };
+
+  const handlePayAction = (invoiceId: string) => {
+    navigate(`/customer/payment/${invoiceId}`);
+  };
+
+  return (
+    <div className="max-w-[1440px] mx-auto px-4 md:px-8">
+      {/* Header Section */}
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold font-headline-lg text-primary mb-2">Hóa đơn của tôi</h1>
+        <p className="text-on-surface-variant font-body-md text-[15px]">
+          Tra cứu thông tin chi phí định kỳ và thực hiện thanh toán trực tuyến nhanh chóng.
+        </p>
+      </header>
+
+      {/* KPI Cards Grid */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Card 1 */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm hover:translate-y-[-4px] transition-transform duration-300">
+          <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-4">
+            <FileClock className="w-5 h-5" />
+          </div>
+          <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Hóa đơn chưa trả</h3>
+          <p className="text-2xl font-bold text-primary">
+            {unpaidCount < 10 ? `0${unpaidCount}` : unpaidCount}{' '}
+            <span className="text-sm font-medium text-on-surface-variant">Hóa đơn</span>
+          </p>
+        </div>
+
+        {/* Card 2 */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm hover:translate-y-[-4px] transition-transform duration-300">
+          <div className="w-10 h-10 bg-tertiary/10 text-tertiary rounded-xl flex items-center justify-center mb-4">
+            <DollarSign className="w-5 h-5" />
+          </div>
+          <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Tổng chi phí tháng 10</h3>
+          <p className="text-2xl font-bold text-on-surface">
+            {currentMonthCost.toLocaleString('vi-VN')}{' '}
+            <span className="text-sm font-medium text-on-surface-variant">VNĐ</span>
+          </p>
+        </div>
+
+        {/* Card 3 */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm hover:translate-y-[-4px] transition-transform duration-300">
+          <div className="w-10 h-10 bg-secondary/10 text-secondary rounded-xl flex items-center justify-center mb-4">
+            <CalendarDays className="w-5 h-5" />
+          </div>
+          <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Hạn thanh toán gần nhất</h3>
+          <p className="text-xl font-bold text-on-surface">{closestDueDate}</p>
+        </div>
+
+        {/* Card 4 */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm hover:translate-y-[-4px] transition-transform duration-300">
+          <div className="w-10 h-10 bg-status-success/15 text-status-success rounded-xl flex items-center justify-center mb-4">
+            <CheckCircle className="w-5 h-5" />
+          </div>
+          <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Hóa đơn quá hạn</h3>
+          <p className={`text-2xl font-bold ${overdueCount > 0 ? 'text-status-error animate-pulse' : 'text-status-success'}`}>
+            {overdueCount}
+          </p>
+        </div>
+      </section>
+
+      {/* Filter Bar */}
+      <section className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/30 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Month selector */}
+          <CustomSelect
+            value={selectedMonth}
+            onChange={setSelectedMonth}
+            options={MONTH_OPTIONS}
+            pill
+            className="w-full sm:w-[180px]"
+          />
+
+          {/* Year selector */}
+          <CustomSelect
+            value={selectedYear}
+            onChange={setSelectedYear}
+            options={YEAR_OPTIONS}
+            pill
+            className="w-full sm:w-[140px]"
+          />
+
+          {/* Vertical divider */}
+          <div className="h-6 w-px bg-outline-variant/30 hidden md:block"></div>
+
+          {/* Filter Status buttons */}
+          <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0">
+            {[
+              { id: 'Tất cả', label: 'Tất cả' },
+              { id: 'unpaid', label: 'Chưa thanh toán' },
+              { id: 'paid', label: 'Đã thanh toán' },
+              { id: 'overdue', label: 'Quá hạn' },
+            ].map((btn) => {
+              const isStatusActive = filters.status === btn.id;
+              return (
+                <button
+                  key={btn.id}
+                  onClick={() => handleStatusFilterChange(btn.id)}
+                  className={`px-4 py-2 text-xs sm:text-sm rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    isStatusActive 
+                      ? 'bg-primary text-white shadow-sm' 
+                      : 'hover:bg-surface-container text-on-surface-variant'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Search button */}
+        <button 
+          onClick={handleSearch}
+          className="w-full md:w-auto bg-primary hover:bg-[#253228] text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">search</span>
+          <span>Tìm kiếm</span>
+        </button>
+      </section>
+
+      {/* Main Table Layout (Full Width) */}
+      <div className="w-full mb-8">
+        <InvoiceTable 
+          invoices={filteredInvoices} 
+          selectedId={selectedInvoiceId}
+          onSelect={handleSelectInvoice}
+          onPay={handlePayAction}
+        />
+      </div>
+
+      {/* Invoice Detail Modal */}
+      {isDetailModalOpen && selectedInvoice && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsDetailModalOpen(false)}
+        >
+          <div 
+            className="bg-surface w-full max-w-md rounded-32 shadow-2xl border border-surface-variant overflow-hidden animate-fade-in-up relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button 
+              onClick={() => setIsDetailModalOpen(false)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/25 hover:bg-black/40 text-white transition-colors cursor-pointer z-50 flex items-center justify-center animate-fade-in"
+              title="Đóng"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+            
+            <InvoiceDetail 
+              invoice={selectedInvoice}
+              onPay={(id) => {
+                setIsDetailModalOpen(false);
+                handlePayAction(id);
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

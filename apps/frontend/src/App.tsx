@@ -15,14 +15,17 @@ import {
   CheckCircle, 
   Calendar, 
   FileText,
-  Plus, 
   Search, 
   Bell,
   Compass,
   ClipboardList,
-  Activity
+  Activity,
+  Zap,
+  Receipt,
+  ArrowLeftRight,
+  LogIn
 } from 'lucide-react';
-import { initializeMockDB, getMockDB, saveMockDB, Room } from './lib/supabaseClient';
+import { initializeMockDB } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
@@ -37,11 +40,51 @@ import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
 import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
+import CustomerContractsPage from './features/customer/CustomerContractsPage';
+import CustomerServicesPage from './features/customer/CustomerServicesPage';
+import InvoicesDashboardPage from './features/customer/InvoicesDashboardPage';
+import InvoicePaymentPage from './features/customer/InvoicePaymentPage';
+import CustomerCheckoutPage from './features/customer/CustomerCheckoutPage';
+
 import SaleDashboardPage from './features/sale/SaleDashboardPage';
+import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
 import CustomerLookupPage from './features/sale/CustomerLookupPage';
+import SaleContractsPage from './features/sale/SaleContractsPage';
+import AccountantDashboardPage from './features/accountant/AccountantDashboardPage';
+import AccountantDepositPage from './features/accountant/AccountantDepositPage';
+import AccountantCheckinPage from './features/accountant/AccountantCheckinPage';
+import AccountantMonthlyPage from './features/accountant/AccountantMonthlyPage';
+import AccountantRefundsPage from './features/accountant/AccountantRefundsPage';
+import AccountantPayoutsPage from './features/accountant/AccountantPayoutsPage';
+import AdminUsersPage from './features/admin/AdminUsersPage';
+import AdminEmployeesPage from './features/admin/AdminEmployeesPage';
+import AdminBranchesPage from './features/admin/AdminBranchesPage';
+import AdminRoomsPage from './features/admin/AdminRoomsPage';
+import AdminServicesPage from './features/admin/AdminServicesPage';
+import AdminConditionsPage from './features/admin/AdminConditionsPage';
+import AdminAssetsPage from './features/admin/AdminAssetsPage';
+import AdminBackupPage from './features/admin/AdminBackupPage';
+import AdminDashboardPage from './features/admin/AdminDashboardPage';
+import ManagerDashboardPage from './features/manager/ManagerDashboardPage';
+import ManagerRoomsPage from './features/manager/ManagerRoomsPage';
+import ManagerDepositsPage from './features/manager/ManagerDepositsPage';
+import ManagerResidencyPage from './features/manager/ManagerResidencyPage';
+import ManagerHandoversPage from './features/manager/ManagerHandoversPage';
+import ManagerInspectionsPage from './features/manager/ManagerInspectionsPage';
+import ManagerAssetsPage from './features/manager/ManagerAssetsPage';
+import ManagerReportsPage from './features/manager/ManagerReportsPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
+
+// ScrollToTop: cuộn về đầu trang khi chuyển route
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+}
 
 // App Wrapper to handle initialization
 export default function App() {
@@ -65,6 +108,7 @@ function AppRoutes() {
 
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
@@ -73,6 +117,15 @@ function AppRoutes() {
         <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/customer/rooms/:roomId" element={<RoomDetailPage />} />
+        <Route path="/customer/services" element={
+          <div className="bg-surface text-on-surface font-body-md min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1 bg-background pt-24 pb-16">
+              <CustomerServicesPage />
+            </main>
+            <Footer />
+          </div>
+        } />
         <Route 
           path="/profile/*" 
           element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
@@ -107,7 +160,10 @@ function CustomerLayout() {
           <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
-          {/* We can add other customer routes here */}
+          <Route path="/customer/contracts" element={<CustomerContractsPage />} />
+          <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
+          <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
+          <Route path="/customer/checkout-request" element={<CustomerCheckoutPage />} />
           <Route path="*" element={<ProfilePage />} />
         </Routes>
       </main>
@@ -151,19 +207,26 @@ function DashboardLayout() {
       case 'admin':
         return [
           { path: '/', label: 'Tổng quan hệ thống', icon: Home },
-          { path: '/admin/branches', label: 'Quản lý Chi nhánh', icon: Building },
-          { path: '/admin/employees', label: 'Quản lý Nhân viên', icon: Users },
-          { path: '/admin/rooms', label: 'Danh mục Phòng/Giường', icon: Layers },
+          { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
+          { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
+          { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
+          { path: '/admin/rooms-catalog', label: 'Danh mục Phòng/Giường', icon: Layers },
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
+          { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
+          { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
+          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/admin/backup', label: 'Sao lưu & Khôi phục', icon: Database }
         ];
       case 'manager':
         return [
-          { path: '/', label: 'Bàn vận hành', icon: Home },
-          { path: '/manager/rooms', label: 'Bản đồ phòng (Floor Map)', icon: Layers },
+          { path: '/manager/dashboard', label: 'Tổng quan', icon: Home },
+          { path: '/manager/rooms', label: 'Sơ đồ phòng', icon: Layers },
           { path: '/manager/deposits', label: 'Kiểm duyệt đặt cọc', icon: ClipboardList },
-          { path: '/manager/handovers', label: 'Biên bản bàn giao', icon: FileText },
-          { path: '/manager/assets', label: 'Quản lý Tài sản', icon: Settings },
+          { path: '/manager/residency-checks', label: 'Kiểm tra lưu trú', icon: CheckCircle },
+          { path: '/manager/handovers', label: 'Bàn giao tài sản', icon: FileText },
+          { path: '/manager/inspections', label: 'Kiểm kê trả phòng', icon: Activity },
+          { path: '/manager/assets', label: 'Điều phối tài sản', icon: Settings },
+          { path: '/manager/asset-reports', label: 'Báo cáo tài sản', icon: Database },
           { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
@@ -177,10 +240,12 @@ function DashboardLayout() {
         ];
       case 'accountant':
         return [
-          { path: '/', label: 'Bàn làm việc Kế toán', icon: Home },
-          { path: '/accountant/invoices', label: 'Quản lý Hóa đơn', icon: CreditCard },
-          { path: '/accountant/refunds', label: 'Đối soát hoàn cọc', icon: FileText },
-          { path: '/accountant/payouts', label: 'Xử lý thanh lý', icon: CheckCircle },
+          { path: '/accountant/dashboard', label: 'Tổng quan', icon: Home },
+          { path: '/accountant/invoices/deposit', label: 'Hóa đơn Đặt cọc', icon: Receipt },
+          { path: '/accountant/invoices/checkin', label: 'Hóa đơn Nhận phòng', icon: LogIn },
+          { path: '/accountant/invoices/monthly', label: 'Hóa đơn Định kỳ', icon: CreditCard },
+          { path: '/accountant/refunds', label: 'Đối soát Hoàn cọc', icon: ArrowLeftRight },
+          { path: '/accountant/payouts', label: 'Chi tiền Thanh lý', icon: CheckCircle },
           { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
@@ -188,9 +253,11 @@ function DashboardLayout() {
         return [
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
           { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
-          { path: '/customer/schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
+          { path: '/customer/services', label: user.renting_room_name ? 'Dịch vụ của tôi' : 'Dịch vụ & Bảng giá', icon: Zap },
+          { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
           { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
-          { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard }
+          { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
+          { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
         ];
       default:
         return [];
@@ -213,7 +280,7 @@ function DashboardLayout() {
   const getSidebarSubtitle = () => {
     switch (user.role) {
       case 'sale': return 'PHÂN HỆ NHÂN VIÊN SALE';
-      case 'manager': return 'PHÂN HỆ QUẢN LÝ CHI NHÁNH';
+      case 'manager': return 'PHÂN HỆ QUẢN LÝ';
       case 'accountant': return 'PHÂN HỆ KẾ TOÁN';
       case 'admin': return 'PHÂN HỆ QUẢN TRỊ VIÊN';
       default: return 'PHÂN HỆ QUẢN LÝ';
@@ -396,9 +463,13 @@ function DashboardLayout() {
             <div className="relative" ref={profileDropdownRef}>
               <button 
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer"
+                className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer overflow-hidden"
               >
-                {user.full_name.charAt(0)}
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  user.full_name.charAt(0)
+                )}
               </button>
 
               {profileDropdownOpen && (
@@ -447,11 +518,33 @@ function DashboardLayout() {
             <Route path="/" element={location.pathname === '/profile' ? (user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />) : <DashboardDispatcher />} />
             <Route path="/profile" element={user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />} />
             <Route path="/rooms" element={<RoomsPage />} />
-            {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
+            {user.role === 'manager' && <Route path="/manager/dashboard" element={<ManagerDashboardPage />} />}
+            {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerRoomsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/deposits" element={<ManagerDepositsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/residency-checks" element={<ManagerResidencyPage />} />}
+            {user.role === 'manager' && <Route path="/manager/handovers" element={<ManagerHandoversPage />} />}
+            {user.role === 'manager' && <Route path="/manager/inspections" element={<ManagerInspectionsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/assets" element={<ManagerAssetsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/asset-reports" element={<ManagerReportsPage />} />}
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
-            {user.role === 'accountant' && <Route path="/accountant/invoices" element={<AccountantInvoicesScreen />} />}
-            {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupScreen />} />}
-            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
+            {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
+            {user.role === 'sale' && <Route path="/sale/contracts" element={<SaleContractsPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/dashboard" element={<AccountantDashboardPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/invoices/deposit" element={<AccountantDepositPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/invoices/checkin" element={<AccountantCheckinPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/invoices/monthly" element={<AccountantMonthlyPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/refunds" element={<AccountantRefundsPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/payouts" element={<AccountantPayoutsPage />} />}
+            {/* Admin Routes (UC25-UC32) */}
+            {user.role === 'admin' && <Route path="/admin/users" element={<AdminUsersPage />} />}
+            {user.role === 'admin' && <Route path="/admin/employees" element={<AdminEmployeesPage />} />}
+            {user.role === 'admin' && <Route path="/admin/branches" element={<AdminBranchesPage />} />}
+            {user.role === 'admin' && <Route path="/admin/rooms-catalog" element={<AdminRoomsPage />} />}
+            {user.role === 'admin' && <Route path="/admin/services" element={<AdminServicesPage />} />}
+            {user.role === 'admin' && <Route path="/admin/conditions" element={<AdminConditionsPage />} />}
+            {user.role === 'admin' && <Route path="/admin/assets" element={<AdminAssetsPage />} />}
+            {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupPage />} />}
+            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant' || user.role === 'admin') && (
               <Route path="/sale/customers" element={<CustomerLookupPage />} />
             )}
             
@@ -473,6 +566,9 @@ function DashboardDispatcher() {
 
   // Auto-redirect role-based dashboards
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
+  if (user.role === 'accountant') return <Navigate to="/accountant/dashboard" replace />;
+  if (user.role === 'manager') return <Navigate to="/manager/dashboard" replace />;
+  if (user.role === 'admin') return <AdminDashboardPage />;
 
   const cards = [
     { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },
@@ -547,351 +643,23 @@ function DashboardDispatcher() {
 }
 
 // ----------------------------------------------------
-// SCREEN: MANAGER - OCCUPANCY FLOOR MAP (UC24)
-// ----------------------------------------------------
-function ManagerFloorMapScreen() {
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-
-  useEffect(() => {
-    const db = getMockDB();
-    setRooms(db.rooms || []);
-  }, []);
-
-  const changeRoomStatus = (roomId: string, newStatus: Room['status']) => {
-    const db = getMockDB();
-    const updatedRooms = db.rooms.map((r: Room) => {
-      if (r.id === roomId) {
-        const u = { ...r, status: newStatus };
-        if (selectedRoom?.id === roomId) setSelectedRoom(u);
-        return u;
-      }
-      return r;
-    });
-    db.rooms = updatedRooms;
-    saveMockDB(db);
-    setRooms(updatedRooms);
-  };
-
-  const getStatusColor = (status: Room['status']) => {
-    switch (status) {
-      case 'available': return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
-      case 'deposited': return 'bg-amber-500/10 border-amber-500/30 text-amber-400';
-      case 'occupied': return 'bg-rose-500/10 border-rose-500/30 text-rose-400';
-      case 'maintenance': return 'bg-blue-500/10 border-blue-500/30 text-blue-400';
-    }
-  };
-
-  const getStatusText = (status: Room['status']) => {
-    switch (status) {
-      case 'available': return 'Phòng trống';
-      case 'deposited': return 'Đã đặt cọc';
-      case 'occupied': return 'Đang ở';
-      case 'maintenance': return 'Đang bảo trì';
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-white">Sơ đồ phòng (Floor Map)</h1>
-        <p className="text-slate-400 text-sm mt-1">Quản trị trạng thái lưu trú và cơ sở vật chất phòng theo thời gian thực.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Rooms Grid */}
-        <div className="lg:col-span-2 glass-card rounded-xl p-5 border border-slate-800/80 space-y-4">
-          <h3 className="text-sm font-bold text-slate-300">Chi nhánh Quận 1 - Tầng 1 & Tầng 2</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {rooms.map((room) => {
-              const statusClass = getStatusColor(room.status);
-              return (
-                <button
-                  key={room.id}
-                  onClick={() => setSelectedRoom(room)}
-                  className={`border rounded-xl p-4 text-left transition-all ${statusClass} ${
-                    selectedRoom?.id === room.id ? 'ring-2 ring-violet-500' : 'hover:scale-[1.02]'
-                  }`}
-                >
-                  <span className="block text-xs font-semibold opacity-60">Tầng {room.floor}</span>
-                  <span className="block font-black text-lg text-white my-1">{room.name}</span>
-                  <span className="text-[10px] font-bold uppercase">{getStatusText(room.status)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Room Detail sidebar */}
-        <div className="glass-card rounded-xl p-5 border border-slate-800/80">
-          {selectedRoom ? (
-            <div className="space-y-5">
-              <div>
-                <h3 className="text-lg font-black text-white">{selectedRoom.name}</h3>
-                <span className="text-xs text-slate-500">Mã phòng: {selectedRoom.id}</span>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between py-2 border-b border-slate-850">
-                  <span className="text-slate-500">Trạng thái:</span>
-                  <span className="font-semibold">{getStatusText(selectedRoom.status)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-850">
-                  <span className="text-slate-500">Sức chứa:</span>
-                  <span className="font-semibold text-slate-200">{selectedRoom.capacity} giường</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-850">
-                  <span className="text-slate-500">Giới tính:</span>
-                  <span className="font-semibold text-slate-200 uppercase">{selectedRoom.gender_type === 'male' ? 'Nam' : 'Nữ'}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-slate-500">Đơn giá:</span>
-                  <span className="font-bold text-violet-400">{selectedRoom.price.toLocaleString('vi-VN')}đ/tháng</span>
-                </div>
-              </div>
-
-              <div className="space-y-2 border-t border-slate-800 pt-4">
-                <span className="block text-xs font-bold text-slate-400">Cập nhật nhanh trạng thái:</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['available', 'deposited', 'occupied', 'maintenance'] as Room['status'][]).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => changeRoomStatus(selectedRoom.id, status)}
-                      className={`py-2 px-3 border rounded-lg text-xs font-bold transition-all text-center ${
-                        selectedRoom.status === status 
-                          ? 'bg-violet-600 border-violet-500 text-white' 
-                          : 'border-slate-800 bg-slate-900/50 hover:bg-slate-850 text-slate-400'
-                      }`}
-                    >
-                      {getStatusText(status)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-slate-500">
-              <Layers className="w-12 h-12 mx-auto text-slate-700 mb-3" />
-              <p className="text-sm">Click chọn một phòng trên sơ đồ để xem chi tiết & cập nhật trạng thái.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
-// ----------------------------------------------------
-// SCREEN: ACCOUNTANT - INVOICES DASHBOARD (UC15, UC16)
-// ----------------------------------------------------
-function AccountantInvoicesScreen() {
-  const invoices = [
-    { id: 'inv-8912', type: 'Đặt cọc', amount: '1,500,000đ', customer: 'Lê Lâm Trí Đức', date: '01/06/2026', status: 'Chưa thanh toán' },
-    { id: 'inv-8911', type: 'Nhận phòng', amount: '3,200,000đ', customer: 'Nguyễn Văn Hải', date: '30/05/2026', status: 'Đã thanh toán' },
-    { id: 'inv-8910', type: 'Định kỳ tháng 5', amount: '1,750,000đ', customer: 'Phạm Minh Khoa', date: '25/05/2026', status: 'Quá hạn' }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-white">Quản lý Hóa đơn & Thu phí</h1>
-          <p className="text-slate-400 text-sm mt-1">Lập hóa đơn cọc, hóa đơn định kỳ dịch vụ điện nước và đối soát hoàn cọc.</p>
-        </div>
-        <button className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
-          <Plus className="w-3.5 h-3.5" />
-          Tạo hóa đơn định kỳ
-        </button>
-      </div>
-
-      <div className="glass-card rounded-xl border border-slate-800/80 overflow-hidden">
-        <div className="p-4 border-b border-slate-800/80 bg-slate-900/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <span className="text-xs font-bold text-slate-400">Danh sách hóa đơn gần đây</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-800">
-                <th className="p-4">Mã hóa đơn</th>
-                <th className="p-4">Loại hóa đơn</th>
-                <th className="p-4">Khách hàng</th>
-                <th className="p-4">Số tiền</th>
-                <th className="p-4">Hạn lập</th>
-                <th className="p-4">Trạng thái</th>
-                <th className="p-4 text-right">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-850 text-slate-300">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-900/20 transition-all">
-                  <td className="p-4 font-mono font-bold text-violet-400">{inv.id}</td>
-                  <td className="p-4">{inv.type}</td>
-                  <td className="p-4 font-semibold text-slate-200">{inv.customer}</td>
-                  <td className="p-4 font-black text-slate-200">{inv.amount}</td>
-                  <td className="p-4">{inv.date}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      inv.status === 'Đã thanh toán' ? 'bg-emerald-500/10 text-emerald-400' :
-                      inv.status === 'Chưa thanh toán' ? 'bg-amber-500/10 text-amber-400' :
-                      'bg-rose-500/10 text-rose-400'
-                    }`}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold transition-colors">
-                      Xem chi tiết
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------
-// SCREEN: ADMIN - BACKUP & SYSTEM CONTROL (UC32)
-// ----------------------------------------------------
-function AdminBackupScreen() {
-  const [backups, setBackups] = useState([
-    { id: 'b-992', name: 'homestay_dorm_backup_2026-05-30.sql', size: '2.4 MB', date: '30/05/2026 18:30', status: 'Hoàn tất' },
-    { id: 'b-991', name: 'homestay_dorm_backup_2026-05-15.sql', size: '2.3 MB', date: '15/05/2026 18:30', status: 'Hoàn tất' }
-  ]);
-  const [backingUp, setBackingUp] = useState(false);
-  const [backupProgress, setBackupProgress] = useState(0);
-
-  const triggerBackup = () => {
-    if (backingUp) return;
-    setBackingUp(true);
-    setBackupProgress(10);
-  };
-
-  useEffect(() => {
-    if (backingUp) {
-      const interval = setInterval(() => {
-        setBackupProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-              setBackingUp(false);
-              setBackups((prevList) => [
-                {
-                  id: `b-${Date.now().toString().slice(-3)}`,
-                  name: `homestay_dorm_backup_${new Date().toISOString().slice(0, 10)}.sql`,
-                  size: '2.4 MB',
-                  date: new Date().toLocaleString(),
-                  status: 'Hoàn tất'
-                },
-                ...prevList
-              ]);
-            }, 500);
-            return 100;
-          }
-          return prev + 15;
-        });
-      }, 300);
-      return () => clearInterval(interval);
-    }
-  }, [backingUp]);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-white">Sao lưu & Khôi phục (Backup & Restore)</h1>
-          <p className="text-slate-400 text-sm mt-1">Đảm bảo an toàn dữ liệu hệ thống Homestay Dorm thông qua các tệp tin SQL backup định kỳ.</p>
-        </div>
-        <button
-          onClick={triggerBackup}
-          disabled={backingUp}
-          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
-        >
-          <Database className="w-3.5 h-3.5" />
-          Tạo bản sao lưu mới
-        </button>
-      </div>
-
-      {backingUp && (
-        <div className="glass-card rounded-xl p-5 border border-slate-800/80 space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-violet-400 font-semibold">Đang tiến hành sao lưu cơ sở dữ liệu Postgres...</span>
-            <span className="font-bold">{backupProgress}%</span>
-          </div>
-          <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-violet-500 h-full transition-all duration-300"
-              style={{ width: `${backupProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      <div className="glass-card rounded-xl border border-slate-800/80 overflow-hidden">
-        <div className="p-4 border-b border-slate-800/80 bg-slate-900/20">
-          <span className="text-xs font-bold text-slate-400">Các bản sao lưu cơ sở dữ liệu đã có</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-900/50 text-slate-400 font-semibold border-b border-slate-800">
-                <th className="p-4">Mã</th>
-                <th className="p-4">Tên file</th>
-                <th className="p-4">Kích thước</th>
-                <th className="p-4">Thời điểm sao lưu</th>
-                <th className="p-4">Trạng thái</th>
-                <th className="p-4 text-right">Khôi phục</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-850 text-slate-300">
-              {backups.map((b) => (
-                <tr key={b.id} className="hover:bg-slate-900/20 transition-all">
-                  <td className="p-4 font-mono font-bold text-violet-400">{b.id}</td>
-                  <td className="p-4 font-mono">{b.name}</td>
-                  <td className="p-4">{b.size}</td>
-                  <td className="p-4">{b.date}</td>
-                  <td className="p-4">
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
-                      {b.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold transition-colors">
-                      Restore
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------
 // PLACEHOLDER PAGE FOR UNIMPLEMENTED MENU ITEMS
 // ----------------------------------------------------
 function PlaceholderPage() {
   const location = useLocation();
   return (
-    <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-6">
-      <div className="p-4 bg-slate-900 rounded-2xl text-slate-500 border border-slate-850 mb-4">
-        <Compass className="w-10 h-10" />
+    <div className="min-h-[450px] flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
+      <div className="p-5 bg-[#6f583c]/10 rounded-2xl text-[#6f583c] border border-[#6f583c]/20 mb-6 flex items-center justify-center">
+        <Compass className="w-12 h-12" />
       </div>
-      <h2 className="text-xl font-extrabold text-white mb-2">Trang đang xây dựng</h2>
-      <p className="text-sm text-slate-400 max-w-sm mb-4">
-        Đường dẫn `{location.pathname}` thuộc phạm vi các Phase tiếp theo. Giao diện này sẽ được bổ sung đầy đủ logic ở các bước tiếp theo.
+      <h2 className="text-xl font-extrabold text-[#1e1b17] mb-3 font-lexend">Trang đang xây dựng</h2>
+      <p className="text-sm text-[#4e453c] max-w-md mb-6 leading-relaxed">
+        Đường dẫn <code className="bg-[#6f583c]/5 px-2 py-1 rounded text-xs font-mono text-[#6f583c]">{location.pathname}</code> đang trong quá trình phát triển và hoàn thiện. Giao diện này sẽ sớm được cập nhật đầy đủ nghiệp vụ.
       </p>
-      <Link to="/" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-colors">
+      <Link 
+        to="/" 
+        className="px-6 py-3 bg-[#6f583c] hover:bg-[#5a4630] text-white rounded-full text-xs font-bold transition-all shadow-md shadow-[#6f583c]/15 hover:scale-[1.02] active:scale-95"
+      >
         Quay lại Trang chính
       </Link>
     </div>
