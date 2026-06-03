@@ -7,12 +7,39 @@ import Footer from '../../components/ui/Footer';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
-  Info, ArrowRight, Layers, Wifi, Shield, FileText, Clock, Plus
+  Info, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown
 } from 'lucide-react';
 import { Service, ServiceSubscription } from '../../lib/supabaseClient';
 
 // Helper for formatting currency
 const formatCurrency = (n: number) => n.toLocaleString('vi-VN') + ' VNĐ';
+
+// ─── FAQ Accordion Item ───────────────────────────────────────────────────────
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="py-4">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-3 text-left group"
+      >
+        <span className="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors leading-snug">
+          {question}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-outline flex-shrink-0 transition-transform duration-200 ${
+            open ? 'rotate-180 text-primary' : ''
+          }`}
+        />
+      </button>
+      {open && (
+        <p className="mt-3 text-sm text-on-surface-variant leading-relaxed font-medium animate-fade-in-up">
+          {answer}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ─── Registration Modal ───────────────────────────────────────────────────────
 function ServiceRegistrationModal({
@@ -510,35 +537,36 @@ function GuestServicesView({
         )}
       </section>
 
-      {/* Detailed Pricing & Policies */}
+      {/* FAQ & Policies */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-        <div className="bg-surface-container-low p-6 md:p-8 rounded-2xl border border-outline-variant/60 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <FileText className="w-6 h-6 text-primary" />
-              <h2 className="font-headline-lg text-lg font-bold text-on-background font-lexend">Bảng giá chi tiết</h2>
-            </div>
-            
-            <div className="divide-y divide-outline-variant/60 text-sm font-medium">
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Đặt cọc dịch vụ (Internet)</span>
-                <span className="text-primary font-bold">Miễn phí</span>
-              </div>
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Nước sinh hoạt (Định mức)</span>
-                <span className="text-primary font-bold">100.000 VNĐ/người/tháng</span>
-              </div>
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Phí quản lý &amp; Vệ sinh chung</span>
-                <span className="text-primary font-bold">200.000 VNĐ/phòng/tháng</span>
-              </div>
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Gửi xe ô tô (Giới hạn chỗ)</span>
-                <span className="text-primary font-bold">1.200.000 VNĐ/tháng</span>
-              </div>
-            </div>
+        <div className="bg-surface-container-low p-6 md:p-8 rounded-2xl border border-outline-variant/60 flex flex-col">
+          <div className="flex items-center gap-3 mb-6">
+            <Info className="w-6 h-6 text-primary" />
+            <h2 className="font-headline-lg text-lg font-bold text-on-background font-lexend">Câu hỏi thường gặp</h2>
           </div>
-          <p className="mt-6 text-xs text-outline italic font-medium">* Bảng giá dịch vụ có thể được điều chỉnh tuỳ theo chính sách từng kỳ của chi nhánh.</p>
+
+          <div className="space-y-0 divide-y divide-outline-variant/50 flex-1">
+            {[
+              {
+                q: 'Làm thế nào để đăng ký thêm dịch vụ?',
+                a: 'Sau khi ký hợp đồng thuê phòng, bạn có thể đăng ký thêm bất kỳ dịch vụ nào qua Resident Portal hoặc liên hệ trực tiếp ban quản lý.',
+              },
+              {
+                q: 'Phí dịch vụ được tính và thanh toán như thế nào?',
+                a: 'Tất cả phí dịch vụ được cộng vào hóa đơn tổng hợp cuối tháng (chốt ngày 30). Bạn chỉ cần thanh toán một lần duy nhất mỗi tháng.',
+              },
+              {
+                q: 'Tôi có thể huỷ dịch vụ bất cứ lúc nào không?',
+                a: 'Có. Bạn có thể huỷ đăng ký bất kỳ lúc nào. Hiệu lực ngừng tính phí sẽ áp dụng từ kỳ thanh toán tháng tiếp theo.',
+              },
+              {
+                q: 'Điện và nước có bao gồm trong giá phòng không?',
+                a: 'Điện và nước được tính theo chỉ số thực tế tiêu thụ, ghi nhận vào ngày 30 hàng tháng và không bao gồm trong giá phòng cơ bản.',
+              },
+            ].map((item, idx) => (
+              <FaqItem key={idx} question={item.q} answer={item.a} />
+            ))}
+          </div>
         </div>
 
         <div className="bg-surface-container-low p-6 md:p-8 rounded-2xl border border-outline-variant/60">
@@ -590,13 +618,6 @@ function GuestServicesView({
               className="px-6 py-3.5 bg-white text-primary rounded-xl font-bold flex items-center justify-center gap-1.5 hover:bg-surface-container transition-colors active:scale-95 text-sm"
             >
               Xem phòng đang trống
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => navigate('/customer/deposit')}
-              className="px-6 py-3.5 bg-primary text-white rounded-xl font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity active:scale-95 text-sm"
-            >
-              Đăng ký thuê phòng
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -1093,9 +1114,7 @@ export default function CustomerServicesPage() {
   const userRoomName = user?.renting_room_name ?? '';
 
   useEffect(() => {
-    if (user?.id) {
-      loadData(user.id);
-    }
+    loadData(user?.id ?? '');
   }, [user?.id]);
 
   // Toast state

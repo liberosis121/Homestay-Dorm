@@ -52,12 +52,17 @@ export const useCustomerServicesStore = create<CustomerServicesState>((set, get)
   loadData: (customerId: string) => {
     const db = getMockDB();
     const services: Service[] = db.services || [];
-    const subscriptions: ServiceSubscription[] = (db.service_subscriptions || []).filter(
-      (s: ServiceSubscription) => s.customer_id === customerId
-    );
-    const consumptionRecords: ConsumptionRecord[] = (db.consumption_records || []).filter(
-      (r: ConsumptionRecord) => r.customer_id === customerId
-    );
+    // Only load user-specific data when we have a real customer ID
+    const subscriptions: ServiceSubscription[] = customerId
+      ? (db.service_subscriptions || []).filter(
+          (s: ServiceSubscription) => s.customer_id === customerId
+        )
+      : [];
+    const consumptionRecords: ConsumptionRecord[] = customerId
+      ? (db.consumption_records || []).filter(
+          (r: ConsumptionRecord) => r.customer_id === customerId
+        )
+      : [];
     set({ services, subscriptions, consumptionRecords });
   },
 
