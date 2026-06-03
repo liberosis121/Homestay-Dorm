@@ -92,6 +92,325 @@ export interface ActivityLog {
   type: 'contract' | 'schedule' | 'system' | 'registration';
 }
 
+// ─── Customer Services Interfaces ─────────────────────────────────────────────
+export interface Service {
+  id: string;
+  name: string;
+  category: 'essential' | 'utility' | 'convenience' | 'premium';
+  description: string;
+  unit_price: number;
+  billing_cycle: 'monthly' | 'per_use' | 'per_kwh' | 'per_m3';
+  status: 'available' | 'unavailable' | 'coming_soon';
+  icon: string;
+  is_default: boolean;
+}
+
+export interface ServiceSubscription {
+  id: string;
+  customer_id: string;
+  service_id: string;
+  service_name: string;
+  registered_date: string;
+  monthly_cost: number;
+  status: 'active' | 'suspended' | 'cancelled';
+}
+
+export interface ConsumptionRecord {
+  id: string;
+  customer_id: string;
+  room_id: string;
+  period: string;
+  electricity_kwh: number;
+  electricity_cost: number;
+  water_m3: number;
+  water_cost: number;
+  recorded_at: string;
+}
+
+// ─── Accountant Phase Interfaces ────────────────────────────────────────────────
+export interface DepositInvoice {
+  id: string;             // "DEP-XXXX"
+  customer_id: string;
+  customer_name: string;
+  room_id: string;
+  room_name: string;
+  amount: number;
+  deadline: string;       // ISO date or string
+  payment_method: 'transfer' | 'cash';
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  created_at: string;
+  note?: string;
+}
+
+export interface CheckinInvoice {
+  id: string;             // "CHK-XXXX"
+  customer_id: string;
+  customer_name: string;
+  room_id: string;
+  room_name: string;
+  checkin_date: string;
+  rent_amount: number;
+  deposit_ref: string;    // ref to DepositInvoice
+  services: { name: string; amount: number }[];
+  total: number;
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled' | 'draft';
+  created_at: string;
+}
+
+export interface MonthlyInvoice {
+  id: string;             // "MON-XXXX"
+  customer_id: string;
+  customer_name: string;
+  room_id: string;
+  room_name: string;
+  period: string;         // "06/2026"
+  rent_amount: number;
+  electricity_kwh: number;
+  electricity_cost: number;
+  water_m3: number;
+  water_cost: number;
+  services_cost: number;
+  total: number;
+  due_date: string;
+  status: 'pending' | 'paid' | 'overdue';
+  created_at: string;
+}
+
+export interface RefundRecord {
+  id: string;             // "REF-XXXX"
+  customer_id: string;
+  customer_name: string;
+  room_id: string;
+  room_name: string;
+  checkout_date: string;
+  deposit_original: number;
+  damage_deductions: { item: string; amount: number }[];
+  debt_deductions: number;
+  total_deductions: number;
+  refund_amount: number;
+  status: 'pending' | 'calculated' | 'confirmed' | 'paid';
+  created_at: string;
+}
+
+export interface PayoutRecord {
+  id: string;             // "PAY-XXXX"
+  refund_id: string;
+  customer_id: string;
+  customer_name: string;
+  bank_account: string;
+  bank_name: string;
+  account_holder: string;
+  amount: number;
+  payment_method: 'transfer' | 'cash';
+  status: 'pending' | 'processing' | 'completed';
+  paid_at?: string;
+  created_at: string;
+}
+
+// Helper to generate dynamic mock data for Accountant Phase
+const generateDepositInvoices = (): DepositInvoice[] => {
+  const list: DepositInvoice[] = [];
+  const names = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', 'Phạm Thị D', 'Hoàng Anh Tuấn', 'Đỗ Mỹ Linh', 'Nguyễn Thị Sâm', 'Bùi Văn Hải', 'Phan Thanh Tùng', 'Ngô Quốc Bảo', 'Vũ Thị Hạnh', 'Đặng Văn Khánh'];
+  const rooms = [
+    { id: 'r-1', name: 'Phòng 101 (Nam)' },
+    { id: 'r-2', name: 'Phòng 102 (Nữ)' },
+    { id: 'r-3', name: 'Phòng 201 (Nam)' },
+    { id: 'r-4', name: 'Phòng 202 (Nữ)' },
+    { id: 'r-5', name: 'Phòng 103 (Nam)' },
+    { id: 'r-6', name: 'Phòng 203 (Nữ)' }
+  ];
+  const statuses: ('pending' | 'paid' | 'overdue' | 'cancelled')[] = ['paid', 'paid', 'pending', 'overdue', 'cancelled'];
+  
+  for (let i = 1; i <= 32; i++) {
+    const name = names[i % names.length];
+    const room = rooms[i % rooms.length];
+    const status = i <= 3 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
+    const date = new Date(2026, 4, 1 + i); // May 2026
+    const deadline = new Date(date);
+    deadline.setDate(deadline.getDate() + 2);
+    
+    list.push({
+      id: `DEP-${1000 + i}`,
+      customer_id: `u-mock-${100 + i}`,
+      customer_name: name,
+      room_id: room.id,
+      room_name: room.name,
+      amount: i % 2 === 0 ? 1000000 : 1500000,
+      deadline: deadline.toISOString().split('T')[0] + ' 12:00',
+      payment_method: i % 3 === 0 ? 'cash' : 'transfer',
+      status,
+      created_at: date.toISOString().split('T')[0] + ' 10:00',
+      note: i % 4 === 0 ? 'Khách hàng đặt cọc online giữ chỗ' : undefined
+    });
+  }
+  return list;
+};
+
+const generateCheckinInvoices = (): CheckinInvoice[] => {
+  const list: CheckinInvoice[] = [];
+  const names = ['Trần Văn Hùng', 'Lê Thị Mai', 'Nguyễn Tiến Dũng', 'Phạm Ngọc Hải', 'Vũ Hoàng Anh', 'Đỗ Phương Thảo', 'Bùi Minh Tuấn', 'Ngô Quốc Việt'];
+  const rooms = [
+    { id: 'r-1', name: 'Phòng 101 (Nam)', price: 1500000 },
+    { id: 'r-2', name: 'Phòng 102 (Nữ)', price: 2000000 },
+    { id: 'r-4', name: 'Phòng 202 (Nữ)', price: 1200000 },
+    { id: 'r-5', name: 'Phòng 103 (Nam)', price: 1600000 }
+  ];
+  const statuses: ('pending' | 'paid' | 'overdue' | 'cancelled' | 'draft')[] = ['paid', 'paid', 'pending', 'overdue', 'draft'];
+
+  for (let i = 1; i <= 26; i++) {
+    const name = names[i % names.length];
+    const room = rooms[i % rooms.length];
+    const status = i <= 2 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
+    const checkinDate = new Date(2026, 4, 5 + i);
+    const rentAmount = room.price;
+    const services = [
+      { name: 'Phí vệ sinh ban đầu', amount: 200000 },
+      { name: 'Phí làm thẻ từ (2x)', amount: 100000 }
+    ];
+    const total = rentAmount * 2 + 300000; // rent + deposit + services
+    
+    list.push({
+      id: `CHK-${1000 + i}`,
+      customer_id: `u-mock-chk-${100 + i}`,
+      customer_name: name,
+      room_id: room.id,
+      room_name: room.name,
+      checkin_date: checkinDate.toISOString().split('T')[0],
+      rent_amount: rentAmount,
+      deposit_ref: `DEP-${1000 + i}`,
+      services,
+      total,
+      status,
+      created_at: checkinDate.toISOString().split('T')[0] + ' 09:00'
+    });
+  }
+  return list;
+};
+
+const generateMonthlyInvoices = (): MonthlyInvoice[] => {
+  const list: MonthlyInvoice[] = [];
+  const names = ['Nguyễn Văn Hải', 'Trần Thị Thu', 'Phạm Minh Khoa', 'Lê Lâm Trí Đức', 'Đinh Thị Hoa', 'Vũ Tú Anh', 'Nguyễn Thị Trinh', 'Trịnh Hoài Nam'];
+  const rooms = [
+    { id: 'r-1', name: 'Phòng 101 (Nam)', price: 1500000 },
+    { id: 'r-2', name: 'Phòng 102 (Nữ)', price: 2000000 },
+    { id: 'r-3', name: 'Phòng 201 (Nam)', price: 900000 },
+    { id: 'r-4', name: 'Phòng 202 (Nữ)', price: 1200000 },
+    { id: 'r-5', name: 'Phòng 103 (Nam)', price: 1600000 },
+    { id: 'r-6', name: 'Phòng 203 (Nữ)', price: 2500000 }
+  ];
+  const statuses: ('pending' | 'paid' | 'overdue')[] = ['paid', 'paid', 'pending', 'overdue'];
+
+  for (let i = 1; i <= 52; i++) {
+    const name = names[i % names.length];
+    const room = rooms[i % rooms.length];
+    const status = i <= 3 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
+    const period = i % 2 === 0 ? '05/2026' : '06/2026';
+    const rentAmount = room.price;
+    const electricity_kwh = 50 + (i * 7) % 150;
+    const electricity_cost = electricity_kwh * 3500;
+    const water_m3 = 4 + (i * 3) % 12;
+    const water_cost = water_m3 * 15000;
+    const services_cost = 150000; // wifi, rac
+    const total = rentAmount + electricity_cost + water_cost + services_cost;
+    const dueDate = period === '05/2026' ? '2026-05-10' : '2026-06-10';
+
+    list.push({
+      id: `MON-${1000 + i}`,
+      customer_id: `u-mock-mon-${100 + i}`,
+      customer_name: name,
+      room_id: room.id,
+      room_name: room.name,
+      period,
+      rent_amount: rentAmount,
+      electricity_kwh,
+      electricity_cost,
+      water_m3,
+      water_cost,
+      services_cost,
+      total,
+      due_date: dueDate,
+      status,
+      created_at: (period === '05/2026' ? '2026-05-01' : '2026-06-01') + ' 08:00'
+    });
+  }
+  return list;
+};
+
+const generateRefundRecords = (): RefundRecord[] => {
+  const list: RefundRecord[] = [];
+  const names = ['Hoàng Thị Mai', 'Nguyễn Tiến Đạt', 'Lưu Quốc Khánh', 'Phạm Phương Thảo', 'Bùi Văn Tiến', 'Võ Thị Hoa', 'Nguyễn Văn Đô'];
+  const rooms = [
+    { id: 'r-1', name: 'Phòng 101 (Nam)' },
+    { id: 'r-2', name: 'Phòng 102 (Nữ)' },
+    { id: 'r-4', name: 'Phòng 202 (Nữ)' },
+    { id: 'r-6', name: 'Phòng 203 (Nữ)' }
+  ];
+  const statuses: ('pending' | 'calculated' | 'confirmed' | 'paid')[] = ['pending', 'calculated', 'confirmed', 'paid'];
+
+  for (let i = 1; i <= 22; i++) {
+    const name = names[i % names.length];
+    const room = rooms[i % rooms.length];
+    const status = i <= 3 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
+    const checkoutDate = new Date(2026, 5, 1 + i);
+    const deposit_original = 2000000;
+    const damage_deductions = i % 3 === 0 ? [
+      { item: 'Vỡ gương nhà tắm', amount: 500000 },
+      { item: 'Hỏng tay nắm cửa tủ quần áo', amount: 350000 }
+    ] : [];
+    const debt_deductions = i % 4 === 0 ? 350000 : 0;
+    const total_deductions = damage_deductions.reduce((sum, item) => sum + item.amount, 0) + debt_deductions;
+    const refund_amount = deposit_original - total_deductions;
+
+    list.push({
+      id: `REF-${1000 + i}`,
+      customer_id: `u-mock-ref-${100 + i}`,
+      customer_name: name,
+      room_id: room.id,
+      room_name: room.name,
+      checkout_date: checkoutDate.toISOString().split('T')[0],
+      deposit_original,
+      damage_deductions,
+      debt_deductions,
+      total_deductions,
+      refund_amount,
+      status,
+      created_at: checkoutDate.toISOString().split('T')[0] + ' 10:00'
+    });
+  }
+  return list;
+};
+
+const generatePayoutRecords = (): PayoutRecord[] => {
+  const list: PayoutRecord[] = [];
+  const names = ['Hoàng Thị Mai', 'Nguyễn Tiến Đạt', 'Lưu Quốc Khánh', 'Phạm Phương Thảo', 'Bùi Văn Tiến', 'Võ Thị Hoa', 'Nguyễn Văn Đô'];
+  const banks = ['Vietcombank', 'Techcombank', 'MB Bank', 'ACB', 'BIDV'];
+  const statuses: ('pending' | 'processing' | 'completed')[] = ['pending', 'processing', 'completed'];
+
+  for (let i = 1; i <= 22; i++) {
+    const name = names[i % names.length];
+    const status = i <= 2 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
+    const amount = 2000000 - (i % 3 === 0 ? 850000 : 0) - (i % 4 === 0 ? 350000 : 0);
+    const bankName = banks[i % banks.length];
+    const bankAccount = `001100${12345 + i}`;
+    
+    list.push({
+      id: `PAY-${1000 + i}`,
+      refund_id: `REF-${1000 + i}`,
+      customer_id: `u-mock-pay-${100 + i}`,
+      customer_name: name,
+      bank_account: bankAccount,
+      bank_name: bankName,
+      account_holder: name.toUpperCase(),
+      amount,
+      payment_method: i % 5 === 0 ? 'cash' : 'transfer',
+      status,
+      paid_at: status === 'completed' ? new Date(2026, 5, 2 + i).toISOString().split('T')[0] : undefined,
+      created_at: new Date(2026, 5, 1 + i).toISOString().split('T')[0]
+    });
+  }
+  return list;
+};
+
 const INITIAL_DB = {
   profiles: [
     { id: 'u-1', email: 'admin@homestay.com', role: 'admin', full_name: 'Hoàng Quốc Việt (Admin)', phone: '0901234567' },
@@ -243,7 +562,60 @@ const INITIAL_DB = {
     { id: 'al-3', title: 'Email nhắc hẹn đã gửi', detail: 'Hệ thống tự động • 08:00 AM', type: 'system' },
     { id: 'al-4', title: 'Phiếu đăng ký mới từ khách hàng', detail: 'Khách: Lê Minh Tuấn • 07:30 AM', type: 'registration' },
     { id: 'al-5', title: 'Hủy lịch hẹn bởi khách hàng', detail: 'Khách: Đinh Thị Hoa • 06:15 AM', type: 'schedule' }
-  ] as ActivityLog[]
+  ] as ActivityLog[],
+  services: [
+    { id: 'svc-1',  name: 'Điện sinh hoạt',                  category: 'essential',   description: 'Điện theo chỉ số công tơ riêng từng phòng, quyết toán hàng tháng.',                                     unit_price: 3500,   billing_cycle: 'per_kwh',  status: 'available',    icon: 'Zap',         is_default: true  },
+    { id: 'svc-2',  name: 'Nước sinh hoạt',                  category: 'essential',   description: 'Nước theo đồng hồ riêng từng phòng, quyết toán hàng tháng.',                                          unit_price: 15000,  billing_cycle: 'per_m3',   status: 'available',    icon: 'Droplets',    is_default: true  },
+    { id: 'svc-3',  name: 'Internet cáp quang 100 Mbps',     category: 'utility',     description: 'Đường truyền cáp quang tốc độ cao, ổn định, không giới hạn dữ liệu.',                               unit_price: 150000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wifi',        is_default: false },
+    { id: 'svc-4',  name: 'Internet cáp quang 300 Mbps',     category: 'utility',     description: 'Gói internet tốc độ siêu cao, lý tưởng cho làm việc và giải trí 4K.',                               unit_price: 220000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wifi',        is_default: false },
+    { id: 'svc-5',  name: 'Gửi xe máy',                      category: 'utility',     description: 'Bãi gửi xe máy có mái che, camera an ninh 24/7, thẻ từ cá nhân.',                                  unit_price: 150000, billing_cycle: 'monthly',  status: 'available',    icon: 'Bike',        is_default: false },
+    { id: 'svc-6',  name: 'Gửi xe đạp',                      category: 'utility',     description: 'Khu vực để xe đạp riêng, có khóa an toàn, miễn phí điện sạc xe đạp điện.',                       unit_price: 50000,  billing_cycle: 'monthly',  status: 'available',    icon: 'Bike',        is_default: false },
+    { id: 'svc-7',  name: 'Gửi ô tô',                        category: 'utility',     description: 'Bãi đỗ ô tô ngoài trời có bảo vệ, camera 24/7. Đặt chỗ theo tháng.',                              unit_price: 800000, billing_cycle: 'monthly',  status: 'available',    icon: 'Car',         is_default: false },
+    { id: 'svc-8',  name: 'Giặt là máy giặt công cộng',      category: 'convenience', description: 'Máy giặt và máy sấy công cộng theo lần sử dụng, mã QR thanh toán tiện lợi.',                       unit_price: 30000,  billing_cycle: 'per_use',  status: 'available',    icon: 'Wind',        is_default: false },
+    { id: 'svc-9',  name: 'Giặt là trọn gói (pick-up)',      category: 'convenience', description: 'Thu gom – giặt – giao tận phòng mỗi tuần, không giới hạn số lần trong tháng.',                     unit_price: 150000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wind',        is_default: false },
+    { id: 'svc-10', name: 'Vệ sinh phòng 1 lần/tuần',        category: 'convenience', description: 'Nhân viên vệ sinh phòng chuyên nghiệp, sử dụng sản phẩm tẩy rửa thân thiện môi trường.',            unit_price: 200000, billing_cycle: 'monthly',  status: 'available',    icon: 'Sparkles',    is_default: false },
+    { id: 'svc-11', name: 'Vệ sinh phòng 2 lần/tuần',        category: 'convenience', description: 'Gói vệ sinh cao cấp 2 lần/tuần, bao gồm thay ga gối và bổ sung vật dụng tiêu hao.',               unit_price: 350000, billing_cycle: 'monthly',  status: 'available',    icon: 'Sparkles',    is_default: false },
+    { id: 'svc-12', name: 'Tủ lạnh mini (90L)',               category: 'premium',     description: 'Tủ lạnh mini Panasonic 90L, đặt trong phòng riêng của bạn. Sử dụng điện riêng.',               unit_price: 300000, billing_cycle: 'monthly',  status: 'available',    icon: 'Refrigerator', is_default: false },
+    { id: 'svc-13', name: 'Tủ lạnh side-by-side (300L)',      category: 'premium',     description: 'Tủ lạnh Samsung 300L cao cấp, có ngăn đá riêng. Phù hợp cho phòng Studio.',                     unit_price: 500000, billing_cycle: 'monthly',  status: 'available',    icon: 'Refrigerator', is_default: false },
+    { id: 'svc-14', name: 'Máy giặt riêng trong phòng',       category: 'premium',     description: 'Máy giặt lồng ngang Electrolux 7kg, lắp đặt trong phòng tắm riêng.',                            unit_price: 450000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wind',        is_default: false },
+    { id: 'svc-15', name: 'Điều hoà bổ sung',                 category: 'premium',     description: 'Điều hoà Daikin 1.5HP bổ sung, lý tưởng khi phòng đã có sẵn 1 máy nhưng cần mát hơn.',       unit_price: 400000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wind',        is_default: false },
+    { id: 'svc-16', name: 'Bình nước nóng riêng',             category: 'premium',     description: 'Bình nước nóng Ariston 15L, dùng riêng cho phòng tắm cá nhân hoặc phòng đôi.',               unit_price: 180000, billing_cycle: 'monthly',  status: 'available',    icon: 'Flame',       is_default: false },
+    { id: 'svc-17', name: 'Két an toàn trong phòng',          category: 'premium',     description: 'Két sắt điện tử nhỏ, khoá mã số 6 chữ số, gắn tường trong tủ quần áo.',                      unit_price: 100000, billing_cycle: 'monthly',  status: 'available',    icon: 'Shield',      is_default: false },
+    { id: 'svc-18', name: 'Dịch vụ giặt khô',                 category: 'convenience', description: 'Nhận giặt khô quần áo cao cấp, vest, áo dài. Giao nhận tại phòng trong 48 giờ.',               unit_price: 80000,  billing_cycle: 'per_use',  status: 'available',    icon: 'Shirt',       is_default: false },
+    { id: 'svc-19', name: 'Gói bảo hiểm tài sản cá nhân',    category: 'premium',     description: 'Bảo hiểm tài sản cá nhân trong phòng, bồi thường tối đa 20 triệu đồng/sự cố.',               unit_price: 250000, billing_cycle: 'monthly',  status: 'coming_soon', icon: 'Shield',      is_default: false },
+    { id: 'svc-20', name: 'Vệ sinh tổng thể toàn phòng',      category: 'convenience', description: 'Tổng vệ sinh phòng chuyên sâu: lau kính, khử trùng, vệ sinh điều hoà, máy lọc nước.',          unit_price: 500000, billing_cycle: 'per_use',  status: 'available',    icon: 'Sparkles',    is_default: false }
+  ] as Service[],
+  service_subscriptions: [
+    { id: 'ss-1',  customer_id: 'u-5', service_id: 'svc-1',  service_name: 'Điện sinh hoạt',                registered_date: '2025-10-01', monthly_cost: 350000, status: 'active'    },
+    { id: 'ss-2',  customer_id: 'u-5', service_id: 'svc-2',  service_name: 'Nước sinh hoạt',                registered_date: '2025-10-01', monthly_cost: 90000,  status: 'active'    },
+    { id: 'ss-3',  customer_id: 'u-5', service_id: 'svc-3',  service_name: 'Internet cáp quang 100 Mbps',   registered_date: '2025-10-01', monthly_cost: 150000, status: 'active'    },
+    { id: 'ss-4',  customer_id: 'u-5', service_id: 'svc-5',  service_name: 'Gửi xe máy',                    registered_date: '2025-10-15', monthly_cost: 150000, status: 'active'    },
+    { id: 'ss-5',  customer_id: 'u-5', service_id: 'svc-9',  service_name: 'Giặt là trọn gói (pick-up)',    registered_date: '2025-11-01', monthly_cost: 150000, status: 'active'    },
+    { id: 'ss-6',  customer_id: 'u-5', service_id: 'svc-10', service_name: 'Vệ sinh phòng 1 lần/tuần',      registered_date: '2025-12-01', monthly_cost: 200000, status: 'active'    },
+    { id: 'ss-7',  customer_id: 'u-5', service_id: 'svc-12', service_name: 'Tủ lạnh mini (90L)',             registered_date: '2026-01-01', monthly_cost: 300000, status: 'active'    },
+    { id: 'ss-8',  customer_id: 'u-5', service_id: 'svc-16', service_name: 'Bình nước nóng riêng',           registered_date: '2026-02-01', monthly_cost: 180000, status: 'active'    },
+    { id: 'ss-9',  customer_id: 'u-5', service_id: 'svc-6',  service_name: 'Gửi xe đạp',                    registered_date: '2025-10-15', monthly_cost: 50000,  status: 'suspended' },
+    { id: 'ss-10', customer_id: 'u-5', service_id: 'svc-15', service_name: 'Điều hoà bổ sung',               registered_date: '2026-03-01', monthly_cost: 400000, status: 'cancelled' }
+  ] as ServiceSubscription[],
+  consumption_records: [
+    { id: 'cr-1',  customer_id: 'u-5', room_id: 'r-1', period: '2025-07', electricity_kwh: 95,  electricity_cost: 332500,  water_m3: 6.5, water_cost: 97500,  recorded_at: '2025-08-01T08:00:00Z' },
+    { id: 'cr-2',  customer_id: 'u-5', room_id: 'r-1', period: '2025-08', electricity_kwh: 118, electricity_cost: 413000,  water_m3: 7.0, water_cost: 105000, recorded_at: '2025-09-01T08:00:00Z' },
+    { id: 'cr-3',  customer_id: 'u-5', room_id: 'r-1', period: '2025-09', electricity_kwh: 110, electricity_cost: 385000,  water_m3: 6.8, water_cost: 102000, recorded_at: '2025-10-01T08:00:00Z' },
+    { id: 'cr-4',  customer_id: 'u-5', room_id: 'r-1', period: '2025-10', electricity_kwh: 98,  electricity_cost: 343000,  water_m3: 7.2, water_cost: 108000, recorded_at: '2025-11-01T08:00:00Z' },
+    { id: 'cr-5',  customer_id: 'u-5', room_id: 'r-1', period: '2025-11', electricity_kwh: 88,  electricity_cost: 308000,  water_m3: 6.0, water_cost: 90000,  recorded_at: '2025-12-01T08:00:00Z' },
+    { id: 'cr-6',  customer_id: 'u-5', room_id: 'r-1', period: '2025-12', electricity_kwh: 92,  electricity_cost: 322000,  water_m3: 6.5, water_cost: 97500,  recorded_at: '2026-01-01T08:00:00Z' },
+    { id: 'cr-7',  customer_id: 'u-5', room_id: 'r-1', period: '2026-01', electricity_kwh: 85,  electricity_cost: 297500,  water_m3: 5.8, water_cost: 87000,  recorded_at: '2026-02-01T08:00:00Z' },
+    { id: 'cr-8',  customer_id: 'u-5', room_id: 'r-1', period: '2026-02', electricity_kwh: 90,  electricity_cost: 315000,  water_m3: 6.2, water_cost: 93000,  recorded_at: '2026-03-01T08:00:00Z' },
+    { id: 'cr-9',  customer_id: 'u-5', room_id: 'r-1', period: '2026-03', electricity_kwh: 102, electricity_cost: 357000,  water_m3: 7.0, water_cost: 105000, recorded_at: '2026-04-01T08:00:00Z' },
+    { id: 'cr-10', customer_id: 'u-5', room_id: 'r-1', period: '2026-04', electricity_kwh: 108, electricity_cost: 378000,  water_m3: 7.5, water_cost: 112500, recorded_at: '2026-05-01T08:00:00Z' },
+    { id: 'cr-11', customer_id: 'u-5', room_id: 'r-1', period: '2026-05', electricity_kwh: 115, electricity_cost: 402500,  water_m3: 7.8, water_cost: 117000, recorded_at: '2026-06-01T08:00:00Z' },
+    { id: 'cr-12', customer_id: 'u-5', room_id: 'r-1', period: '2026-06', electricity_kwh: 52,  electricity_cost: 182000,  water_m3: 3.5, water_cost: 52500,  recorded_at: '2026-06-02T08:00:00Z' }
+  ] as ConsumptionRecord[],
+  deposit_invoices: generateDepositInvoices(),
+  checkin_invoices: generateCheckinInvoices(),
+  monthly_invoices: generateMonthlyInvoices(),
+  refund_records: generateRefundRecords(),
+  payout_records: generatePayoutRecords()
 };
 
 // Initialize Mock Database in LocalStorage
@@ -277,6 +649,22 @@ export const initializeMockDB = () => {
         db.today_appointments = INITIAL_DB.today_appointments;
         db.recent_registrations = INITIAL_DB.recent_registrations;
         db.activity_logs = INITIAL_DB.activity_logs;
+        updated = true;
+      }
+      // Seed Services mock data
+      if (db && !db.services) {
+        db.services = INITIAL_DB.services;
+        db.service_subscriptions = INITIAL_DB.service_subscriptions;
+        db.consumption_records = INITIAL_DB.consumption_records;
+        updated = true;
+      }
+      // Seed Accountant mock data
+      if (db && !db.deposit_invoices) {
+        db.deposit_invoices = INITIAL_DB.deposit_invoices;
+        db.checkin_invoices = INITIAL_DB.checkin_invoices;
+        db.monthly_invoices = INITIAL_DB.monthly_invoices;
+        db.refund_records = INITIAL_DB.refund_records;
+        db.payout_records = INITIAL_DB.payout_records;
         updated = true;
       }
       if (updated) {

@@ -12,6 +12,8 @@ import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import servicesImage from '../../assets/homestay-services.png';
+
 
 const featuredRooms = [
   {
@@ -178,7 +180,7 @@ export default function LandingPage() {
 
       <main className="pt-20">
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-margin-mobile md:px-margin-desktop py-12 md:py-24 max-w-container-max mx-auto">
+        <section className="relative overflow-hidden px-margin-mobile md:px-margin-desktop py-10 md:py-24 max-w-container-max mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-fade-in-up">
               <h1 className="font-display-lg text-[40px] md:text-display-lg leading-tight text-on-surface">
@@ -209,7 +211,7 @@ export default function LandingPage() {
         </section>
 
         {/* Search Section */}
-        <section className="px-margin-mobile md:px-margin-desktop -mt-12 relative z-20 max-w-container-max mx-auto" id="search-section">
+        <section className="px-margin-mobile md:px-margin-desktop -mt-3 relative z-20 max-w-container-max mx-auto" id="search-section">
           <div className="bg-white/80 dark:bg-surface-container-highest/80 backdrop-blur-xl border border-glass-stroke shadow-xl rounded-[32px] p-6 md:p-10">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
               <div className="space-y-2">
@@ -307,6 +309,105 @@ export default function LandingPage() {
                 onRegisterClick={(e) => handleRegisterClick(e, room.id)}
               />
             ))}
+
+          </div>
+        </section>
+
+        {/* Services Showcase Section */}
+        <section className="py-15 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto border-t border-outline-variant/10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* Left Image Column */}
+            <div className="lg:col-span-5 relative">
+              <div className="aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/4.5] rounded-[40px] overflow-hidden shadow-2xl relative z-10 border border-outline-variant/20">
+                <img
+                  alt="Co-living services"
+                  className="w-full h-full object-cover transform hover:scale-[1.03] transition-transform duration-700"
+                  src={servicesImage}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none"></div>
+              </div>
+              
+              {/* Decorative glows */}
+              <div className="absolute -bottom-8 -left-8 w-48 h-48 bg-primary/10 rounded-full blur-3xl -z-10"></div>
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-secondary/15 rounded-full blur-3xl -z-10"></div>
+            </div>
+
+            {/* Right Content Column */}
+            <div className="lg:col-span-7 space-y-8 animate-fade-in-up">
+              <div className="space-y-0.5">
+                <span className="text-primary font-label-md tracking-widest uppercase block">Hệ sinh thái tiện ích</span>
+                <h2 className="font-headline-lg text-headline-lg text-on-surface leading-relaxed">
+                  Dịch vụ đa dạng,<br />Cuộc sống tiện nghi vượt trội
+                </h2>
+              </div>
+              
+              <p className="font-body-md text-on-surface-variant leading-relaxed max-w-2xl">
+                HomeStay Dorm không chỉ cung cấp một chốn nghỉ chân, mà là một hệ sinh thái sống hiện đại và năng động. Chúng tôi mang đến trọn gói các dịch vụ từ thiết yếu đến cao cấp để bạn thoải mái học tập, làm việc và tận hưởng cuộc sống trọn vẹn nhất.
+              </p>
+
+              {/* Service Features Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="flex gap-4 p-5 rounded-2xl bg-surface-container-low border border-outline-variant/30 hover:border-primary/20 hover:bg-surface-container-high transition-all duration-300">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                    <span className="material-symbols-outlined">bolt</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-on-surface text-sm">Dịch vụ thiết yếu</h4>
+                    <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                      Điện nước sinh hoạt ổn định, thanh toán minh bạch theo chỉ số tiêu dùng thực tế.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 p-5 rounded-2xl bg-surface-container-low border border-outline-variant/30 hover:border-primary/20 hover:bg-surface-container-high transition-all duration-300">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                    <span className="material-symbols-outlined">wifi</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-on-surface text-sm">Kết nối & Xe cộ</h4>
+                    <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                      Wifi cáp quang tốc độ cao phủ sóng toàn khu, bãi gửi xe thông minh bảo vệ 24/7.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 p-5 rounded-2xl bg-surface-container-low border border-outline-variant/30 hover:border-primary/20 hover:bg-surface-container-high transition-all duration-300">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                    <span className="material-symbols-outlined">local_laundry_service</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-on-surface text-sm">Giặt là & Vệ sinh</h4>
+                    <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                      Giặt sấy tự động tiện lợi hoặc pick-up tận phòng, dọn dẹp vệ sinh phòng định kỳ.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 p-5 rounded-2xl bg-surface-container-low border border-outline-variant/30 hover:border-primary/20 hover:bg-surface-container-high transition-all duration-300">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                    <span className="material-symbols-outlined">star</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-on-surface text-sm">Tiện nghi cao cấp</h4>
+                    <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                      Tủ lạnh mini, máy giặt lồng ngang riêng, điều hòa bổ sung, két sắt điện tử an toàn.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-2">
+                <button
+                  onClick={() => navigate('/customer/services')}
+                  className="inline-flex items-center gap-2.5 bg-primary text-on-primary px-8 py-4 rounded-full font-label-md shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group"
+                >
+                  Khám phá bảng giá dịch vụ
+                  <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
+                </button>
+              </div>
+            </div>
 
           </div>
         </section>
