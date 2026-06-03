@@ -50,6 +50,7 @@ import SaleDashboardPage from './features/sale/SaleDashboardPage';
 import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
 import CustomerLookupPage from './features/sale/CustomerLookupPage';
 import SaleContractsPage from './features/sale/SaleContractsPage';
+import AccountantDashboardPage from './features/accountant/AccountantDashboardPage';
 import AccountantDepositPage from './features/accountant/AccountantDepositPage';
 import AccountantCheckinPage from './features/accountant/AccountantCheckinPage';
 import AccountantMonthlyPage from './features/accountant/AccountantMonthlyPage';
@@ -209,7 +210,7 @@ function DashboardLayout() {
         ];
       case 'accountant':
         return [
-          { path: '/', label: 'Bàn làm việc Kế toán', icon: Home },
+          { path: '/accountant/dashboard', label: 'Tổng quan', icon: Home },
           { path: '/accountant/invoices/deposit', label: 'Hóa đơn Đặt cọc', icon: Receipt },
           { path: '/accountant/invoices/checkin', label: 'Hóa đơn Nhận phòng', icon: LogIn },
           { path: '/accountant/invoices/monthly', label: 'Hóa đơn Định kỳ', icon: CreditCard },
@@ -486,6 +487,7 @@ function DashboardLayout() {
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
             {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
             {user.role === 'sale' && <Route path="/sale/contracts" element={<SaleContractsPage />} />}
+            {user.role === 'accountant' && <Route path="/accountant/dashboard" element={<AccountantDashboardPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices/deposit" element={<AccountantDepositPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices/checkin" element={<AccountantCheckinPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/invoices/monthly" element={<AccountantMonthlyPage />} />}
@@ -522,7 +524,7 @@ function DashboardDispatcher() {
 
   // Auto-redirect role-based dashboards
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
-  if (user.role === 'accountant') return <Navigate to="/accountant/invoices/deposit" replace />;
+  if (user.role === 'accountant') return <Navigate to="/accountant/dashboard" replace />;
   if (user.role === 'admin') return <AdminDashboardPage />;
 
   const cards = [
