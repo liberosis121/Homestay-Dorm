@@ -25,7 +25,7 @@ import {
   ArrowLeftRight,
   LogIn
 } from 'lucide-react';
-import { initializeMockDB, getMockDB, saveMockDB, Room } from './lib/supabaseClient';
+import { initializeMockDB } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
@@ -65,6 +65,14 @@ import AdminConditionsPage from './features/admin/AdminConditionsPage';
 import AdminAssetsPage from './features/admin/AdminAssetsPage';
 import AdminBackupPage from './features/admin/AdminBackupPage';
 import AdminDashboardPage from './features/admin/AdminDashboardPage';
+import ManagerDashboardPage from './features/manager/ManagerDashboardPage';
+import ManagerRoomsPage from './features/manager/ManagerRoomsPage';
+import ManagerDepositsPage from './features/manager/ManagerDepositsPage';
+import ManagerResidencyPage from './features/manager/ManagerResidencyPage';
+import ManagerHandoversPage from './features/manager/ManagerHandoversPage';
+import ManagerInspectionsPage from './features/manager/ManagerInspectionsPage';
+import ManagerAssetsPage from './features/manager/ManagerAssetsPage';
+import ManagerReportsPage from './features/manager/ManagerReportsPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -192,11 +200,14 @@ function DashboardLayout() {
         ];
       case 'manager':
         return [
-          { path: '/', label: 'Bàn vận hành', icon: Home },
-          { path: '/manager/rooms', label: 'Bản đồ phòng (Floor Map)', icon: Layers },
+          { path: '/manager/dashboard', label: 'Tổng quan', icon: Home },
+          { path: '/manager/rooms', label: 'Sơ đồ phòng', icon: Layers },
           { path: '/manager/deposits', label: 'Kiểm duyệt đặt cọc', icon: ClipboardList },
-          { path: '/manager/handovers', label: 'Biên bản bàn giao', icon: FileText },
-          { path: '/manager/assets', label: 'Quản lý Tài sản', icon: Settings },
+          { path: '/manager/residency-checks', label: 'Kiểm tra lưu trú', icon: CheckCircle },
+          { path: '/manager/handovers', label: 'Bàn giao tài sản', icon: FileText },
+          { path: '/manager/inspections', label: 'Kiểm kê trả phòng', icon: Activity },
+          { path: '/manager/assets', label: 'Điều phối tài sản', icon: Settings },
+          { path: '/manager/asset-reports', label: 'Báo cáo tài sản', icon: Database },
           { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
@@ -483,7 +494,14 @@ function DashboardLayout() {
             <Route path="/" element={location.pathname === '/profile' ? (user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />) : <DashboardDispatcher />} />
             <Route path="/profile" element={user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />} />
             <Route path="/rooms" element={<RoomsPage />} />
-            {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerFloorMapScreen />} />}
+            {user.role === 'manager' && <Route path="/manager/dashboard" element={<ManagerDashboardPage />} />}
+            {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerRoomsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/deposits" element={<ManagerDepositsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/residency-checks" element={<ManagerResidencyPage />} />}
+            {user.role === 'manager' && <Route path="/manager/handovers" element={<ManagerHandoversPage />} />}
+            {user.role === 'manager' && <Route path="/manager/inspections" element={<ManagerInspectionsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/assets" element={<ManagerAssetsPage />} />}
+            {user.role === 'manager' && <Route path="/manager/asset-reports" element={<ManagerReportsPage />} />}
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
             {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
             {user.role === 'sale' && <Route path="/sale/contracts" element={<SaleContractsPage />} />}
@@ -525,6 +543,7 @@ function DashboardDispatcher() {
   // Auto-redirect role-based dashboards
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
   if (user.role === 'accountant') return <Navigate to="/accountant/dashboard" replace />;
+  if (user.role === 'manager') return <Navigate to="/manager/dashboard" replace />;
   if (user.role === 'admin') return <AdminDashboardPage />;
 
   const cards = [
@@ -598,144 +617,6 @@ function DashboardDispatcher() {
     </div>
   );
 }
-
-// ----------------------------------------------------
-// SCREEN: MANAGER - OCCUPANCY FLOOR MAP (UC24)
-// ----------------------------------------------------
-function ManagerFloorMapScreen() {
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-
-  useEffect(() => {
-    const db = getMockDB();
-    setRooms(db.rooms || []);
-  }, []);
-
-  const changeRoomStatus = (roomId: string, newStatus: Room['status']) => {
-    const db = getMockDB();
-    const updatedRooms = db.rooms.map((r: Room) => {
-      if (r.id === roomId) {
-        const u = { ...r, status: newStatus };
-        if (selectedRoom?.id === roomId) setSelectedRoom(u);
-        return u;
-      }
-      return r;
-    });
-    db.rooms = updatedRooms;
-    saveMockDB(db);
-    setRooms(updatedRooms);
-  };
-
-  const getStatusColor = (status: Room['status']) => {
-    switch (status) {
-      case 'available': return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
-      case 'deposited': return 'bg-amber-500/10 border-amber-500/30 text-amber-400';
-      case 'occupied': return 'bg-rose-500/10 border-rose-500/30 text-rose-400';
-      case 'maintenance': return 'bg-blue-500/10 border-blue-500/30 text-blue-400';
-    }
-  };
-
-  const getStatusText = (status: Room['status']) => {
-    switch (status) {
-      case 'available': return 'Phòng trống';
-      case 'deposited': return 'Đã đặt cọc';
-      case 'occupied': return 'Đang ở';
-      case 'maintenance': return 'Đang bảo trì';
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-white">Sơ đồ phòng (Floor Map)</h1>
-        <p className="text-slate-400 text-sm mt-1">Quản trị trạng thái lưu trú và cơ sở vật chất phòng theo thời gian thực.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Rooms Grid */}
-        <div className="lg:col-span-2 glass-card rounded-xl p-5 border border-slate-800/80 space-y-4">
-          <h3 className="text-sm font-bold text-slate-300">Chi nhánh Quận 1 - Tầng 1 & Tầng 2</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {rooms.map((room) => {
-              const statusClass = getStatusColor(room.status);
-              return (
-                <button
-                  key={room.id}
-                  onClick={() => setSelectedRoom(room)}
-                  className={`border rounded-xl p-4 text-left transition-all ${statusClass} ${
-                    selectedRoom?.id === room.id ? 'ring-2 ring-violet-500' : 'hover:scale-[1.02]'
-                  }`}
-                >
-                  <span className="block text-xs font-semibold opacity-60">Tầng {room.floor}</span>
-                  <span className="block font-black text-lg text-white my-1">{room.name}</span>
-                  <span className="text-[10px] font-bold uppercase">{getStatusText(room.status)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Room Detail sidebar */}
-        <div className="glass-card rounded-xl p-5 border border-slate-800/80">
-          {selectedRoom ? (
-            <div className="space-y-5">
-              <div>
-                <h3 className="text-lg font-black text-white">{selectedRoom.name}</h3>
-                <span className="text-xs text-slate-500">Mã phòng: {selectedRoom.id}</span>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between py-2 border-b border-slate-850">
-                  <span className="text-slate-500">Trạng thái:</span>
-                  <span className="font-semibold">{getStatusText(selectedRoom.status)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-850">
-                  <span className="text-slate-500">Sức chứa:</span>
-                  <span className="font-semibold text-slate-200">{selectedRoom.capacity} giường</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-850">
-                  <span className="text-slate-500">Giới tính:</span>
-                  <span className="font-semibold text-slate-200 uppercase">{selectedRoom.gender_type === 'male' ? 'Nam' : 'Nữ'}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-slate-500">Đơn giá:</span>
-                  <span className="font-bold text-violet-400">{selectedRoom.price.toLocaleString('vi-VN')}đ/tháng</span>
-                </div>
-              </div>
-
-              <div className="space-y-2 border-t border-slate-800 pt-4">
-                <span className="block text-xs font-bold text-slate-400">Cập nhật nhanh trạng thái:</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['available', 'deposited', 'occupied', 'maintenance'] as Room['status'][]).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => changeRoomStatus(selectedRoom.id, status)}
-                      className={`py-2 px-3 border rounded-lg text-xs font-bold transition-all text-center ${
-                        selectedRoom.status === status 
-                          ? 'bg-violet-600 border-violet-500 text-white' 
-                          : 'border-slate-800 bg-slate-900/50 hover:bg-slate-850 text-slate-400'
-                      }`}
-                    >
-                      {getStatusText(status)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-slate-500">
-              <Layers className="w-12 h-12 mx-auto text-slate-700 mb-3" />
-              <p className="text-sm">Click chọn một phòng trên sơ đồ để xem chi tiết & cập nhật trạng thái.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
 
 // ----------------------------------------------------
 // PLACEHOLDER PAGE FOR UNIMPLEMENTED MENU ITEMS

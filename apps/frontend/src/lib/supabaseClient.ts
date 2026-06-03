@@ -207,6 +207,99 @@ export interface PayoutRecord {
   created_at: string;
 }
 
+// ─── Manager Phase Interfaces ────────────────────────────────────────────────
+export interface ManagerDeposit {
+  id: string;             // "MGR-DEP-XXXX"
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  room_id: string;
+  room_name: string;
+  amount: number;
+  deposit_date: string;
+  bill_image_url: string;
+  bank_name: string;
+  account_number: string;
+  status: 'pending' | 'approved' | 'rejected' | 'need_more' | 'expired';
+  note?: string;
+  reviewer_note?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+export interface ResidencyCheck {
+  id: string;             // "RC-XXXX"
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  room_id: string;
+  room_name: string;
+  id_type: 'cccd' | 'passport' | 'other';
+  id_number: string;
+  dob: string;
+  nationality: 'vietnamese' | 'foreign';
+  front_image_url: string;
+  back_image_url?: string;
+  checklist: {
+    valid_documents: boolean;
+    info_matches: boolean;
+    age_verified: boolean;
+    no_violation: boolean;
+  };
+  violation_note?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'need_more';
+  created_at: string;
+}
+
+export interface AssetHandover {
+  id: string;             // "AHO-XXXX"
+  customer_id: string;
+  customer_name: string;
+  room_id: string;
+  room_name: string;
+  handover_date: string;
+  checklist: { item: string; condition: string; note?: string; checked: boolean }[];
+  customer_signed: boolean;
+  manager_signed: boolean;
+  signature_ip?: string;
+  signature_timestamp?: string;
+  status: 'pending' | 'signed' | 'partial';
+  created_at: string;
+}
+
+export interface AssetInspection {
+  id: string;             // "INS-XXXX"
+  customer_id: string;
+  customer_name: string;
+  room_id: string;
+  room_name: string;
+  checkout_date: string;
+  items: {
+    name: string;
+    original_condition: string;
+    current_condition: 'good' | 'minor_damage' | 'major_damage' | 'missing';
+    compensation: number;
+  }[];
+  total_compensation: number;
+  evidence_urls: string[];
+  status: 'pending' | 'in_progress' | 'completed' | 'sent_to_accountant';
+  created_at: string;
+}
+
+export interface ManagedAsset {
+  id: string;             // "AST-XXXX"
+  name: string;
+  category: 'furniture' | 'electronics' | 'appliance' | 'fixture';
+  serial_number?: string;
+  current_location: string;  // "Phòng 101" | "Kho"
+  location_type: 'room' | 'warehouse' | 'maintenance';
+  status: 'in_use' | 'in_stock' | 'maintenance' | 'retired';
+  purchase_date: string;
+  purchase_price: number;
+  depreciation_rate: number; // 0-100
+  transfer_history: { from: string; to: string; date: string; reason: string; by: string }[];
+}
+
 // Helper to generate dynamic mock data for Accountant Phase
 const generateDepositInvoices = (): DepositInvoice[] => {
   const list: DepositInvoice[] = [];
@@ -615,8 +708,184 @@ const INITIAL_DB = {
   checkin_invoices: generateCheckinInvoices(),
   monthly_invoices: generateMonthlyInvoices(),
   refund_records: generateRefundRecords(),
-  payout_records: generatePayoutRecords()
+  payout_records: generatePayoutRecords(),
+  manager_deposits: generateManagerDeposits(),
+  residency_checks: generateResidencyChecks(),
+  asset_handovers: generateAssetHandovers(),
+  asset_inspections: generateAssetInspections(),
+  managed_assets: generateManagedAssets()
 };
+
+// ─── Manager Phase Mock Data Generators ──────────────────────────────────────
+function generateManagerDeposits(): ManagerDeposit[] {
+  const names = ['Nguyễn Văn An', 'Trần Thị Bích', 'Lê Văn Cường', 'Phạm Thị Dung', 'Hoàng Anh Tuấn', 'Đỗ Mỹ Linh', 'Nguyễn Thị Sâm', 'Bùi Văn Hải', 'Phan Thanh Tùng', 'Ngô Quốc Bảo', 'Vũ Thị Hạnh', 'Đặng Văn Khánh', 'Lý Minh Khoa', 'Đinh Thị Hoa', 'Trịnh Hoài An'];
+  const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)', 'Phòng 302 (Nữ)'];
+  const statuses: ManagerDeposit['status'][] = ['pending', 'pending', 'approved', 'approved', 'approved', 'rejected', 'need_more', 'expired'];
+  const banks = ['Vietcombank', 'BIDV', 'Techcombank', 'MB Bank', 'ACB', 'TPBank'];
+  const list: ManagerDeposit[] = [];
+  for (let i = 1; i <= 32; i++) {
+    const name = names[i % names.length];
+    list.push({
+      id: `MGR-DEP-${2000 + i}`,
+      customer_id: `u-mock-${200 + i}`,
+      customer_name: name,
+      customer_phone: `090${(i * 1234567) % 9000000 + 1000000}`,
+      room_id: `r-${(i % 6) + 1}`,
+      room_name: rooms[i % rooms.length],
+      amount: [1000000, 1500000, 2000000][i % 3],
+      deposit_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
+      bill_image_url: `https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80`,
+      bank_name: banks[i % banks.length],
+      account_number: `${100000000 + i * 123456}`,
+      status: i <= 8 ? statuses[i - 1] : statuses[i % statuses.length],
+      note: i % 3 === 0 ? 'Đặt cọc online qua ứng dụng' : undefined,
+      reviewer_note: i % 2 === 0 ? 'Xác minh thông tin chuyển khoản hợp lệ' : undefined,
+      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
+    });
+  }
+  return list;
+}
+
+function generateResidencyChecks(): ResidencyCheck[] {
+  const names = ['Nguyễn Văn Bình', 'Trần Minh Châu', 'Lê Thị Duyên', 'Phạm Quốc Hùng', 'Hoàng Thị Lan', 'Đỗ Văn Mạnh', 'Nguyễn Thu Ngân', 'Bùi Đình Phúc', 'Lý Ngọc Quỳnh', 'Phan Văn Sơn', 'Vũ Thị Tâm', 'Đặng Minh Uyên', 'Trịnh Văn Vinh', 'Đinh Thị Xuân', 'Cao Thị Yến'];
+  const rooms = ['Phòng 101', 'Phòng 102', 'Phòng 201', 'Phòng 202', 'Phòng 301', 'Phòng 302'];
+  const statuses: ResidencyCheck['status'][] = ['pending', 'pending', 'approved', 'approved', 'rejected', 'need_more'];
+  const list: ResidencyCheck[] = [];
+  for (let i = 1; i <= 26; i++) {
+    const name = names[i % names.length];
+    list.push({
+      id: `RC-${3000 + i}`,
+      customer_id: `u-mock-${300 + i}`,
+      customer_name: name,
+      customer_phone: `098${(i * 7654321) % 9000000 + 1000000}`,
+      room_id: `r-${(i % 6) + 1}`,
+      room_name: rooms[i % rooms.length],
+      id_type: i % 5 === 0 ? 'passport' : 'cccd',
+      id_number: i % 5 === 0 ? `P${100000 + i}VN` : `0${7 + (i % 3)}${String(10000000 + i * 12345).padStart(8, '0')}`,
+      dob: `${1998 + (i % 6)}-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      nationality: i % 5 === 0 ? 'foreign' : 'vietnamese',
+      front_image_url: 'https://images.unsplash.com/photo-1633265486064-086b219458ec?auto=format&fit=crop&w=400&q=80',
+      back_image_url: i % 5 !== 0 ? 'https://images.unsplash.com/photo-1633265486064-086b219458ec?auto=format&fit=crop&w=400&q=80' : undefined,
+      checklist: {
+        valid_documents: i % 7 !== 0,
+        info_matches: i % 5 !== 0,
+        age_verified: true,
+        no_violation: i % 8 !== 0
+      },
+      violation_note: i % 8 === 0 ? 'Khách hàng có tiền sử vi phạm quy định nội quy phòng trọ tại địa chỉ cũ' : undefined,
+      status: statuses[i % statuses.length],
+      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
+    });
+  }
+  return list;
+}
+
+function generateAssetHandovers(): AssetHandover[] {
+  const names = ['Nguyễn Văn Bình', 'Trần Minh Châu', 'Lê Thị Duyên', 'Phạm Quốc Hùng', 'Hoàng Thị Lan', 'Đỗ Văn Mạnh', 'Nguyễn Thu Ngân', 'Bùi Đình Phúc', 'Lý Ngọc Quỳnh', 'Phan Văn Sơn', 'Vũ Thị Tâm'];
+  const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)'];
+  const defaultChecklist = [
+    { item: 'Giường đơn + nệm', condition: 'Tốt', checked: true },
+    { item: 'Tủ quần áo', condition: 'Tốt', checked: true },
+    { item: 'Bàn học + ghế', condition: 'Tốt', checked: true },
+    { item: 'Máy lạnh (1.5HP)', condition: 'Tốt, vừa bảo dưỡng', checked: true },
+    { item: 'Quạt trần', condition: 'Hoạt động bình thường', checked: true },
+    { item: 'Đèn LED phòng', condition: 'Tốt', checked: true },
+    { item: 'Thiết bị nhà vệ sinh', condition: 'Đầy đủ, sạch sẽ', checked: true },
+    { item: 'Khóa cửa điện tử', condition: 'Hoạt động tốt', checked: true },
+    { item: 'Kệ sách / Kệ đa năng', condition: 'Tốt', checked: true },
+    { item: 'Ổ cắm điện + USB', condition: '4 ổ, hoạt động tốt', checked: true }
+  ];
+  const statuses: AssetHandover['status'][] = ['signed', 'signed', 'signed', 'pending', 'partial'];
+  const list: AssetHandover[] = [];
+  for (let i = 1; i <= 22; i++) {
+    list.push({
+      id: `AHO-${4000 + i}`,
+      customer_id: `u-mock-${400 + i}`,
+      customer_name: names[i % names.length],
+      room_id: `r-${(i % 5) + 1}`,
+      room_name: rooms[i % rooms.length],
+      handover_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
+      checklist: defaultChecklist.map(item => ({ ...item })),
+      customer_signed: i % 5 !== 4,
+      manager_signed: i % 5 !== 4,
+      signature_ip: i % 5 !== 4 ? `192.168.1.${10 + i}` : undefined,
+      signature_timestamp: i % 5 !== 4 ? new Date(2026, 4, 1 + (i % 28), 10, 30).toISOString() : undefined,
+      status: statuses[i % statuses.length],
+      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
+    });
+  }
+  return list;
+}
+
+function generateAssetInspections(): AssetInspection[] {
+  const names = ['Nguyễn Văn An', 'Trần Thị Bích', 'Lê Văn Cường', 'Phạm Thị Dung', 'Hoàng Anh Tuấn', 'Đỗ Mỹ Linh', 'Nguyễn Thị Sâm', 'Bùi Văn Hải', 'Phan Thanh Tùng', 'Ngô Quốc Bảo'];
+  const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)'];
+  const statuses: AssetInspection['status'][] = ['pending', 'in_progress', 'completed', 'sent_to_accountant'];
+  const list: AssetInspection[] = [];
+  for (let i = 1; i <= 21; i++) {
+    const hasIssues = i % 3 !== 0;
+    list.push({
+      id: `INS-${5000 + i}`,
+      customer_id: `u-mock-${500 + i}`,
+      customer_name: names[i % names.length],
+      room_id: `r-${(i % 5) + 1}`,
+      room_name: rooms[i % rooms.length],
+      checkout_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
+      items: [
+        { name: 'Giường đơn + nệm', original_condition: 'Tốt', current_condition: hasIssues && i % 7 === 0 ? 'minor_damage' : 'good', compensation: hasIssues && i % 7 === 0 ? 200000 : 0 },
+        { name: 'Tủ quần áo', original_condition: 'Tốt', current_condition: hasIssues && i % 5 === 0 ? 'major_damage' : 'good', compensation: hasIssues && i % 5 === 0 ? 500000 : 0 },
+        { name: 'Bàn học + ghế', original_condition: 'Tốt', current_condition: hasIssues && i % 4 === 0 ? 'minor_damage' : 'good', compensation: hasIssues && i % 4 === 0 ? 150000 : 0 },
+        { name: 'Máy lạnh (1.5HP)', original_condition: 'Tốt', current_condition: 'good', compensation: 0 },
+        { name: 'Khóa cửa điện tử', original_condition: 'Hoạt động tốt', current_condition: hasIssues && i % 6 === 0 ? 'missing' : 'good', compensation: hasIssues && i % 6 === 0 ? 800000 : 0 }
+      ],
+      total_compensation: hasIssues ? [0, 200000, 500000, 150000, 800000, 650000][i % 6] : 0,
+      evidence_urls: hasIssues ? ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=300&q=80'] : [],
+      status: statuses[i % statuses.length],
+      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
+    });
+  }
+  return list;
+}
+
+function generateManagedAssets(): ManagedAsset[] {
+  const assetNames = [
+    { name: 'Máy lạnh Daikin 1.5HP', cat: 'electronics' as ManagedAsset['category'] },
+    { name: 'Giường đơn gỗ sồi', cat: 'furniture' as ManagedAsset['category'] },
+    { name: 'Nệm Dunlopillo', cat: 'furniture' as ManagedAsset['category'] },
+    { name: 'Tủ quần áo 3 cánh', cat: 'furniture' as ManagedAsset['category'] },
+    { name: 'Bàn học + ghế', cat: 'furniture' as ManagedAsset['category'] },
+    { name: 'Tủ lạnh Panasonic 90L', cat: 'appliance' as ManagedAsset['category'] },
+    { name: 'Bình nước nóng Ariston', cat: 'appliance' as ManagedAsset['category'] },
+    { name: 'Quạt trần 3 cánh', cat: 'electronics' as ManagedAsset['category'] },
+    { name: 'Đèn LED âm trần', cat: 'fixture' as ManagedAsset['category'] },
+    { name: 'Khóa cửa điện tử', cat: 'fixture' as ManagedAsset['category'] },
+    { name: 'Két an toàn mini', cat: 'fixture' as ManagedAsset['category'] }
+  ];
+  const locations = ['Phòng 101', 'Phòng 102', 'Phòng 201', 'Phòng 202', 'Phòng 301', 'Kho tầng 1', 'Kho tầng 2'];
+  const statusOptions: ManagedAsset['status'][] = ['in_use', 'in_use', 'in_use', 'in_stock', 'maintenance', 'retired'];
+  const locationTypes: ManagedAsset['location_type'][] = ['room', 'room', 'room', 'warehouse', 'maintenance'];
+  const list: ManagedAsset[] = [];
+  for (let i = 1; i <= 55; i++) {
+    const asset = assetNames[i % assetNames.length];
+    const locType = locationTypes[i % locationTypes.length];
+    list.push({
+      id: `AST-${6000 + i}`,
+      name: asset.name,
+      category: asset.cat,
+      serial_number: `SN-${2020000 + i * 7}`,
+      current_location: locType === 'room' ? locations[i % 6] : (locType === 'warehouse' ? 'Kho tầng 1' : 'Xưởng bảo trì'),
+      location_type: locType,
+      status: statusOptions[i % statusOptions.length],
+      purchase_date: new Date(2022 + (i % 3), (i % 12), (i % 28) + 1).toISOString().split('T')[0],
+      purchase_price: [2500000, 1800000, 3500000, 4200000, 6500000, 1200000, 800000][i % 7],
+      depreciation_rate: Math.min(10 + (i % 5) * 15, 90),
+      transfer_history: i % 3 === 0 ? [
+        { from: 'Kho tầng 1', to: locations[i % 6], date: new Date(2023, 5, (i % 28) + 1).toISOString().split('T')[0], reason: 'Bàn giao phòng mới', by: 'QL. Minh Đức' }
+      ] : []
+    });
+  }
+  return list;
+}
 
 // Initialize Mock Database in LocalStorage
 export const initializeMockDB = () => {
@@ -665,6 +934,15 @@ export const initializeMockDB = () => {
         db.monthly_invoices = INITIAL_DB.monthly_invoices;
         db.refund_records = INITIAL_DB.refund_records;
         db.payout_records = INITIAL_DB.payout_records;
+        updated = true;
+      }
+      // Seed Manager mock data
+      if (db && !db.manager_deposits) {
+        db.manager_deposits = generateManagerDeposits();
+        db.residency_checks = generateResidencyChecks();
+        db.asset_handovers = generateAssetHandovers();
+        db.asset_inspections = generateAssetInspections();
+        db.managed_assets = generateManagedAssets();
         updated = true;
       }
       if (updated) {
