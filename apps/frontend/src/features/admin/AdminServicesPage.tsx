@@ -1,9 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 const A = {
-  bg: '#F7F4EF', sidebar: '#F3EFE8', surface: '#ffffff',
-  primary: '#1E2A44', accent: '#2F7A8A', badgeBg: '#E8F3F5',
-  border: '#DDD6CC', textPrimary: '#1E2A44', textMuted: '#5C6370',
+  bg: '#fff8f3',          // Sand background
+  sidebar: '#faf2ec',     // Warm Cream
+  surface: '#ffffff',
+  primary: '#6f583c',     // Wood Brown
+  accent: '#5f745d',      // Sage Green
+  badgeBg: '#e8ede7',     // Sage Light
+  border: '#d1c4b9',      // Border Brownish
+  textPrimary: '#1e1b17', // Dark Wood
+  textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
 type BillingCycle = 'monthly' | 'per_usage' | 'one_time';
@@ -45,6 +51,7 @@ const MOCK_SERVICES: ServiceItem[] = [
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState<ServiceItem[]>(MOCK_SERVICES);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterActive, setFilterActive] = useState('');
@@ -52,6 +59,14 @@ export default function AdminServicesPage() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<ServiceItem>>({});
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const kpis = useMemo(() => {
     const total = services.length;
@@ -180,67 +195,97 @@ export default function AdminServicesPage() {
       </section>
 
       {/* Service Cards Grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map(s => (
-          <div key={s.id}
-            onClick={() => setSelected(s)}
-            className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
-            style={{
-              background: A.surface,
-              border: `1px solid ${s.isActive ? A.border : '#e5e7eb'}`,
-              opacity: s.isActive ? 1 : 0.7,
-            }}>
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg" style={{ background: A.badgeBg, color: A.accent }}>
-                  <span className="material-symbols-outlined text-xl">
-                    {SERVICE_ICONS[s.name] || 'miscellaneous_services'}
-                  </span>
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl p-5 border border-[#d1c4b9] bg-white animate-pulse space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-gray-200"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    <div className="h-3 bg-gray-200 rounded w-16"></div>
+                  </div>
                 </div>
+                <div className="h-5 bg-gray-200 rounded w-10"></div>
+              </div>
+              <div className="h-3 bg-gray-200 rounded w-full"></div>
+              <div className="flex justify-between">
+                <div className="h-5 bg-gray-200 rounded w-20"></div>
+                <div className="h-5 bg-gray-200 rounded w-16"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-16 text-center bg-white border border-[#d1c4b9] rounded-2xl">
+          <span className="material-symbols-outlined text-5xl block mb-3 animate-bounce" style={{ color: A.border }}>manage_search</span>
+          <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>Không tìm thấy dịch vụ nào.</p>
+          <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+        </div>
+      ) : (
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(s => (
+            <div key={s.id}
+              onClick={() => setSelected(s)}
+              className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
+              style={{
+                background: A.surface,
+                border: `1px solid ${s.isActive ? A.border : '#e5e7eb'}`,
+                opacity: s.isActive ? 1 : 0.7,
+              }}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg" style={{ background: A.badgeBg, color: A.accent }}>
+                    <span className="material-symbols-outlined text-xl">
+                      {SERVICE_ICONS[s.name] || 'miscellaneous_services'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold" style={{ color: A.primary }}>{s.name}</h3>
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-0.5 ${TYPE_LABEL[s.type].cls}`}>
+                      {TYPE_LABEL[s.type].label}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); toggleActive(s.id); }}
+                  className={`w-10 h-5 rounded-full transition-all relative ${s.isActive ? '' : 'opacity-50'}`}
+                  style={{ background: s.isActive ? A.accent : A.border }}
+                >
+                  <span
+                    className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                    style={{ left: s.isActive ? '22px' : '2px' }}
+                  />
+                </button>
+              </div>
+              <p className="text-xs mb-3" style={{ color: A.textMuted }}>{s.description}</p>
+              <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold" style={{ color: A.primary }}>{s.name}</h3>
-                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-0.5 ${TYPE_LABEL[s.type].cls}`}>
-                    {TYPE_LABEL[s.type].label}
+                  <span className="text-lg font-bold" style={{ color: A.primary }}>
+                    {s.price.toLocaleString('vi-VN')}đ
                   </span>
+                  <span className="text-xs ml-1" style={{ color: A.textMuted }}>/{s.unit}</span>
                 </div>
-              </div>
-              <button
-                onClick={e => { e.stopPropagation(); toggleActive(s.id); }}
-                className={`w-10 h-5 rounded-full transition-all relative ${s.isActive ? '' : 'opacity-50'}`}
-                style={{ background: s.isActive ? A.accent : A.border }}
-              >
-                <span
-                  className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
-                  style={{ left: s.isActive ? '22px' : '2px' }}
-                />
-              </button>
-            </div>
-            <p className="text-xs mb-3" style={{ color: A.textMuted }}>{s.description}</p>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-lg font-bold" style={{ color: A.primary }}>
-                  {s.price.toLocaleString('vi-VN')}đ
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: A.bg, color: A.textMuted, border: `1px solid ${A.border}` }}>
+                  {CYCLE_LABEL[s.billingCycle]}
                 </span>
-                <span className="text-xs ml-1" style={{ color: A.textMuted }}>/{s.unit}</span>
               </div>
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: A.bg, color: A.textMuted, border: `1px solid ${A.border}` }}>
-                {CYCLE_LABEL[s.billingCycle]}
-              </span>
+              <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                <button onClick={e => { e.stopPropagation(); openEdit(s); }}
+                  className="p-1.5 rounded-full" style={{ color: A.accent }}>
+                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+                <button onClick={e => { e.stopPropagation(); setServices(prev => prev.filter(x => x.id !== s.id)); if (selected?.id === s.id) setSelected(null); }}
+                  className="p-1.5 rounded-full text-red-600">
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+              </div>
             </div>
-            <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-              <button onClick={e => { e.stopPropagation(); openEdit(s); }}
-                className="p-1.5 rounded-full" style={{ color: A.accent }}>
-                <span className="material-symbols-outlined text-[18px]">edit</span>
-              </button>
-              <button onClick={e => { e.stopPropagation(); setServices(prev => prev.filter(x => x.id !== s.id)); if (selected?.id === s.id) setSelected(null); }}
-                className="p-1.5 rounded-full text-red-600">
-                <span className="material-symbols-outlined text-[18px]">delete</span>
-              </button>
-            </div>
-          </div>
-        ))}
-      </section>
+          ))}
+        </section>
+      )}
 
       {/* Detail Drawer */}
       {selected && (

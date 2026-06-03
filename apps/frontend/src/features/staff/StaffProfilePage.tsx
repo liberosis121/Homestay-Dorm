@@ -438,9 +438,13 @@ export default function StaffProfilePage() {
                 {/* Avatar */}
                 <div className="relative shrink-0">
                   <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#6f583c]/20 to-[#8c7355]/30 border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
-                    <span className="text-5xl font-extrabold text-[#6f583c]">
-                      {user.full_name.charAt(0)}
-                    </span>
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-5xl font-extrabold text-[#6f583c]">
+                        {user.full_name.charAt(0)}
+                      </span>
+                    )}
                   </div>
                   <button className="absolute bottom-1 right-1 p-2 bg-[#6f583c] text-white rounded-full border-[3px] border-white shadow-sm cursor-pointer hover:bg-[#5a4630] transition-colors">
                     <Camera className="w-4 h-4" />

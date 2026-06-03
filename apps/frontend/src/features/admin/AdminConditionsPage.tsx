@@ -1,9 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 const A = {
-  bg: '#F7F4EF', sidebar: '#F3EFE8', surface: '#ffffff',
-  primary: '#1E2A44', accent: '#2F7A8A', badgeBg: '#E8F3F5',
-  border: '#DDD6CC', textPrimary: '#1E2A44', textMuted: '#5C6370',
+  bg: '#fff8f3',          // Sand background
+  sidebar: '#faf2ec',     // Warm Cream
+  surface: '#ffffff',
+  primary: '#6f583c',     // Wood Brown
+  accent: '#5f745d',      // Sage Green
+  badgeBg: '#e8ede7',     // Sage Light
+  border: '#d1c4b9',      // Border Brownish
+  textPrimary: '#1e1b17', // Dark Wood
+  textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
 interface Condition {
@@ -34,6 +40,7 @@ const MOCK_CONDITIONS: Condition[] = [
 
 export default function AdminConditionsPage() {
   const [conditions, setConditions] = useState<Condition[]>(MOCK_CONDITIONS);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -41,6 +48,14 @@ export default function AdminConditionsPage() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Condition>>({});
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const categories = useMemo(() => [...new Set(conditions.map(c => c.category))], [conditions]);
 
@@ -162,56 +177,69 @@ export default function AdminConditionsPage() {
 
       {/* Condition Cards */}
       <section className="flex flex-col gap-3">
-        {filtered.map(c => (
-          <div key={c.id}
-            onClick={() => setSelected(c)}
-            className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
-            style={{ background: A.surface, border: `1px solid ${A.border}`, opacity: c.isActive ? 1 : 0.6 }}>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_MAP[c.priority].cls}`}>
-                    {PRIORITY_MAP[c.priority].label}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: A.bg, color: A.textMuted, border: `1px solid ${A.border}` }}>
-                    {c.category}
-                  </span>
-                  {!c.isActive && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Đã tắt</span>
-                  )}
-                </div>
-                <h3 className="text-base font-bold mb-1" style={{ color: A.primary }}>{c.title}</h3>
-                <p className="text-sm line-clamp-2" style={{ color: A.textMuted }}>{c.description}</p>
-                <p className="text-xs mt-2" style={{ color: A.textMuted }}>
-                  Có hiệu lực từ: {c.effectiveDate}
-                </p>
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl p-5 border border-[#d1c4b9] bg-white animate-pulse space-y-3">
+              <div className="flex gap-2">
+                <div className="h-5 bg-gray-200 rounded w-16"></div>
+                <div className="h-5 bg-gray-200 rounded w-20"></div>
               </div>
-              <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={e => { e.stopPropagation(); openEdit(c); }}
-                  className="p-1.5 rounded-full" style={{ color: A.accent }}>
-                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                </button>
-                <button onClick={e => { e.stopPropagation(); toggleActive(c.id); }}
-                  className="p-1.5 rounded-full" style={{ color: A.textMuted }}>
-                  <span className="material-symbols-outlined text-[18px]">
-                    {c.isActive ? 'toggle_on' : 'toggle_off'}
-                  </span>
-                </button>
-                <button onClick={e => { e.stopPropagation(); setConditions(prev => prev.filter(x => x.id !== c.id)); if (selected?.id === c.id) setSelected(null); }}
-                  className="p-1.5 rounded-full text-red-600">
-                  <span className="material-symbols-outlined text-[18px]">delete</span>
-                </button>
+              <div className="h-5 bg-gray-200 rounded w-48"></div>
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+              <div className="h-3 bg-gray-200 rounded w-32"></div>
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center bg-white border border-[#d1c4b9] rounded-2xl">
+            <span className="material-symbols-outlined text-5xl block mb-3 animate-bounce" style={{ color: A.border }}>manage_search</span>
+            <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>Không tìm thấy điều kiện lưu trú phù hợp.</p>
+            <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+          </div>
+        ) : (
+          filtered.map(c => (
+            <div key={c.id}
+              onClick={() => setSelected(c)}
+              className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
+              style={{ background: A.surface, border: `1px solid ${A.border}`, opacity: c.isActive ? 1 : 0.6 }}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${PRIORITY_MAP[c.priority].cls}`}>
+                      {PRIORITY_MAP[c.priority].label}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: A.bg, color: A.textMuted, border: `1px solid ${A.border}` }}>
+                      {c.category}
+                    </span>
+                    {!c.isActive && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">Đã tắt</span>
+                    )}
+                  </div>
+                  <h3 className="text-base font-bold mb-1" style={{ color: A.primary }}>{c.title}</h3>
+                  <p className="text-sm line-clamp-2" style={{ color: A.textMuted }}>{c.description}</p>
+                  <p className="text-xs mt-2" style={{ color: A.textMuted }}>
+                    Có hiệu lực từ: {c.effectiveDate}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={e => { e.stopPropagation(); openEdit(c); }}
+                    className="p-1.5 rounded-full" style={{ color: A.accent }}>
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); toggleActive(c.id); }}
+                    className="p-1.5 rounded-full" style={{ color: A.textMuted }}>
+                    <span className="material-symbols-outlined text-[18px]">
+                      {c.isActive ? 'toggle_on' : 'toggle_off'}
+                    </span>
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); setConditions(prev => prev.filter(x => x.id !== c.id)); if (selected?.id === c.id) setSelected(null); }}
+                    className="p-1.5 rounded-full text-red-600">
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="py-16 text-center rounded-xl" style={{ background: A.surface, border: `1px solid ${A.border}` }}>
-            <span className="material-symbols-outlined text-5xl block mb-3" style={{ color: A.border }}>policy</span>
-            <p className="text-sm" style={{ color: A.textMuted }}>Không tìm thấy điều kiện lưu trú phù hợp.</p>
-          </div>
+          ))
         )}
       </section>
 

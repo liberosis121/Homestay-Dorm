@@ -3,6 +3,7 @@ import {
   Search, Copy, Check, Eye, X, ArrowUpRight, Upload, FileText
 } from 'lucide-react';
 import { getMockDB, saveMockDB, PayoutRecord, RefundRecord } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function AccountantPayoutsPage() {
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
@@ -96,6 +97,12 @@ export default function AccountantPayoutsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const statusOptions = [
+    { value: 'all', label: 'Tất cả trạng thái' },
+    { value: 'pending', label: 'Chờ chi' },
+    { value: 'completed', label: 'Đã chi' }
+  ];
+
   return (
     <div className="space-y-6 text-[#1b1c1c] font-body-md">
       {/* Page Header */}
@@ -145,15 +152,13 @@ export default function AccountantPayoutsPage() {
               />
             </div>
             
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-[#d1c4b9] rounded text-xs py-1.5 px-3 focus:outline-none focus:border-[#5a462d]"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ chi</option>
-              <option value="completed">Đã chi</option>
-            </select>
+              onChange={setStatusFilter}
+              options={statusOptions}
+              theme="accountant"
+              className="w-44"
+            />
           </div>
         </div>
 

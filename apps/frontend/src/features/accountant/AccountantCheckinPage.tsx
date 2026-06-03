@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Receipt, Search, Eye, Printer
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function AccountantCheckinPage() {
   const [invoices, setInvoices] = useState<CheckinInvoice[]>([]);
@@ -109,6 +110,11 @@ export default function AccountantCheckinPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const contractOptions = useMemo(() => pendingDeposits.map((d) => ({
+    value: d.id,
+    label: `${d.id.replace('DEP', 'HĐ')} - Phòng ${d.room_name} - ${d.customer_name}`
+  })), [pendingDeposits]);
+
   return (
     <div className="space-y-6 text-[#1b1c1c] font-body-md">
       {/* Page Header */}
@@ -159,19 +165,13 @@ export default function AccountantCheckinPage() {
             <form onSubmit={handleCreateCheckinInvoice} className="space-y-4">
               <div>
                 <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">Chọn Hợp Đồng (Đã Duyệt)</label>
-                <select
+                <CustomSelect
                   value={selectedContractId}
-                  onChange={(e) => setSelectedContractId(e.target.value)}
-                  className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#1b1c1c] text-sm rounded py-2 px-3 focus:outline-none focus:border-[#5a462d] focus:ring-1 focus:ring-[#5a462d]"
-                  required
-                >
-                  <option value="">-- Chọn hợp đồng --</option>
-                  {pendingDeposits.map(d => (
-                    <option key={d.id} value={d.id}>
-                      {d.id.replace('DEP', 'HĐ')} - Phòng {d.room_name} - {d.customer_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedContractId}
+                  options={contractOptions}
+                  placeholder="-- Chọn hợp đồng --"
+                  theme="accountant"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

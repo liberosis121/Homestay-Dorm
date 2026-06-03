@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB, saveMockDB, ViewingSchedule } from '../../lib/supabaseClient';
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
-import Navbar from '../../components/ui/Navbar';
-import Footer from '../../components/ui/Footer';
 import {
+
   Search, MapPin, Calendar, User, Phone, ChevronLeft, ChevronRight,
   CheckCircle, Clock, X, CalendarCheck, MessageCircle, AlertTriangle,
   Navigation, Clock3
@@ -613,11 +612,10 @@ export default function ViewingSchedulePage() {
   ];
 
   return (
-    <div className="bg-background min-h-screen flex flex-col">
-      <Navbar />
+    <>
       {showMapModal && <BranchMapModal onClose={() => setShowMapModal(false)} />}
 
-      <main className="flex-1 pt-7 pb-16 max-w-[1280px] mx-auto w-full px-4 md:px-10">
+      <div className="max-w-[1280px] mx-auto w-full px-4 md:px-10">
         {/* ─── Hero Search ──────────────────────────── */}
         <section className="bg-white rounded-[24px] border border-outline-variant/40 shadow-sm p-6 mb-6">
           <h1 className="text-3xl font-bold text-primary mb-1">Tra cứu lịch xem phòng</h1>
@@ -731,9 +729,7 @@ export default function ViewingSchedulePage() {
             <CalendarWidget schedules={allSchedules} onShowMap={() => setShowMapModal(true)} />
           </div>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </>
   );
 }

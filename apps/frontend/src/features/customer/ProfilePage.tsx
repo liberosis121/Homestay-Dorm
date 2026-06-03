@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { 
   User, Shield, Camera, ChevronRight, Lock, Bell, Globe, 
   Compass, Calendar, FileText, CreditCard, LogOut, Info,
-  X, Eye, EyeOff, Check
+  X, Eye, EyeOff, Check, Zap
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 
@@ -380,6 +380,9 @@ export default function ProfilePage() {
                     <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <FileText className="w-5 h-5" /> Hợp đồng của tôi
                     </Link>
+                    <Link to="/customer/services" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Zap className="w-5 h-5" /> Dịch vụ của tôi
+                    </Link>
                     <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
                       <Compass className="w-5 h-5" /> Tìm phòng khác
                     </Link>
@@ -451,7 +454,7 @@ export default function ProfilePage() {
                   
                   <div className="relative shrink-0 sm:ml-4 z-10">
                     <img 
-                      src={avatarCartoon} 
+                      src={user?.avatar_url || avatarCartoon} 
                       alt="Avatar" 
                       className="w-28 h-28 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
                     />

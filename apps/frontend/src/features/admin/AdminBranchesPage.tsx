@@ -1,9 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 const A = {
-  bg: '#F7F4EF', sidebar: '#F3EFE8', surface: '#ffffff',
-  primary: '#1E2A44', accent: '#2F7A8A', badgeBg: '#E8F3F5',
-  border: '#DDD6CC', textPrimary: '#1E2A44', textMuted: '#5C6370',
+  bg: '#fff8f3',          // Sand background
+  sidebar: '#faf2ec',     // Warm Cream
+  surface: '#ffffff',
+  primary: '#6f583c',     // Wood Brown
+  accent: '#5f745d',      // Sage Green
+  badgeBg: '#e8ede7',     // Sage Light
+  border: '#d1c4b9',      // Border Brownish
+  textPrimary: '#1e1b17', // Dark Wood
+  textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
 interface Branch {
@@ -30,12 +36,21 @@ const MOCK_BRANCHES: Branch[] = [
 
 export default function AdminBranchesPage() {
   const [branches, setBranches] = useState<Branch[]>(MOCK_BRANCHES);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [selected, setSelected] = useState<Branch | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Branch>>({});
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const kpis = useMemo(() => {
     const total = branches.length;
@@ -151,65 +166,96 @@ export default function AdminBranchesPage() {
       </section>
 
       {/* Card Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {filtered.map(b => {
-          const occupancy = b.totalRooms ? Math.round((b.activeRooms / b.totalRooms) * 100) : 0;
-          return (
-            <div
-              key={b.id}
-              onClick={() => setSelected(b)}
-              className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
-              style={{ background: A.surface, border: `1px solid ${A.border}` }}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full mb-2 inline-block"
-                    style={{ background: A.badgeBg, color: A.accent }}>{b.code}</span>
-                  <h3 className="text-base font-bold mt-1" style={{ color: A.primary }}>{b.name}</h3>
-                  <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: A.textMuted }}>
-                    <span className="material-symbols-outlined text-[14px]">location_on</span>
-                    {b.address}, {b.district}
-                  </p>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl p-5 border border-[#d1c4b9] bg-white animate-pulse space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  <div className="h-5 bg-gray-200 rounded w-40"></div>
+                  <div className="h-3 bg-gray-200 rounded w-28"></div>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {b.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
-                </span>
+                <div className="h-5 bg-gray-200 rounded w-16"></div>
               </div>
-
-              {/* Occupancy bar */}
-              <div className="mb-3">
-                <div className="flex justify-between text-xs mb-1">
-                  <span style={{ color: A.textMuted }}>Phòng đang thuê</span>
-                  <span className="font-semibold" style={{ color: A.primary }}>{b.activeRooms}/{b.totalRooms} phòng</span>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: A.border }}>
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${occupancy}%`, background: occupancy > 70 ? A.accent : A.primary }}
-                  />
-                </div>
+              <div className="space-y-2">
+                <div className="h-3 bg-gray-200 rounded w-24"></div>
+                <div className="h-2 bg-gray-200 rounded w-full"></div>
               </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-xs" style={{ color: A.textMuted }}>
-                  <span className="material-symbols-outlined text-[14px]">person</span>
-                  {b.manager}
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={e => { e.stopPropagation(); openEdit(b); }}
-                    className="p-1.5 rounded-full" style={{ color: A.accent }}>
-                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); deleteBranch(b.id); }}
-                    className="p-1.5 rounded-full text-red-600">
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                  </button>
-                </div>
+              <div className="flex justify-between">
+                <div className="h-3 bg-gray-200 rounded w-24"></div>
+                <div className="h-6 bg-gray-200 rounded w-12"></div>
               </div>
             </div>
-          );
-        })}
-      </section>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-16 text-center bg-white border border-[#d1c4b9] rounded-2xl">
+          <span className="material-symbols-outlined text-5xl block mb-3 animate-bounce" style={{ color: A.border }}>manage_search</span>
+          <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>Không tìm thấy chi nhánh nào.</p>
+          <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+        </div>
+      ) : (
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filtered.map(b => {
+            const occupancy = b.totalRooms ? Math.round((b.activeRooms / b.totalRooms) * 100) : 0;
+            return (
+              <div
+                key={b.id}
+                onClick={() => setSelected(b)}
+                className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
+                style={{ background: A.surface, border: `1px solid ${A.border}` }}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full mb-2 inline-block"
+                      style={{ background: A.badgeBg, color: A.accent }}>{b.code}</span>
+                    <h3 className="text-base font-bold mt-1" style={{ color: A.primary }}>{b.name}</h3>
+                    <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: A.textMuted }}>
+                      <span className="material-symbols-outlined text-[14px]">location_on</span>
+                      {b.address}, {b.district}
+                    </p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {b.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
+                  </span>
+                </div>
+
+                {/* Occupancy bar */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span style={{ color: A.textMuted }}>Phòng đang thuê</span>
+                    <span className="font-semibold" style={{ color: A.primary }}>{b.activeRooms}/{b.totalRooms} phòng</span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: A.border }}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${occupancy}%`, background: occupancy > 70 ? A.accent : A.primary }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-xs" style={{ color: A.textMuted }}>
+                    <span className="material-symbols-outlined text-[14px]">person</span>
+                    {b.manager}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={e => { e.stopPropagation(); openEdit(b); }}
+                      className="p-1.5 rounded-full" style={{ color: A.accent }}>
+                      <span className="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); deleteBranch(b.id); }}
+                      className="p-1.5 rounded-full text-red-600">
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       {/* Detail Drawer */}
       {selected && (

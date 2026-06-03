@@ -2,17 +2,42 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useCustomerServicesStore } from './store/useCustomerServicesStore';
 import ServiceCard from './components/ServiceCard';
-import Navbar from '../../components/ui/Navbar';
-import Footer from '../../components/ui/Footer';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
-  Info, ArrowRight, Layers, Wifi, Shield, FileText, Clock, Plus
+  Info, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
 } from 'lucide-react';
 import { Service, ServiceSubscription } from '../../lib/supabaseClient';
 
 // Helper for formatting currency
 const formatCurrency = (n: number) => n.toLocaleString('vi-VN') + ' VNĐ';
+
+// ─── FAQ Accordion Item ───────────────────────────────────────────────────────
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="py-4">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-3 text-left group"
+      >
+        <span className="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors leading-snug">
+          {question}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-outline flex-shrink-0 transition-transform duration-200 ${
+            open ? 'rotate-180 text-primary' : ''
+          }`}
+        />
+      </button>
+      {open && (
+        <p className="mt-3 text-sm text-on-surface-variant leading-relaxed font-medium animate-fade-in-up">
+          {answer}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ─── Registration Modal ───────────────────────────────────────────────────────
 function ServiceRegistrationModal({
@@ -343,7 +368,6 @@ function DropdownSelect({
                     : 'text-on-surface hover:bg-surface-container'}`}
               >
                 <span>{opt.label}</span>
-                {value === opt.value && <CheckCircle2 className="w-4 h-4 text-primary" />}
               </button>
             ))}
           </div>
@@ -510,35 +534,51 @@ function GuestServicesView({
         )}
       </section>
 
-      {/* Detailed Pricing & Policies */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-        <div className="bg-surface-container-low p-6 md:p-8 rounded-2xl border border-outline-variant/60 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <FileText className="w-6 h-6 text-primary" />
-              <h2 className="font-headline-lg text-lg font-bold text-on-background font-lexend">Bảng giá chi tiết</h2>
-            </div>
-            
-            <div className="divide-y divide-outline-variant/60 text-sm font-medium">
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Đặt cọc dịch vụ (Internet)</span>
-                <span className="text-primary font-bold">Miễn phí</span>
-              </div>
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Nước sinh hoạt (Định mức)</span>
-                <span className="text-primary font-bold">100.000 VNĐ/người/tháng</span>
-              </div>
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Phí quản lý &amp; Vệ sinh chung</span>
-                <span className="text-primary font-bold">200.000 VNĐ/phòng/tháng</span>
-              </div>
-              <div className="flex justify-between py-3.5">
-                <span className="text-on-surface-variant">Gửi xe ô tô (Giới hạn chỗ)</span>
-                <span className="text-primary font-bold">1.200.000 VNĐ/tháng</span>
-              </div>
-            </div>
+      {/* FAQ & Policies */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 items-start gap-8 mb-12">
+        <div className="bg-surface-container-low p-6 md:p-8 rounded-2xl border border-outline-variant/60 flex flex-col">
+          <div className="flex items-center gap-3 mb-6">
+            <Info className="w-6 h-6 text-primary" />
+            <h2 className="font-headline-lg text-lg font-bold text-on-background font-lexend">Câu hỏi thường gặp</h2>
           </div>
-          <p className="mt-6 text-xs text-outline italic font-medium">* Bảng giá dịch vụ có thể được điều chỉnh tuỳ theo chính sách từng kỳ của chi nhánh.</p>
+
+          <div className="space-y-0 divide-y divide-outline-variant/50 flex-1">
+            {[
+              {
+                q: 'Làm thế nào để đăng ký thêm dịch vụ?',
+                a: 'Sau khi ký hợp đồng thuê phòng, bạn có thể đăng ký thêm bất kỳ dịch vụ nào qua Resident Portal hoặc liên hệ trực tiếp ban quản lý.',
+              },
+              {
+                q: 'Phí dịch vụ được tính và thanh toán như thế nào?',
+                a: 'Tất cả phí dịch vụ được cộng vào hóa đơn tổng hợp cuối tháng (chốt ngày 30). Bạn chỉ cần thanh toán một lần duy nhất mỗi tháng.',
+              },
+              {
+                q: 'Tôi có thể huỷ dịch vụ bất cứ lúc nào không?',
+                a: 'Có. Bạn có thể huỷ đăng ký bất kỳ lúc nào. Hiệu lực ngừng tính phí sẽ áp dụng từ kỳ thanh toán tháng tiếp theo.',
+              },
+              {
+                q: 'Điện và nước có bao gồm trong giá phòng không?',
+                a: 'Điện và nước được tính theo chỉ số thực tế tiêu thụ, ghi nhận vào ngày 30 hàng tháng và không bao gồm trong giá phòng cơ bản.',
+              },
+            ].map((item, idx) => (
+              <FaqItem key={idx} question={item.q} answer={item.a} />
+            ))}
+          </div>
+
+          {/* Câu hỏi khác */}
+          <div className="mt-6 pt-6 border-t border-outline-variant/50 flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-on-surface">Bạn có câu hỏi khác?</h4>
+              <p className="text-xs text-on-surface-variant mt-1 font-medium">Liên hệ với ban quản lý để được hỗ trợ trực tiếp.</p>
+            </div>
+            <a
+              href="tel:19001234"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container bg-primary/10 hover:bg-primary/20 px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              Gọi hotline
+            </a>
+          </div>
         </div>
 
         <div className="bg-surface-container-low p-6 md:p-8 rounded-2xl border border-outline-variant/60">
@@ -592,19 +632,256 @@ function GuestServicesView({
               Xem phòng đang trống
               <ArrowRight className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => navigate('/customer/deposit')}
-              className="px-6 py-3.5 bg-primary text-white rounded-xl font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity active:scale-95 text-sm"
-            >
-              Đăng ký thuê phòng
-              <ArrowRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </section>
     </div>
   );
 }
+
+// ─── Consumption Chart ────────────────────────────────────────────────────────
+type ChartMonth = {
+  period: string;
+  label: string;
+  labelFull: string;
+  elec: number;
+  water: number;
+  elecCost: number;
+  waterCost: number;
+};
+
+function ConsumptionChart({
+  chartMonths,
+  maxValues,
+}: {
+  chartMonths: ChartMonth[];
+  maxValues: { elec: number; water: number };
+}) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  if (chartMonths.length === 0) {
+    return (
+      <div className="bg-white border border-outline-variant rounded-2xl p-6 flex flex-col items-center justify-center py-16 gap-3">
+        <Info className="w-10 h-10 text-outline" />
+        <p className="text-on-surface-variant font-bold text-sm">Chưa có dữ liệu tiêu thụ.</p>
+      </div>
+    );
+  }
+
+  const COLOR_ELEC       = '#3d6b35';
+  const COLOR_ELEC_HOVER = '#2a4d25';
+  const COLOR_WATER       = '#b89a72';
+  const COLOR_WATER_HOVER = '#9a7d59';
+
+  const BAR_H   = 200;  // usable bar height (px) — tallest bar fills exactly this
+  const BAR_W   = 10;   // width per individual bar (px)
+  const BAR_GAP = 1;    // gap between the two bars inside a pair
+  const GRP_PAD = 9;    // left+right padding inside each month column (gap between groups)
+  const LABEL_H = 28;   // height reserved for x-axis labels below the baseline
+
+  return (
+    <div className="bg-white border border-outline-variant rounded-2xl p-6">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-5">
+        <h4 className="text-sm font-bold font-lexend">
+          Lịch sử tiêu thụ ({chartMonths.length} tháng)
+        </h4>
+        <div className="flex gap-4 text-xs font-semibold">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_ELEC }} />
+            <span className="text-on-surface-variant">Điện (kWh)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_WATER }} />
+            <span className="text-on-surface-variant">Nước (m³)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Chart canvas — overflow:visible so tooltip is never clipped ── */}
+      <div style={{ position: 'relative', overflow: 'visible' }}>
+        <div style={{ position: 'relative', height: BAR_H + LABEL_H, overflow: 'visible' }}>
+
+          {/* Subtle horizontal gridlines */}
+          {[25, 50, 75, 100].map((pct) => (
+            <div
+              key={pct}
+              style={{
+                position: 'absolute', left: 0, right: 0,
+                bottom: LABEL_H + (pct / 100) * BAR_H,
+                borderTop: '1px solid rgba(0,0,0,0.06)',
+                pointerEvents: 'none',
+              }}
+            />
+          ))}
+
+          {/* Baseline */}
+          <div style={{
+            position: 'absolute', left: 0, right: 0,
+            bottom: LABEL_H,
+            borderTop: '1.5px solid rgba(0,0,0,0.12)',
+          }} />
+
+          {/* Month column row */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'flex-end',
+            paddingBottom: LABEL_H,
+            overflow: 'visible',
+          }}>
+            {chartMonths.map((m, idx) => {
+              // Each series scales against its own global max → tallest bar = BAR_H exactly
+              const hElec  = m.elec  > 0 ? Math.max(Math.round((m.elec  / maxValues.elec)  * BAR_H), 4) : 0;
+              const hWater = m.water > 0 ? Math.max(Math.round((m.water / maxValues.water) * BAR_H), 4) : 0;
+              const isHovered = hoveredIdx === idx;
+
+              return (
+                <div
+                  key={m.period}
+                  style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'visible' }}
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                >
+                  {/* ── Light-theme tooltip, floats above chart, never clipped ── */}
+                  {isHovered && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: Math.max(hElec, hWater) + 18,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 999,
+                      pointerEvents: 'none',
+                      width: 200,
+                    }}>
+                      <div style={{
+                        background: '#fff',
+                        border: '1px solid #e8e0d4',
+                        borderRadius: 16,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.13)',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{ padding: '10px 14px 7px', borderBottom: '1px solid #f0ebe4' }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7a6a58', margin: 0 }}>
+                            {m.labelFull}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{ width: 9, height: 9, borderRadius: 2, background: COLOR_ELEC, flexShrink: 0, display: 'inline-block' }} />
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>Điện</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_ELEC, display: 'block' }}>{m.elec} kWh</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#999' }}>{m.elecCost.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        </div>
+                        <div style={{ borderTop: '1px solid #f0ebe4', margin: '0 14px' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{ width: 9, height: 9, borderRadius: 2, background: COLOR_WATER, flexShrink: 0, display: 'inline-block' }} />
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>Nước</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_WATER, display: 'block' }}>{m.water} m³</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#999' }}>{m.waterCost.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 14px', background: '#faf7f3', borderTop: '1px solid #f0ebe4' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9a8878' }}>Tổng</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: COLOR_ELEC }}>
+                            {(m.elecCost + m.waterCost).toLocaleString('vi-VN')} đ
+                          </span>
+                        </div>
+                      </div>
+                      {/* Caret arrow */}
+                      <div style={{
+                        margin: '0 auto', width: 0, height: 0,
+                        borderLeft: '6px solid transparent',
+                        borderRight: '6px solid transparent',
+                        borderTop: '6px solid #fff',
+                        filter: 'drop-shadow(0 1px 0 #e8e0d4)',
+                      }} />
+                    </div>
+                  )}
+
+                  {/* ── Bar pair with absolute micro-labels above each bar ── */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', height: BAR_H, gap: BAR_GAP, paddingLeft: GRP_PAD, paddingRight: GRP_PAD }}>
+
+                    {/* Electricity bar */}
+                    <div style={{ position: 'relative', width: BAR_W, height: BAR_H, display: 'flex', alignItems: 'flex-end' }}>
+                      {m.elec > 0 && (
+                        <span style={{
+                          position: 'absolute',
+                          bottom: hElec + 3,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          fontSize: 8.5, fontWeight: 700, lineHeight: 1,
+                          whiteSpace: 'nowrap',
+                          color: COLOR_ELEC,
+                          opacity: isHovered ? 1 : 0.6,
+                          transition: 'opacity 0.15s',
+                        }}>
+                          {m.elec}
+                        </span>
+                      )}
+                      <div style={{
+                        width: BAR_W, height: hElec,
+                        background: isHovered ? COLOR_ELEC_HOVER : COLOR_ELEC,
+                        borderRadius: '3px 3px 0 0',
+                        transition: 'height 0.55s cubic-bezier(.4,0,.2,1), background 0.15s',
+                      }} />
+                    </div>
+
+                    {/* Water bar */}
+                    <div style={{ position: 'relative', width: BAR_W, height: BAR_H, display: 'flex', alignItems: 'flex-end' }}>
+                      {m.water > 0 && (
+                        <span style={{
+                          position: 'absolute',
+                          bottom: hWater + 3,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          fontSize: 8.5, fontWeight: 700, lineHeight: 1,
+                          whiteSpace: 'nowrap',
+                          color: COLOR_WATER,
+                          opacity: isHovered ? 1 : 0.65,
+                          transition: 'opacity 0.15s',
+                        }}>
+                          {m.water}
+                        </span>
+                      )}
+                      <div style={{
+                        width: BAR_W, height: hWater,
+                        background: isHovered ? COLOR_WATER_HOVER : COLOR_WATER,
+                        borderRadius: '3px 3px 0 0',
+                        transition: 'height 0.55s cubic-bezier(.4,0,.2,1), background 0.15s',
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* X-axis label — sits below baseline via absolute positioning */}
+                  <span style={{
+                    position: 'absolute',
+                    bottom: -(LABEL_H - 6),
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: 9, fontWeight: 700, lineHeight: 1,
+                    color: isHovered ? COLOR_ELEC : '#aaa',
+                    whiteSpace: 'nowrap',
+                    transition: 'color 0.15s',
+                    userSelect: 'none',
+                  }}>
+                    {m.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ─── View 2: RENTER VIEW (Dịch vụ của tôi) ────────────────────────────────────
 function RenterServicesView({
@@ -652,30 +929,35 @@ function RenterServicesView({
     });
   }, [services, renterSearch, renterCategory]);
 
-  // Chart data calculation
-  // August, September, October (Kỳ 2025-08, 2025-09, 2025-10)
-  const last3Months = useMemo(() => {
-    const months = ['2025-08', '2025-09', '2025-10'];
-    return months.map((m) => {
-      const rec = consumptionRecords.find((r) => r.period === m);
+  // Chart data: derive up to 12 months from actual consumptionRecords only
+  const chartMonths = useMemo(() => {
+    if (!consumptionRecords.length) return [];
+    // Sort ascending by period string (YYYY-MM)
+    const sorted = [...consumptionRecords].sort((a, b) => a.period.localeCompare(b.period));
+    // Take last 12 records at most
+    const slice = sorted.slice(-12);
+    return slice.map((r) => {
+      const [year, month] = r.period.split('-');
       return {
-        label: m === '2025-08' ? 'Tháng 8' : m === '2025-09' ? 'Tháng 9' : 'Tháng 10',
-        elec: rec?.electricity_kwh ?? 0,
-        water: rec?.water_m3 ?? 0,
-        elecCost: rec?.electricity_cost ?? 0,
-        waterCost: rec?.water_cost ?? 0,
+        period: r.period,
+        label: `T.${parseInt(month)}/${year.slice(2)}`,
+        labelFull: `Tháng ${parseInt(month)}/${year}`,
+        elec: r.electricity_kwh,
+        water: r.water_m3,
+        elecCost: r.electricity_cost,
+        waterCost: r.water_cost,
       };
     });
   }, [consumptionRecords]);
 
   const maxValues = useMemo(() => {
-    const elecs = last3Months.map((m) => m.elec);
-    const waters = last3Months.map((m) => m.water);
+    const elecs = chartMonths.map((m) => m.elec);
+    const waters = chartMonths.map((m) => m.water);
     return {
       elec: Math.max(...elecs, 1),
       water: Math.max(...waters, 1),
     };
-  }, [last3Months]);
+  }, [chartMonths]);
 
   return (
     <div className="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8">
@@ -861,52 +1143,9 @@ function RenterServicesView({
           {/* Tab content 3: Chỉ số Điện & Nước */}
           {activeTab === 'consumption' && (
             <div className="space-y-6">
-              
-              {/* CSS Consumption chart block */}
-              <div className="bg-white border border-outline-variant rounded-2xl p-6">
-                <h4 className="font-headline-md text-sm font-bold mb-6 font-lexend">Lịch sử tiêu thụ 3 tháng</h4>
-                <div className="h-[200px] flex items-end justify-around gap-6 px-4 mb-6 border-b border-outline-variant/60 pb-2">
-                  {last3Months.map((m, idx) => {
-                    const hElec = Math.round((m.elec / maxValues.elec) * 100);
-                    const hWater = Math.round((m.water / maxValues.water) * 100);
-                    return (
-                      <div key={idx} className="flex-1 max-w-[80px] flex flex-col items-center gap-2">
-                        <div className="w-full flex items-end justify-center gap-3 h-[150px]">
-                          {/* Electricity bar */}
-                          <div className="w-4 flex flex-col items-center justify-end h-full">
-                            <div 
-                              className="bg-primary rounded-t-sm w-full transition-all duration-500" 
-                              style={{ height: `${hElec}%` }}
-                              title={`${m.elec} kWh`}
-                            />
-                          </div>
-                          {/* Water bar */}
-                          <div className="w-4 flex flex-col items-center justify-end h-full">
-                            <div 
-                              className="bg-primary/40 rounded-t-sm w-full transition-all duration-500" 
-                              style={{ height: `${hWater}%` }}
-                              title={`${m.water} m³`}
-                            />
-                          </div>
-                        </div>
-                        <span className="text-xs text-on-surface-variant font-bold">{m.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Legends */}
-                <div className="flex justify-center gap-8 text-xs font-bold">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 bg-primary rounded-sm" />
-                    <span className="text-on-surface">Điện (kWh)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 bg-primary/40 rounded-sm" />
-                    <span className="text-on-surface">Nước (m³)</span>
-                  </div>
-                </div>
-              </div>
+
+              {/* 12-Month Bar Chart */}
+              <ConsumptionChart chartMonths={chartMonths} maxValues={maxValues} />
 
               {/* History Table */}
               <div className="bg-white border border-outline-variant rounded-2xl overflow-hidden">
@@ -1093,9 +1332,7 @@ export default function CustomerServicesPage() {
   const userRoomName = user?.renting_room_name ?? '';
 
   useEffect(() => {
-    if (user?.id) {
-      loadData(user.id);
-    }
+    loadData(user?.id ?? '');
   }, [user?.id]);
 
   // Toast state
@@ -1119,31 +1356,25 @@ export default function CustomerServicesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 pt-16 pb-12">
-        {isRenting ? (
-          <RenterServicesView
-            services={services}
-            subscriptions={subscriptions}
-            consumptionRecords={consumptionRecords}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            onRegister={openRegistration}
-            onViewDetail={openDetail}
-            onCancelSub={openCancelConfirm}
-            userRoomName={userRoomName}
-          />
-        ) : (
-          <GuestServicesView
-            services={services}
-            onViewDetail={openDetail}
-          />
-        )}
-      </main>
-
-      <Footer />
+    <div className="w-full">
+      {isRenting ? (
+        <RenterServicesView
+          services={services}
+          subscriptions={subscriptions}
+          consumptionRecords={consumptionRecords}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onRegister={openRegistration}
+          onViewDetail={openDetail}
+          onCancelSub={openCancelConfirm}
+          userRoomName={userRoomName}
+        />
+      ) : (
+        <GuestServicesView
+          services={services}
+          onViewDetail={openDetail}
+        />
+      )}
 
       {/* ─── Modals ─── */}
       {registrationModal.open && registrationModal.service && (

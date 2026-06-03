@@ -2,9 +2,15 @@ import { useState, useEffect } from 'react';
 import { getMockDB } from '../../lib/supabaseClient';
 
 const A = {
-  bg: '#F7F4EF', sidebar: '#F3EFE8', surface: '#ffffff',
-  primary: '#1E2A44', accent: '#2F7A8A', badgeBg: '#E8F3F5',
-  border: '#DDD6CC', textPrimary: '#1E2A44', textMuted: '#5C6370',
+  bg: '#fff8f3',          // Sand background
+  sidebar: '#faf2ec',     // Warm Cream
+  surface: '#ffffff',
+  primary: '#6f583c',     // Wood Brown
+  accent: '#5f745d',      // Sage Green
+  badgeBg: '#e8ede7',     // Sage Light
+  border: '#d1c4b9',      // Border Brownish
+  textPrimary: '#1e1b17', // Dark Wood
+  textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
 interface BackupEntry {
@@ -288,10 +294,9 @@ export default function AdminBackupPage() {
 
       {/* Confirm Restore Modal */}
       {confirmRestore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: `${A.primary}80` }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm"
           onClick={e => { if (e.target === e.currentTarget) setConfirmRestore(null); }}>
-          <div className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+          <div className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5 border border-[#d1c4b9]"
             style={{ background: A.surface }}>
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-amber-50">

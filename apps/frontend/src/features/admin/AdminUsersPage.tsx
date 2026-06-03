@@ -1,17 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getMockDB } from '../../lib/supabaseClient';
 
-// ─── ADMIN DESIGN TOKENS (Stitch v2 Final) ───────────────────
+// ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
 const A = {
-  bg: '#F7F4EF',          // Warm Off-white
-  sidebar: '#F3EFE8',     // Soft Warm Gray
+  bg: '#fff8f3',          // Sand background
+  sidebar: '#faf2ec',     // Warm Cream
   surface: '#ffffff',
-  primary: '#1E2A44',     // Deep Navy
-  accent: '#2F7A8A',      // Muted Cyan
-  badgeBg: '#E8F3F5',
-  border: '#DDD6CC',
-  textPrimary: '#1E2A44',
-  textMuted: '#5C6370',
+  primary: '#6f583c',     // Wood Brown
+  accent: '#5f745d',      // Sage Green
+  badgeBg: '#e8ede7',     // Sage Light
+  border: '#d1c4b9',      // Border Brownish
+  textPrimary: '#1e1b17', // Dark Wood
+  textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
 interface CustomerRow {
@@ -27,8 +27,8 @@ interface CustomerRow {
 }
 
 const STATUS_MAP = {
-  renting:     { label: 'Đang thuê',    cls: 'bg-[#E8F3F5] text-[#2F7A8A]' },
-  not_renting: { label: 'Chưa thuê',   cls: 'bg-[#F7F4EF] text-[#5C6370] border border-[#DDD6CC]' },
+  renting:     { label: 'Đang thuê',    cls: 'bg-[#e8ede7] text-[#5f745d]' },
+  not_renting: { label: 'Chưa thuê',   cls: 'bg-[#faf2ec] text-[#4e453c] border border-[#d1c4b9]' },
   pending:     { label: 'Chờ duyệt',   cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
   checked_out: { label: 'Đã trả phòng', cls: 'bg-gray-100 text-gray-600' },
 };
@@ -40,6 +40,7 @@ const ACCT_MAP = {
 
 export default function AdminUsersPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRent, setFilterRent] = useState('');
   const [filterAcct, setFilterAcct] = useState('');
@@ -49,21 +50,26 @@ export default function AdminUsersPage() {
 
   // Load from mock DB
   useEffect(() => {
-    const db = getMockDB();
-    const rows: CustomerRow[] = (db.customers || []).map((c: any, idx: number) => ({
-      id: `KH-${String(idx + 1).padStart(3, '0')}`,
-      full_name: c.full_name || 'Khách hàng',
-      email: c.email || '',
-      phone: c.phone || '09x xxx xxxx',
-      renting_room_name: c.renting_room_name,
-      status: c.renting_room_name ? 'renting' : 'not_renting',
-      accountStatus: 'active',
-      joinDate: c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '01/01/2024',
-      note: '',
-    }));
-    // Add mock locked account for demo
-    if (rows.length > 2) rows[2].accountStatus = 'locked';
-    setCustomers(rows);
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      const db = getMockDB();
+      const rows: CustomerRow[] = (db.customers || []).map((c: any, idx: number) => ({
+        id: `KH-${String(idx + 1).padStart(3, '0')}`,
+        full_name: c.full_name || 'Khách hàng',
+        email: c.email || '',
+        phone: c.phone || '09x xxx xxxx',
+        renting_room_name: c.renting_room_name,
+        status: c.renting_room_name ? 'renting' : 'not_renting',
+        accountStatus: 'active',
+        joinDate: c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '01/01/2024',
+        note: '',
+      }));
+      // Add mock locked account for demo
+      if (rows.length > 2) rows[2].accountStatus = 'locked';
+      setCustomers(rows);
+      setIsLoading(false);
+    }, 450);
+    return () => clearTimeout(timer);
   }, []);
 
   const kpis = useMemo(() => {
@@ -230,7 +236,32 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-[#DDD6CC] animate-pulse">
+                    <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-8"></div></td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gray-200"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-24"></div>
+                          <div className="h-3 bg-gray-200 rounded w-16"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        <div className="h-3 bg-gray-200 rounded w-32"></div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td className="px-5 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td className="px-5 py-4"><div className="h-8 bg-gray-200 rounded-full w-24"></div></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center">
                     <span className="material-symbols-outlined text-5xl block mb-3"

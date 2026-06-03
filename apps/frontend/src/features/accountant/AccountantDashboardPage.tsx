@@ -1,12 +1,33 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Receipt, LogIn, CreditCard, ArrowLeftRight, CheckCircle, 
-  TrendingUp, AlertCircle, ArrowRight, Clock, FileText, BarChart3
+  Receipt, LogIn, ArrowLeftRight, CheckCircle, 
+  TrendingUp, AlertCircle, ArrowRight, Clock, BarChart3, RefreshCw, Calendar
 } from 'lucide-react';
 import { getMockDB } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function AccountantDashboardPage() {
+  const { user } = useAuthStore();
+  const today = new Date();
+  const todayLabel = today.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const T = {
+    bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
+    border: '#D6CEC8', primary: '#8C7355', primaryLight: '#F5EFE6',
+    sage: '#5F745D', sageBg: '#E1E9DF', amber: '#A67B5B', amberBg: '#FFF0E5',
+    red: '#BA1A1A', redBg: '#FFDAD6', text: '#1E1B17', textMuted: '#4E453C', textFaint: '#7F756B'
+  };
+
+  const quickActions = [
+    { label: 'Hóa đơn Đặt cọc', icon: 'receipt_long', path: '/accountant/invoices/deposit', color: T.amber, bg: T.amberBg },
+    { label: 'Hóa đơn Nhận phòng', icon: 'login', path: '/accountant/invoices/checkin', color: T.sage, bg: T.sageBg },
+    { label: 'Hóa đơn Định kỳ', icon: 'credit_card', path: '/accountant/invoices/monthly', color: T.primary, bg: T.primaryLight },
+    { label: 'Đối soát Hoàn cọc', icon: 'compare_arrows', path: '/accountant/refunds', color: T.amber, bg: T.amberBg },
+    { label: 'Chi tiền & Thanh lý', icon: 'paid', path: '/accountant/payouts', color: T.red, bg: T.redBg },
+    { label: 'Hồ sơ Khách hàng', icon: 'manage_search', path: '/sale/customers', color: T.textFaint, bg: '#F5F0EB' },
+  ];
+
   const [stats, setStats] = useState({
     totalRevenue: 0,
     depositRev: 0,
@@ -134,17 +155,21 @@ export default function AccountantDashboardPage() {
 
   return (
     <div className="space-y-6 text-[#1b1c1c] font-body-md">
-      {/* Welcome Banner */}
-      <div className="bg-white border border-[#d1c4b9] p-6 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Greeting Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ fontFamily: "'Lexend', sans-serif" }}>
         <div>
-          <h2 className="font-headline-md text-2xl text-[#5a462d] font-semibold">Tổng quan phân hệ Kế toán</h2>
-          <p className="text-[#5e5f5d] text-sm mt-1">
-            Chào mừng trở lại! Hôm nay bạn có một số hóa đơn định kỳ và hồ sơ đối soát hoàn cọc cần duyệt.
+          <h1 className="text-2xl font-bold text-[#6f583c]">Xin chào, {user?.full_name?.split(' (')[0] || 'Kế toán'}!</h1>
+          <p className="text-sm text-[#4e453c] mt-1 flex items-center gap-2 font-medium">
+            <Calendar className="w-4 h-4 text-[#6f583c]" />
+            {todayLabel} · <span className="text-[#7f756b]">Kỳ kế toán: 06/2026</span>
           </p>
         </div>
-        <div className="bg-[#f6f3f2] border border-[#d1c4b9] px-4 py-2 rounded-lg text-xs font-semibold text-[#5a462d]">
-          Kỳ kế toán hiện tại: <span className="font-mono font-bold">06/2026</span>
-        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 text-sm text-[#6f583c] hover:text-[#4d614b] transition-colors cursor-pointer font-bold"
+        >
+          <RefreshCw className="w-4 h-4" /> Làm mới dữ liệu
+        </button>
       </div>
 
       {/* KPI Cards */}
@@ -213,86 +238,34 @@ export default function AccountantDashboardPage() {
         {/* Left Column: Quick Actions & Distribution (Col-span 2) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Quick Actions */}
-          <div className="bg-white border border-[#d1c4b9] rounded-xl p-5 shadow-sm space-y-4">
-            <h3 className="font-bold text-[#5a462d] text-sm">Hành động nhanh nghiệp vụ</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              <Link 
-                to="/accountant/invoices/deposit"
-                className="p-3 border border-[#d1c4b9] rounded-lg hover:bg-[#f6f3f2] hover:border-[#5a462d] transition group flex items-start gap-2.5"
-              >
-                <div className="p-2 bg-[#f6f3f2] group-hover:bg-[#5a462d]/10 rounded-md text-[#5a462d] transition">
-                  <Receipt className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Hóa đơn Đặt cọc</div>
-                  <p className="text-[10px] text-[#5e5f5d] mt-0.5">Lập phiếu thu cọc giữ chỗ</p>
-                </div>
-              </Link>
-
-              <Link 
-                to="/accountant/invoices/checkin"
-                className="p-3 border border-[#d1c4b9] rounded-lg hover:bg-[#f6f3f2] hover:border-[#5a462d] transition group flex items-start gap-2.5"
-              >
-                <div className="p-2 bg-[#f6f3f2] group-hover:bg-[#5a462d]/10 rounded-md text-[#5a462d] transition">
-                  <LogIn className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Hóa đơn Nhận phòng</div>
-                  <p className="text-[10px] text-[#5e5f5d] mt-0.5">Lập phiếu bàn giao ban đầu</p>
-                </div>
-              </Link>
-
-              <Link 
-                to="/accountant/invoices/monthly"
-                className="p-3 border border-[#d1c4b9] rounded-lg hover:bg-[#f6f3f2] hover:border-[#5a462d] transition group flex items-start gap-2.5"
-              >
-                <div className="p-2 bg-[#f6f3f2] group-hover:bg-[#5a462d]/10 rounded-md text-[#5a462d] transition">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Hóa đơn Định kỳ</div>
-                  <p className="text-[10px] text-[#5e5f5d] mt-0.5">Nhập số điện nước & dịch vụ</p>
-                </div>
-              </Link>
-
-              <Link 
-                to="/accountant/refunds"
-                className="p-3 border border-[#d1c4b9] rounded-lg hover:bg-[#f6f3f2] hover:border-[#5a462d] transition group flex items-start gap-2.5"
-              >
-                <div className="p-2 bg-[#f6f3f2] group-hover:bg-[#5a462d]/10 rounded-md text-[#5a462d] transition">
-                  <ArrowLeftRight className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Đối soát Hoàn cọc</div>
-                  <p className="text-[10px] text-[#5e5f5d] mt-0.5">Khấu trừ hư hỏng trả phòng</p>
-                </div>
-              </Link>
-
-              <Link 
-                to="/accountant/payouts"
-                className="p-3 border border-[#d1c4b9] rounded-lg hover:bg-[#f6f3f2] hover:border-[#5a462d] transition group flex items-start gap-2.5"
-              >
-                <div className="p-2 bg-[#f6f3f2] group-hover:bg-[#5a462d]/10 rounded-md text-[#5a462d] transition">
-                  <CheckCircle className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Chi tiền & Thanh lý</div>
-                  <p className="text-[10px] text-[#5e5f5d] mt-0.5">Chi trả cọc & đóng hợp đồng</p>
-                </div>
-              </Link>
-
-              <Link 
-                to="/sale/customers"
-                className="p-3 border border-[#d1c4b9] rounded-lg hover:bg-[#f6f3f2] hover:border-[#5a462d] transition group flex items-start gap-2.5"
-              >
-                <div className="p-2 bg-[#f6f3f2] group-hover:bg-[#5a462d]/10 rounded-md text-[#5a462d] transition">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Hồ sơ Khách hàng</div>
-                  <p className="text-[10px] text-[#5e5f5d] mt-0.5">Tra cứu hợp đồng & phòng</p>
-                </div>
-              </Link>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 28, boxShadow: '0 2px 12px rgba(111,88,60,0.06)' }}>
+            <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 20 }}>
+              Hành động nhanh nghiệp vụ
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {quickActions.map((action, i) => (
+                <Link 
+                  key={i} 
+                  to={action.path}
+                  style={{ 
+                    background: action.bg, 
+                    border: `1px solid ${T.border}`, 
+                    borderRadius: 16, 
+                    padding: '20px 12px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: 10, 
+                    textDecoration: 'none', 
+                    transition: 'all 0.2s' 
+                  }}
+                  className="hover:scale-[1.03] hover:shadow-md"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 28, color: action.color }}>{action.icon}</span>
+                  <span style={{ color: T.text, fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>{action.label}</span>
+                </Link>
+              ))}
             </div>
           </div>
 

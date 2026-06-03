@@ -3,7 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { useInvoiceStore } from './store/useInvoiceStore';
 import InvoiceTable from './components/InvoiceTable';
 import InvoiceDetail from './components/InvoiceDetail';
+import CustomSelect from '../../components/ui/CustomSelect';
 import { FileClock, DollarSign, CalendarDays, CheckCircle } from 'lucide-react';
+
+const MONTH_OPTIONS = [
+  { value: 'Tất cả', label: 'Tất cả các tháng' },
+  { value: '05', label: 'Tháng 05' },
+  { value: '06', label: 'Tháng 06' },
+  { value: '07', label: 'Tháng 07' },
+  { value: '08', label: 'Tháng 08' },
+  { value: '09', label: 'Tháng 09' },
+  { value: '10', label: 'Tháng 10' },
+];
+
+const YEAR_OPTIONS = [
+  { value: 'Tất cả', label: 'Tất cả năm' },
+  { value: '2024', label: 'Năm 2024' },
+];
 
 export default function InvoicesDashboardPage() {
   const navigate = useNavigate();
@@ -12,6 +28,12 @@ export default function InvoicesDashboardPage() {
   // Local state for filter inputs until "Tìm kiếm" is pressed
   const [selectedMonth, setSelectedMonth] = useState(filters.month);
   const [selectedYear, setSelectedYear] = useState(filters.year);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const handleSelectInvoice = (id: string) => {
+    setSelectedInvoiceId(id);
+    setIsDetailModalOpen(true);
+  };
 
   // 1. KPI Calculations (on ALL invoices)
   const unpaidCount = useMemo(() => {
@@ -134,29 +156,22 @@ export default function InvoicesDashboardPage() {
       <section className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/30 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Month selector */}
-          <select 
+          <CustomSelect
             value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-white border border-outline-variant/40 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-primary focus:border-primary text-on-surface cursor-pointer min-w-[120px]"
-          >
-            <option value="Tất cả">Tất cả các tháng</option>
-            <option value="05">Tháng 05</option>
-            <option value="06">Tháng 06</option>
-            <option value="07">Tháng 07</option>
-            <option value="08">Tháng 08</option>
-            <option value="09">Tháng 09</option>
-            <option value="10">Tháng 10</option>
-          </select>
+            onChange={setSelectedMonth}
+            options={MONTH_OPTIONS}
+            pill
+            className="w-full sm:w-[180px]"
+          />
 
           {/* Year selector */}
-          <select 
+          <CustomSelect
             value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="bg-white border border-outline-variant/40 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-primary focus:border-primary text-on-surface cursor-pointer min-w-[100px]"
-          >
-            <option value="Tất cả">Tất cả năm</option>
-            <option value="2024">Năm 2024</option>
-          </select>
+            onChange={setSelectedYear}
+            options={YEAR_OPTIONS}
+            pill
+            className="w-full sm:w-[140px]"
+          />
 
           {/* Vertical divider */}
           <div className="h-6 w-px bg-outline-variant/30 hidden md:block"></div>
@@ -197,26 +212,45 @@ export default function InvoicesDashboardPage() {
         </button>
       </section>
 
-      {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Column Left: Table */}
-        <div className="lg:col-span-8 w-full">
-          <InvoiceTable 
-            invoices={filteredInvoices} 
-            selectedId={selectedInvoiceId}
-            onSelect={setSelectedInvoiceId}
-            onPay={handlePayAction}
-          />
-        </div>
-
-        {/* Column Right: Detail Sidebar */}
-        <div className="lg:col-span-4 w-full sticky top-24">
-          <InvoiceDetail 
-            invoice={selectedInvoice}
-            onPay={handlePayAction}
-          />
-        </div>
+      {/* Main Table Layout (Full Width) */}
+      <div className="w-full mb-8">
+        <InvoiceTable 
+          invoices={filteredInvoices} 
+          selectedId={selectedInvoiceId}
+          onSelect={handleSelectInvoice}
+          onPay={handlePayAction}
+        />
       </div>
+
+      {/* Invoice Detail Modal */}
+      {isDetailModalOpen && selectedInvoice && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsDetailModalOpen(false)}
+        >
+          <div 
+            className="bg-surface w-full max-w-md rounded-32 shadow-2xl border border-surface-variant overflow-hidden animate-fade-in-up relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button 
+              onClick={() => setIsDetailModalOpen(false)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/25 hover:bg-black/40 text-white transition-colors cursor-pointer z-50 flex items-center justify-center animate-fade-in"
+              title="Đóng"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+            
+            <InvoiceDetail 
+              invoice={selectedInvoice}
+              onPay={(id) => {
+                setIsDetailModalOpen(false);
+                handlePayAction(id);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
