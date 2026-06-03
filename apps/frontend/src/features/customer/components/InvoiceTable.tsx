@@ -1,5 +1,5 @@
 import { Invoice } from '../store/useInvoiceStore';
-import { Eye, CreditCard, Receipt } from 'lucide-react';
+import { Eye, CreditCard } from 'lucide-react';
 
 interface Props {
   invoices: Invoice[];
