@@ -260,18 +260,33 @@ export default function InvoicePaymentPage() {
                       onClick={() => startPaymentSimulation('wallet')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
-                      <div className="h-16 w-16 bg-[#A50064] rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:scale-105 transition-transform">
-                        MoMo
-                      </div>
+                      <svg className="w-16 h-16 shadow-md rounded-2xl group-hover:scale-105 transition-transform shrink-0" viewBox="0 0 100 100">
+                        <defs>
+                          <linearGradient id="momoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#e02076" />
+                            <stop offset="100%" stopColor="#a50064" />
+                          </linearGradient>
+                        </defs>
+                        <rect width="100" height="100" rx="24" fill="url(#momoGrad)" />
+                        <text x="50" y="58" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="24" fill="#FFFFFF" textAnchor="middle" letterSpacing="-1">momo</text>
+                      </svg>
                       <span className="font-bold text-sm text-on-surface">Ví điện tử MoMo</span>
                     </button>
                     <button 
                       onClick={() => startPaymentSimulation('wallet')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
-                      <div className="h-16 w-16 bg-[#0081E0] rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:scale-105 transition-transform">
-                        ZaloPay
-                      </div>
+                      <svg className="w-16 h-16 shadow-md rounded-2xl group-hover:scale-105 transition-transform shrink-0" viewBox="0 0 100 100">
+                        <defs>
+                          <linearGradient id="zalopayGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#00b4f0" />
+                            <stop offset="100%" stopColor="#0076e0" />
+                          </linearGradient>
+                        </defs>
+                        <rect width="100" height="100" rx="24" fill="url(#zalopayGrad)" />
+                        <text x="50" y="48" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="20" fill="#FFFFFF" textAnchor="middle" letterSpacing="-0.5">Zalo</text>
+                        <text x="50" y="72" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="18" fill="#14ff76" textAnchor="middle" letterSpacing="-0.5">Pay</text>
+                      </svg>
                       <span className="font-bold text-sm text-on-surface">Ví điện tử ZaloPay</span>
                     </button>
                   </div>
@@ -282,7 +297,9 @@ export default function InvoicePaymentPage() {
               {activeTab === 'card' && (
                 <form onSubmit={handleCardSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-on-surface-variant mb-1">Số thẻ ngân hàng</label>
+                    <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                      Số thẻ ngân hàng <span className="text-red-500 font-bold">*</span>
+                    </label>
                     <input 
                       required
                       type="text" 
@@ -295,7 +312,9 @@ export default function InvoicePaymentPage() {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-on-surface-variant mb-1">Ngày hết hạn</label>
+                      <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                        Ngày hết hạn <span className="text-red-500 font-bold">*</span>
+                      </label>
                       <input 
                         required
                         type="text" 
@@ -306,7 +325,9 @@ export default function InvoicePaymentPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-on-surface-variant mb-1">CVV / CVC</label>
+                      <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                        CVV / CVC <span className="text-red-500 font-bold">*</span>
+                      </label>
                       <input 
                         required
                         type="password" 

@@ -110,9 +110,6 @@ export default function CustomSelect({
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && (
-                    <span className="material-symbols-outlined text-primary text-[18px]">check</span>
-                  )}
                 </button>
               );
             })

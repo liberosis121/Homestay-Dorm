@@ -370,7 +370,6 @@ function DropdownSelect({
                     : 'text-on-surface hover:bg-surface-container'}`}
               >
                 <span>{opt.label}</span>
-                {value === opt.value && <CheckCircle2 className="w-4 h-4 text-primary" />}
               </button>
             ))}
           </div>
