@@ -7,12 +7,17 @@ export default function Navbar() {
   const { user, setLogoutConfirmOpen } = useAuthStore();
   const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -61,71 +66,87 @@ export default function Navbar() {
               Đăng nhập
             </Link>
           ) : (
-            <div className="relative" ref={dropdownRef}>
-              <button 
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
-              >
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold overflow-hidden border border-surface-variant/20">
-                  {user.avatar_url ? (
-                    <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
-                  ) : (
-                    user.email[0].toUpperCase()
-                  )}
-                </div>
-                <span className="hidden sm:block font-label-md">{user.full_name || 'Khách hàng'}</span>
-                <span className={`material-symbols-outlined transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
-              </button>
+            <>
+              {/* Notifications Dropdown */}
+              <div className="relative animate-fade-in" ref={notificationsRef}>
+                <button 
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="relative p-2 text-on-surface-variant hover:text-primary transition-colors bg-surface-container-low dark:bg-surface-container-high rounded-full hover:bg-surface-container cursor-pointer flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined text-[24px]">notifications</span>
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface"></span>
+                </button>
 
-              {/* Dropdown Menu */}
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-72 bg-surface border border-surface-variant rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 animate-fade-in-up">
-                  {/* User Info Header */}
-                  <div className="p-4 border-b border-surface-variant bg-surface-container-lowest">
-                    <p className="font-bold text-on-surface truncate">{user.full_name || 'Khách hàng'}</p>
-                    <p className="text-xs text-on-surface-variant truncate">{user.email}</p>
-                  </div>
-                  
-                  {/* Notifications */}
-                  <div className="p-2 max-h-60 overflow-y-auto">
-                    <div className="flex items-center justify-between px-2 py-1 mb-1">
-                      <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Thông báo</h4>
-                      <span className="bg-error text-on-error text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 mt-3 w-80 bg-surface border border-surface-variant rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 animate-fade-in-up">
+                    <div className="p-4 border-b border-surface-variant bg-surface-container-lowest flex justify-between items-center">
+                      <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Thông báo hoạt động</h4>
+                      <span className="bg-error text-on-error text-[10px] font-bold px-2 py-0.5 rounded-full">2 mới</span>
                     </div>
                     
-                    <div className="px-3 py-2 hover:bg-surface-container-low rounded-xl cursor-pointer transition-colors">
-                      <p className="text-sm font-label-md text-on-surface">Cập nhật hệ thống</p>
-                      <p className="text-xs text-on-surface-variant">Hệ thống đã được nâng cấp với giao diện mới.</p>
-                      <p className="text-[10px] text-primary mt-1">2 giờ trước</p>
-                    </div>
-                    <div className="px-3 py-2 hover:bg-surface-container-low rounded-xl cursor-pointer transition-colors mt-1">
-                      <p className="text-sm font-label-md text-on-surface">Xác nhận thanh toán</p>
-                      <p className="text-xs text-on-surface-variant">Hóa đơn tháng này của bạn đã được thanh toán.</p>
-                      <p className="text-[10px] text-primary mt-1">1 ngày trước</p>
+                    <div className="p-2 max-h-64 overflow-y-auto divide-y divide-surface-variant/30 bg-surface">
+                      <div className="p-3 hover:bg-surface-container-low rounded-xl cursor-pointer transition-colors text-left" onClick={() => setIsNotificationsOpen(false)}>
+                        <p className="text-sm font-semibold text-on-surface">Cập nhật hệ thống</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">Hệ thống đã được nâng cấp với giao diện mới.</p>
+                        <p className="text-[10px] text-primary mt-1">2 giờ trước</p>
+                      </div>
+                      <div className="p-3 hover:bg-surface-container-low rounded-xl cursor-pointer transition-colors text-left mt-1" onClick={() => setIsNotificationsOpen(false)}>
+                        <p className="text-sm font-semibold text-on-surface">Xác nhận thanh toán</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">Hóa đơn tháng này của bạn đã được thanh toán.</p>
+                        <p className="text-[10px] text-primary mt-1">1 ngày trước</p>
+                      </div>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Profile & Logout Links */}
-                  <div className="p-2 border-t border-surface-variant">
-                    <Link 
-                      to="/profile" 
-                      onClick={() => setIsDropdownOpen(false)}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-on-surface font-label-md hover:bg-surface-container-low rounded-xl transition-colors cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">person</span>
-                      Hồ sơ cá nhân
-                    </Link>
-                    <button 
-                      onClick={handleLogout} 
-                      className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-error font-label-md hover:bg-error/10 rounded-xl transition-colors cursor-pointer mt-1"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">logout</span>
-                      Đăng xuất
-                    </button>
+              {/* Profile Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
+                >
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold overflow-hidden border border-surface-variant/20">
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      user.email[0].toUpperCase()
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
+                  <span className="hidden sm:block font-label-md">{user.full_name || 'Khách hàng'}</span>
+                  <span className={`material-symbols-outlined transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-3 w-72 bg-surface border border-surface-variant rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 animate-fade-in-up">
+                    {/* User Info Header */}
+                    <div className="p-4 border-b border-surface-variant bg-surface-container-lowest">
+                      <p className="font-bold text-on-surface truncate">{user.full_name || 'Khách hàng'}</p>
+                      <p className="text-xs text-on-surface-variant truncate">{user.email}</p>
+                    </div>
+
+                    {/* Profile & Logout Links */}
+                    <div className="p-2 bg-surface">
+                      <Link 
+                        to="/profile" 
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-on-surface font-label-md hover:bg-surface-container-low rounded-xl transition-colors cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">person</span>
+                        Hồ sơ cá nhân
+                      </Link>
+                      <button 
+                        onClick={handleLogout} 
+                        className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-error font-label-md hover:bg-error/10 rounded-xl transition-colors cursor-pointer mt-1"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">logout</span>
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </nav>

@@ -7,7 +7,7 @@ import Footer from '../../components/ui/Footer';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
-  Info, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown
+  Info, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
 } from 'lucide-react';
 import { Service, ServiceSubscription } from '../../lib/supabaseClient';
 
@@ -538,7 +538,7 @@ function GuestServicesView({
       </section>
 
       {/* FAQ & Policies */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+      <section className="grid grid-cols-1 lg:grid-cols-2 items-start gap-8 mb-12">
         <div className="bg-surface-container-low p-6 md:p-8 rounded-2xl border border-outline-variant/60 flex flex-col">
           <div className="flex items-center gap-3 mb-6">
             <Info className="w-6 h-6 text-primary" />
@@ -566,6 +566,21 @@ function GuestServicesView({
             ].map((item, idx) => (
               <FaqItem key={idx} question={item.q} answer={item.a} />
             ))}
+          </div>
+
+          {/* Câu hỏi khác */}
+          <div className="mt-6 pt-6 border-t border-outline-variant/50 flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-on-surface">Bạn có câu hỏi khác?</h4>
+              <p className="text-xs text-on-surface-variant mt-1 font-medium">Liên hệ với ban quản lý để được hỗ trợ trực tiếp.</p>
+            </div>
+            <a
+              href="tel:19001234"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container bg-primary/10 hover:bg-primary/20 px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              Gọi hotline
+            </a>
           </div>
         </div>
 
@@ -656,19 +671,22 @@ function ConsumptionChart({
     );
   }
 
-  // Palette matching the web's green-brown theme
-  const COLOR_ELEC        = '#3d6b35';
-  const COLOR_ELEC_HOVER  = '#2a4d25';
+  const COLOR_ELEC       = '#3d6b35';
+  const COLOR_ELEC_HOVER = '#2a4d25';
   const COLOR_WATER       = '#b89a72';
   const COLOR_WATER_HOVER = '#9a7d59';
 
-  const BAR_H = 160; // px – usable chart height
+  const BAR_H   = 200;  // usable bar height (px) — tallest bar fills exactly this
+  const BAR_W   = 10;   // width per individual bar (px)
+  const BAR_GAP = 1;    // gap between the two bars inside a pair
+  const GRP_PAD = 9;    // left+right padding inside each month column (gap between groups)
+  const LABEL_H = 28;   // height reserved for x-axis labels below the baseline
 
   return (
     <div className="bg-white border border-outline-variant rounded-2xl p-6">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between mb-5">
-        <h4 className="font-headline-md text-sm font-bold font-lexend">
+        <h4 className="text-sm font-bold font-lexend">
           Lịch sử tiêu thụ ({chartMonths.length} tháng)
         </h4>
         <div className="flex gap-4 text-xs font-semibold">
@@ -683,146 +701,178 @@ function ConsumptionChart({
         </div>
       </div>
 
-      {/* Chart area */}
-      <div className="overflow-x-auto">
-        <div
-          className="relative border-b border-outline-variant/30"
-          style={{ height: BAR_H + 32 }}
-        >
-          {/* Horizontal gridlines */}
+      {/* ── Chart canvas — overflow:visible so tooltip is never clipped ── */}
+      <div style={{ position: 'relative', overflow: 'visible' }}>
+        <div style={{ position: 'relative', height: BAR_H + LABEL_H, overflow: 'visible' }}>
+
+          {/* Subtle horizontal gridlines */}
           {[25, 50, 75, 100].map((pct) => (
             <div
               key={pct}
-              className="absolute left-0 right-0 border-t border-outline-variant/20"
-              style={{ bottom: 28 + (pct / 100) * BAR_H }}
+              style={{
+                position: 'absolute', left: 0, right: 0,
+                bottom: LABEL_H + (pct / 100) * BAR_H,
+                borderTop: '1px solid rgba(0,0,0,0.06)',
+                pointerEvents: 'none',
+              }}
             />
           ))}
 
-          {/* Month columns row */}
-          <div className="absolute inset-0 flex items-end px-1" style={{ paddingBottom: 28 }}>
+          {/* Baseline */}
+          <div style={{
+            position: 'absolute', left: 0, right: 0,
+            bottom: LABEL_H,
+            borderTop: '1.5px solid rgba(0,0,0,0.12)',
+          }} />
+
+          {/* Month column row */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'flex-end',
+            paddingBottom: LABEL_H,
+            overflow: 'visible',
+          }}>
             {chartMonths.map((m, idx) => {
-              const hElec  = Math.max(Math.round((m.elec  / maxValues.elec)  * BAR_H), m.elec  > 0 ? 4 : 0);
-              const hWater = Math.max(Math.round((m.water / maxValues.water) * BAR_H), m.water > 0 ? 4 : 0);
+              // Each series scales against its own global max → tallest bar = BAR_H exactly
+              const hElec  = m.elec  > 0 ? Math.max(Math.round((m.elec  / maxValues.elec)  * BAR_H), 4) : 0;
+              const hWater = m.water > 0 ? Math.max(Math.round((m.water / maxValues.water) * BAR_H), 4) : 0;
               const isHovered = hoveredIdx === idx;
 
               return (
                 <div
                   key={m.period}
-                  className="flex-1 flex flex-col items-center relative"
+                  style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'visible' }}
                   onMouseEnter={() => setHoveredIdx(idx)}
                   onMouseLeave={() => setHoveredIdx(null)}
                 >
-                  {/* ── Light-theme tooltip ── */}
+                  {/* ── Light-theme tooltip, floats above chart, never clipped ── */}
                   {isHovered && (
-                    <div
-                      className="absolute z-30 pointer-events-none animate-fade-in-up"
-                      style={{
-                        bottom: Math.max(hElec, hWater) + 16,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        animationDuration: '100ms',
-                      }}
-                    >
-                      <div
-                        className="w-52 rounded-2xl border shadow-xl overflow-hidden"
-                        style={{ background: '#fff', borderColor: '#e8e0d4' }}
-                      >
-                        <div className="px-4 pt-3 pb-2 border-b" style={{ borderColor: '#f0ebe4' }}>
-                          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#7a6a58' }}>
+                    <div style={{
+                      position: 'absolute',
+                      bottom: Math.max(hElec, hWater) + 18,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 999,
+                      pointerEvents: 'none',
+                      width: 200,
+                    }}>
+                      <div style={{
+                        background: '#fff',
+                        border: '1px solid #e8e0d4',
+                        borderRadius: 16,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.13)',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{ padding: '10px 14px 7px', borderBottom: '1px solid #f0ebe4' }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7a6a58', margin: 0 }}>
                             {m.labelFull}
                           </p>
                         </div>
-                        <div className="flex items-center justify-between px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_ELEC }} />
-                            <span className="text-[12px] font-semibold" style={{ color: '#444' }}>Điện</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{ width: 9, height: 9, borderRadius: 2, background: COLOR_ELEC, flexShrink: 0, display: 'inline-block' }} />
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>Điện</span>
                           </div>
-                          <div className="text-right">
-                            <span className="text-[13px] font-bold block" style={{ color: COLOR_ELEC }}>{m.elec} kWh</span>
-                            <span className="text-[10px] font-semibold" style={{ color: '#999' }}>{m.elecCost.toLocaleString('vi-VN')} đ</span>
-                          </div>
-                        </div>
-                        <div className="mx-4 border-t" style={{ borderColor: '#f0ebe4' }} />
-                        <div className="flex items-center justify-between px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLOR_WATER }} />
-                            <span className="text-[12px] font-semibold" style={{ color: '#444' }}>Nước</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[13px] font-bold block" style={{ color: COLOR_WATER }}>{m.water} m³</span>
-                            <span className="text-[10px] font-semibold" style={{ color: '#999' }}>{m.waterCost.toLocaleString('vi-VN')} đ</span>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_ELEC, display: 'block' }}>{m.elec} kWh</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#999' }}>{m.elecCost.toLocaleString('vi-VN')} đ</span>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between px-4 py-2 border-t" style={{ background: '#faf7f3', borderColor: '#f0ebe4' }}>
-                          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#9a8878' }}>Tổng</span>
-                          <span className="text-[12px] font-bold" style={{ color: COLOR_ELEC }}>
+                        <div style={{ borderTop: '1px solid #f0ebe4', margin: '0 14px' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{ width: 9, height: 9, borderRadius: 2, background: COLOR_WATER, flexShrink: 0, display: 'inline-block' }} />
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>Nước</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_WATER, display: 'block' }}>{m.water} m³</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#999' }}>{m.waterCost.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 14px', background: '#faf7f3', borderTop: '1px solid #f0ebe4' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9a8878' }}>Tổng</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: COLOR_ELEC }}>
                             {(m.elecCost + m.waterCost).toLocaleString('vi-VN')} đ
                           </span>
                         </div>
                       </div>
-                      {/* Caret */}
-                      <div
-                        className="mx-auto"
-                        style={{
-                          width: 0, height: 0,
-                          borderLeft: '6px solid transparent',
-                          borderRight: '6px solid transparent',
-                          borderTop: '6px solid #fff',
-                          filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.07))',
-                        }}
-                      />
+                      {/* Caret arrow */}
+                      <div style={{
+                        margin: '0 auto', width: 0, height: 0,
+                        borderLeft: '6px solid transparent',
+                        borderRight: '6px solid transparent',
+                        borderTop: '6px solid #fff',
+                        filter: 'drop-shadow(0 1px 0 #e8e0d4)',
+                      }} />
                     </div>
                   )}
 
-                  {/* ── Bar pair (slim, touching, breathing room via padding) ── */}
-                  <div
-                    className="flex items-end"
-                    style={{ height: BAR_H, gap: 1, paddingLeft: 7, paddingRight: 7 }}
-                  >
+                  {/* ── Bar pair with absolute micro-labels above each bar ── */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', height: BAR_H, gap: BAR_GAP, paddingLeft: GRP_PAD, paddingRight: GRP_PAD }}>
+
                     {/* Electricity bar */}
-                    <div className="flex flex-col items-center justify-end" style={{ height: BAR_H, width: 7 }}>
+                    <div style={{ position: 'relative', width: BAR_W, height: BAR_H, display: 'flex', alignItems: 'flex-end' }}>
                       {m.elec > 0 && (
-                        <span
-                          className="text-[7.5px] font-bold leading-none mb-0.5"
-                          style={{ color: COLOR_ELEC, opacity: isHovered ? 1 : 0.6, transition: 'opacity 0.2s' }}
-                        >
+                        <span style={{
+                          position: 'absolute',
+                          bottom: hElec + 3,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          fontSize: 8.5, fontWeight: 700, lineHeight: 1,
+                          whiteSpace: 'nowrap',
+                          color: COLOR_ELEC,
+                          opacity: isHovered ? 1 : 0.6,
+                          transition: 'opacity 0.15s',
+                        }}>
                           {m.elec}
                         </span>
                       )}
                       <div style={{
-                        width: 7, height: hElec,
+                        width: BAR_W, height: hElec,
                         background: isHovered ? COLOR_ELEC_HOVER : COLOR_ELEC,
                         borderRadius: '3px 3px 0 0',
-                        transition: 'height 0.5s ease, background 0.15s ease',
-                        minHeight: m.elec > 0 ? 3 : 0,
+                        transition: 'height 0.55s cubic-bezier(.4,0,.2,1), background 0.15s',
                       }} />
                     </div>
 
                     {/* Water bar */}
-                    <div className="flex flex-col items-center justify-end" style={{ height: BAR_H, width: 7 }}>
+                    <div style={{ position: 'relative', width: BAR_W, height: BAR_H, display: 'flex', alignItems: 'flex-end' }}>
                       {m.water > 0 && (
-                        <span
-                          className="text-[7.5px] font-bold leading-none mb-0.5"
-                          style={{ color: COLOR_WATER, opacity: isHovered ? 1 : 0.6, transition: 'opacity 0.2s' }}
-                        >
+                        <span style={{
+                          position: 'absolute',
+                          bottom: hWater + 3,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          fontSize: 8.5, fontWeight: 700, lineHeight: 1,
+                          whiteSpace: 'nowrap',
+                          color: COLOR_WATER,
+                          opacity: isHovered ? 1 : 0.65,
+                          transition: 'opacity 0.15s',
+                        }}>
                           {m.water}
                         </span>
                       )}
                       <div style={{
-                        width: 7, height: hWater,
+                        width: BAR_W, height: hWater,
                         background: isHovered ? COLOR_WATER_HOVER : COLOR_WATER,
                         borderRadius: '3px 3px 0 0',
-                        transition: 'height 0.5s ease, background 0.15s ease',
-                        minHeight: m.water > 0 ? 3 : 0,
+                        transition: 'height 0.55s cubic-bezier(.4,0,.2,1), background 0.15s',
                       }} />
                     </div>
                   </div>
 
-                  {/* X-axis label */}
-                  <span
-                    className="text-[9px] font-bold leading-none pt-2 select-none whitespace-nowrap"
-                    style={{ color: isHovered ? COLOR_ELEC : '#9ca3af', transition: 'color 0.15s' }}
-                  >
+                  {/* X-axis label — sits below baseline via absolute positioning */}
+                  <span style={{
+                    position: 'absolute',
+                    bottom: -(LABEL_H - 6),
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: 9, fontWeight: 700, lineHeight: 1,
+                    color: isHovered ? COLOR_ELEC : '#aaa',
+                    whiteSpace: 'nowrap',
+                    transition: 'color 0.15s',
+                    userSelect: 'none',
+                  }}>
                     {m.label}
                   </span>
                 </div>

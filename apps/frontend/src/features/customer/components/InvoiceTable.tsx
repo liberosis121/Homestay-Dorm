@@ -115,7 +115,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {invoice.status !== 'paid' ? (
+                        {invoice.status !== 'paid' && (
                           <button
                             onClick={() => onPay(invoice.id)}
                             className="bg-primary hover:bg-[#253228] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
@@ -123,10 +123,6 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                             <CreditCard className="w-3.5 h-3.5" />
                             Thanh toán
                           </button>
-                        ) : (
-                          <span className="p-2 text-status-success rounded-lg" title="Đã xuất hóa đơn">
-                            <Receipt className="w-4 h-4" />
-                          </span>
                         )}
                       </div>
                     </td>
