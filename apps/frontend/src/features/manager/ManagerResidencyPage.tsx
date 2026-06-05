@@ -13,7 +13,6 @@ const STATUS_CFG: Record<ResidencyCheck['status'], { label: string; bg: string; 
   pending:   { label: 'Chờ kiểm tra',  bg: T.amberBg, text: T.amber, icon: 'pending' },
   approved:  { label: 'Đạt',           bg: T.sageBg,  text: T.sage,  icon: 'verified' },
   rejected:  { label: 'Không đạt',     bg: T.redBg,   text: T.red,   icon: 'cancel' },
-  need_more: { label: 'Cần bổ sung',   bg: '#F0F0F0', text: '#555',  icon: 'edit_note' },
 };
 
 // Group records by room to simulate group bookings
@@ -48,8 +47,10 @@ export default function ManagerResidencyPage() {
   const [violationNote, setViolationNote] = useState('');
   const [memberResult, setMemberResult] = useState<'approved' | 'rejected' | null>(null);
   const [confirmingGroup, setConfirmingGroup] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectedWarningModal, setShowRejectedWarningModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const isReadOnly = selectedMember?.status === 'approved' || selectedMember?.status === 'rejected';
 
   useEffect(() => {
     const db = getMockDB();
@@ -65,14 +66,17 @@ export default function ManagerResidencyPage() {
       map[r.room_id].push(r);
     });
     return Object.entries(map).map(([room_id, members], i) => {
-      const allApproved = members.every(m => m.status === 'approved');
-      const anyPending = members.some(m => m.status === 'pending');
+      const allPending = members.every(m => m.status === 'pending');
+      const allConfirmed = members.every(m => m.confirmed);
+      const group_status = allPending 
+        ? 'pending' 
+        : (allConfirmed ? 'completed' : 'partial');
       return {
         room_id,
         room_name: members[0].room_name,
         deposit_ref: `MGR-DEP-${2000 + i + 1}`,
         members,
-        group_status: allApproved ? 'completed' : anyPending ? 'pending' : 'partial',
+        group_status,
       };
     });
   }, [records]);
@@ -122,7 +126,6 @@ export default function ManagerResidencyPage() {
     setChecklist({ ...member.checklist });
     setViolationNote(member.violation_note || '');
     setMemberResult(null);
-    setRejectionReason('');
   };
 
   const saveMemberResult = (newStatus: 'approved' | 'rejected') => {
@@ -141,20 +144,94 @@ export default function ManagerResidencyPage() {
       const updatedMembers = selectedGroup.members.map(m =>
         m.id === selectedMember.id ? { ...m, status: newStatus, checklist, violation_note: violationNote } : m
       );
-      const allApproved = updatedMembers.every(m => m.status === 'approved');
-      const anyPending = updatedMembers.some(m => m.status === 'pending');
+      const allPending = updatedMembers.every(m => m.status === 'pending');
+      const allConfirmed = updatedMembers.every(m => m.confirmed);
+      const group_status = allPending 
+        ? 'pending' 
+        : (allConfirmed ? 'completed' : 'partial');
       setSelectedGroup({
         ...selectedGroup,
         members: updatedMembers,
-        group_status: allApproved ? 'completed' : anyPending ? 'pending' : 'partial',
+        group_status,
       });
     }
     setSelectedMember(prev => prev ? { ...prev, status: newStatus, checklist, violation_note: violationNote } : null);
     setMemberResult(newStatus);
   };
 
+  const handleConfirmGroupClick = () => {
+    const hasRejected = selectedGroup?.members.some(m => m.status === 'rejected');
+    if (hasRejected) {
+      setShowRejectedWarningModal(true);
+    } else {
+      setConfirmingGroup(true);
+    }
+  };
+
+  const handleCancelDeposit = () => {
+    if (!selectedGroup) return;
+    const db = getMockDB();
+    
+    // 1. Remove all members of this group from residency_checks so it doesn't show in the table anymore
+    const updatedChecks = db.residency_checks.filter((r: ResidencyCheck) => 
+      r.room_id !== selectedGroup.room_id
+    );
+    db.residency_checks = updatedChecks;
+    
+    // 2. Find and update the corresponding ManagerDeposit status to 'rejected'
+    if (db.manager_deposits) {
+      db.manager_deposits = db.manager_deposits.map((d: any) => 
+        d.id === selectedGroup.deposit_ref ? { ...d, status: 'rejected' } : d
+      );
+    }
+    
+    saveMockDB(db);
+    setRecords(updatedChecks);
+    
+    // 3. Reset states to close everything
+    setShowRejectedWarningModal(false);
+    setSelectedGroup(null);
+    setSelectedMember(null);
+  };
+
+  const handleConfirmGroup = () => {
+    if (!selectedGroup) return;
+    const db = getMockDB();
+    
+    // Set confirmed = true for all members of this group
+    const updatedChecks = db.residency_checks.map((r: ResidencyCheck) => 
+      r.room_id === selectedGroup.room_id ? { ...r, confirmed: true } : r
+    );
+    db.residency_checks = updatedChecks;
+    
+    // Update ManagerDeposit status to 'approved' if confirmed
+    if (db.manager_deposits) {
+      db.manager_deposits = db.manager_deposits.map((d: any) => 
+        d.id === selectedGroup.deposit_ref ? { ...d, status: 'approved' } : d
+      );
+    }
+    
+    saveMockDB(db);
+    setRecords(updatedChecks);
+    
+    setConfirmingGroup(false);
+    setShowRejectedWarningModal(false);
+    setSelectedGroup(null);
+    setSelectedMember(null);
+  };
+
   const eligibleMembers = selectedGroup?.members.filter(m => m.status === 'approved') || [];
   const allChecked = selectedGroup ? selectedGroup.members.every(m => m.status !== 'pending') : false;
+  const isGroupConfirmed = selectedGroup ? selectedGroup.members.every(m => m.confirmed) : false;
+
+  const isChecklistComplete = selectedMember
+    ? checklist.valid_documents && checklist.info_matches && checklist.age_verified && checklist.no_violation
+    : false;
+
+  const hasUnticked = selectedMember
+    ? !checklist.valid_documents || !checklist.info_matches || !checklist.age_verified || !checklist.no_violation
+    : false;
+  const isRejectionDisabled = isChecklistComplete || (hasUnticked && !violationNote.trim());
 
   const getAgeFromDob = (dob: string) => {
     const birth = new Date(dob);
@@ -254,7 +331,7 @@ export default function ManagerResidencyPage() {
                 const pending = g.members.filter(m => m.status === 'pending').length;
                 const rejected = g.members.filter(m => m.status === 'rejected').length;
                 const total = g.members.length;
-                const pct = Math.round((approved / total) * 100);
+                const pct = Math.round(((approved + rejected) / total) * 100);
                 const gStatusCfg = g.group_status === 'completed'
                   ? { label: 'Hoàn tất', bg: T.sageBg, color: T.sage }
                   : g.group_status === 'partial'
@@ -338,13 +415,13 @@ export default function ManagerResidencyPage() {
                 <div className="flex items-center justify-between mb-2">
                   <p style={{ fontSize: 12, fontWeight: 600, color: T.textFaint }}>Tiến độ kiểm tra</p>
                   <p style={{ fontSize: 12, fontWeight: 700, color: T.sage }}>
-                    {selectedGroup.members.filter(m => m.status !== 'pending').length} / {selectedGroup.members.length} đã xử lý
+                    {selectedGroup.members.filter(m => m.status === 'approved' || m.status === 'rejected').length} / {selectedGroup.members.length} đã xử lý
                   </p>
                 </div>
                 <div style={{ height: 8, background: T.border, borderRadius: 8, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', borderRadius: 8, transition: 'width 0.4s',
-                    width: `${(selectedGroup.members.filter(m => m.status !== 'pending').length / selectedGroup.members.length) * 100}%`,
+                    width: `${(selectedGroup.members.filter(m => m.status === 'approved' || m.status === 'rejected').length / selectedGroup.members.length) * 100}%`,
                     background: `linear-gradient(90deg, ${T.sage}, #8BAB88)`
                   }} />
                 </div>
@@ -406,7 +483,7 @@ export default function ManagerResidencyPage() {
             </div>
 
             {/* Confirm Group Footer */}
-            {allChecked && !confirmingGroup && (
+            {allChecked && !confirmingGroup && !isGroupConfirmed && (
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <div style={{ background: eligibleMembers.length > 0 ? T.sageBg : T.redBg, borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: eligibleMembers.length > 0 ? T.sage : T.red }}>
@@ -423,7 +500,7 @@ export default function ManagerResidencyPage() {
                     </p>
                   )}
                 </div>
-                <button onClick={() => setConfirmingGroup(true)}
+                <button onClick={handleConfirmGroupClick}
                   style={{ width: '100%', background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: 13, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>send</span>
                   Xác nhận kết quả kiểm tra cho nhóm
@@ -431,10 +508,19 @@ export default function ManagerResidencyPage() {
               </div>
             )}
 
+            {isGroupConfirmed && (
+              <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
+                <div style={{ background: T.sageBg, borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="material-symbols-outlined" style={{ color: T.sage }}>verified</span>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: T.sage }}>Đã xác nhận kết quả kiểm tra cho nhóm</p>
+                </div>
+              </div>
+            )}
+
             {/* Confirm Modal inline */}
             {confirmingGroup && (
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>✅ Xác nhận ghi nhận kết quả kiểm tra</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Xác nhận ghi nhận kết quả kiểm tra</p>
                 <div style={{ background: T.bg, borderRadius: 12, padding: '10px 14px', marginBottom: 12, fontSize: 12, color: T.textMuted, lineHeight: 1.7 }}>
                   <p>• <strong>{eligibleMembers.length}</strong> thành viên đủ điều kiện sẽ được xác định trong danh sách ký hợp đồng.</p>
                   <p>• <strong>{selectedGroup.members.length - eligibleMembers.length}</strong> thành viên không đạt sẽ bị loại khỏi danh sách.</p>
@@ -445,9 +531,8 @@ export default function ManagerResidencyPage() {
                     style={{ flex: 1, background: T.bg, color: T.textMuted, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     Hủy
                   </button>
-                  <button onClick={() => { setConfirmingGroup(false); setSelectedGroup(null); }}
-                    style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
+                  <button onClick={handleConfirmGroup}
+                    style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     Xác nhận & Ghi kết quả
                   </button>
                 </div>
@@ -553,11 +638,14 @@ export default function ManagerResidencyPage() {
                         display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 13px', borderRadius: 12,
                         background: checklist[item.key] ? T.sageBg : T.bg,
                         border: `1px solid ${checklist[item.key] ? '#A8C3A5' : T.border}`,
-                        cursor: 'pointer', transition: 'all 0.2s'
+                        cursor: isReadOnly ? 'default' : 'pointer', transition: 'all 0.2s',
+                        pointerEvents: isReadOnly ? 'none' : 'auto',
+                        opacity: isReadOnly ? 0.85 : 1
                       }}>
                         <input type="checkbox" checked={checklist[item.key]}
+                          disabled={isReadOnly}
                           onChange={e => setChecklist(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                          style={{ width: 17, height: 17, accentColor: T.sage, cursor: 'pointer', flexShrink: 0, marginTop: 1 }} />
+                          style={{ width: 17, height: 17, accentColor: T.sage, cursor: isReadOnly ? 'default' : 'pointer', flexShrink: 0, marginTop: 1 }} />
                         <span className="material-symbols-outlined" style={{ fontSize: 17, color: checklist[item.key] ? T.sage : T.textFaint, marginTop: 1 }}>{item.icon}</span>
                         <span style={{ fontSize: 12, fontWeight: 500, color: T.text, lineHeight: 1.5 }}>{item.label}</span>
                       </label>
@@ -565,19 +653,37 @@ export default function ManagerResidencyPage() {
                   </div>
                 </div>
 
-                {/* Violation Note */}
-                {!checklist.no_violation && (
+                {/* Violation/Rejection Note */}
+                {(hasUnticked || violationNote) && (
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.red, textTransform: 'uppercase', marginBottom: 8 }}>
-                      ⚠ Chi tiết vi phạm (bắt buộc nhập)
+                      ⚠ Lý do không đạt / Chi tiết vi phạm {!isReadOnly && '(bắt buộc nhập)'}
                     </label>
                     <textarea
                       value={violationNote}
+                      disabled={isReadOnly}
                       onChange={e => setViolationNote(e.target.value)}
-                      placeholder="Mô tả tiền sử vi phạm đã phát hiện..."
+                      placeholder="Mô tả chi tiết lý do không đạt hoặc vi phạm..."
                       rows={3}
-                      style={{ width: '100%', border: `2px solid ${T.red}`, borderRadius: 12, padding: 10, fontSize: 12, color: T.text, resize: 'none', background: T.redBg, outline: 'none', boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        border: `2px solid ${T.red}`,
+                        borderRadius: 12,
+                        padding: 10,
+                        fontSize: 12,
+                        color: T.text,
+                        resize: 'none',
+                        background: T.redBg,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        opacity: isReadOnly ? 0.85 : 1
+                      }}
                     />
+                    {hasUnticked && !violationNote.trim() && !isReadOnly && (
+                      <p style={{ color: T.red, fontSize: 11, marginTop: 4 }}>
+                        * Vui lòng điền lý do không đạt để tiếp tục ghi nhận kết quả.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -597,26 +703,40 @@ export default function ManagerResidencyPage() {
               </div>
 
               {/* Action Buttons */}
-              {selectedMember.status === 'pending' && !memberResult && (
-                <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={() => saveMemberResult('approved')}
-                    disabled={!checklist.valid_documents || !checklist.info_matches || !checklist.age_verified || !checklist.no_violation}
-                    style={{
-                      flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12,
-                      fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      opacity: (!checklist.valid_documents || !checklist.info_matches || !checklist.age_verified || !checklist.no_violation) ? 0.5 : 1
-                    }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>verified</span>
-                    Đạt — Ghi nhận kết quả
-                  </button>
-                  <button
-                    onClick={() => saveMemberResult('rejected')}
-                    style={{ flex: 1, background: T.redBg, color: T.red, border: `1px solid ${T.red}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                    Không đạt
-                  </button>
-                </div>
-              )}
+              {selectedMember.status === 'pending' && !memberResult && (() => {
+                return (
+                  <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={() => saveMemberResult('approved')}
+                      disabled={!isChecklistComplete}
+                      style={{
+                        flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12,
+                        fontSize: 13, fontWeight: 700, cursor: isChecklistComplete ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        opacity: isChecklistComplete ? 1 : 0.5
+                      }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>verified</span>
+                      Đạt — Ghi nhận kết quả
+                    </button>
+                    <button
+                      onClick={() => saveMemberResult('rejected')}
+                      disabled={isRejectionDisabled}
+                      style={{
+                        flex: 1,
+                        background: isRejectionDisabled ? '#FFF0F0' : T.redBg,
+                        color: isRejectionDisabled ? T.textFaint : T.red,
+                        border: `1px solid ${isRejectionDisabled ? T.border : T.red}`,
+                        borderRadius: 12,
+                        padding: 12,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: isRejectionDisabled ? 'not-allowed' : 'pointer',
+                        opacity: isRejectionDisabled ? 0.6 : 1
+                      }}>
+                      Không đạt
+                    </button>
+                  </div>
+                );
+              })()}
               {(selectedMember.status !== 'pending' || memberResult) && (
                 <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                   <button onClick={() => setSelectedMember(null)}
@@ -627,6 +747,81 @@ export default function ManagerResidencyPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Warning modal for rejected members in a group */}
+      {showRejectedWarningModal && selectedGroup && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          {/* Backdrop */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.6)', backdropFilter: 'blur(6px)' }} 
+               onClick={() => setShowRejectedWarningModal(false)} />
+          
+          {/* Modal Content */}
+          <div style={{ position: 'relative', background: '#FFFFFF', borderRadius: 24, border: `1px solid ${T.border}`, width: 500, maxWidth: '100%', padding: '28px 30px', boxShadow: '0 12px 40px rgba(111,88,60,0.22)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Close Button X */}
+            <button 
+              onClick={() => setShowRejectedWarningModal(false)}
+              style={{ position: 'absolute', right: 20, top: 20, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
+            </button>
+
+            <div className="flex items-center gap-3 text-[#BA1A1A]" style={{ paddingRight: 40 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800 }}>Phát hiện thành viên không đạt điều kiện</h3>
+            </div>
+            
+            <p style={{ fontSize: 13, color: T.textMuted, lineHeight: 1.6 }}>
+              Trong nhóm phòng <strong>{selectedGroup.room_name}</strong> (Phiếu cọc <strong>{selectedGroup.deposit_ref}</strong>), có thành viên không đạt yêu cầu thẩm định lưu trú.
+            </p>
+
+            <div style={{ background: T.bg, borderRadius: 16, padding: 14 }} className="space-y-3">
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: T.sage, textTransform: 'uppercase', marginBottom: 6 }}>🇻🇳 Thành viên Đạt ({eligibleMembers.length})</p>
+                {eligibleMembers.length > 0 ? (
+                  <div style={{ fontSize: 12, fontWeight: 600, color: T.text }} className="space-y-1">
+                    {eligibleMembers.map(m => (
+                      <div key={m.id} className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-[#5F745D]">check_circle</span>
+                        {m.customer_name} ({m.customer_phone})
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 12, color: T.textFaint, fontStyle: 'italic' }}>Không có ai đạt</p>
+                )}
+              </div>
+              
+              <div style={{ borderTop: `1px dashed ${T.border}`, paddingTop: 10 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: T.red, textTransform: 'uppercase', marginBottom: 6 }}>✗ Thành viên Không Đạt ({selectedGroup.members.length - eligibleMembers.length})</p>
+                <div style={{ fontSize: 12, fontWeight: 600, color: T.text }} className="space-y-1">
+                  {selectedGroup.members.filter(m => m.status === 'rejected').map(m => (
+                    <div key={m.id} className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[16px] text-[#BA1A1A]">cancel</span>
+                      {m.customer_name} ({m.customer_phone})
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13, fontWeight: 700, color: T.text, marginTop: 4 }}>
+              Bạn có muốn tiếp tục lập hợp đồng với những người đã đạt hay không?
+            </p>
+
+            <div className="flex gap-3 mt-2">
+              <button 
+                onClick={handleCancelDeposit}
+                style={{ flex: 1, background: T.redBg, color: T.red, border: `1px solid ${T.red}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Hủy phiếu đặt cọc
+              </button>
+              <button 
+                onClick={handleConfirmGroup}
+                disabled={eligibleMembers.length === 0}
+                style={{ flex: 1.5, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: eligibleMembers.length === 0 ? 0.5 : 1 }}>
+                Tiếp tục lập hợp đồng
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

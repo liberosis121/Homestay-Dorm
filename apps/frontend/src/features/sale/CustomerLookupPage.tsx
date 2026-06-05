@@ -7,7 +7,7 @@ import CustomerProfileCard from './components/CustomerProfileCard';
 import CustomerTabs from './components/CustomerTabs';
 import CustomerTimeline from './components/CustomerTimeline';
 import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
 
 export default function CustomerLookupPage() {
   const navigate = useNavigate();
@@ -106,21 +106,7 @@ export default function CustomerLookupPage() {
     setSearchEmail('');
   };
 
-  // Cập nhật và lưu ghi chú quan trọng vào localStorage db
-  const handleSaveNote = () => {
-    if (activeCustomer) {
-      const db = getMockDB();
-      const updatedList = customers.map(c => 
-        c.id === activeCustomer.id ? { ...c, importantNote: noteContent } : c
-      );
-      setCustomers(updatedList);
-      db.customers = updatedList;
-      saveMockDB(db);
 
-      setActiveCustomer(prev => prev ? { ...prev, importantNote: noteContent } : null);
-      setIsEditingNote(false);
-    }
-  };
 
   // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
   const handleUpdateCustomer = (updatedCust: Customer) => {

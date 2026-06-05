@@ -274,7 +274,8 @@ export interface ResidencyCheck {
     no_violation: boolean;
   };
   violation_note?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'need_more';
+  status: 'pending' | 'approved' | 'rejected';
+  confirmed?: boolean;
   created_at: string;
 }
 
@@ -811,10 +812,31 @@ function generateManagerDeposits(): ManagerDeposit[] {
 function generateResidencyChecks(): ResidencyCheck[] {
   const names = ['Nguyễn Văn Bình', 'Trần Minh Châu', 'Lê Thị Duyên', 'Phạm Quốc Hùng', 'Hoàng Thị Lan', 'Đỗ Văn Mạnh', 'Nguyễn Thu Ngân', 'Bùi Đình Phúc', 'Lý Ngọc Quỳnh', 'Phan Văn Sơn', 'Vũ Thị Tâm', 'Đặng Minh Uyên', 'Trịnh Văn Vinh', 'Đinh Thị Xuân', 'Cao Thị Yến'];
   const rooms = ['Phòng 101', 'Phòng 102', 'Phòng 201', 'Phòng 202', 'Phòng 301', 'Phòng 302'];
-  const statuses: ResidencyCheck['status'][] = ['pending', 'pending', 'approved', 'approved', 'rejected', 'need_more'];
+  const statuses: ResidencyCheck['status'][] = ['pending', 'pending', 'approved', 'approved', 'rejected'];
   const list: ResidencyCheck[] = [];
   for (let i = 1; i <= 26; i++) {
     const name = names[i % names.length];
+    const status = statuses[i % statuses.length];
+    const isApproved = status === 'approved';
+    
+    const checklist = isApproved
+      ? {
+          valid_documents: true,
+          info_matches: true,
+          age_verified: true,
+          no_violation: true
+        }
+      : {
+          valid_documents: i % 7 !== 0,
+          info_matches: i % 5 !== 0,
+          age_verified: true,
+          no_violation: i % 8 !== 0
+        };
+
+    const violation_note = (!isApproved && !checklist.no_violation)
+      ? 'Khách hàng có tiền sử vi phạm quy định nội quy phòng trọ tại địa chỉ cũ'
+      : undefined;
+
     list.push({
       id: `RC-${3000 + i}`,
       customer_id: `u-mock-${300 + i}`,
@@ -828,14 +850,9 @@ function generateResidencyChecks(): ResidencyCheck[] {
       nationality: i % 5 === 0 ? 'foreign' : 'vietnamese',
       front_image_url: 'https://images.unsplash.com/photo-1633265486064-086b219458ec?auto=format&fit=crop&w=400&q=80',
       back_image_url: i % 5 !== 0 ? 'https://images.unsplash.com/photo-1633265486064-086b219458ec?auto=format&fit=crop&w=400&q=80' : undefined,
-      checklist: {
-        valid_documents: i % 7 !== 0,
-        info_matches: i % 5 !== 0,
-        age_verified: true,
-        no_violation: i % 8 !== 0
-      },
-      violation_note: i % 8 === 0 ? 'Khách hàng có tiền sử vi phạm quy định nội quy phòng trọ tại địa chỉ cũ' : undefined,
-      status: statuses[i % statuses.length],
+      checklist,
+      violation_note,
+      status,
       created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
     });
   }
@@ -962,82 +979,15 @@ const hasEncodingIssue = (value: unknown): boolean => {
   return false;
 };
 
+let isInitializedThisSession = false;
+
 // Initialize Mock Database in LocalStorage
-export const initializeMockDB = () => {
-  const existing = localStorage.getItem(STORAGE_KEY);
-  if (!existing) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
-  } else {
-    try {
-      const db = JSON.parse(existing);
-      let updated = false;
-      if (db && db.profiles) {
-        db.profiles = INITIAL_DB.profiles;
-        updated = true;
-      }
-      if (db && (!db.customers || db.customers.length < 25)) {
-        db.customers = INITIAL_DB.customers;
-        updated = true;
-      }
-      if (db && db.rooms) {
-        // Force update rooms to ensure new properties exist
-        db.rooms = INITIAL_DB.rooms;
-        updated = true;
-      }
-      if (db && (!db.viewing_schedules || db.viewing_schedules.length < 8)) {
-        db.viewing_schedules = INITIAL_DB.viewing_schedules;
-        updated = true;
-      }
-      if (db && db.viewing_schedules && !db.viewing_schedules.some((s: ViewingSchedule) => s.id === 'vs-test-unavailable')) {
-        const testSchedule = INITIAL_DB.viewing_schedules.find(s => s.id === 'vs-test-unavailable');
-        if (testSchedule) {
-          db.viewing_schedules = [...db.viewing_schedules, testSchedule];
-          updated = true;
-        }
-      }
-      if (db && (!db.customer_deposit_requests || hasEncodingIssue(db.customer_deposit_requests))) {
-        db.customer_deposit_requests = INITIAL_DB.customer_deposit_requests;
-        updated = true;
-      }
-      // Seed Sale Dashboard mock data
-      if (db && !db.today_appointments) {
-        db.today_appointments = INITIAL_DB.today_appointments;
-        db.recent_registrations = INITIAL_DB.recent_registrations;
-        db.activity_logs = INITIAL_DB.activity_logs;
-        updated = true;
-      }
-      // Seed Services mock data
-      if (db && !db.services) {
-        db.services = INITIAL_DB.services;
-        db.service_subscriptions = INITIAL_DB.service_subscriptions;
-        db.consumption_records = INITIAL_DB.consumption_records;
-        updated = true;
-      }
-      // Seed Accountant mock data
-      if (db && !db.deposit_invoices) {
-        db.deposit_invoices = INITIAL_DB.deposit_invoices;
-        db.checkin_invoices = INITIAL_DB.checkin_invoices;
-        db.monthly_invoices = INITIAL_DB.monthly_invoices;
-        db.refund_records = INITIAL_DB.refund_records;
-        db.payout_records = INITIAL_DB.payout_records;
-        updated = true;
-      }
-      // Seed Manager mock data
-      if (db && !db.manager_deposits) {
-        db.manager_deposits = generateManagerDeposits();
-        db.residency_checks = generateResidencyChecks();
-        db.asset_handovers = generateAssetHandovers();
-        db.asset_inspections = generateAssetInspections();
-        db.managed_assets = generateManagedAssets();
-        updated = true;
-      }
-      if (updated) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-      }
-    } catch (e) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
-    }
+export const initializeMockDB = (force = false) => {
+  if (isInitializedThisSession && !force) {
+    return;
   }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
+  isInitializedThisSession = true;
 };
 
 // Fetch current database state
