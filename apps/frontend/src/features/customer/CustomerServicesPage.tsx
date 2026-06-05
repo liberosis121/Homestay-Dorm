@@ -343,11 +343,13 @@ function DropdownSelect({
 
   return (
     <div className="w-full md:w-48 relative">
-      <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wide">{label}</label>
+      {label && <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wide">{label}</label>}
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl
-                   focus:outline-none focus:border-primary transition-all text-sm font-medium text-on-surface"
+                   focus:outline-none focus:border-primary transition-all duration-150 text-sm font-medium text-on-surface cursor-pointer
+                   hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
       >
         <span>{currentLabel}</span>
         <span className="material-symbols-outlined text-[18px] text-outline transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'none' }}>
@@ -362,12 +364,13 @@ function DropdownSelect({
                           shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden max-h-60 overflow-y-auto animate-fade-in-up">
             {options.map((opt) => (
               <button
+                type="button"
                 key={opt.value}
                 onClick={() => { onChange(opt.value); setOpen(false); }}
-                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-all cursor-pointer active:scale-[0.99]
                   ${value === opt.value
                     ? 'bg-primary/8 text-primary font-bold'
-                    : 'text-on-surface hover:bg-surface-container'}`}
+                    : 'text-on-surface hover:bg-primary/5 hover:text-primary'}`}
               >
                 <span>{opt.label}</span>
               </button>
@@ -981,15 +984,17 @@ function RenterServicesView({
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <button
+            type="button"
             onClick={() => setActiveTab('catalog')}
-            className="flex-1 md:flex-none px-5 py-2.5 bg-primary text-white rounded-xl font-label-md text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+            className="flex-1 md:flex-none px-5 py-2.5 bg-primary text-white rounded-xl font-label-md text-xs font-bold hover:bg-primary/90 hover:shadow-md transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Đăng ký thêm
           </button>
           <button
+            type="button"
             onClick={() => navigate('/customer/invoices')}
-            className="flex-1 md:flex-none px-5 py-2.5 border border-outline text-on-surface-variant bg-white rounded-xl font-label-md text-xs font-bold hover:bg-surface-container transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 md:flex-none px-5 py-2.5 border border-outline text-on-surface-variant bg-white rounded-xl font-label-md text-xs font-bold hover:bg-primary/5 hover:border-primary/30 hover:text-primary hover:shadow-sm transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
           >
             <Clock className="w-4 h-4" />
             Lịch sử thanh toán
@@ -1031,33 +1036,36 @@ function RenterServicesView({
           <nav className="border-b border-outline-variant/60 mb-6">
             <div className="flex gap-6 overflow-x-auto pb-0.5">
               <button
+                type="button"
                 onClick={() => setActiveTab('active')}
-                className={`pb-4 font-label-md text-sm font-bold transition-all whitespace-nowrap px-1 relative ${
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${
                   activeTab === 'active'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-on-surface-variant hover:text-primary'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
                 }`}
               >
                 Dịch vụ đang dùng
               </button>
               
               <button
+                type="button"
                 onClick={() => setActiveTab('catalog')}
-                className={`pb-4 font-label-md text-sm font-bold transition-all whitespace-nowrap px-1 relative ${
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${
                   activeTab === 'catalog'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-on-surface-variant hover:text-primary'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
                 }`}
               >
                 Danh mục &amp; Đăng ký
               </button>
               
               <button
+                type="button"
                 onClick={() => setActiveTab('consumption')}
-                className={`pb-4 font-label-md text-sm font-bold transition-all whitespace-nowrap px-1 relative ${
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${
                   activeTab === 'consumption'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-on-surface-variant hover:text-primary'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
                 }`}
               >
                 Chỉ số Điện &amp; Nước
@@ -1072,7 +1080,7 @@ function RenterServicesView({
                 <div className="flex flex-col items-center justify-center py-16 bg-white border border-outline-variant rounded-2xl gap-3">
                   <Info className="w-10 h-10 text-outline" />
                   <p className="text-on-surface-variant font-bold text-sm">Bạn chưa kích hoạt dịch vụ nào.</p>
-                  <button onClick={() => setActiveTab('catalog')} className="text-primary font-bold hover:underline text-sm">Xem danh mục & đăng ký ngay</button>
+                  <button type="button" onClick={() => setActiveTab('catalog')} className="text-primary font-bold hover:bg-primary/10 px-3 py-2 rounded-xl transition-all cursor-pointer active:scale-[0.98] text-sm">Xem danh mục & đăng ký ngay</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1111,24 +1119,25 @@ function RenterServicesView({
                   />
                 </div>
                 
-                <select
+                <DropdownSelect
+                  label=""
                   value={renterCategory}
-                  onChange={(e) => setRenterCategory(e.target.value)}
-                  className="px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl focus:outline-none focus:border-primary text-xs font-semibold text-on-surface"
-                >
-                  <option value="all">Tất cả phân loại</option>
-                  <option value="essential">Thiết yếu</option>
-                  <option value="utility">Tiện ích</option>
-                  <option value="convenience">Tiện nghi</option>
-                  <option value="premium">Cao cấp</option>
-                </select>
+                  onChange={setRenterCategory}
+                  options={[
+                    { value: 'all', label: 'Tất cả phân loại' },
+                    { value: 'essential', label: 'Thiết yếu' },
+                    { value: 'utility', label: 'Tiện ích' },
+                    { value: 'convenience', label: 'Tiện nghi' },
+                    { value: 'premium', label: 'Cao cấp' },
+                  ]}
+                />
               </div>
 
               {catalogServices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 bg-white border border-outline-variant rounded-2xl gap-3">
                   <Info className="w-10 h-10 text-outline" />
                   <p className="text-on-surface-variant font-bold text-sm">Không tìm thấy dịch vụ phù hợp.</p>
-                  <button onClick={() => { setRenterSearch(''); setRenterCategory('all'); }} className="text-primary font-bold hover:underline text-xs">Đặt lại bộ lọc</button>
+                  <button type="button" onClick={() => { setRenterSearch(''); setRenterCategory('all'); }} className="text-primary font-bold hover:bg-primary/10 px-3 py-2 rounded-xl transition-all cursor-pointer active:scale-[0.98] text-xs">Đặt lại bộ lọc</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1224,7 +1233,7 @@ function RenterServicesView({
                   <p className="text-xs text-on-surface-variant leading-relaxed mt-1 font-medium">
                     Đăng ký sử dụng gói "Giặt sấy trọn gói" kèm "Dọn phòng định kỳ" để nhận ngay ưu đãi giảm 10% tổng chi phí dịch vụ mỗi tháng.
                   </p>
-                  <button className="mt-3 text-primary font-bold text-xs border-b border-primary/30 pb-0.5 hover:border-primary transition-colors">
+                  <button type="button" className="mt-3 rounded-lg px-2 py-1 text-primary font-bold text-xs border-b border-primary/30 hover:border-primary hover:bg-primary/10 transition-all cursor-pointer active:scale-[0.98]">
                     Xem chi tiết ưu đãi
                   </button>
                 </div>
@@ -1292,8 +1301,9 @@ function RenterServicesView({
             </div>
             
             <button
+              type="button"
               onClick={() => navigate('/customer/invoices')}
-              className="w-full bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-surface-container transition-colors active:scale-95 shadow-md"
+              className="w-full bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-surface-container hover:shadow-lg transition-all cursor-pointer active:scale-[0.97] shadow-md"
             >
               Thanh toán ngay
             </button>

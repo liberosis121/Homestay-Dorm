@@ -69,7 +69,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   if (variant === 'guest') {
     return (
       <div
-        className="bg-white p-6 rounded-2xl border border-outline-variant moss-shadow flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300 cursor-pointer"
+        className="bg-white p-6 rounded-2xl border border-outline-variant moss-shadow flex flex-col justify-between cursor-pointer transition-all duration-150 hover:-translate-y-1 hover:border-primary/30 hover:shadow-md active:translate-y-0 active:scale-[0.99] active:shadow-sm"
         onClick={() => onViewDetail?.(service)}
       >
         <div>
@@ -99,8 +99,9 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             </p>
           </div>
           <button 
+            type="button"
             onClick={(e) => { e.stopPropagation(); onViewDetail?.(service); }}
-            className="p-2 text-primary hover:bg-surface-container rounded-full transition-colors"
+            className="p-2 text-primary hover:bg-surface-container rounded-full transition-all cursor-pointer active:scale-90"
           >
             <ArrowRight className="w-5 h-5" />
           </button>
@@ -113,7 +114,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   if (variant === 'catalog') {
     return (
       <div 
-        className="bg-white border border-outline-variant rounded-2xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow cursor-pointer"
+        className="bg-white border border-outline-variant rounded-2xl p-6 flex flex-col justify-between cursor-pointer transition-all duration-150 hover:-translate-y-1 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md active:translate-y-0 active:scale-[0.99] active:shadow-sm"
         onClick={() => onViewDetail?.(service)}
       >
         <div>
@@ -153,8 +154,9 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
           </button>
         ) : (
           <button 
+            type="button"
             onClick={(e) => { e.stopPropagation(); onRegister?.(service); }}
-            className="w-full py-2 bg-primary text-white hover:opacity-90 active:scale-95 transition-all rounded-lg font-label-md text-xs font-semibold"
+            className="w-full py-2 bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-[0.97] transition-all rounded-lg font-label-md text-xs font-semibold cursor-pointer"
           >
             Đăng ký ngay
           </button>
@@ -200,7 +202,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   const details = getActiveDetails();
 
   return (
-    <div className="glass-card-light rounded-2xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+    <div className="glass-card-light rounded-2xl p-6 flex flex-col justify-between transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md active:scale-[0.995]">
       <div>
         <div className="flex justify-between items-start mb-4">
           <div className="w-12 h-12 bg-primary-fixed text-primary rounded-full flex items-center justify-center">
@@ -223,8 +225,9 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
         </div>
       </div>
       <button 
+        type="button"
         onClick={() => subscription && onManage?.(subscription)}
-        className="w-full py-2 border border-outline rounded-lg text-on-surface-variant font-label-md text-xs font-semibold hover:bg-surface-container transition-all"
+        className="w-full py-2 border border-outline rounded-lg text-on-surface-variant font-label-md text-xs font-semibold hover:bg-surface-container hover:border-primary/30 hover:text-primary transition-all cursor-pointer active:scale-[0.97]"
       >
         Quản lý
       </button>
