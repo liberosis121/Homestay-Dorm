@@ -5,6 +5,7 @@ import {
   Building2, Phone, ShieldCheck, AlertCircle,
   FileSignature, CheckCircle2, Activity
 } from 'lucide-react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 interface ContractData {
   id: string;
@@ -402,19 +403,19 @@ export default function CustomerContractsPage() {
         </div>
 
         {/* Contract Dropdown Selector */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col gap-1.5 shrink-0 sm:flex-row sm:items-center sm:gap-2">
           <span className="text-xs font-bold text-on-surface-variant uppercase">Chọn hợp đồng:</span>
-          <select
+          <CustomSelect
             value={selectedContractId}
-            onChange={(e) => setSelectedContractId(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-outline-variant bg-[#ffffff] text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition cursor-pointer"
-          >
-            {MOCK_CONTRACTS.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.contractCode} ({c.statusLabel} - {c.branch})
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedContractId}
+            options={MOCK_CONTRACTS.map((c) => ({
+              value: c.id,
+              label: `${c.contractCode} (${c.statusLabel} - ${c.branch})`,
+            }))}
+            className="w-full sm:w-[320px]"
+            triggerClassName="rounded-xl border-outline-variant bg-white px-4 py-2 text-sm font-bold text-primary hover:bg-primary/5 active:scale-[0.99]"
+            dropdownClassName="min-w-[320px]"
+          />
         </div>
       </div>
 
@@ -661,32 +662,36 @@ export default function CustomerContractsPage() {
           </div>
 
           {/* Support Manager Card */}
-          <div className="bg-primary text-[#ffffff] border border-primary rounded-3xl p-6 shadow-sm hover:shadow-lg transition space-y-4 relative overflow-hidden">
-            {/* Decorative white blur */}
-            <div className="absolute -right-12 -bottom-12 w-28 h-28 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="bg-[#F6F2EC] text-[#5F5A52] border border-[#D8CEC0] rounded-3xl p-6 shadow-sm hover:shadow-md transition space-y-4 relative overflow-hidden">
+            {/* Subtle light accent overlay for depth */}
+            <div className="absolute -right-12 -bottom-12 w-28 h-28 bg-[#4F6B4E]/5 rounded-full blur-2xl pointer-events-none"></div>
             
             <div className="space-y-1">
-              <h3 className="text-base font-extrabold leading-tight">Hỗ trợ hợp đồng</h3>
-              <p className="text-xs opacity-90 leading-relaxed">
+              <h3 className="text-base font-extrabold leading-tight text-[#4F6B4E]">Hỗ trợ hợp đồng</h3>
+              <p className="text-xs text-[#5F5A52] opacity-90 leading-relaxed">
                 Nếu bạn có bất kỳ thắc mắc nào về các điều khoản hoặc cần thực hiện gia hạn hợp đồng thuê phòng, vui lòng liên hệ trực tiếp:
               </p>
             </div>
 
-            <div className="flex items-center gap-3 bg-white/10 rounded-2xl p-3 border border-white/10">
-              <img
-                src={contract.managerImage}
-                alt={contract.managerName}
-                className="w-11 h-11 rounded-full border border-white/20 object-cover bg-white/20 shrink-0"
-              />
+            <div className="flex items-center gap-3 bg-[#ECE6DE] rounded-2xl p-3 border border-[#D8CEC0]/60">
+              <div className="w-11 h-11 rounded-full bg-[#4F6B4E]/15 text-[#4F6B4E] flex items-center justify-center text-sm font-extrabold shrink-0 border border-[#4F6B4E]/25">
+                {(() => {
+                  const name = contract.managerName;
+                  const cleanName = name.replace(/^(mr|ms|mrs)\.?\s+/i, '');
+                  const parts = cleanName.trim().split(/\s+/);
+                  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                })()}
+              </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold truncate">{contract.managerName}</p>
-                <p className="text-[10px] opacity-80 truncate">{contract.branch}</p>
+                <p className="text-xs font-bold text-[#4e453c] truncate">{contract.managerName}</p>
+                <p className="text-[10px] text-[#5f5a52] opacity-85 truncate">{contract.branch}</p>
               </div>
             </div>
 
             <a
               href={`tel:${contract.managerPhone}`}
-              className="flex items-center justify-center gap-2 w-full py-3 bg-surface-container-lowest text-primary text-xs font-bold rounded-xl hover:bg-[#ffffff] transition active:scale-95"
+              className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-[#D8CEC0] text-[#4F6B4E] text-xs font-bold rounded-xl hover:bg-[#4F6B4E] hover:text-white hover:border-[#4F6B4E] transition-all cursor-pointer active:scale-95 shadow-sm"
             >
               <Phone className="w-4 h-4" />
               {contract.managerPhone.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')}

@@ -59,8 +59,8 @@ const viewingTimeOptions = [
 
 const today = new Date().toISOString().split('T')[0];
 const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px-5 text-sm font-body-md shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface hover:border-primary/40';
-const selectTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 active:scale-[0.995]';
-const datePickerClass = '[&_button:first-of-type]:bg-white [&_button:first-of-type]:border-[#d7ded3] [&_button:first-of-type]:shadow-[0_1px_0_rgba(74,101,73,0.04)] [&_button:first-of-type]:py-3.5 [&_button:first-of-type]:hover:border-primary/40 [&_button:first-of-type]:active:scale-[0.995] [&_span]:text-sm';
+const selectTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
+const datePickerTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 px-5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
 
 export const RegisterLeasePage: React.FC = () => {
   const navigate = useNavigate();
@@ -269,7 +269,7 @@ export const RegisterLeasePage: React.FC = () => {
             </FormSection>
 
             <FormSection icon={<Home className="w-5 h-5" />} title="Nhu cầu thuê">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-7 gap-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Loại phòng mong muốn">
                   <CustomSelect value={form.preferredRoomType} onChange={val => setField('preferredRoomType', val)} options={roomTypeOptions} triggerClassName={selectTriggerClass} />
                 </Field>
@@ -279,7 +279,7 @@ export const RegisterLeasePage: React.FC = () => {
                 <Field label="Số người ở">
                   <input type="number" min="1" max="8" value={form.occupantsCount} onChange={e => setField('occupantsCount', e.target.value)} className={inputClass} />
                 </Field>
-                <Field label="Khu vực mong muốn">
+                <Field label="Chi nhánh/khu vực mong muốn">
                   <CustomSelect value={form.preferredBranchId} onChange={val => setField('preferredBranchId', val)} options={branchOptions} triggerClassName={selectTriggerClass} />
                 </Field>
                 <Field label="Khoảng giá">
@@ -293,7 +293,7 @@ export const RegisterLeasePage: React.FC = () => {
                     error={!!errors.moveInDate}
                     placeholder="Chọn ngày vào ở"
                     variant="surface"
-                    className={datePickerClass}
+                    triggerClassName={datePickerTriggerClass}
                   />
                 </Field>
                 <Field label="Thời hạn thuê">
@@ -321,7 +321,7 @@ export const RegisterLeasePage: React.FC = () => {
                     error={!!errors.preferredViewingDate}
                     placeholder="Chọn ngày xem"
                     variant="surface"
-                    className={datePickerClass}
+                    triggerClassName={datePickerTriggerClass}
                   />
                 </Field>
                 <Field label="Khung giờ rảnh">
@@ -353,9 +353,9 @@ export const RegisterLeasePage: React.FC = () => {
                           key={value}
                           type="button"
                           onClick={() => toggleAmenity(value)}
-                          className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all duration-200 active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-primary/20 ${active
-                              ? 'bg-primary text-on-primary border-primary hover:bg-[#3d4e3a] hover:shadow-md'
-                              : 'bg-white text-on-surface-variant border-[#d7ded3] hover:border-primary/50 hover:bg-primary/5 hover:text-primary hover:shadow-sm'
+                          className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold shadow-[0_1.5px_3px_rgba(74,101,73,0.06)] transition-all duration-200 hover:-translate-y-[1px] active:translate-y-[1px] active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/20 ${active
+                              ? 'bg-primary text-on-primary border-primary hover:bg-[#3d4e3a] active:bg-[#303f2e] hover:shadow-md'
+                              : 'bg-white text-on-surface-variant border-[#d7ded3] hover:border-primary/50 hover:bg-primary/5 hover:text-primary active:bg-primary/10 hover:shadow-md'
                             }`}
                         >
                           {label}
@@ -374,7 +374,7 @@ export const RegisterLeasePage: React.FC = () => {
               <p className="text-xs text-on-surface-variant leading-relaxed max-w-xl">
                 Phiếu này sẽ được gửi đến nhân viên Sale để kiểm tra phòng/giường phù hợp trước khi lập lịch xem phòng.
               </p>
-              <button type="submit" disabled={isSubmitting} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
+              <button type="submit" disabled={isSubmitting} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-95 hover:-translate-y-[1px] hover:shadow-md active:translate-y-[1px] active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
                 {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu đăng ký'}
                 <Send className="w-4 h-4" />
               </button>
@@ -425,7 +425,7 @@ function FormSection({ icon, title, children }: { icon: React.ReactNode; title: 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <label className="flex min-w-0 flex-col gap-1.5">
-      <span className="ml-2 block min-h-[24px] max-w-full text-sm font-label-md leading-[18px] text-on-surface-variant">
+      <span className="ml-2 block min-h-[20px] max-w-full text-sm font-label-md leading-normal text-on-surface-variant">
         {label}
       </span>
       <div className="min-w-0">
