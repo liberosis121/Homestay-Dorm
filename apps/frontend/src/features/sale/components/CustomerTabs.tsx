@@ -23,11 +23,11 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
   const getRegStatusBadge = (status: Customer['registrations'][number]['status']) => {
     switch (status) {
       case 'completed':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d2e9cd] text-[#384c37]">Hoàn tất</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d2e9cd] text-[#384c37] whitespace-nowrap">Hoàn tất</span>;
       case 'pending':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fdddb9] text-[#584329]">Đang xử lý</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fdddb9] text-[#584329] whitespace-nowrap">Đang xử lý</span>;
       case 'cancelled':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#ffdad6] text-[#93000a]">Đã hủy</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#ffdad6] text-[#93000a] whitespace-nowrap">Đã hủy</span>;
     }
   };
 
@@ -36,21 +36,21 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
     switch (status) {
       case 'viewed':
         return (
-          <span className="flex items-center gap-1 text-xs font-bold text-[#4d614b] uppercase tracking-wider bg-[#d2e9cd]/30 px-2 py-0.5 rounded-full border border-[#d2e9cd]">
+          <span className="flex items-center gap-1 text-[10px] font-bold text-[#4d614b] uppercase tracking-wider bg-[#d2e9cd]/30 px-2 py-0.5 rounded-full border border-[#d2e9cd] whitespace-nowrap">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Đã xem
           </span>
         );
       case 'confirmed':
         return (
-          <span className="flex items-center gap-1 text-xs font-bold text-[#6f583c] uppercase tracking-wider bg-[#fdddb9]/30 px-2 py-0.5 rounded-full border border-[#fdddb9]">
+          <span className="flex items-center gap-1 text-[10px] font-bold text-[#6f583c] uppercase tracking-wider bg-[#fdddb9]/30 px-2 py-0.5 rounded-full border border-[#fdddb9] whitespace-nowrap">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Đã xác nhận
           </span>
         );
       case 'cancelled':
         return (
-          <span className="flex items-center gap-1 text-xs font-bold text-[#ba1a1a] uppercase tracking-wider bg-[#ffdad6]/30 px-2 py-0.5 rounded-full border border-[#ffdad6]">
+          <span className="flex items-center gap-1 text-[10px] font-bold text-[#ba1a1a] uppercase tracking-wider bg-[#ffdad6]/30 px-2 py-0.5 rounded-full border border-[#ffdad6] whitespace-nowrap">
             <XCircle className="w-3.5 h-3.5" />
             Đã hủy lịch
           </span>
@@ -62,11 +62,11 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
   const getDepositStatusBadge = (status: Customer['deposits'][number]['status']) => {
     switch (status) {
       case 'approved':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d2e9cd] text-[#384c37]">Đã duyệt</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d2e9cd] text-[#384c37] whitespace-nowrap">Đã duyệt</span>;
       case 'pending':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fdddb9] text-[#584329]">Chờ duyệt</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fdddb9] text-[#584329] whitespace-nowrap">Chờ duyệt</span>;
       case 'refunded':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#e6e2de] text-[#605e5b]">Đã hoàn cọc</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#e6e2de] text-[#605e5b] whitespace-nowrap">Đã hoàn cọc</span>;
     }
   };
 
@@ -74,11 +74,11 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
   const getContractStatusBadge = (status: Customer['contracts'][number]['status']) => {
     switch (status) {
       case 'active':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d2e9cd] text-[#384c37]">Hiệu lực</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d2e9cd] text-[#384c37] whitespace-nowrap">Hiệu lực</span>;
       case 'pending':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fdddb9] text-[#584329]">Chờ ký</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fdddb9] text-[#584329] whitespace-nowrap">Chờ ký</span>;
       case 'expired':
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#e6e2de] text-[#605e5b]">Hết hạn</span>;
+        return <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#e6e2de] text-[#605e5b] whitespace-nowrap">Hết hạn</span>;
     }
   };
 
@@ -109,34 +109,34 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
       {/* Tab Content Panes */}
       <div className="min-h-[300px]">
         {activeTab === 'personal' && (
-          <div className="bg-white p-6 rounded-24 border border-[#d1c4b9] shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-6 animate-in fade-in duration-300">
+          <div className="bg-white p-6 rounded-24 border border-[#d1c4b9] shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-6 animate-in fade-in duration-300 text-left">
             <div>
-              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Số CCCD / Hộ chiếu</p>
-              <p className="font-semibold text-[#1e1b17]">{customer.personalInfo.cccd}</p>
+              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5 whitespace-nowrap">Số CCCD / Hộ chiếu</p>
+              <p className="font-semibold text-[#1e1b17] whitespace-nowrap">{customer.personalInfo.cccd}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Số điện thoại</p>
-              <p className="font-semibold text-[#1e1b17]">{customer.personalInfo.phone}</p>
+              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5 whitespace-nowrap">Số điện thoại</p>
+              <p className="font-semibold text-[#1e1b17] whitespace-nowrap">{customer.personalInfo.phone}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5 whitespace-nowrap">Email liên hệ</p>
+              <p className="font-semibold text-[#1e1b17] truncate" title={customer.personalInfo.email}>{customer.personalInfo.email}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Email liên hệ</p>
-              <p className="font-semibold text-[#1e1b17]">{customer.personalInfo.email}</p>
+              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5 whitespace-nowrap">Ngày sinh</p>
+              <p className="font-semibold text-[#1e1b17] whitespace-nowrap">{customer.personalInfo.birthDate}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Ngày sinh</p>
-              <p className="font-semibold text-[#1e1b17]">{customer.personalInfo.birthDate}</p>
+              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5 whitespace-nowrap">Quốc tịch</p>
+              <p className="font-semibold text-[#1e1b17] whitespace-nowrap">{customer.personalInfo.nationality}</p>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Quốc tịch</p>
-              <p className="font-semibold text-[#1e1b17]">{customer.personalInfo.nationality}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5 whitespace-nowrap">Nghề nghiệp</p>
+              <p className="font-semibold text-[#1e1b17] truncate" title={customer.personalInfo.job}>{customer.personalInfo.job}</p>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Nghề nghiệp</p>
-              <p className="font-semibold text-[#1e1b17]">{customer.personalInfo.job}</p>
-            </div>
-            <div className="md:col-span-2 lg:col-span-3">
+            <div className="sm:col-span-2 lg:col-span-3">
               <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Địa chỉ thường trú</p>
-              <p className="font-semibold text-[#1e1b17] leading-relaxed">{customer.personalInfo.address}</p>
+              <p className="font-semibold text-[#1e1b17] leading-relaxed line-clamp-2" title={customer.personalInfo.address}>{customer.personalInfo.address}</p>
             </div>
           </div>
         )}
@@ -153,19 +153,19 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[#faf2ec] border-b border-[#d1c4b9]">
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider">Mã Đăng Ký</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider">Nhu Cầu Phòng</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider">Ngày Đăng Ký</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider text-right">Trạng Thái</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider w-[150px] min-w-[150px] whitespace-nowrap">Mã Đăng Ký</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">Nhu Cầu Phòng</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider w-[140px] min-w-[140px] whitespace-nowrap">Ngày Đăng Ký</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider text-center w-[130px] min-w-[130px] whitespace-nowrap">Trạng Thái</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#eee7e1] text-sm text-[#1e1b17]">
                     {customer.registrations.map((reg) => (
                       <tr key={reg.id} className="hover:bg-[#fff8f3] transition-colors">
-                        <td className="px-6 py-4 font-mono font-bold text-[#6f583c]">{reg.id}</td>
-                        <td className="px-6 py-4 font-semibold">{reg.roomType}</td>
-                        <td className="px-6 py-4 text-[#4e453c]">{reg.date}</td>
-                        <td className="px-6 py-4 text-right">{getRegStatusBadge(reg.status)}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-[#6f583c] whitespace-nowrap w-[150px] min-w-[150px]">{reg.id}</td>
+                        <td className="px-4 py-3 font-semibold truncate max-w-[260px]" title={reg.roomType}>{reg.roomType}</td>
+                        <td className="px-4 py-3 text-[#4e453c] whitespace-nowrap w-[140px] min-w-[140px]">{reg.date}</td>
+                        <td className="px-4 py-3 text-center w-[130px] min-w-[130px] align-middle">{getRegStatusBadge(reg.status)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -186,21 +186,21 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
               customer.viewings.map((view, i) => (
                 <div
                   key={i}
-                  className="bg-white p-5 rounded-24 border border-[#d1c4b9] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-md hover:-translate-y-[2px] transition-all duration-300"
+                  className="bg-white p-5 rounded-24 border border-[#d1c4b9] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 text-left"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
                     <div className="w-11 h-11 bg-[#faf2ec] border border-[#6f583c]/15 text-[#6f583c] rounded-xl flex items-center justify-center shrink-0">
                       <Calendar className="w-5 h-5" />
                     </div>
-                    <div>
-                      <p className="font-bold text-[#1e1b17]">{view.roomName}</p>
-                      <p className="text-xs text-[#7f756b] font-medium mt-1">
+                    <div className="min-w-0">
+                      <p className="font-bold text-[#1e1b17] truncate" title={view.roomName}>{view.roomName}</p>
+                      <p className="text-xs text-[#7f756b] font-medium mt-1 truncate">
                         Chi nhánh: <span className="font-semibold text-[#4e453c]">{view.branch}</span> • NV hướng dẫn: <span className="font-semibold text-[#4e453c]">{view.staffName}</span>
                       </p>
                     </div>
                   </div>
                   <div className="flex sm:flex-col items-start sm:items-end justify-between shrink-0 gap-1.5">
-                    <span className="text-xs font-bold text-[#6f583c]">{view.date}</span>
+                    <span className="text-xs font-bold text-[#6f583c] whitespace-nowrap">{view.date}</span>
                     {getViewingStatus(view.status)}
                   </div>
                 </div>
@@ -221,19 +221,19 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[#faf2ec] border-b border-[#d1c4b9]">
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider">Nội Dung Đặt Cọc</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider">Ngày Lập</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider">Số Tiền</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#7f756b] uppercase tracking-wider text-right">Trạng Thái</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">Nội Dung Đặt Cọc</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider w-[120px] min-w-[120px] whitespace-nowrap">Ngày Lập</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider w-[150px] min-w-[150px] whitespace-nowrap">Số Tiền</th>
+                      <th className="px-4 py-3 text-xs font-bold text-[#7f756b] uppercase tracking-wider text-center w-[130px] min-w-[130px] whitespace-nowrap">Trạng Thái</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#eee7e1] text-sm text-[#1e1b17]">
                     {customer.deposits.map((dep, i) => (
                       <tr key={i} className="hover:bg-[#fff8f3] transition-colors">
-                        <td className="px-6 py-4 font-bold text-[#1e1b17]">{dep.content}</td>
-                        <td className="px-6 py-4 text-[#4e453c]">{dep.date}</td>
-                        <td className="px-6 py-4 font-bold text-[#6f583c]">{dep.amount}</td>
-                        <td className="px-6 py-4 text-right">{getDepositStatusBadge(dep.status)}</td>
+                        <td className="px-4 py-3 font-bold text-[#1e1b17] truncate max-w-[260px]" title={dep.content}>{dep.content}</td>
+                        <td className="px-4 py-3 text-[#4e453c] whitespace-nowrap w-[120px] min-w-[120px]">{dep.date}</td>
+                        <td className="px-4 py-3 font-bold text-[#6f583c] whitespace-nowrap w-[150px] min-w-[150px]">{dep.amount}</td>
+                        <td className="px-4 py-3 text-center w-[130px] min-w-[130px] align-middle">{getDepositStatusBadge(dep.status)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -244,7 +244,7 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
         )}
 
         {activeTab === 'contracts' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300 text-left">
             {customer.contracts.length === 0 ? (
               <div className="bg-white p-12 col-span-2 rounded-24 border border-[#d1c4b9] shadow-sm text-center text-[#4e453c]">
                 <AlertCircle className="w-10 h-10 mx-auto text-[#7f756b] opacity-60 mb-2" />
@@ -260,8 +260,8 @@ export default function CustomerTabs({ customer }: CustomerTabsProps) {
                     {getContractStatusBadge(con.status)}
                   </div>
                   <FileText className="w-9 h-9 text-[#6f583c] mb-4" />
-                  <h4 className="font-bold text-base text-[#1e1b17] mb-1">{con.id}</h4>
-                  <p className="text-xs text-[#7f756b] font-medium mb-5">Thời hạn: {con.period}</p>
+                  <h4 className="font-bold text-base text-[#1e1b17] mb-1 whitespace-nowrap truncate max-w-[180px]" title={con.id}>{con.id}</h4>
+                  <p className="text-xs text-[#7f756b] font-medium mb-5 whitespace-nowrap">Thời hạn: {con.period}</p>
                   <button className="w-full py-2.5 bg-[#faf2ec] hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 rounded-xl transition-all duration-300 font-semibold text-xs uppercase tracking-wider cursor-pointer">
                     Xem chi tiết hợp đồng
                   </button>

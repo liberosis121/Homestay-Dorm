@@ -22,7 +22,7 @@ function StatusBadge({ status }: { status: TodayAppointment['status'] }) {
   };
   const s = map[status];
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${s.cls}`}>
+    <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${s.cls}`}>
       {s.label}
     </span>
   );
@@ -212,7 +212,7 @@ export default function SaleDashboardPage() {
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Thời gian</th>
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Khách hàng</th>
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Loại phòng</th>
-                    <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-center">Trạng thái</th>
                     <th className="px-6 py-3"></th>
                   </tr>
                 </thead>
@@ -235,7 +235,7 @@ export default function SaleDashboardPage() {
                           <div>{appt.room_type}</div>
                           <div className="text-xs text-[#7f756b]">{appt.branch}</div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 text-center align-middle">
                           <StatusBadge status={appt.status} />
                         </td>
                         <td className="px-6 py-4 text-right relative">
