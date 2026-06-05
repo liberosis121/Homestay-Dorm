@@ -5,7 +5,7 @@ import { getMockDB, saveMockDB, ViewingSchedule, CustomerDepositRequest, Room, B
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
-
+  ArrowLeft,
   Search, MapPin, Calendar, User, Phone, ChevronLeft, ChevronRight,
   CheckCircle, Clock, X, CalendarCheck, MessageCircle, AlertTriangle,
   CreditCard,
@@ -767,6 +767,15 @@ export default function ViewingSchedulePage() {
       {showMapModal && <BranchMapModal onClose={() => setShowMapModal(false)} />}
 
       <div className="max-w-[1280px] mx-auto w-full px-4 md:px-10">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </button>
+
         {/* ─── Hero Search ──────────────────────────── */}
         <section className="bg-white rounded-[24px] border border-outline-variant/40 shadow-sm p-6 mb-6">
           <h1 className="text-3xl font-bold text-primary mb-1">Tra cứu lịch xem phòng</h1>
