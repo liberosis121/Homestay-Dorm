@@ -409,7 +409,7 @@ export default function CustomerContractsPage() {
             className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay lại hồ sơ cá nhân
+            Quay lại
           </button>
           <h1 className="font-headline-lg text-2xl font-bold text-primary flex items-center gap-2">
             <FileText className="w-7 h-7 text-primary" />

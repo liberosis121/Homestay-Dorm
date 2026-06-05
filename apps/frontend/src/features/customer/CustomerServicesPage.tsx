@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
-  Info, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
+  Info, ArrowLeft, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
 } from 'lucide-react';
 import { Service, ServiceSubscription } from '../../lib/supabaseClient';
 
@@ -966,6 +966,14 @@ function RenterServicesView({
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại
+          </button>
           <h1 className="font-headline-lg text-3xl font-extrabold text-primary mb-1 font-lexend">Dịch vụ của tôi</h1>
           <p className="font-body-md text-sm text-on-surface-variant max-w-2xl leading-relaxed">
             Quản lý toàn bộ dịch vụ đang sử dụng tại HomeStay Dorm. Bạn có thể theo dõi chỉ số, thanh toán hoặc đăng ký thêm tiện ích.

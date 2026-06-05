@@ -4,7 +4,7 @@ import { useInvoiceStore } from './store/useInvoiceStore';
 import InvoiceTable from './components/InvoiceTable';
 import InvoiceDetail from './components/InvoiceDetail';
 import CustomSelect from '../../components/ui/CustomSelect';
-import { FileClock, DollarSign, CalendarDays, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileClock, DollarSign, CalendarDays, CheckCircle } from 'lucide-react';
 
 const MONTH_OPTIONS = [
   { value: 'Tất cả', label: 'Tất cả các tháng' },
@@ -99,6 +99,14 @@ export default function InvoicesDashboardPage() {
     <div className="max-w-[1440px] mx-auto px-4 md:px-8">
       {/* Header Section */}
       <header className="mb-8">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </button>
         <h1 className="text-3xl font-bold font-headline-lg text-primary mb-2">Hóa đơn của tôi</h1>
         <p className="text-on-surface-variant font-body-md text-[15px]">
           Tra cứu thông tin chi phí định kỳ và thực hiện thanh toán trực tuyến nhanh chóng.

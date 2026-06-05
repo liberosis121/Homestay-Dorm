@@ -159,33 +159,33 @@ export default function AccountantDepositPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm">
-          <p className="font-label-caps text-[11px] text-[#5e5f5d] mb-1 font-bold uppercase tracking-wider">Tổng hóa đơn</p>
-          <p className="text-3xl font-semibold tabular-nums text-[#5a462d]">{totalCount}</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm">
+          <p className="font-label-caps text-[11px] text-[#8A7563] mb-1 font-bold uppercase tracking-wider">Tổng hóa đơn</p>
+          <p className="text-3xl font-semibold tabular-nums text-[#5C4632]">{totalCount}</p>
         </div>
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm border-l-4 border-l-[#2E7D32]">
-          <p className="font-label-caps text-[11px] text-[#2E7D32] mb-1 font-bold uppercase tracking-wider">Đã thanh toán</p>
-          <p className="text-3xl font-semibold tabular-nums text-[#2E7D32]">{paidCount}</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-l-4 border-l-[#5F7D4E]">
+          <p className="font-label-caps text-[11px] text-[#5F7D4E] mb-1 font-bold uppercase tracking-wider">Đã thanh toán</p>
+          <p className="text-3xl font-semibold tabular-nums text-[#5F7D4E]">{paidCount}</p>
         </div>
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm border-l-4 border-l-[#F57C00]">
-          <p className="font-label-caps text-[11px] text-[#F57C00] mb-1 font-bold uppercase tracking-wider">Chờ thanh toán</p>
-          <p className="text-3xl font-semibold tabular-nums text-[#F57C00]">{pendingCount}</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-l-4 border-l-[#B9792B]">
+          <p className="font-label-caps text-[11px] text-[#B9792B] mb-1 font-bold uppercase tracking-wider">Chờ thanh toán</p>
+          <p className="text-3xl font-semibold tabular-nums text-[#B9792B]">{pendingCount}</p>
         </div>
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm border-l-4 border-l-[#ba1a1a]">
-          <p className="font-label-caps text-[11px] text-[#ba1a1a] mb-1 font-bold uppercase tracking-wider">Quá hạn</p>
-          <p className="text-3xl font-semibold tabular-nums text-[#ba1a1a]">{overdueCount}</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-l-4 border-l-[#A94F4F]">
+          <p className="font-label-caps text-[11px] text-[#A94F4F] mb-1 font-bold uppercase tracking-wider">Quá hạn</p>
+          <p className="text-3xl font-semibold tabular-nums text-[#A94F4F]">{overdueCount}</p>
         </div>
-        <div className="bg-[#735d43] text-[#f5d8b7] p-4 rounded-lg md:col-span-1 col-span-2 shadow-sm">
-          <p className="font-label-caps text-[11px] mb-1 font-bold uppercase tracking-wider opacity-85 text-[#f5d8b7]">Tổng tiền dự kiến</p>
-          <p className="text-2xl font-bold tabular-nums">{totalExpectedAmount.toLocaleString('vi-VN')} ₫</p>
+        <div className="bg-[#5C4632] text-[#F6F2EC] p-4 rounded-lg md:col-span-1 col-span-2 shadow-sm border border-[#DCCFC0]">
+          <p className="font-label-caps text-[11px] mb-1 font-bold uppercase tracking-wider text-[#DCCFC0] opacity-90">Tổng tiền dự kiến</p>
+          <p className="text-2xl font-bold tabular-nums text-[#F6F2EC]">{totalExpectedAmount.toLocaleString('vi-VN')} ₫</p>
         </div>
       </div>
 
       {/* Main Layout: Form & Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Form */}
-        <div className="lg:col-span-7 bg-white border border-[#d1c4b9] p-6 rounded-lg shadow-sm">
-          <h3 className="text-base font-bold text-[#5a462d] mb-4 border-b border-[#d1c4b9] pb-2">Thông tin hóa đơn</h3>
+        <div className="lg:col-span-7 bg-white border border-[#DCCFC0] p-6 rounded-lg shadow-sm">
+          <h3 className="text-base font-bold text-[#5C4632] mb-4 border-b border-[#E7DED2] pb-2">Thông tin hóa đơn</h3>
           
           <form onSubmit={handleCreateInvoice} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -270,7 +270,7 @@ export default function AccountantDepositPage() {
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-3 border-t border-[#d1c4b9]">
+            <div className="flex justify-end space-x-3 pt-3 border-t border-[#E7DED2]">
               <button
                 type="button"
                 onClick={() => {
@@ -281,13 +281,13 @@ export default function AccountantDepositPage() {
                   setPaymentMethod('transfer');
                   setNote('');
                 }}
-                className="px-4 py-2 border border-[#7f756c] text-[#5e5f5d] rounded text-sm font-semibold hover:bg-[#e4e2e1] transition-colors"
+                className="px-4 py-2 border border-[#7f756c] text-[#5e5f5d] rounded text-sm font-semibold hover:bg-[#E7DED2] transition-colors"
               >
                 Hủy
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-[#5a462d] text-white rounded text-sm font-semibold hover:opacity-90 transition-opacity flex items-center space-x-1.5 shadow-sm"
+                className="px-5 py-2 bg-[#5C4632] text-white rounded text-sm font-semibold hover:opacity-90 transition-opacity flex items-center space-x-1.5 shadow-sm"
               >
                 <Save className="w-4 h-4" />
                 <span>Tạo hóa đơn</span>
@@ -298,12 +298,12 @@ export default function AccountantDepositPage() {
 
         {/* Right: Preview */}
         <div className="lg:col-span-5 relative">
-          <div className="sticky top-4 bg-[#fbf9f8] p-6 border border-[#d1c4b9] shadow-sm rounded-lg min-h-[460px] flex flex-col justify-between">
+          <div className="sticky top-4 bg-[#fbf9f8] p-6 border border-[#DCCFC0] shadow-sm rounded-lg min-h-[460px] flex flex-col justify-between">
             <div>
-              <div className="text-center mb-6 border-b border-dashed border-[#d1c4b9] pb-4">
-                <h4 className="text-xl text-[#5a462d] font-bold uppercase tracking-wider">HomeStay Dorm</h4>
-                <p className="text-xs text-[#5e5f5d] font-bold uppercase tracking-widest mt-1">HÓA ĐƠN ĐẶT CỌC GIỮ CHỖ</p>
-                <p className="font-mono text-xs text-[#5e5f5d] mt-1 text-[10px]">Mã: DEP-AUTO-NEW</p>
+              <div className="text-center mb-6 border-b border-dashed border-[#DCCFC0] pb-4">
+                <h4 className="text-xl text-[#5C4632] font-bold uppercase tracking-wider">HomeStay Dorm</h4>
+                <p className="text-xs text-[#8A7563] font-bold uppercase tracking-widest mt-1">HÓA ĐƠN ĐẶT CỌC GIỮ CHỖ</p>
+                <p className="font-mono text-xs text-[#8A7563] mt-1 text-[10px]">Mã: DEP-AUTO-NEW</p>
               </div>
 
               <div className="space-y-2 mb-6 text-sm text-[#1b1c1c]">
@@ -333,38 +333,38 @@ export default function AccountantDepositPage() {
                 </div>
               </div>
 
-              <div className="bg-[#f0eded] p-4 rounded mb-6">
+              <div className="bg-[#E7DED2]/50 p-4 rounded mb-6">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-label-caps text-[11px] text-[#5e5f5d] uppercase tracking-wider font-bold">Tổng tiền cọc</span>
+                  <span className="font-label-caps text-[11px] text-[#8A7563] uppercase tracking-wider font-bold">Tổng tiền cọc</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-3xl font-bold text-[#5a462d] tabular-nums">
+                  <span className="text-3xl font-bold text-[#5C4632] tabular-nums">
                     {(parseInt(amount.replace(/\D/g, '')) || 0).toLocaleString('vi-VN')}
                   </span>
-                  <span className="text-[#5a462d] font-bold ml-1">VND</span>
+                  <span className="text-[#5C4632] font-bold ml-1">VND</span>
                 </div>
               </div>
             </div>
 
             {/* QR Placeholder */}
             {paymentMethod === 'transfer' ? (
-              <div className="flex flex-col items-center justify-center border border-[#d1c4b9] rounded p-4 bg-white">
-                <div className="w-24 h-24 bg-[#e4e2e1] flex items-center justify-center mb-2 border border-[#d1c4b9] rounded">
-                  <QrCode className="w-16 h-16 text-[#5e5f5d]" />
+              <div className="flex flex-col items-center justify-center border border-[#DCCFC0] rounded p-4 bg-white">
+                <div className="w-24 h-24 bg-[#E7DED2]/60 flex items-center justify-center mb-2 border border-[#DCCFC0] rounded">
+                  <QrCode className="w-16 h-16 text-[#8A7563]" />
                 </div>
-                <p className="font-label-caps text-[10px] text-[#5e5f5d] text-center font-bold uppercase tracking-wider">
+                <p className="font-label-caps text-[10px] text-[#8A7563] text-center font-bold uppercase tracking-wider">
                   Quét mã để thanh toán<br />
-                  <span className="text-[#5a462d]">(Tự động sinh QR VietQR)</span>
+                  <span className="text-[#5C4632]">(Tự động sinh QR VietQR)</span>
                 </p>
               </div>
             ) : (
-              <div className="border border-[#d1c4b9] rounded p-4 bg-[#f6f3f2] flex items-center gap-3">
-                <div className="p-2 bg-[#5a462d] rounded text-white">
+              <div className="border border-[#DCCFC0] rounded p-4 bg-[#f6f3f2] flex items-center gap-3">
+                <div className="p-2 bg-[#5C4632] rounded text-white">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-[#5a462d]">THU TIỀN MẶT TRỰC TIẾP</p>
-                  <p className="text-[11px] text-[#5e5f5d]">Kế toán thu trực tiếp và bàn giao phiếu thu giấy.</p>
+                  <p className="text-xs font-bold text-[#5C4632]">THU TIỀN MẶT TRỰC TIẾP</p>
+                  <p className="text-[11px] text-[#8A7563]">Kế toán thu trực tiếp và bàn giao phiếu thu giấy.</p>
                 </div>
               </div>
             )}
@@ -373,14 +373,14 @@ export default function AccountantDepositPage() {
       </div>
 
       {/* History Table */}
-      <div className="bg-white rounded-lg border border-[#d1c4b9] overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-[#d1c4b9] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#fbf9f8]">
-          <h3 className="font-bold text-[#5a462d] text-base">Lịch sử hóa đơn cọc gần đây</h3>
+      <div className="bg-white rounded-lg border border-[#DCCFC0] overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-[#DCCFC0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#fbf9f8]">
+          <h3 className="font-bold text-[#5C4632] text-base">Lịch sử hóa đơn cọc gần đây</h3>
           
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             {/* Search */}
             <div className="relative flex-1 md:flex-initial">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5e5f5d]">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A7563]">
                 <Search className="w-4 h-4" />
               </span>
               <input
@@ -388,7 +388,7 @@ export default function AccountantDepositPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm khách hàng, phòng..."
-                className="pl-9 pr-3 py-1.5 bg-white border border-[#d1c4b9] rounded text-xs focus:outline-none focus:border-[#5a462d] w-full md:w-56"
+                className="pl-9 pr-3 py-1.5 bg-white border border-[#DCCFC0] rounded text-xs focus:outline-none focus:border-[#5C4632] w-full md:w-56"
               />
             </div>
             
@@ -396,7 +396,7 @@ export default function AccountantDepositPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-[#d1c4b9] rounded text-xs py-1.5 px-3 focus:outline-none focus:border-[#5a462d]"
+              className="bg-white border border-[#DCCFC0] rounded text-xs py-1.5 px-3 focus:outline-none focus:border-[#5C4632]"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="pending">Chờ thanh toán</option>
@@ -410,7 +410,7 @@ export default function AccountantDepositPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#e4e2e1] text-[#4e453d] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#d1c4b9]">
+              <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0]">
                 <th className="p-4">Mã HĐ</th>
                 <th className="p-4">Khách hàng</th>
                 <th className="p-4">Phòng</th>
@@ -420,20 +420,20 @@ export default function AccountantDepositPage() {
                 <th className="p-4 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#d1c4b9]">
+            <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
-                <tr key={inv.id} className="hover:bg-[#f6f3f2] transition-colors border-l-2 border-l-transparent hover:border-l-[#5a462d]">
-                  <td className="p-4 font-mono font-bold text-[#5a462d] text-sm">{inv.id}</td>
+                <tr key={inv.id} className="hover:bg-[#FBF9F7] transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
+                  <td className="p-4 font-mono font-bold text-[#5C4632] text-sm">{inv.id}</td>
                   <td className="p-4 font-semibold text-[#1b1c1c]">{inv.customer_name}</td>
-                  <td className="p-4 text-[#4e453d]">{inv.room_name}</td>
+                  <td className="p-4 text-[#8A7563]">{inv.room_name}</td>
                   <td className="p-4 text-right font-mono font-medium text-[#1b1c1c]">{inv.amount.toLocaleString('vi-VN')}</td>
-                  <td className="p-4 text-xs font-mono text-[#5e5f5d]">{inv.deadline}</td>
+                  <td className="p-4 text-xs font-mono text-[#8A7563]">{inv.deadline}</td>
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      inv.status === 'paid' ? 'bg-[#E8F5E9] text-[#2E7D32]' :
-                      inv.status === 'pending' ? 'bg-[#FFF3E0] text-[#E65100]' :
-                      inv.status === 'overdue' ? 'bg-[#ffdad6] text-[#93000a]' :
-                      'bg-[#eae8e7] text-[#5e5f5d]'
+                      inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
+                      inv.status === 'pending' ? 'bg-[#FAF2E8] text-[#B9792B]' :
+                      inv.status === 'overdue' ? 'bg-[#F8EAE8] text-[#A94F4F]' :
+                      'bg-[#ECEAE6] text-[#8A7563]'
                     }`}>
                       {inv.status === 'paid' ? 'Đã thu' :
                        inv.status === 'pending' ? 'Chờ TT' :
@@ -446,19 +446,19 @@ export default function AccountantDepositPage() {
                         <>
                           <button
                             onClick={() => handleUpdateStatus(inv.id, 'paid')}
-                            className="px-2 py-1 bg-[#2E7D32] text-white rounded text-[11px] font-semibold hover:opacity-90"
+                            className="px-2 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:opacity-90 cursor-pointer"
                           >
                             Xác nhận thu
                           </button>
                           <button
                             onClick={() => handleUpdateStatus(inv.id, 'cancelled')}
-                            className="px-2 py-1 border border-[#ba1a1a] text-[#ba1a1a] rounded text-[11px] font-semibold hover:bg-[#ffdad6]"
+                            className="px-2 py-1 border border-[#A94F4F] text-[#A94F4F] rounded text-[11px] font-semibold hover:bg-[#F8EAE8] cursor-pointer"
                           >
                             Hủy HĐ
                           </button>
                         </>
                       )}
-                      <button className="p-1 hover:bg-[#e4e2e1] rounded text-[#5e5f5d]">
+                      <button className="p-1 hover:bg-[#E7DED2] rounded text-[#8A7563] cursor-pointer">
                         <Eye className="w-4 h-4" />
                       </button>
                     </div>
@@ -475,12 +475,12 @@ export default function AccountantDepositPage() {
             </tbody>
           </table>
         </div>
-        <div className="p-3 bg-[#fbf9f8] flex justify-between items-center border-t border-[#d1c4b9] text-xs text-[#5e5f5d]">
+        <div className="p-3 bg-[#fbf9f8] flex justify-between items-center border-t border-[#DCCFC0] text-xs text-[#8A7563]">
           <span>Hiển thị {Math.min(15, filteredInvoices.length)} / {filteredInvoices.length} bản ghi</span>
           <div className="flex gap-1.5">
-            <button className="px-2.5 py-1 border border-[#d1c4b9] rounded hover:bg-[#e4e2e1] disabled:opacity-50" disabled>Trước</button>
-            <button className="px-3 py-1 bg-[#5a462d] text-white rounded font-bold">1</button>
-            <button className="px-2.5 py-1 border border-[#d1c4b9] rounded hover:bg-[#e4e2e1] disabled:opacity-50" disabled={filteredInvoices.length <= 15}>Sau</button>
+            <button className="px-2.5 py-1 border border-[#DCCFC0] rounded hover:bg-[#E7DED2] disabled:opacity-50 cursor-pointer" disabled>Trước</button>
+            <button className="px-3 py-1 bg-[#5C4632] text-white rounded font-bold cursor-pointer">1</button>
+            <button className="px-2.5 py-1 border border-[#DCCFC0] rounded hover:bg-[#E7DED2] disabled:opacity-50 cursor-pointer" disabled={filteredInvoices.length <= 15}>Sau</button>
           </div>
         </div>
       </div>
