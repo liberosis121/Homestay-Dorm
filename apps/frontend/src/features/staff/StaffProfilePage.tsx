@@ -4,6 +4,7 @@ import {
   User, Shield, Lock, Bell, Globe, ChevronRight,
   X, Eye, EyeOff, Check, Camera, Briefcase, MapPin, Phone
 } from 'lucide-react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 // ─── Brown Tone Palette (Staff Dashboard) ─────────────────────────────────────
 // Primary accent: #6f583c  |  Surface: #faf2ec  |  Border: #d1c4b9
@@ -546,17 +547,20 @@ export default function StaffProfilePage() {
                   <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-[#4e453c] ml-2">Giới tính *</label>
-                    <select
-                      name="gender"
+                    <CustomSelect
                       value={formData.gender}
-                      onChange={handleProfileChange}
+                      onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
                       disabled={!isEditing}
-                      className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      <option value="male">Nam</option>
-                      <option value="female">Nữ</option>
-                      <option value="other">Khác</option>
-                    </select>
+                      pill
+                      theme="accountant"
+                      options={[
+                        { value: 'male', label: 'Nam' },
+                        { value: 'female', label: 'Nữ' },
+                        { value: 'other', label: 'Khác' },
+                      ]}
+                      triggerClassName="w-full bg-[#faf2ec] border-[#d1c4b9] rounded-full py-3.5 px-6"
+                      dropdownClassName="border-[#d1c4b9]"
+                    />
                   </div>
 
                   <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" />

@@ -16,6 +16,7 @@ interface CustomSelectProps {
   icon?: string;
   pill?: boolean;
   theme?: 'default' | 'accountant';
+  disabled?: boolean;
 }
 
 export default function CustomSelect({
@@ -29,6 +30,7 @@ export default function CustomSelect({
   icon = '',
   pill = false,
   theme = 'default',
+  disabled = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,6 +59,7 @@ export default function CustomSelect({
   }, []);
 
   const handleSelect = (val: string) => {
+    if (disabled) return;
     onChange(val);
     setIsOpen(false);
   };
@@ -73,12 +76,13 @@ export default function CustomSelect({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between bg-white border ${borderClass} px-4 py-2.5 outline-none transition-all cursor-pointer font-label-md text-on-surface text-sm ${
           pill ? 'rounded-[24px]' : 'rounded-[12px]'
         } ${
           isOpen ? focusRingClass : hoverBorderClass
-        } ${triggerClassName}`}
+        } disabled:cursor-not-allowed disabled:opacity-60 ${triggerClassName}`}
       >
         <div className="flex items-center gap-2 truncate">
           {icon && (

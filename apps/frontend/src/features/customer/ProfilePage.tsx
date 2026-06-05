@@ -7,6 +7,7 @@ import {
   X, Eye, EyeOff, Check, Zap
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
@@ -529,17 +530,19 @@ export default function ProfilePage() {
                     <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
                     <div className="space-y-2">
                       <label className="block text-sm font-label-md text-on-surface-variant ml-2">Giới tính *</label>
-                      <select
-                        name="gender"
+                      <CustomSelect
                         value={formData.gender}
-                        onChange={handleProfileChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
                         disabled={!isEditing}
-                        className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
-                      >
-                        <option value="male">Nam</option>
-                        <option value="female">Nữ</option>
-                        <option value="other">Khác</option>
-                      </select>
+                        pill
+                        options={[
+                          { value: 'male', label: 'Nam' },
+                          { value: 'female', label: 'Nữ' },
+                          { value: 'other', label: 'Khác' },
+                        ]}
+                        triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5 px-6"
+                        dropdownClassName="border-outline-variant"
+                      />
                     </div>
                     
                     <InputField label="Số điện thoại *" name="phone" value={formData.phone} />
