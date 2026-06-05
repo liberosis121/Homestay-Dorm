@@ -7,6 +7,14 @@ import DraftToast from './components/DraftToast';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
+export interface TenantMember {
+  name: string;
+  cccd: string;
+  phone: string;
+  email?: string;
+  role: 'representative' | 'member';
+}
+
 export interface DepositRecord {
   id: string;
   depositCode: string;
@@ -24,6 +32,10 @@ export interface DepositRecord {
   roomType: string;
   branch: string;
   roomMonthlyRent: number;
+  // Group info
+  rentalType?: 'individual' | 'group';
+  tenants?: TenantMember[];
+  roomCapacity?: number;
 }
 
 export interface ContractFormData {
@@ -71,6 +83,8 @@ export const MOCK_DEPOSITS: DepositRecord[] = [
     roomType: 'Studio Luxury',
     branch: 'Quận 1',
     roomMonthlyRent: 6_500_000,
+    rentalType: 'individual',
+    roomCapacity: 2,
   },
   {
     id: 'd2',
@@ -199,6 +213,31 @@ export const MOCK_DEPOSITS: DepositRecord[] = [
     roomType: 'Penthouse 2PN',
     branch: 'Quận 1',
     roomMonthlyRent: 9_800_000,
+    rentalType: 'group',
+    roomCapacity: 4,
+    tenants: [
+      {
+        name: 'Ngô Văn Tâm',
+        cccd: '001201234567',
+        phone: '0912008765',
+        email: 'v.tam.ngo@gmail.com',
+        role: 'representative',
+      },
+      {
+        name: 'Trần Minh Khoa',
+        cccd: '079203456789',
+        phone: '0908111222',
+        email: 'khoa.tran@gmail.com',
+        role: 'member',
+      },
+      {
+        name: 'Lê Thảo Vy',
+        cccd: '052204567890',
+        phone: '0933444555',
+        email: 'thao.vy@gmail.com',
+        role: 'member',
+      },
+    ],
   },
   {
     id: 'd10',

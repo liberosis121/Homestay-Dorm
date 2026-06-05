@@ -75,6 +75,23 @@ export interface ViewingSchedule {
   created_at: string;
 }
 
+export interface CustomerDepositRequest {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  room_id: string;
+  room_name: string;
+  room_image_url: string;
+  branch_name: string;
+  viewing_schedule_id: string;
+  deposit_amount: number;
+  expected_move_in_date: string;
+  status: 'pending_sale_confirmation' | 'confirmed' | 'invoice_created' | 'paid' | 'cancelled';
+  note?: string;
+  created_at: string;
+}
+
 // ─── Sale Dashboard Interfaces ────────────────────────────────────────────────
 export interface TodayAppointment {
   id: string;
@@ -148,6 +165,7 @@ export interface DepositInvoice {
   status: 'pending' | 'paid' | 'overdue' | 'cancelled';
   created_at: string;
   note?: string;
+  deposit_request_id?: string;
 }
 
 export interface CheckinInvoice {
@@ -198,6 +216,8 @@ export interface RefundRecord {
   refund_amount: number;
   status: 'pending' | 'calculated' | 'confirmed' | 'paid';
   created_at: string;
+  type?: 'checkout' | 'cancellation';
+  cancellation_reason?: 'failed_residency' | 'user_cancelled' | 'other';
 }
 
 export interface PayoutRecord {
@@ -223,6 +243,8 @@ export interface ManagerDeposit {
   customer_phone: string;
   room_id: string;
   room_name: string;
+  deposit_type: 'room' | 'bed';  // Đặt cọc cả phòng hoặc giường lẻ
+  bed_name?: string;             // Tên giường (chỉ có khi deposit_type = 'bed')
   amount: number;
   deposit_date: string;
   bill_image_url: string;
@@ -255,7 +277,8 @@ export interface ResidencyCheck {
     no_violation: boolean;
   };
   violation_note?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'need_more';
+  status: 'pending' | 'approved' | 'rejected';
+  confirmed?: boolean;
   created_at: string;
 }
 
@@ -453,14 +476,29 @@ const generateRefundRecords = (): RefundRecord[] => {
     const room = rooms[i % rooms.length];
     const status = i <= 3 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
     const checkoutDate = new Date(2026, 5, 1 + i);
+    
+    const isCancellation = i % 4 === 0;
+    const type = isCancellation ? 'cancellation' : 'checkout';
+    const cancellation_reason = isCancellation ? (i % 2 === 0 ? 'failed_residency' : 'user_cancelled') : undefined;
     const deposit_original = 2000000;
-    const damage_deductions = i % 3 === 0 ? [
-      { item: 'Vỡ gương nhà tắm', amount: 500000 },
-      { item: 'Hỏng tay nắm cửa tủ quần áo', amount: 350000 }
-    ] : [];
-    const debt_deductions = i % 4 === 0 ? 350000 : 0;
-    const total_deductions = damage_deductions.reduce((sum, item) => sum + item.amount, 0) + debt_deductions;
-    const refund_amount = deposit_original - total_deductions;
+    
+    let damage_deductions: { item: string; amount: number }[] = [];
+    let debt_deductions = 0;
+    let total_deductions = 0;
+    let refund_amount = deposit_original;
+
+    if (isCancellation) {
+      total_deductions = deposit_original * 0.2;
+      refund_amount = deposit_original * 0.8;
+    } else {
+      damage_deductions = i % 3 === 0 ? [
+        { item: 'Vỡ gương nhà tắm', amount: 500000 },
+        { item: 'Hỏng tay nắm cửa tủ quần áo', amount: 350000 }
+      ] : [];
+      debt_deductions = i % 4 === 0 ? 350000 : 0;
+      total_deductions = damage_deductions.reduce((sum, item) => sum + item.amount, 0) + debt_deductions;
+      refund_amount = deposit_original - total_deductions;
+    }
 
     list.push({
       id: `REF-${1000 + i}`,
@@ -475,7 +513,9 @@ const generateRefundRecords = (): RefundRecord[] => {
       total_deductions,
       refund_amount,
       status,
-      created_at: checkoutDate.toISOString().split('T')[0] + ' 10:00'
+      created_at: checkoutDate.toISOString().split('T')[0] + ' 10:00',
+      type,
+      cancellation_reason
     });
   }
   return list;
@@ -643,8 +683,69 @@ const INITIAL_DB = {
       status: 'cancelled', timeline_step: 1,
       note: 'Không liên lạc được với khách hàng sau 3 cuộc gọi xác nhận trước giờ hẹn.',
       created_at: '2026-05-30T14:00:00Z'
+    },
+    {
+      id: 'vs-test-unavailable', customer_id: 'u-6', room_id: 'r-3',
+      room_name: 'Phòng 201 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
+      scheduled_date: '2026-05-18', scheduled_time: '15:00',
+      staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
+      status: 'completed', timeline_step: 3,
+      note: 'Tình huống test: phòng này hiện đã có người thuê nên khách không thể gửi yêu cầu đặt cọc.',
+      created_at: '2026-05-16T09:00:00Z'
     }
   ] as ViewingSchedule[],
+  customer_deposit_requests: [
+    {
+      id: 'cdr-1',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-1',
+      room_name: 'Phòng 101 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1',
+      viewing_schedule_id: 'vs-3',
+      deposit_amount: 1000000,
+      expected_move_in_date: '2026-05-01',
+      status: 'pending_sale_confirmation',
+      note: 'Khách đã xem phòng và muốn được xác nhận đặt cọc.',
+      created_at: '2026-04-20T11:00:00Z'
+    },
+    {
+      id: 'cdr-2',
+      customer_id: 'u-mock-cdr2',
+      customer_name: 'Đỗ Phương Thảo',
+      customer_phone: '0981122334',
+      room_id: 'r-2',
+      room_name: 'Phòng 102 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1',
+      viewing_schedule_id: 'vs-1',
+      deposit_amount: 2000000,
+      expected_move_in_date: '2026-06-10',
+      status: 'pending_sale_confirmation',
+      note: 'Khách hàng muốn giữ phòng Studio ban công rộng.',
+      created_at: '2026-06-04T10:00:00Z'
+    },
+    {
+      id: 'cdr-3',
+      customer_id: 'u-mock-cdr3',
+      customer_name: 'Bùi Minh Tuấn',
+      customer_phone: '0938889999',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      viewing_schedule_id: 'vs-9',
+      deposit_amount: 1200000,
+      expected_move_in_date: '2026-06-15',
+      status: 'pending_sale_confirmation',
+      note: 'Yêu cầu giữ chỗ giường Dorm tầng dưới.',
+      created_at: '2026-06-05T09:00:00Z'
+    }
+  ] as CustomerDepositRequest[],
   today_appointments: [
     { id: 'ta-1', time: '09:30', customer_name: 'Nguyễn Văn A', room_type: 'Phòng Đơn Premium', status: 'confirmed', branch: 'Quận 1' },
     { id: 'ta-2', time: '11:00', customer_name: 'Lê Thị Minh Châu', room_type: 'Phòng Dorm Nam 4 người', status: 'confirmed', branch: 'Thủ Đức' },
@@ -731,16 +832,21 @@ function generateManagerDeposits(): ManagerDeposit[] {
   const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)', 'Phòng 302 (Nữ)'];
   const statuses: ManagerDeposit['status'][] = ['pending', 'pending', 'approved', 'approved', 'approved', 'rejected', 'need_more', 'expired'];
   const banks = ['Vietcombank', 'BIDV', 'Techcombank', 'MB Bank', 'ACB', 'TPBank'];
+  const bedSuffixes = ['A1', 'A2', 'A3', 'B1', 'B2', 'C1'];
   const list: ManagerDeposit[] = [];
   for (let i = 1; i <= 32; i++) {
     const name = names[i % names.length];
+    const isBed = i % 3 === 0; // 1/3 deposits are bed-level
+    const roomName = rooms[i % rooms.length];
     list.push({
       id: `MGR-DEP-${2000 + i}`,
       customer_id: `u-mock-${200 + i}`,
       customer_name: name,
       customer_phone: `090${(i * 1234567) % 9000000 + 1000000}`,
       room_id: `r-${(i % 6) + 1}`,
-      room_name: rooms[i % rooms.length],
+      room_name: roomName,
+      deposit_type: isBed ? 'bed' : 'room',
+      bed_name: isBed ? `Giường ${bedSuffixes[i % bedSuffixes.length]}` : undefined,
       amount: [1000000, 1500000, 2000000][i % 3],
       deposit_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
       bill_image_url: `https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80`,
@@ -758,10 +864,31 @@ function generateManagerDeposits(): ManagerDeposit[] {
 function generateResidencyChecks(): ResidencyCheck[] {
   const names = ['Nguyễn Văn Bình', 'Trần Minh Châu', 'Lê Thị Duyên', 'Phạm Quốc Hùng', 'Hoàng Thị Lan', 'Đỗ Văn Mạnh', 'Nguyễn Thu Ngân', 'Bùi Đình Phúc', 'Lý Ngọc Quỳnh', 'Phan Văn Sơn', 'Vũ Thị Tâm', 'Đặng Minh Uyên', 'Trịnh Văn Vinh', 'Đinh Thị Xuân', 'Cao Thị Yến'];
   const rooms = ['Phòng 101', 'Phòng 102', 'Phòng 201', 'Phòng 202', 'Phòng 301', 'Phòng 302'];
-  const statuses: ResidencyCheck['status'][] = ['pending', 'pending', 'approved', 'approved', 'rejected', 'need_more'];
+  const statuses: ResidencyCheck['status'][] = ['pending', 'pending', 'approved', 'approved', 'rejected'];
   const list: ResidencyCheck[] = [];
   for (let i = 1; i <= 26; i++) {
     const name = names[i % names.length];
+    const status = statuses[i % statuses.length];
+    const isApproved = status === 'approved';
+    
+    const checklist = isApproved
+      ? {
+          valid_documents: true,
+          info_matches: true,
+          age_verified: true,
+          no_violation: true
+        }
+      : {
+          valid_documents: i % 7 !== 0,
+          info_matches: i % 5 !== 0,
+          age_verified: true,
+          no_violation: i % 8 !== 0
+        };
+
+    const violation_note = (!isApproved && !checklist.no_violation)
+      ? 'Khách hàng có tiền sử vi phạm quy định nội quy phòng trọ tại địa chỉ cũ'
+      : undefined;
+
     list.push({
       id: `RC-${3000 + i}`,
       customer_id: `u-mock-${300 + i}`,
@@ -775,14 +902,9 @@ function generateResidencyChecks(): ResidencyCheck[] {
       nationality: i % 5 === 0 ? 'foreign' : 'vietnamese',
       front_image_url: 'https://images.unsplash.com/photo-1633265486064-086b219458ec?auto=format&fit=crop&w=400&q=80',
       back_image_url: i % 5 !== 0 ? 'https://images.unsplash.com/photo-1633265486064-086b219458ec?auto=format&fit=crop&w=400&q=80' : undefined,
-      checklist: {
-        valid_documents: i % 7 !== 0,
-        info_matches: i % 5 !== 0,
-        age_verified: true,
-        no_violation: i % 8 !== 0
-      },
-      violation_note: i % 8 === 0 ? 'Khách hàng có tiền sử vi phạm quy định nội quy phòng trọ tại địa chỉ cũ' : undefined,
-      status: statuses[i % statuses.length],
+      checklist,
+      violation_note,
+      status,
       created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
     });
   }
@@ -896,71 +1018,28 @@ function generateManagedAssets(): ManagedAsset[] {
   return list;
 }
 
-// Initialize Mock Database in LocalStorage
-export const initializeMockDB = () => {
-  const existing = localStorage.getItem(STORAGE_KEY);
-  if (!existing) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
-  } else {
-    try {
-      const db = JSON.parse(existing);
-      let updated = false;
-      if (db && db.profiles) {
-        db.profiles = INITIAL_DB.profiles;
-        updated = true;
-      }
-      if (db && (!db.customers || db.customers.length < 25)) {
-        db.customers = INITIAL_DB.customers;
-        updated = true;
-      }
-      if (db && db.rooms) {
-        // Force update rooms to ensure new properties exist
-        db.rooms = INITIAL_DB.rooms;
-        updated = true;
-      }
-      if (db && (!db.viewing_schedules || db.viewing_schedules.length < 8)) {
-        db.viewing_schedules = INITIAL_DB.viewing_schedules;
-        updated = true;
-      }
-      // Seed Sale Dashboard mock data
-      if (db && !db.today_appointments) {
-        db.today_appointments = INITIAL_DB.today_appointments;
-        db.recent_registrations = INITIAL_DB.recent_registrations;
-        db.activity_logs = INITIAL_DB.activity_logs;
-        updated = true;
-      }
-      // Seed Services mock data
-      if (db && !db.services) {
-        db.services = INITIAL_DB.services;
-        db.service_subscriptions = INITIAL_DB.service_subscriptions;
-        db.consumption_records = INITIAL_DB.consumption_records;
-        updated = true;
-      }
-      // Seed Accountant mock data
-      if (db && !db.deposit_invoices) {
-        db.deposit_invoices = INITIAL_DB.deposit_invoices;
-        db.checkin_invoices = INITIAL_DB.checkin_invoices;
-        db.monthly_invoices = INITIAL_DB.monthly_invoices;
-        db.refund_records = INITIAL_DB.refund_records;
-        db.payout_records = INITIAL_DB.payout_records;
-        updated = true;
-      }
-      // Seed Manager mock data
-      if (db && !db.manager_deposits) {
-        db.manager_deposits = generateManagerDeposits();
-        db.residency_checks = generateResidencyChecks();
-        db.asset_handovers = generateAssetHandovers();
-        db.asset_inspections = generateAssetInspections();
-        db.managed_assets = generateManagedAssets();
-        updated = true;
-      }
-      if (updated) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-      }
-    } catch (e) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
-    }
+const hasEncodingIssue = (value: unknown): boolean => {
+  if (typeof value === 'string') {
+    return /Ã|Ä|Æ|Â|áº|á»|�/.test(value);
   }
+  if (Array.isArray(value)) {
+    return value.some(hasEncodingIssue);
+  }
+  if (value && typeof value === 'object') {
+    return Object.values(value).some(hasEncodingIssue);
+  }
+  return false;
+};
+
+let isInitializedThisSession = false;
+
+// Initialize Mock Database in LocalStorage
+export const initializeMockDB = (force = false) => {
+  if (isInitializedThisSession && !force) {
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
+  isInitializedThisSession = true;
 };
 
 // Fetch current database state
@@ -999,6 +1078,25 @@ export const mockSupabase = {
         return { user, error: null };
       }
       return { user: null, error: 'Email không tồn tại trong hệ thống demo!' };
+    },
+    register: (email: string, fullName: string, phone: string): { user: Profile | null; error: string | null } => {
+      const db = getMockDB();
+      const emailLower = email.toLowerCase();
+      const userExists = db.profiles.some((p: Profile) => p.email.toLowerCase() === emailLower);
+      if (userExists) {
+        return { user: null, error: 'Email đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.' };
+      }
+      const newProfile: Profile = {
+        id: `u-mock-${Date.now()}`,
+        email: emailLower,
+        role: 'customer',
+        full_name: fullName,
+        phone: phone
+      };
+      db.profiles.push(newProfile);
+      saveMockDB(db);
+      localStorage.setItem('homestay_session_user', JSON.stringify(newProfile));
+      return { user: newProfile, error: null };
     },
     logout: () => {
       localStorage.removeItem('homestay_session_user');

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getMockDB, saveMockDB, ManagedAsset } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const T = {
   bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -92,16 +93,26 @@ export default function ManagerAssetsPage() {
         <div style={{ gridColumn: 'span 2 / span 2' }} className="space-y-4">
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
-            <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '7px 12px', fontSize: 12, color: T.text, background: T.surface, outline: 'none', cursor: 'pointer' }}>
-              <option value="all">Tất cả danh mục</option>
-              {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '7px 12px', fontSize: 12, color: T.text, background: T.surface, outline: 'none', cursor: 'pointer' }}>
-              <option value="all">Tất cả trạng thái</option>
-              {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
+            <CustomSelect
+              value={filterCat}
+              onChange={setFilterCat}
+              options={[
+                { value: 'all', label: 'Tất cả danh mục' },
+                ...Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))
+              ]}
+              className="min-w-[150px]"
+              triggerClassName="h-9 !rounded-lg !border-[#D6CEC8] !bg-[#FFF8F3] text-[#1E1B17] py-1.5 text-xs"
+            />
+            <CustomSelect
+              value={filterStatus}
+              onChange={setFilterStatus}
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                ...Object.entries(STATUS_META).map(([k, v]) => ({ value: k, label: v.label }))
+              ]}
+              className="min-w-[150px]"
+              triggerClassName="h-9 !rounded-lg !border-[#D6CEC8] !bg-[#FFF8F3] text-[#1E1B17] py-1.5 text-xs"
+            />
             <span style={{ marginLeft: 'auto', fontSize: 12, color: T.textMuted, alignSelf: 'center' }}>{filteredAssets.length} tài sản</span>
           </div>
 
@@ -189,11 +200,16 @@ export default function ManagerAssetsPage() {
                 <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Điều phối tài sản</p>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 6 }}>Vị trí đích *</label>
-                  <select value={transferTarget} onChange={e => setTransferTarget(e.target.value)}
-                    style={{ width: '100%', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 13, color: T.text, background: T.bg, outline: 'none', cursor: 'pointer', boxSizing: 'border-box' }}>
-                    <option value="">-- Chọn vị trí đích --</option>
-                    {LOCATIONS.filter(l => l !== selected.current_location).map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={transferTarget}
+                    onChange={setTransferTarget}
+                    options={[
+                      { value: '', label: '-- Chọn vị trí đích --' },
+                      ...LOCATIONS.filter(l => l !== selected.current_location).map(l => ({ value: l, label: l }))
+                    ]}
+                    className="w-full"
+                    triggerClassName="h-10 !rounded-lg !border-[#D6CEC8] !bg-[#FFF8F3] text-[#1E1B17] py-2"
+                  />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 6 }}>Lý do điều phối</label>

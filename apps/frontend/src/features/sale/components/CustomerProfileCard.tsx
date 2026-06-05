@@ -1,54 +1,6 @@
 import { Mail } from 'lucide-react';
-
-export interface Customer {
-  id: string;
-  code: string;
-  fullName: string;
-  avatar: string;
-  status: 'active' | 'inactive';
-  tier: 'VIP' | 'Loyal' | 'New' | 'Old';
-  joinDate: string;
-  personalInfo: {
-    cccd: string;
-    phone: string;
-    email: string;
-    birthDate: string;
-    nationality: string;
-    job: string;
-    address: string;
-  };
-  registrations: Array<{
-    id: string;
-    roomType: string;
-    date: string;
-    status: 'completed' | 'pending' | 'cancelled';
-  }>;
-  viewings: Array<{
-    roomName: string;
-    branch: string;
-    date: string;
-    staffName: string;
-    status: 'confirmed' | 'cancelled' | 'viewed';
-  }>;
-  deposits: Array<{
-    content: string;
-    date: string;
-    amount: string;
-    status: 'approved' | 'pending' | 'refunded';
-  }>;
-  contracts: Array<{
-    id: string;
-    period: string;
-    status: 'active' | 'expired' | 'pending';
-  }>;
-  recentActivities: Array<{
-    icon: string;
-    iconBg: string;
-    time: string;
-    title: string;
-  }>;
-  importantNote: string;
-}
+import { Customer } from '../../../lib/mockCustomers';
+export type { Customer };
 
 interface CustomerProfileCardProps {
   customer: Customer;
@@ -61,32 +13,16 @@ export default function CustomerProfileCard({
 }: CustomerProfileCardProps) {
   // Huy hiệu phân hạng khách hàng
   const getTierBadge = (tier: Customer['tier']) => {
-    switch (tier) {
-      case 'VIP':
-        return {
-          label: 'Khách hàng VIP',
-          cls: 'bg-[#6f583c] text-white border-[#6f583c]/20',
-        };
-      case 'Loyal':
-        return {
-          label: 'Khách hàng thân thiết',
-          cls: 'bg-[#faf2ec] text-[#6f583c] border-[#6f583c]/20',
-        };
-      case 'New':
-        return {
-          label: 'Khách hàng mới',
-          cls: 'bg-[#d2e9cd] text-[#384c37] border-[#4d614b]/20',
-        };
-      case 'Old':
-        return {
-          label: 'Khách hàng cũ',
-          cls: 'bg-[#e6e2de] text-[#605e5b] border-[#d1c4b9]/25',
-        };
-      default:
-        return {
-          label: 'Khách hàng',
-          cls: 'bg-[#faf2ec] text-[#4e453c] border-[#d1c4b9]/20',
-        };
+    if (tier === 'New') {
+      return {
+        label: 'Khách hàng mới',
+        cls: 'bg-[#d2e9cd] text-[#384c37] border-[#4d614b]/20',
+      };
+    } else {
+      return {
+        label: 'Khách hàng cũ',
+        cls: 'bg-[#e6e2de] text-[#605e5b] border-[#d1c4b9]/25',
+      };
     }
   };
 

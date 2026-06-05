@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -159,24 +160,32 @@ export default function AdminAssetsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả loại</option>
-          <option value="furniture">Nội thất</option>
-          <option value="electronics">Điện tử</option>
-          <option value="appliance">Thiết bị</option>
-          <option value="facility">Cơ sở hạ tầng</option>
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="in_use">Đang sử dụng</option>
-          <option value="available">Sẵn sàng</option>
-          <option value="maintenance">Đang bảo trì</option>
-          <option value="damaged">Hư hỏng</option>
-        </select>
+        <CustomSelect
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={[
+            { value: '', label: 'Tất cả loại' },
+            { value: 'furniture', label: 'Nội thất' },
+            { value: 'electronics', label: 'Điện tử' },
+            { value: 'appliance', label: 'Thiết bị' },
+            { value: 'facility', label: 'Cơ sở hạ tầng' }
+          ]}
+          className="min-w-[150px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={[
+            { value: '', label: 'Tất cả trạng thái' },
+            { value: 'in_use', label: 'Đang sử dụng' },
+            { value: 'available', label: 'Sẵn sàng' },
+            { value: 'maintenance', label: 'Đang bảo trì' },
+            { value: 'damaged', label: 'Hư hỏng' }
+          ]}
+          className="min-w-[160px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
         <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterCategory(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -357,25 +366,33 @@ export default function AdminAssetsPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại</label>
-                <select value={form.category || 'furniture'} onChange={e => setForm(prev => ({ ...prev, category: e.target.value as AssetCategory }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="furniture">Nội thất</option>
-                  <option value="electronics">Điện tử</option>
-                  <option value="appliance">Thiết bị</option>
-                  <option value="facility">Cơ sở hạ tầng</option>
-                </select>
+                <CustomSelect
+                  value={form.category || 'furniture'}
+                  onChange={val => setForm(prev => ({ ...prev, category: val as AssetCategory }))}
+                  options={[
+                    { value: 'furniture', label: 'Nội thất' },
+                    { value: 'electronics', label: 'Điện tử' },
+                    { value: 'appliance', label: 'Thiết bị' },
+                    { value: 'facility', label: 'Cơ sở hạ tầng' }
+                  ]}
+                  className="w-full"
+                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                <select value={form.status || 'available'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="available">Sẵn sàng</option>
-                  <option value="in_use">Đang sử dụng</option>
-                  <option value="maintenance">Bảo trì</option>
-                  <option value="damaged">Hư hỏng</option>
-                </select>
+                <CustomSelect
+                  value={form.status || 'available'}
+                  onChange={val => setForm(prev => ({ ...prev, status: val as AssetStatus }))}
+                  options={[
+                    { value: 'available', label: 'Sẵn sàng' },
+                    { value: 'in_use', label: 'Đang sử dụng' },
+                    { value: 'maintenance', label: 'Bảo trì' },
+                    { value: 'damaged', label: 'Hư hỏng' }
+                  ]}
+                  className="w-full"
+                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Thương hiệu</label>

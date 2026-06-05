@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import CustomDatePicker from '../../../components/ui/CustomDatePicker';
 
 interface CurrentRentInfo {
   branchName: string;
@@ -24,7 +25,7 @@ interface CheckoutFormProps {
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({ currentInfo, onSubmit, isLoading = false }) => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
+  const minDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
   const [expectedDate, setExpectedDate] = useState('');
   const [reason, setReason] = useState('Hết hạn hợp đồng');
@@ -123,14 +124,12 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ currentInfo, onSubmi
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="space-y-1">
             <label className="text-xs text-[#8c9a8e] font-semibold block">Ngày trả phòng mong muốn *</label>
-            <input
-              type="date"
+            <CustomDatePicker
               min={minDate}
               value={expectedDate}
-              onChange={(e) => setExpectedDate(e.target.value)}
-              className={`w-full bg-[#faf9f6] border ${
-                errors.expectedDate ? 'border-red-400 focus:ring-red-200' : 'border-[#ecebe6] focus:ring-[#8c9a8e]/20'
-              } text-[#334537] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-4 transition duration-200`}
+              onChange={setExpectedDate}
+              placeholder="Chọn ngày"
+              error={!!errors.expectedDate}
             />
             {errors.expectedDate && <p className="text-xs text-red-500 font-medium mt-1">{errors.expectedDate}</p>}
           </div>

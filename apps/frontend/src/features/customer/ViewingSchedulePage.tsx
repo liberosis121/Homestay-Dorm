@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { getMockDB, saveMockDB, ViewingSchedule } from '../../lib/supabaseClient';
+import { getMockDB, saveMockDB, ViewingSchedule, CustomerDepositRequest, Room, Bed } from '../../lib/supabaseClient';
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
 
   Search, MapPin, Calendar, User, Phone, ChevronLeft, ChevronRight,
   CheckCircle, Clock, X, CalendarCheck, MessageCircle, AlertTriangle,
+  CreditCard,
   Navigation, Clock3
 } from 'lucide-react';
 
@@ -371,15 +373,22 @@ const EmptyState = ({ tab }: { tab: 'upcoming' | 'past' }) => {
 // ─── AppointmentCard ───────────────────────────────────────────────────────────
 const AppointmentCard = ({
   schedule,
+  depositRequest,
   onCancel,
   onReschedule,
+  onCreateDepositRequest,
 }: {
   schedule: ViewingSchedule;
+  depositRequest?: CustomerDepositRequest;
   onCancel: (id: string) => void;
   onReschedule: (id: string) => void;
+  onCreateDepositRequest: (schedule: ViewingSchedule) => { ok: boolean; message: string };
 }) => {
   const { cancellingId, setCancellingId, reschedulingId, setReschedulingId, rescheduleDate, rescheduleTime, setRescheduleDate, setRescheduleTime } = useViewingScheduleStore();
+  const navigate = useNavigate();
   const [toast, setToast] = useState('');
+  const [confirmingDeposit, setConfirmingDeposit] = useState(false);
+  const [depositError, setDepositError] = useState('');
   const isUpcoming = schedule.status === 'pending' || schedule.status === 'confirmed';
 
   const showToast = (msg: string) => {
@@ -393,6 +402,17 @@ const AppointmentCard = ({
     onReschedule(schedule.id);
     setReschedulingId(null);
     showToast('Đã cập nhật lịch hẹn thành công.');
+  };
+
+  const confirmDepositRequest = () => {
+    const result = onCreateDepositRequest(schedule);
+    setConfirmingDeposit(false);
+    if (result.ok) {
+      setDepositError('');
+      showToast(result.message);
+    } else {
+      setDepositError(result.message);
+    }
   };
 
   return (
@@ -455,12 +475,14 @@ const AppointmentCard = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-on-surface-variant mb-1 block">Ngày mới</label>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={rescheduleDate}
-                  onChange={e => setRescheduleDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 rounded-[12px] border border-outline-variant text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  onChange={setRescheduleDate}
+                  min={(() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  })()}
+                  placeholder="Chọn ngày"
                 />
               </div>
               <div>
@@ -530,6 +552,70 @@ const AppointmentCard = ({
             </button>
           </div>
         )}
+
+        {schedule.status === 'completed' && (
+          <div className="mt-4">
+            {depositRequest ? (
+              <div className="p-4 rounded-[16px] bg-primary/8 border border-primary/15 flex items-start gap-3">
+                <CreditCard className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-primary">Yêu cầu đặt cọc đang chờ xác nhận</p>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Nhân viên Sale sẽ kiểm tra phòng/giường sau buổi xem và liên hệ bạn để xác nhận khoản đặt cọc.
+                  </p>
+                </div>
+              </div>
+            ) : confirmingDeposit ? (
+              <div className="p-4 rounded-[16px] bg-[#f7f4ef] border border-[#d8c8b4]">
+                <p className="text-sm font-semibold text-primary">Bạn muốn gửi yêu cầu đặt cọc phòng này?</p>
+                <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                  Yêu cầu sẽ được chuyển đến nhân viên Sale. Sau khi xác nhận, hệ thống mới ghi nhận đặt cọc chính thức.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={confirmDepositRequest}
+                    className="flex-1 py-2 bg-primary text-on-primary rounded-full text-sm font-semibold hover:opacity-90 transition-all cursor-pointer"
+                  >
+                    Gửi yêu cầu
+                  </button>
+                  <button
+                    onClick={() => setConfirmingDeposit(false)}
+                    className="flex-1 py-2 border border-outline-variant rounded-full text-sm hover:bg-surface-container-low transition-all cursor-pointer"
+                  >
+                    Để sau
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {depositError ? (
+                  <>
+                    <div className="mb-3 p-4 rounded-[16px] bg-error-container/50 border border-error/20 flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-error shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-error">Không thể gửi yêu cầu đặt cọc</p>
+                        <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">{depositError}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('/rooms')}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-[#8C7355] text-white rounded-full text-sm font-semibold hover:bg-[#7a644a] transition-colors shadow-sm cursor-pointer"
+                    >
+                      <Search className="w-4 h-4" /> Xem phòng trống
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => { setDepositError(''); setConfirmingDeposit(true); }}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#8C7355] text-white rounded-full text-sm font-semibold hover:bg-[#7a644a] transition-colors shadow-sm cursor-pointer"
+                  >
+                    <CreditCard className="w-4 h-4" /> Tôi muốn đặt cọc
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -546,6 +632,7 @@ export default function ViewingSchedulePage() {
   } = useViewingScheduleStore();
 
   const [allSchedules, setAllSchedules] = useState<ViewingSchedule[]>([]);
+  const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showMapModal, setShowMapModal] = useState(false);
 
@@ -557,7 +644,11 @@ export default function ViewingSchedulePage() {
       const list: ViewingSchedule[] = (db.viewing_schedules || []).filter(
         (s: ViewingSchedule) => s.customer_id === user.id
       );
+      const requests: CustomerDepositRequest[] = (db.customer_deposit_requests || []).filter(
+        (r: CustomerDepositRequest) => r.customer_id === user.id
+      );
       setAllSchedules(list);
+      setDepositRequests(requests);
       setIsLoading(false);
     }, 800);
   }, [user, navigate]);
@@ -602,6 +693,66 @@ export default function ViewingSchedulePage() {
   const handleReschedule = (id: string) => {
     setReschedulingId(null);
     setAllSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'confirmed' } : s));
+  };
+
+  const handleCreateDepositRequest = (schedule: ViewingSchedule) => {
+    if (!user) return { ok: false, message: 'Bạn cần đăng nhập để gửi yêu cầu đặt cọc.' };
+    const db = getMockDB();
+    const list: CustomerDepositRequest[] = db.customer_deposit_requests || [];
+    const existing = list.find(r => r.viewing_schedule_id === schedule.id && r.customer_id === user.id);
+    if (existing) {
+      setDepositRequests(prev => prev.some(r => r.id === existing.id) ? prev : [...prev, existing]);
+      return { ok: true, message: 'Yêu cầu đặt cọc của bạn đã được ghi nhận trước đó.' };
+    }
+
+    const room = (db.rooms || []).find((r: Room) => r.id === schedule.room_id);
+    const activeRoomDeposit = list.find(
+      r => r.room_id === schedule.room_id && r.status !== 'cancelled'
+    );
+
+    if (!room) {
+      return { ok: false, message: 'Không tìm thấy thông tin phòng trong hệ thống. Vui lòng liên hệ nhân viên Sale để kiểm tra lại.' };
+    }
+
+    if (activeRoomDeposit || room.status === 'deposited' || room.status === 'occupied' || room.status === 'maintenance') {
+      return {
+        ok: false,
+        message: 'Phòng/giường này đã được đặt cọc hoặc không còn trống. Nhân viên Sale sẽ hỗ trợ bạn chọn phương án phù hợp khác.',
+      };
+    }
+
+    if (room.status === 'partial') {
+      const availableBeds = (db.beds || []).filter(
+        (bed: Bed) => bed.room_id === room.id && bed.status === 'available'
+      );
+      if (availableBeds.length === 0) {
+        return {
+          ok: false,
+          message: 'Các giường còn lại trong phòng này hiện đã được đặt cọc hoặc đang có người thuê.',
+        };
+      }
+    }
+
+    const request: CustomerDepositRequest = {
+      id: `cdr-${Date.now()}`,
+      customer_id: user.id,
+      customer_name: user.full_name || 'Khách hàng mới',
+      customer_phone: user.phone || '0977889900',
+      room_id: schedule.room_id,
+      room_name: schedule.room_name,
+      room_image_url: schedule.room_image_url,
+      branch_name: schedule.branch_name,
+      viewing_schedule_id: schedule.id,
+      deposit_amount: 1000000,
+      expected_move_in_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      status: 'pending_sale_confirmation',
+      note: 'Khách đã xem phòng và muốn đăng ký đặt cọc.',
+      created_at: new Date().toISOString(),
+    };
+
+    saveMockDB({ ...db, customer_deposit_requests: [request, ...list] });
+    setDepositRequests(prev => [request, ...prev]);
+    return { ok: true, message: 'Đã gửi yêu cầu đặt cọc cho nhân viên Sale.' };
   };
 
   const statsCards = [
@@ -716,8 +867,10 @@ export default function ViewingSchedulePage() {
                   <AppointmentCard
                      key={s.id}
                      schedule={s}
+                     depositRequest={depositRequests.find(r => r.viewing_schedule_id === s.id)}
                      onCancel={handleCancel}
                      onReschedule={handleReschedule}
+                     onCreateDepositRequest={handleCreateDepositRequest}
                   />
                 ))}
               </div>

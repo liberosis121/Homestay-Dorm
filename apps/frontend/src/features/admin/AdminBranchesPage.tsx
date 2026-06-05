@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -150,13 +151,17 @@ export default function AdminBranchesPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="active">Đang hoạt động</option>
-          <option value="inactive">Tạm dừng</option>
-        </select>
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={[
+            { value: '', label: 'Tất cả trạng thái' },
+            { value: 'active', label: 'Đang hoạt động' },
+            { value: 'inactive', label: 'Tạm dừng' }
+          ]}
+          className="min-w-[160px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
         <button onClick={() => { setSearch(''); setFilterStatus(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -213,7 +218,7 @@ export default function AdminBranchesPage() {
                     <h3 className="text-base font-bold mt-1" style={{ color: A.primary }}>{b.name}</h3>
                     <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: A.textMuted }}>
                       <span className="material-symbols-outlined text-[14px]">location_on</span>
-                      {b.address}, {b.district}
+                      {b.address}{b.district ? `, ${b.district}` : ''}
                     </p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
@@ -278,7 +283,7 @@ export default function AdminBranchesPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold" style={{ color: A.primary }}>{selected.name}</h3>
-                  <p className="text-sm" style={{ color: A.textMuted }}>{selected.address}, {selected.district}</p>
+                  <p className="text-sm" style={{ color: A.textMuted }}>{selected.address}{selected.district ? `, ${selected.district}` : ''}</p>
                 </div>
               </div>
 
@@ -317,7 +322,7 @@ export default function AdminBranchesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: `${A.primary}66` }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl p-5 flex flex-col gap-4 overflow-hidden"
             style={{ background: A.surface }}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
@@ -330,7 +335,6 @@ export default function AdminBranchesPage() {
             {[
               { label: 'Tên chi nhánh', key: 'name', type: 'text' },
               { label: 'Địa chỉ', key: 'address', type: 'text' },
-              { label: 'Quận/Huyện', key: 'district', type: 'text' },
               { label: 'Điện thoại', key: 'phone', type: 'text' },
               { label: 'Email', key: 'email', type: 'email' },
               { label: 'Tên Quản lý', key: 'manager', type: 'text' },
