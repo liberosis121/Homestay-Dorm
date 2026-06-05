@@ -46,14 +46,14 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
   };
 
   return (
-    <div className="w-full bg-surface-container-lowest rounded-2xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col">
+    <div className="flex w-full flex-col overflow-hidden bg-surface-container-lowest">
       {/* Header banner */}
-      <div className="bg-primary p-6 text-on-primary">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest bg-white/10 px-2.5 py-0.5 rounded-full backdrop-blur-md">
+      <div className="bg-primary py-6 pl-6 pr-16 text-on-primary">
+        <div className="mb-2 flex items-center justify-between gap-4">
+          <span className="rounded-full border border-surface/40 bg-surface/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-primary shadow-sm">
             {invoice.typeName}
           </span>
-          <span className="text-xs font-medium opacity-80">Hạn: {formatDate(invoice.dueDate)}</span>
+          <span className="whitespace-nowrap text-xs font-semibold text-on-primary/85">Hạn: {formatDate(invoice.dueDate)}</span>
         </div>
         <h2 className="text-xl font-bold font-headline-md tracking-wide">{invoice.id}</h2>
         <p className="text-xs opacity-90 mt-1 font-medium">Kỳ thanh toán: {invoice.billingPeriod}</p>

@@ -223,13 +223,13 @@ export default function InvoicesDashboardPage() {
           onClick={() => setIsDetailModalOpen(false)}
         >
           <div 
-            className="bg-surface w-full max-w-md rounded-32 shadow-2xl border border-surface-variant overflow-hidden animate-fade-in-up relative"
+            className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-surface-variant bg-surface-container-lowest shadow-2xl animate-fade-in-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button 
               onClick={() => setIsDetailModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/25 hover:bg-black/40 text-white transition-all cursor-pointer z-50 flex items-center justify-center animate-fade-in active:scale-90"
+              className="absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-surface/30 bg-surface/95 text-primary shadow-sm transition-all hover:bg-surface hover:text-primary/80 active:scale-90 cursor-pointer"
               title="Đóng"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
