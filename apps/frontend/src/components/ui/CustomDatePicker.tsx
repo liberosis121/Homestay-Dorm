@@ -217,11 +217,11 @@ export default function CustomDatePicker({
           type="button"
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between text-left py-3.5 pl-6 pr-10 rounded-full border text-sm transition-all focus:outline-none select-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${buttonStateClass}`}
+          className={`w-full flex items-center justify-between text-left py-3.5 pl-5 ${value && !disabled ? 'pr-10' : 'pr-5'} rounded-full border text-sm transition-all focus:outline-none select-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${buttonStateClass}`}
         >
-          <div className="flex items-center gap-2 truncate">
+          <div className="flex min-w-0 items-center gap-2">
             <CalendarDays className={`w-4 h-4 shrink-0 ${iconClass}`} />
-            <span className={value ? valueClass : placeholderClass}>
+            <span className={`min-w-0 whitespace-nowrap ${value ? valueClass : placeholderClass}`}>
               {formatDateDisplay(value) || placeholder}
             </span>
           </div>

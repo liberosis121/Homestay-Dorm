@@ -58,8 +58,9 @@ const viewingTimeOptions = [
 ];
 
 const today = new Date().toISOString().split('T')[0];
-const inputClass = 'w-full bg-surface-container-lowest border border-surface-variant rounded-24 py-3.5 px-5 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface';
-const selectTriggerClass = 'w-full bg-surface-container-lowest border-surface-variant rounded-24 py-3.5';
+const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px-5 text-sm font-body-md shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface hover:border-primary/40';
+const selectTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 active:scale-[0.995]';
+const datePickerClass = '[&_button:first-of-type]:bg-white [&_button:first-of-type]:border-[#d7ded3] [&_button:first-of-type]:shadow-[0_1px_0_rgba(74,101,73,0.04)] [&_button:first-of-type]:py-3.5 [&_button:first-of-type]:hover:border-primary/40 [&_button:first-of-type]:active:scale-[0.995] [&_span]:text-sm';
 
 export const RegisterLeasePage: React.FC = () => {
   const navigate = useNavigate();
@@ -206,8 +207,11 @@ export const RegisterLeasePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-[1180px] mx-auto px-margin-mobile md:px-margin-desktop py-7">
-      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-primary font-label-md text-sm mb-6 hover:underline">
+    <div className="max-w-[1180px] mx-auto px-margin-mobile md:px-margin-desktop py-7 theme-customer">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-primary hover:text-[#3d4e3a] bg-primary/5 hover:bg-primary/15 font-label-md text-sm mb-6 cursor-pointer transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20"
+      >
         <ChevronLeft className="w-4 h-4" />
         Quay lại
       </button>
@@ -216,11 +220,11 @@ export const RegisterLeasePage: React.FC = () => {
         <section className="bg-surface-container-lowest rounded-32 border border-surface-variant shadow-sm p-6 md:p-7">
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5 mb-7">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-[#4a6549] rounded-full text-xs font-bold uppercase tracking-wider mb-4">
                 <ClipboardList className="w-4 h-4" />
                 Phiếu nhu cầu thuê
               </div>
-              <h1 className="text-3xl font-bold text-primary mb-3">Đăng ký thuê phòng</h1>
+              <h1 className="text-3xl font-bold text-[#3d4e3a] mb-3">Đăng ký thuê phòng</h1>
               <p className="text-on-surface-variant text-sm leading-7">
                 Bạn gửi nhu cầu thuê và thời gian có thể đến xem phòng. Nhân viên Sale sẽ kiểm tra điều kiện, tìm phòng/giường phù hợp rồi lập lịch xem phòng cho bạn.
               </p>
@@ -228,14 +232,17 @@ export const RegisterLeasePage: React.FC = () => {
           </div>
 
           {interestedRoomLabel && (
-            <div className="mb-6 p-4 bg-sage-light border border-outline-variant rounded-24 flex flex-col md:flex-row md:items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-surface-container-lowest text-primary flex items-center justify-center shrink-0 border border-outline-variant">
+            <div className="mb-6 p-4 bg-[#f6f5f1] border border-[#dcdad4] rounded-24 flex flex-col md:flex-row md:items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-surface-container-lowest text-[#4a6549] flex items-center justify-center shrink-0 border border-[#dcdad4]">
                 <Home className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Phòng bạn đang quan tâm</p>
+                <p className="text-xs font-bold text-[#4a6549] uppercase tracking-wider mb-1">Phòng bạn đang quan tâm</p>
                 <h2 className="text-lg font-bold text-on-surface">{interestedRoomLabel.room}</h2>
-                <p className="text-sm text-on-surface-variant mt-1">{interestedRoomLabel.branch} · {interestedRoomLabel.price}</p>
+                <p className="text-sm text-on-surface-variant mt-1">{interestedRoomLabel.branch}</p>
+                <span className="mt-2 -ml-0.5 inline-flex w-fit items-center rounded-full border border-[#d7ded3] bg-[#eef3ea] px-3 py-1 text-xs font-bold text-[#4a6549]">
+                  {interestedRoomLabel.price}
+                </span>
               </div>
               <p className="md:max-w-xs text-sm text-on-surface-variant leading-6">
                 Phòng này sẽ được ghi nhận như một ưu tiên. Sale vẫn kiểm tra tình trạng thực tế trước khi sắp lịch xem phòng.
@@ -262,7 +269,7 @@ export const RegisterLeasePage: React.FC = () => {
             </FormSection>
 
             <FormSection icon={<Home className="w-5 h-5" />} title="Nhu cầu thuê">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-7 gap-y-6">
                 <Field label="Loại phòng mong muốn">
                   <CustomSelect value={form.preferredRoomType} onChange={val => setField('preferredRoomType', val)} options={roomTypeOptions} triggerClassName={selectTriggerClass} />
                 </Field>
@@ -272,7 +279,7 @@ export const RegisterLeasePage: React.FC = () => {
                 <Field label="Số người ở">
                   <input type="number" min="1" max="8" value={form.occupantsCount} onChange={e => setField('occupantsCount', e.target.value)} className={inputClass} />
                 </Field>
-                <Field label="Chi nhánh/khu vực mong muốn">
+                <Field label="Khu vực mong muốn">
                   <CustomSelect value={form.preferredBranchId} onChange={val => setField('preferredBranchId', val)} options={branchOptions} triggerClassName={selectTriggerClass} />
                 </Field>
                 <Field label="Khoảng giá">
@@ -285,6 +292,8 @@ export const RegisterLeasePage: React.FC = () => {
                     min={today}
                     error={!!errors.moveInDate}
                     placeholder="Chọn ngày vào ở"
+                    variant="surface"
+                    className={datePickerClass}
                   />
                 </Field>
                 <Field label="Thời hạn thuê">
@@ -311,6 +320,8 @@ export const RegisterLeasePage: React.FC = () => {
                     min={today}
                     error={!!errors.preferredViewingDate}
                     placeholder="Chọn ngày xem"
+                    variant="surface"
+                    className={datePickerClass}
                   />
                 </Field>
                 <Field label="Khung giờ rảnh">
@@ -338,7 +349,15 @@ export const RegisterLeasePage: React.FC = () => {
                     ].map(([value, label]) => {
                       const active = form.amenities.includes(value);
                       return (
-                        <button key={value} type="button" onClick={() => toggleAmenity(value)} className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${active ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container-lowest text-on-surface-variant border-surface-variant hover:border-primary/30'}`}>
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => toggleAmenity(value)}
+                          className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all duration-200 active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-primary/20 ${active
+                              ? 'bg-primary text-on-primary border-primary hover:bg-[#3d4e3a] hover:shadow-md'
+                              : 'bg-white text-on-surface-variant border-[#d7ded3] hover:border-primary/50 hover:bg-primary/5 hover:text-primary hover:shadow-sm'
+                            }`}
+                        >
                           {label}
                         </button>
                       );
@@ -355,7 +374,7 @@ export const RegisterLeasePage: React.FC = () => {
               <p className="text-xs text-on-surface-variant leading-relaxed max-w-xl">
                 Phiếu này sẽ được gửi đến nhân viên Sale để kiểm tra phòng/giường phù hợp trước khi lập lịch xem phòng.
               </p>
-              <button type="submit" disabled={isSubmitting} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="submit" disabled={isSubmitting} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
                 {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu đăng ký'}
                 <Send className="w-4 h-4" />
               </button>
@@ -364,12 +383,12 @@ export const RegisterLeasePage: React.FC = () => {
         </section>
 
         <aside className="sticky top-24">
-          <div className="bg-sage-light border border-outline-variant rounded-32 p-6 shadow-sm space-y-4">
-            <div className="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
-              <Info className="w-5 h-5" />
+          <div className="bg-[#f6f5f1] border border-[#dcdad4] rounded-32 p-6 shadow-sm space-y-4">
+            <div className="w-12 h-12 rounded-full bg-[#4a6549] text-on-primary flex items-center justify-center shadow-sm">
+              <Info className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-primary text-lg">Quy trình sau khi gửi phiếu</h3>
+              <h3 className="font-bold text-[#3d4e3a] text-lg">Quy trình sau khi gửi phiếu</h3>
               <p className="text-sm text-on-surface-variant mt-3 leading-7 text-justify">
                 Sale sẽ kiểm tra nhu cầu, tìm phòng/giường phù hợp, đối chiếu thời gian rảnh của bạn rồi lập lịch xem phòng. Bạn chỉ gửi yêu cầu đặt cọc sau khi đã xem phòng và quyết định thuê.
               </p>
@@ -377,7 +396,7 @@ export const RegisterLeasePage: React.FC = () => {
             <div className="space-y-3 text-sm pt-1">
               {['Gửi phiếu nhu cầu thuê', 'Sale sắp xếp phòng và lịch xem', 'Khách xem phòng thực tế', 'Gửi yêu cầu đặt cọc nếu ưng ý'].map((item, index) => (
                 <div key={item} className="flex items-center gap-3 text-on-surface-variant">
-                  <span className="w-7 h-7 rounded-full bg-surface-container-lowest border border-outline-variant text-primary flex items-center justify-center text-xs font-bold shrink-0">{index + 1}</span>
+                  <span className="w-7 h-7 rounded-full bg-surface-container-lowest border border-[#dcdad4] text-[#4a6549] flex items-center justify-center text-xs font-bold shrink-0">{index + 1}</span>
                   <span className="leading-6">{item}</span>
                 </div>
               ))}
@@ -405,9 +424,13 @@ function FormSection({ icon, title, children }: { icon: React.ReactNode; title: 
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
-    <label className="block space-y-2 min-w-0">
-      <span className="block text-sm font-label-md text-on-surface-variant ml-2">{label}</span>
-      {children}
+    <label className="flex min-w-0 flex-col gap-1.5">
+      <span className="ml-2 block min-h-[24px] max-w-full text-sm font-label-md leading-[18px] text-on-surface-variant">
+        {label}
+      </span>
+      <div className="min-w-0">
+        {children}
+      </div>
       {error && <span className="block text-xs text-error ml-2">{error}</span>}
     </label>
   );
