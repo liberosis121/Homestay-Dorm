@@ -545,11 +545,11 @@ export default function AccountantDepositPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0]">
+              <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0] border-l-2 border-l-transparent">
                 <th className="p-4 text-left">Mã HĐ</th>
                 <th className="p-4 text-left">Khách hàng</th>
-                <th className="p-4 text-center">Phòng</th>
-                <th className="p-4 text-center">Số tiền</th>
+                <th className="p-4 text-left">Phòng</th>
+                <th className="p-4 text-right">Số tiền</th>
                 <th className="p-4 text-left">Hạn TT</th>
                 <th className="p-4 text-center">Trạng thái</th>
                 <th className="p-4 text-center">Thao tác</th>

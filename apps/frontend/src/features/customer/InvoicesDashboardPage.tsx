@@ -21,6 +21,13 @@ const YEAR_OPTIONS = [
   { value: '2024', label: 'Năm 2024' },
 ];
 
+const INVOICE_TYPE_OPTIONS = [
+  { value: 'Tất cả', label: 'Tất cả loại' },
+  { value: 'service', label: 'Dịch vụ' },
+  { value: 'incidental', label: 'Phát sinh' },
+  { value: 'monthly', label: 'Định kỳ' },
+];
+
 export default function InvoicesDashboardPage() {
   const navigate = useNavigate();
   const { invoices, filters, setFilters, selectedInvoiceId, setSelectedInvoiceId } = useInvoiceStore();
@@ -65,6 +72,8 @@ export default function InvoicesDashboardPage() {
       if (filters.month !== 'Tất cả' && inv.month !== parseInt(filters.month)) return false;
       // Year
       if (filters.year !== 'Tất cả' && inv.year !== parseInt(filters.year)) return false;
+      // Invoice type
+      if ((filters.type || 'Tất cả') !== 'Tất cả' && inv.type !== filters.type) return false;
       // Status
       if (filters.status !== 'Tất cả') {
         if (filters.status === 'paid' && inv.status !== 'paid') return false;
@@ -173,6 +182,16 @@ export default function InvoicesDashboardPage() {
             options={YEAR_OPTIONS}
             pill
             className="w-full sm:w-[140px]"
+            triggerClassName="hover:bg-primary/5 active:scale-[0.99]"
+          />
+
+          {/* Invoice type selector */}
+          <CustomSelect
+            value={filters.type || 'Tất cả'}
+            onChange={(type) => setFilters({ type })}
+            options={INVOICE_TYPE_OPTIONS}
+            pill
+            className="w-full sm:w-[160px]"
             triggerClassName="hover:bg-primary/5 active:scale-[0.99]"
           />
 
