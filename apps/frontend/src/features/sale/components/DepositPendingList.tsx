@@ -104,7 +104,7 @@ export default function DepositPendingList({ deposits, onSelect, staffBranch, on
                   <th className="px-5 py-3.5 text-left text-xs font-bold text-[#6f583c] uppercase tracking-wider">
                     Tiền cọc
                   </th>
-                  <th className="px-5 py-3.5 text-left text-xs font-bold text-[#6f583c] uppercase tracking-wider">
+                  <th className="px-5 py-3.5 text-center text-xs font-bold text-[#6f583c] uppercase tracking-wider">
                     Trạng thái KT
                   </th>
                   <th className="px-5 py-3.5 text-center text-xs font-bold text-[#6f583c] uppercase tracking-wider">
@@ -177,7 +177,7 @@ export default function DepositPendingList({ deposits, onSelect, staffBranch, on
                     </td>
 
                     {/* Trạng thái */}
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4 text-center">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-[#d8f3dc] text-[#1b5e20]">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         ĐẠT

@@ -9,6 +9,7 @@ import ScheduleCalendar from './components/ScheduleCalendar';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -885,17 +886,13 @@ const CreateModal: React.FC<CreateModalProps> = ({
             <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
               Ngày xem <span className="text-error">*</span>
             </label>
-            <div className="relative">
-              <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-              <input
-                type="date"
-                value={form.viewDate}
-                min="2026-06-02"
-                onChange={(e) => setForm((f) => ({ ...f, viewDate: e.target.value }))}
-                className={`${inputClass('viewDate')} pl-9`}
-              />
-            </div>
-            {errors.viewDate && <p className="text-xs text-error mt-1">{errors.viewDate}</p>}
+            <CustomDatePicker
+              value={form.viewDate}
+              min="2026-06-02"
+              onChange={(val) => setForm((f) => ({ ...f, viewDate: val }))}
+              placeholder="Chọn ngày"
+              error={errors.viewDate}
+            />
           </div>
 
           {/* Start + End Time */}
@@ -1044,14 +1041,13 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ scheduleId, schedule,
             <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
               Ngày mới <span className="text-error">*</span>
             </label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={form.newDate}
               min="2026-06-02"
-              onChange={(e) => setForm((f) => ({ ...f, newDate: e.target.value }))}
-              className={inputClass('newDate')}
+              onChange={(val) => setForm((f) => ({ ...f, newDate: val }))}
+              placeholder="Chọn ngày mới"
+              error={errors.newDate}
             />
-            {errors.newDate && <p className="text-xs text-error mt-1">{errors.newDate}</p>}
           </div>
 
           {/* New Times */}

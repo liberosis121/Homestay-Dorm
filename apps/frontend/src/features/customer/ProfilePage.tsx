@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import FormLabel from '../../components/ui/FormLabel';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
@@ -301,20 +303,39 @@ export default function ProfilePage() {
   const currentLang = LANGUAGES.find(l => l.code === language);
 
   // ── Shared InputField ─────────────────────────────────────────────────────
-  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => (
-    <div className="space-y-2">
-      <label className="block text-sm font-label-md text-on-surface-variant ml-2">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={handleProfileChange}
-        placeholder={placeholder}
-        disabled={disabled || !isEditing}
-        className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
-      />
-    </div>
-  );
+  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => {
+    const isDate = type === 'date';
+    if (isDate) {
+      return (
+        <CustomDatePicker
+          label={label}
+          value={value}
+          onChange={(val) => {
+            handleProfileChange({
+              target: { name, value: val }
+            } as any);
+          }}
+          disabled={disabled || !isEditing}
+          placeholder={placeholder || 'Chọn ngày'}
+          required={label.includes('*')}
+        />
+      );
+    }
+    return (
+      <div className="space-y-2">
+        <FormLabel label={label} required={label.includes('*')} />
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={handleProfileChange}
+          placeholder={placeholder}
+          disabled={disabled || !isEditing}
+          className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
+        />
+      </div>
+    );
+  };
 
   // ── Toggle Switch ─────────────────────────────────────────────────────────
   const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
@@ -338,7 +359,7 @@ export default function ProfilePage() {
         />
       )}
 
-      <div className="max-w-container-max mx-auto w-full px-margin-mobile md:px-margin-desktop py-8 animate-fade-in-up">
+      <div className="max-w-container-max mx-auto w-full px-margin-mobile md:px-margin-desktop py-8 animate-fade-in-up theme-customer">
         <div className="flex flex-col xl:flex-row gap-8">
           
           {/* LEFT SIDEBAR */}
@@ -518,7 +539,7 @@ export default function ProfilePage() {
                     
                     <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
                     <div className="space-y-2">
-                      <label className="block text-sm font-label-md text-on-surface-variant ml-2">Giới tính *</label>
+                      <FormLabel label="Giới tính" required />
                       <CustomSelect
                         value={formData.gender}
                         onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
@@ -529,7 +550,7 @@ export default function ProfilePage() {
                           { value: 'female', label: 'Nữ' },
                           { value: 'other', label: 'Khác' },
                         ]}
-                        triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5 px-6"
+                        triggerClassName="w-full !bg-surface-container-low !border-surface-variant !py-3.5 !px-6 text-sm font-body-md text-on-surface focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20"
                         dropdownClassName="border-outline-variant"
                       />
                     </div>

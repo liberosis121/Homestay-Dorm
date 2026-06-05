@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB, saveMockDB, ViewingSchedule, CustomerDepositRequest, Room, Bed } from '../../lib/supabaseClient';
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
 
   Search, MapPin, Calendar, User, Phone, ChevronLeft, ChevronRight,
@@ -474,12 +475,14 @@ const AppointmentCard = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-on-surface-variant mb-1 block">Ngày mới</label>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={rescheduleDate}
-                  onChange={e => setRescheduleDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 rounded-[12px] border border-outline-variant text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  onChange={setRescheduleDate}
+                  min={(() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  })()}
+                  placeholder="Chọn ngày"
                 />
               </div>
               <div>

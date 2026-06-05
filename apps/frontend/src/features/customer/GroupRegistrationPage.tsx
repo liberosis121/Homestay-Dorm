@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useGroupRegistrationStore } from './store/useGroupRegistrationStore';
 import { CheckCircle, ChevronLeft, ChevronRight, Info, Plus, Trash2, Users } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
 const memberSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
@@ -92,7 +93,7 @@ export const GroupRegistrationPage: React.FC = () => {
   });
 
   type RentalInfoType = z.infer<typeof rentalInfoSchema>;
-  const { register: registerRental, setValue: setRentalValue, watch: watchRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm<RentalInfoType>({
+  const { setValue: setRentalValue, watch: watchRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm<RentalInfoType>({
     resolver: zodResolver(rentalInfoSchema),
     defaultValues: {
       leaseTerm: draftData.leaseTerm || '6',
@@ -255,9 +256,14 @@ export const GroupRegistrationPage: React.FC = () => {
                         {errorsGroup.members?.[index]?.cccd && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.cccd?.message}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
-                        <input type="date" {...registerGroup(`members.${index}.dob` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" />
-                        {errorsGroup.members?.[index]?.dob && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.dob?.message}</p>}
+                        <CustomDatePicker
+                          label="Ngày sinh"
+                          value={watchGroup(`members.${index}.dob` as const) || ''}
+                          onChange={(val) => setGroupValue(`members.${index}.dob` as const, val, { shouldValidate: true })}
+                          placeholder="Chọn ngày sinh"
+                          error={errorsGroup.members?.[index]?.dob?.message}
+                          required
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
@@ -279,9 +285,14 @@ export const GroupRegistrationPage: React.FC = () => {
                         {errorsGroup.members?.[index]?.nationality && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.nationality?.message}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Ngày cấp CCCD</label>
-                        <input type="date" {...registerGroup(`members.${index}.issueDate` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" />
-                        {errorsGroup.members?.[index]?.issueDate && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.issueDate?.message}</p>}
+                        <CustomDatePicker
+                          label="Ngày cấp CCCD"
+                          value={watchGroup(`members.${index}.issueDate` as const) || ''}
+                          onChange={(val) => setGroupValue(`members.${index}.issueDate` as const, val, { shouldValidate: true })}
+                          placeholder="Chọn ngày cấp"
+                          error={errorsGroup.members?.[index]?.issueDate?.message}
+                          required
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Nơi cấp CCCD</label>
@@ -353,9 +364,18 @@ export const GroupRegistrationPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày dự kiến chuyển vào (chung)</label>
-                  <input type="date" {...registerRental('moveInDate')} className="w-full px-4 py-3 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888]" />
-                  {errorsRental.moveInDate && <p className="text-red-500 text-sm mt-1">{errorsRental.moveInDate.message as string}</p>}
+                  <CustomDatePicker
+                    label="Ngày dự kiến chuyển vào (chung)"
+                    value={watchRental('moveInDate') || ''}
+                    onChange={(val) => setRentalValue('moveInDate', val, { shouldValidate: true })}
+                    placeholder="Chọn ngày vào ở"
+                    error={errorsRental.moveInDate?.message as string}
+                    required
+                    min={(() => {
+                      const d = new Date();
+                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    })()}
+                  />
                 </div>
               </div>
 

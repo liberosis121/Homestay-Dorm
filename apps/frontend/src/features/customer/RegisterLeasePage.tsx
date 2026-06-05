@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Send, Sparkles, UserRound } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
 
@@ -278,7 +279,13 @@ export const RegisterLeasePage: React.FC = () => {
                   <CustomSelect value={form.budgetRange} onChange={val => setField('budgetRange', val)} options={budgetOptions} triggerClassName={selectTriggerClass} />
                 </Field>
                 <Field label="Ngày dự kiến vào ở" error={errors.moveInDate}>
-                  <input type="date" min={today} value={form.moveInDate} onChange={e => setField('moveInDate', e.target.value)} className={inputClass} />
+                  <CustomDatePicker
+                    value={form.moveInDate}
+                    onChange={val => setField('moveInDate', val)}
+                    min={today}
+                    error={!!errors.moveInDate}
+                    placeholder="Chọn ngày vào ở"
+                  />
                 </Field>
                 <Field label="Thời hạn thuê">
                   <CustomSelect
@@ -298,7 +305,13 @@ export const RegisterLeasePage: React.FC = () => {
             <FormSection icon={<CalendarClock className="w-5 h-5" />} title="Thời gian xem phòng mong muốn">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Ngày có thể đến xem" error={errors.preferredViewingDate}>
-                  <input type="date" min={today} value={form.preferredViewingDate} onChange={e => setField('preferredViewingDate', e.target.value)} className={inputClass} />
+                  <CustomDatePicker
+                    value={form.preferredViewingDate}
+                    onChange={val => setField('preferredViewingDate', val)}
+                    min={today}
+                    error={!!errors.preferredViewingDate}
+                    placeholder="Chọn ngày xem"
+                  />
                 </Field>
                 <Field label="Khung giờ rảnh">
                   <CustomSelect value={form.preferredViewingTime} onChange={val => setField('preferredViewingTime', val)} options={viewingTimeOptions} triggerClassName={selectTriggerClass} />

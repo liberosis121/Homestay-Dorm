@@ -116,6 +116,15 @@
 
 :root {
   font-family: 'Plus Jakarta Sans', sans-serif;
+
+  /* DatePicker Theme Variables */
+  --date-picker-selected-bg: #6B5A3E;
+  --date-picker-selected-text: #FFFFFF;
+  --date-picker-hover-bg: #E8E1D3;
+  --date-picker-hover-text: #3F3528;
+  --date-picker-today-border: #6B5A3E;
+  --date-picker-today-bg: #faf2ec;
+  --form-required-color: #D85C5C;
   
   /* Palette CSS variables compatible with shadcn/ui */
   --background: 224 71% 4%;
@@ -199,3 +208,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(74, 101, 73, 0.4);
 }
+
+/* DatePicker Styled Classes */
+.datepicker-day-selected {
+  background-color: var(--date-picker-selected-bg) !important;
+  color: var(--date-picker-selected-text) !important;
+}
+
+.datepicker-day-hoverable:hover {
+  background-color: var(--date-picker-hover-bg) !important;
+  color: var(--date-picker-hover-text) !important;
+}
+
+.datepicker-day-today {
+  border: 1px solid var(--date-picker-today-border) !important;
+  color: var(--date-picker-today-border) !important;
+  background-color: var(--date-picker-today-bg) !important;
+}
+
+/* Theme required indicator override colors */
+.theme-customer {
+  --form-required-color: #8BA888; /* Soft primary sage green */
+  --form-label-color: #434841; /* Muted olive matching on-surface-variant */
+}
+
+.theme-sale {
+  --form-required-color: #6f583c; /* Theme-consistent warm brown/be */
+  --form-label-color: #4e453c; /* Warm brown matching staff palette */
+}
+

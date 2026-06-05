@@ -3,6 +3,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCustomerServicesStore } from './store/useCustomerServicesStore';
 import ServiceCard from './components/ServiceCard';
 import { useNavigate } from 'react-router-dom';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
   Info, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
@@ -52,7 +53,7 @@ function ServiceRegistrationModal({
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const [agreed, setAgreed] = useState(false);
 
@@ -88,13 +89,14 @@ function ServiceRegistrationModal({
         <div className="px-6 pb-4 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-on-surface mb-1.5 uppercase tracking-wide">Ngày bắt đầu sử dụng</label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={startDate}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-[12px] border border-outline-variant bg-surface-container-lowest text-on-surface
-                         focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm font-medium"
+              onChange={setStartDate}
+              min={(() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              })()}
+              placeholder="Chọn ngày"
             />
           </div>
 

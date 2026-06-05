@@ -5,6 +5,8 @@ import {
   X, Eye, EyeOff, Check, Camera, Briefcase, MapPin, Phone
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import FormLabel from '../../components/ui/FormLabel';
 
 // ─── Brown Tone Palette (Staff Dashboard) ─────────────────────────────────────
 // Primary accent: #6f583c  |  Surface: #faf2ec  |  Border: #d1c4b9
@@ -323,20 +325,39 @@ export default function StaffProfilePage() {
   // ── Shared InputField ─────────────────────────────────────────────────────
   const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: {
     label: string; name: string; value: string; type?: string; placeholder?: string; disabled?: boolean;
-  }) => (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-[#4e453c] ml-2">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={handleProfileChange}
-        placeholder={placeholder}
-        disabled={disabled || !isEditing}
-        className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
-      />
-    </div>
-  );
+  }) => {
+    const isDate = type === 'date';
+    if (isDate) {
+      return (
+        <CustomDatePicker
+          label={label}
+          value={value}
+          onChange={(val) => {
+            handleProfileChange({
+              target: { name, value: val }
+            } as any);
+          }}
+          disabled={disabled || !isEditing}
+          placeholder={placeholder || 'Chọn ngày'}
+          required={label.includes('*')}
+        />
+      );
+    }
+    return (
+      <div className="space-y-2">
+        <FormLabel label={label} required={label.includes('*')} />
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={handleProfileChange}
+          placeholder={placeholder}
+          disabled={disabled || !isEditing}
+          className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+    );
+  };
 
   const ReadOnlyField = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
     <div className="space-y-2">
@@ -386,7 +407,7 @@ export default function StaffProfilePage() {
         />
       )}
 
-      <div className="animate-fade-in-up space-y-6">
+      <div className="animate-fade-in-up space-y-6 theme-sale">
         {/* ── Page Header ────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
@@ -549,7 +570,7 @@ export default function StaffProfilePage() {
 
                   <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-[#4e453c] ml-2">Giới tính *</label>
+                    <FormLabel label="Giới tính" required />
                     <CustomSelect
                       value={formData.gender}
                       onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
@@ -561,7 +582,7 @@ export default function StaffProfilePage() {
                         { value: 'female', label: 'Nữ' },
                         { value: 'other', label: 'Khác' },
                       ]}
-                      triggerClassName="w-full bg-[#faf2ec] border-[#d1c4b9] rounded-full py-3.5 px-6"
+                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3.5 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
                       dropdownClassName="border-[#d1c4b9]"
                     />
                   </div>
