@@ -2,15 +2,18 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Search, CreditCard, Save, Eye, QrCode
 } from 'lucide-react';
-import { mockSupabase, getMockDB, saveMockDB, DepositInvoice, Profile, Room } from '../../lib/supabaseClient';
+import { getMockDB, saveMockDB, DepositInvoice, Profile, Room, CustomerDepositRequest } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function AccountantDepositPage() {
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
   const [customers, setCustomers] = useState<Profile[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<CustomerDepositRequest[]>([]);
+  
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [selectedRequestId, setSelectedRequestId] = useState('');
   const [amount, setAmount] = useState('1000000');
   const [deadlineType, setDeadlineType] = useState('24h');
   const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'cash'>('transfer');
@@ -18,12 +21,56 @@ export default function AccountantDepositPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Load initial data
+  // Load initial data & run auto overdue check
   useEffect(() => {
     const db = getMockDB();
-    setInvoices(db.deposit_invoices || []);
+    const allInvoices = db.deposit_invoices || [];
     setCustomers(db.profiles?.filter((p: Profile) => p.role === 'customer') || []);
     setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
+    
+    // Auto scanning overdue invoices (alternative flow A5)
+    const now = new Date();
+    let hasOverdueUpdates = false;
+    
+    const updatedInvoices = allInvoices.map((inv: DepositInvoice) => {
+      if (inv.status === 'pending') {
+        const deadlineDate = new Date(inv.deadline.replace(' ', 'T'));
+        if (deadlineDate < now) {
+          hasOverdueUpdates = true;
+          inv.status = 'overdue';
+          
+          // Release room status back to available
+          db.rooms = db.rooms.map((r: Room) => {
+            if (r.id === inv.room_id) {
+              return { ...r, status: 'available' };
+            }
+            return r;
+          });
+          
+          // Update corresponding deposit request status to cancelled
+          if (inv.deposit_request_id) {
+            db.customer_deposit_requests = db.customer_deposit_requests.map((cdr: CustomerDepositRequest) => {
+              if (cdr.id === inv.deposit_request_id) {
+                return { ...cdr, status: 'cancelled' };
+              }
+              return cdr;
+            });
+          }
+        }
+      }
+      return inv;
+    });
+
+    if (hasOverdueUpdates) {
+      db.deposit_invoices = updatedInvoices;
+      saveMockDB(db);
+      setInvoices(updatedInvoices);
+      setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
+      setPendingRequests(db.customer_deposit_requests?.filter((cdr: CustomerDepositRequest) => cdr.status === 'pending_sale_confirmation') || []);
+    } else {
+      setInvoices(allInvoices);
+      setPendingRequests(db.customer_deposit_requests?.filter((cdr: CustomerDepositRequest) => cdr.status === 'pending_sale_confirmation') || []);
+    }
   }, []);
 
   const handleCreateInvoice = (e: React.FormEvent) => {
@@ -33,9 +80,27 @@ export default function AccountantDepositPage() {
       return;
     }
 
-    const customer = customers.find(c => c.id === selectedCustomerId);
-    const room = rooms.find(r => r.id === selectedRoomId);
-    if (!customer || !room) return;
+    const db = getMockDB();
+    let customerName = '';
+    const customer = db.profiles?.find((p: Profile) => p.id === selectedCustomerId);
+    if (customer) {
+      customerName = customer.full_name;
+    } else {
+      // Check in requests if profile not yet loaded or exists
+      const req = db.customer_deposit_requests?.find((r: CustomerDepositRequest) => r.id === selectedRequestId);
+      if (req) {
+        customerName = req.customer_name;
+      } else {
+        alert('Khách hàng không hợp lệ!');
+        return;
+      }
+    }
+
+    const room = db.rooms?.find((r: Room) => r.id === selectedRoomId);
+    if (!room) {
+      alert('Phòng không hợp lệ!');
+      return;
+    }
 
     const parsedAmount = parseInt(amount.replace(/\D/g, '')) || 0;
     
@@ -49,9 +114,12 @@ export default function AccountantDepositPage() {
       deadlineDate.setDate(deadlineDate.getDate() + 3);
     }
 
-    const newInvoice: Omit<DepositInvoice, 'id'> = {
+    const nextInvoiceId = `DEP-${1000 + (db.deposit_invoices?.length || 0) + 1}`;
+    
+    const newInvoice: DepositInvoice = {
+      id: nextInvoiceId,
       customer_id: selectedCustomerId,
-      customer_name: customer.full_name,
+      customer_name: customerName,
       room_id: selectedRoomId,
       room_name: room.name,
       amount: parsedAmount,
@@ -59,35 +127,47 @@ export default function AccountantDepositPage() {
       payment_method: paymentMethod,
       status: 'pending',
       created_at: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      note: note || undefined
+      note: note || undefined,
+      deposit_request_id: selectedRequestId || undefined
     };
 
-    const res = mockSupabase.from('deposit_invoices').insert(newInvoice);
-    if (res.data) {
-      // Reload db state
-      const db = getMockDB();
-      setInvoices(db.deposit_invoices || []);
-      
-      // Update room status to deposited if needed
-      const updatedRooms = db.rooms.map((r: Room) => {
-        if (r.id === selectedRoomId) {
-          return { ...r, status: 'deposited' };
-        }
-        return r;
-      });
-      db.rooms = updatedRooms;
-      saveMockDB(db);
-      setRooms(updatedRooms.filter((r: Room) => r.status === 'available' || r.status === 'partial'));
+    // Add invoice
+    db.deposit_invoices = [newInvoice, ...(db.deposit_invoices || [])];
+    
+    // Update room status to deposited
+    db.rooms = db.rooms.map((r: Room) => {
+      if (r.id === selectedRoomId) {
+        return { ...r, status: 'deposited' };
+      }
+      return r;
+    });
 
-      // Reset form
-      setSelectedCustomerId('');
-      setSelectedRoomId('');
-      setAmount('1000000');
-      setDeadlineType('24h');
-      setPaymentMethod('transfer');
-      setNote('');
-      alert('Tạo hóa đơn cọc thành công!');
+    // Update customer deposit request status
+    if (selectedRequestId) {
+      db.customer_deposit_requests = db.customer_deposit_requests.map((cdr: CustomerDepositRequest) => {
+        if (cdr.id === selectedRequestId) {
+          return { ...cdr, status: 'invoice_created' };
+        }
+        return cdr;
+      });
     }
+
+    saveMockDB(db);
+
+    // Refresh states
+    setInvoices(db.deposit_invoices || []);
+    setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
+    setPendingRequests(db.customer_deposit_requests?.filter((cdr: CustomerDepositRequest) => cdr.status === 'pending_sale_confirmation') || []);
+
+    // Reset form
+    setSelectedCustomerId('');
+    setSelectedRoomId('');
+    setAmount('1000000');
+    setDeadlineType('24h');
+    setPaymentMethod('transfer');
+    setNote('');
+    setSelectedRequestId('');
+    alert('Tạo hóa đơn cọc thành công!');
   };
 
   const handleUpdateStatus = (id: string, nextStatus: DepositInvoice['status']) => {
@@ -95,12 +175,49 @@ export default function AccountantDepositPage() {
     const invoice = db.deposit_invoices?.find((inv: DepositInvoice) => inv.id === id);
     if (!invoice) return;
 
-    const res = mockSupabase.from('deposit_invoices').update(id, { status: nextStatus });
-    if (res.data) {
-      // If paid, change room status to deposited or keep as is
-      const updatedDb = getMockDB();
-      setInvoices(updatedDb.deposit_invoices || []);
+    db.deposit_invoices = db.deposit_invoices.map((inv: DepositInvoice) => {
+      if (inv.id === id) {
+        return { ...inv, status: nextStatus };
+      }
+      return inv;
+    });
+
+    // If cancelled or overdue, release room and cancel deposit request
+    if (nextStatus === 'cancelled' || nextStatus === 'overdue') {
+      db.rooms = db.rooms.map((r: Room) => {
+        if (r.id === invoice.room_id) {
+          return { ...r, status: 'available' };
+        }
+        return r;
+      });
+
+      if (invoice.deposit_request_id) {
+        db.customer_deposit_requests = db.customer_deposit_requests.map((cdr: CustomerDepositRequest) => {
+          if (cdr.id === invoice.deposit_request_id) {
+            return { ...cdr, status: 'cancelled' };
+          }
+          return cdr;
+        });
+      }
+    } else if (nextStatus === 'paid') {
+      // If paid, update deposit request to paid
+      if (invoice.deposit_request_id) {
+        db.customer_deposit_requests = db.customer_deposit_requests.map((cdr: CustomerDepositRequest) => {
+          if (cdr.id === invoice.deposit_request_id) {
+            return { ...cdr, status: 'paid' };
+          }
+          return cdr;
+        });
+      }
     }
+
+    saveMockDB(db);
+
+    // Refresh states
+    setInvoices(db.deposit_invoices || []);
+    setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
+    setPendingRequests(db.customer_deposit_requests?.filter((cdr: CustomerDepositRequest) => cdr.status === 'pending_sale_confirmation') || []);
+    alert(`Đã cập nhật trạng thái hóa đơn thành công!${nextStatus === 'cancelled' ? ' Phòng/giường liên quan đã được giải phóng về trạng thái Trống.' : ''}`);
   };
 
   // Summaries
@@ -172,7 +289,7 @@ export default function AccountantDepositPage() {
           <p className="text-3xl font-semibold tabular-nums text-[#F57C00]">{pendingCount}</p>
         </div>
         <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm border-l-4 border-l-[#ba1a1a]">
-          <p className="font-label-caps text-[11px] text-[#ba1a1a] mb-1 font-bold uppercase tracking-wider">Quá hạn</p>
+          <p className="font-label-caps text-[11px] text-[#ba1a1a] mb-1 font-bold uppercase tracking-wider">Quá hạn (24h)</p>
           <p className="text-3xl font-semibold tabular-nums text-[#ba1a1a]">{overdueCount}</p>
         </div>
         <div className="bg-[#735d43] text-[#f5d8b7] p-4 rounded-lg md:col-span-1 col-span-2 shadow-sm">
@@ -181,12 +298,34 @@ export default function AccountantDepositPage() {
         </div>
       </div>
 
+
       {/* Main Layout: Form & Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Form */}
         <div className="lg:col-span-7 bg-white border border-[#d1c4b9] p-6 rounded-lg shadow-sm">
           <h3 className="text-base font-bold text-[#5a462d] mb-4 border-b border-[#d1c4b9] pb-2">Thông tin hóa đơn</h3>
           
+          {selectedRequestId && (
+            <div className="bg-[#FFF3E0] border border-[#FFE0B2] p-3 rounded-[12px] flex justify-between items-center text-xs text-[#E65100] mb-4">
+              <div>
+                Đang lập hóa đơn liên kết với yêu cầu <strong>{selectedRequestId}</strong>. Các thông tin chính đã được khóa để tránh sai lệch.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRequestId('');
+                  setSelectedCustomerId('');
+                  setSelectedRoomId('');
+                  setAmount('1000000');
+                  setNote('');
+                }}
+                className="font-bold text-[#5a462d] hover:underline"
+              >
+                Hủy liên kết
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleCreateInvoice} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Khách hàng */}
@@ -194,13 +333,20 @@ export default function AccountantDepositPage() {
                 <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">
                   Khách hàng <span className="text-[#ba1a1a]">*</span>
                 </label>
-                <CustomSelect
-                  value={selectedCustomerId}
-                  onChange={setSelectedCustomerId}
-                  options={customerOptions}
-                  placeholder="Chọn hoặc tìm kiếm khách hàng..."
-                  theme="accountant"
-                />
+                {selectedRequestId ? (
+                  <div className="w-full bg-[#f6f3f2] border border-[#d1c4b9] text-[#5e5f5d] font-semibold text-sm rounded-[12px] py-2 px-3 flex justify-between items-center select-none">
+                    <span>{selectedCustomer?.full_name || pendingRequests.find(r => r.id === selectedRequestId)?.customer_name}</span>
+                    <span className="text-[10px] bg-[#5a462d] text-white font-bold px-2 py-0.5 rounded uppercase">Liên kết Phiếu Cọc</span>
+                  </div>
+                ) : (
+                  <CustomSelect
+                    value={selectedCustomerId}
+                    onChange={setSelectedCustomerId}
+                    options={customerOptions}
+                    placeholder="Chọn hoặc tìm kiếm khách hàng..."
+                    theme="accountant"
+                  />
+                )}
               </div>
 
               {/* Phòng / Giường */}
@@ -208,13 +354,19 @@ export default function AccountantDepositPage() {
                 <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">
                   Phòng / Giường <span className="text-[#ba1a1a]">*</span>
                 </label>
-                <CustomSelect
-                  value={selectedRoomId}
-                  onChange={setSelectedRoomId}
-                  options={roomOptions}
-                  placeholder="Chọn phòng..."
-                  theme="accountant"
-                />
+                {selectedRequestId ? (
+                  <div className="w-full bg-[#f6f3f2] border border-[#d1c4b9] text-[#5e5f5d] font-semibold text-sm rounded-[12px] py-2 px-3 select-none">
+                    <span>{selectedRoom?.name || pendingRequests.find(r => r.id === selectedRequestId)?.room_name}</span>
+                  </div>
+                ) : (
+                  <CustomSelect
+                    value={selectedRoomId}
+                    onChange={setSelectedRoomId}
+                    options={roomOptions}
+                    placeholder="Chọn phòng..."
+                    theme="accountant"
+                  />
+                )}
               </div>
 
               {/* Tiền cọc */}
@@ -280,10 +432,11 @@ export default function AccountantDepositPage() {
                   setDeadlineType('24h');
                   setPaymentMethod('transfer');
                   setNote('');
+                  setSelectedRequestId('');
                 }}
                 className="px-4 py-2 border border-[#7f756c] text-[#5e5f5d] rounded text-sm font-semibold hover:bg-[#e4e2e1] transition-colors"
               >
-                Hủy
+                Xóa trắng
               </button>
               <button
                 type="submit"
@@ -303,17 +456,23 @@ export default function AccountantDepositPage() {
               <div className="text-center mb-6 border-b border-dashed border-[#d1c4b9] pb-4">
                 <h4 className="text-xl text-[#5a462d] font-bold uppercase tracking-wider">HomeStay Dorm</h4>
                 <p className="text-xs text-[#5e5f5d] font-bold uppercase tracking-widest mt-1">HÓA ĐƠN ĐẶT CỌC GIỮ CHỖ</p>
-                <p className="font-mono text-xs text-[#5e5f5d] mt-1 text-[10px]">Mã: DEP-AUTO-NEW</p>
+                <p className="font-mono text-xs text-[#5e5f5d] mt-1 text-[10px]">
+                  {selectedRequestId ? `Liên kết: ${selectedRequestId}` : 'Mã: DEP-AUTO-NEW'}
+                </p>
               </div>
 
               <div className="space-y-2 mb-6 text-sm text-[#1b1c1c]">
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Khách hàng:</span>
-                  <span className="font-bold text-right">{selectedCustomer ? selectedCustomer.full_name : 'Chưa chọn'}</span>
+                  <span className="font-bold text-right">
+                    {selectedCustomer ? selectedCustomer.full_name : (selectedRequestId ? pendingRequests.find(r => r.id === selectedRequestId)?.customer_name : 'Chưa chọn')}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Phòng/Giường:</span>
-                  <span className="font-bold text-right">{selectedRoom ? selectedRoom.name : 'Chưa chọn'}</span>
+                  <span className="font-bold text-right">
+                    {selectedRoom ? selectedRoom.name : (selectedRequestId ? pendingRequests.find(r => r.id === selectedRequestId)?.room_name : 'Chưa chọn')}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Hạn thanh toán:</span>
@@ -401,7 +560,7 @@ export default function AccountantDepositPage() {
               <option value="all">Tất cả trạng thái</option>
               <option value="pending">Chờ thanh toán</option>
               <option value="paid">Đã thanh toán</option>
-              <option value="overdue">Quá hạn</option>
+              <option value="overdue">Quá hạn (24h)</option>
               <option value="cancelled">Hủy</option>
             </select>
           </div>

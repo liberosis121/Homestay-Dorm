@@ -6,11 +6,15 @@ export default function AccountantRefundsPage() {
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [selectedRefundId, setSelectedRefundId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'checkout' | 'cancellation'>('checkout');
   
   // Deduction states for the active computation card
   const [elecWaterDeduction, setElecWaterDeduction] = useState('350000');
   const [damageDeduction, setDamageDeduction] = useState('850000');
   const [cleaningDeduction, setCleaningDeduction] = useState('200000');
+
+  // Deduction state for cancellation
+  const [cancellationDeduction, setCancellationDeduction] = useState('400000');
   
   // Inspection report drawer
   const [damageDrawerOpen, setDamageDrawerOpen] = useState(false);
@@ -19,30 +23,45 @@ export default function AccountantRefundsPage() {
   useEffect(() => {
     const db = getMockDB();
     setRefunds(db.refund_records || []);
-    if (db.refund_records && db.refund_records.length > 0) {
-      setSelectedRefundId(db.refund_records[0].id);
-    }
   }, []);
 
   const activeRefund = refunds.find(r => r.id === selectedRefundId);
 
+  // Automatically select first record of active tab when tab or refunds list changes
+  useEffect(() => {
+    const list = refunds.filter(r => (r.type || 'checkout') === activeTab);
+    if (list.length > 0) {
+      setSelectedRefundId(list[0].id);
+    } else {
+      setSelectedRefundId('');
+    }
+  }, [activeTab, refunds]);
+
   // Automatically update input fields when activeRefund changes
   useEffect(() => {
     if (activeRefund) {
-      const damageTotal = activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0;
-      setDamageDeduction(damageTotal.toString());
-      setElecWaterDeduction(activeRefund.debt_deductions.toString());
-      setCleaningDeduction('200000'); // default cleaning fee
+      if (activeRefund.type === 'cancellation') {
+        const penalty = activeRefund.total_deductions !== undefined ? activeRefund.total_deductions : (activeRefund.deposit_original * 0.2);
+        setCancellationDeduction(penalty.toString());
+      } else {
+        const damageTotal = activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0;
+        setDamageDeduction(damageTotal.toString());
+        setElecWaterDeduction(activeRefund.debt_deductions.toString());
+        setCleaningDeduction('200000'); // default cleaning fee
+      }
     }
-  }, [selectedRefundId]);
+  }, [selectedRefundId, activeRefund]);
 
   // Calculations
   const depositOriginal = activeRefund ? activeRefund.deposit_original : 0;
+  const isCancellation = activeRefund?.type === 'cancellation';
+
   const numElec = parseInt(elecWaterDeduction.replace(/\D/g, '')) || 0;
   const numDamage = parseInt(damageDeduction.replace(/\D/g, '')) || 0;
   const numClean = parseInt(cleaningDeduction.replace(/\D/g, '')) || 0;
+  const numCancellation = parseInt(cancellationDeduction.replace(/\D/g, '')) || 0;
   
-  const totalDeductions = numElec + numDamage + numClean;
+  const totalDeductions = isCancellation ? numCancellation : (numElec + numDamage + numClean);
   const netRefund = Math.max(0, depositOriginal - totalDeductions);
 
   const handleApproveRefund = () => {
@@ -72,7 +91,7 @@ export default function AccountantRefundsPage() {
         return {
           ...r,
           status: 'confirmed',
-          debt_deductions: numElec,
+          debt_deductions: isCancellation ? 0 : numElec,
           total_deductions: totalDeductions,
           refund_amount: netRefund
         };
@@ -93,11 +112,12 @@ export default function AccountantRefundsPage() {
 
   // Filtered List
   const filteredRefunds = refunds.filter(r => {
+    const matchesTab = (r.type || 'checkout') === activeTab;
     const matchesSearch = 
       r.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.room_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    return matchesTab && matchesSearch;
   });
 
   return (
@@ -105,7 +125,7 @@ export default function AccountantRefundsPage() {
       {/* Page Header */}
       <div>
         <h2 className="font-headline-md text-2xl text-[#5a462d] font-semibold">Đối soát hoàn cọc</h2>
-        <p className="text-[#5e5f5d] text-sm mt-1">Tính toán các khoản khấu trừ và tiền hoàn trả khi khách trả phòng.</p>
+        <p className="text-[#5e5f5d] text-sm mt-1">Tính toán các khoản khấu trừ và tiền hoàn trả khi khách trả phòng hoặc hủy hợp đồng.</p>
       </div>
 
       {/* Summary Cards */}
@@ -119,7 +139,7 @@ export default function AccountantRefundsPage() {
           <div className="text-3xl font-bold text-[#5a462d] tabular-nums">{totalExpectedRefund.toLocaleString('vi-VN')} VND</div>
         </div>
         <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm border-l-4 border-l-[#ba1a1a] flex flex-col justify-between h-[100px]">
-          <span className="font-label-caps text-[11px] text-[#ba1a1a] font-bold uppercase tracking-wider">Khấu trừ tài sản</span>
+          <span className="font-label-caps text-[11px] text-[#ba1a1a] font-bold uppercase tracking-wider">Khấu trừ tài sản / phạt hủy</span>
           <div className="text-3xl font-bold text-[#ba1a1a] tabular-nums">{totalDamageDeductionSum.toLocaleString('vi-VN')} VND</div>
         </div>
       </div>
@@ -128,9 +148,33 @@ export default function AccountantRefundsPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Table List (Left Side) */}
         <div className="flex-1 bg-white border border-[#d1c4b9] rounded-lg overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8]">
-            <h3 className="font-bold text-[#5a462d] text-sm">Danh sách khách chờ trả phòng</h3>
-            <div className="relative">
+          <div className="p-4 border-b border-[#d1c4b9] flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-[#fbf9f8]">
+            <div className="flex border-b border-[#d1c4b9] sm:border-b-0 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab('checkout')}
+                className={`pb-2 sm:pb-0 px-4 py-2 font-bold text-xs sm:text-sm transition-all border-b-2 -mb-[1px] ${
+                  activeTab === 'checkout'
+                    ? 'border-[#5a462d] text-[#5a462d]'
+                    : 'border-transparent text-[#5e5f5d] hover:text-[#5a462d]'
+                }`}
+              >
+                Danh sách trả phòng
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('cancellation')}
+                className={`pb-2 sm:pb-0 px-4 py-2 font-bold text-xs sm:text-sm transition-all border-b-2 -mb-[1px] ${
+                  activeTab === 'cancellation'
+                    ? 'border-[#5a462d] text-[#5a462d]'
+                    : 'border-transparent text-[#5e5f5d] hover:text-[#5a462d]'
+                }`}
+              >
+                Khách hủy hợp đồng / cọc
+              </button>
+            </div>
+            
+            <div className="relative w-full sm:w-auto">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5e5f5d]">
                 <Search className="w-3.5 h-3.5" />
               </span>
@@ -139,7 +183,7 @@ export default function AccountantRefundsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm khách hàng, phòng..."
-                className="pl-8 pr-3 py-1 bg-white border border-[#d1c4b9] rounded text-xs focus:outline-none focus:border-[#5a462d] w-44"
+                className="pl-8 pr-3 py-1 bg-white border border-[#d1c4b9] rounded text-xs focus:outline-none focus:border-[#5a462d] w-full sm:w-44"
               />
             </div>
           </div>
@@ -150,7 +194,7 @@ export default function AccountantRefundsPage() {
                 <tr className="bg-[#e4e2e1] text-[#4e453d] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#d1c4b9]">
                   <th className="p-3">Phòng</th>
                   <th className="p-3">Khách hàng</th>
-                  <th className="p-3">Ngày trả</th>
+                  <th className="p-3">{activeTab === 'cancellation' ? 'Ngày hủy' : 'Ngày trả'}</th>
                   <th className="p-3 text-right">Cọc gốc (VND)</th>
                   <th className="p-3 text-center">Trạng thái</th>
                 </tr>
@@ -181,6 +225,13 @@ export default function AccountantRefundsPage() {
                     </td>
                   </tr>
                 ))}
+                {filteredRefunds.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-[#5e5f5d]">
+                      Không có hồ sơ nào phù hợp trong danh sách này.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -190,8 +241,10 @@ export default function AccountantRefundsPage() {
         {activeRefund ? (
           <div className="w-full lg:w-[380px] shrink-0">
             <div className="bg-white border-2 border-[#5a462d] rounded-lg overflow-hidden shadow-sm">
-              <div className="p-4 bg-[#fbf9f8] border-b border-[#d1c4b9] flex justify-between items-center">
-                <h3 className="font-bold text-[#5a462d] text-sm">Chi tiết hoàn cọc {activeRefund.room_name}</h3>
+              <div className="p-4 bg-[#fbf9f8] border-b border-[#d1c4b9]">
+                <h3 className="font-bold text-[#5a462d] text-sm">
+                  {isCancellation ? 'Chi tiết hủy cọc / hợp đồng' : 'Chi tiết hoàn cọc'} {activeRefund.room_name}
+                </h3>
               </div>
 
               <div className="p-4 space-y-4">
@@ -200,63 +253,106 @@ export default function AccountantRefundsPage() {
                   <span className="font-mono font-bold text-[#1b1c1c]">{depositOriginal.toLocaleString('vi-VN')} ₫</span>
                 </div>
 
+                {/* Cancellation Info Badge */}
+                {isCancellation && (
+                  <div className="bg-[#FFF3E0] border border-[#FFE0B2] text-[#E65100] p-3 rounded text-xs space-y-1.5">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5" />
+                      Quy trình Hủy hợp đồng / cọc
+                    </div>
+                    <div>
+                      Lý do: <span className="font-semibold">{
+                        activeRefund.cancellation_reason === 'failed_residency'
+                          ? 'Hồ sơ nhận phòng không đạt (CCCD/Tạm trú)'
+                          : 'Khách hàng yêu cầu hủy đặt cọc trước khi ký'
+                      }</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border-t border-dashed border-[#d1c4b9] pt-4 space-y-3">
-                  {/* Điện nước lẻ */}
-                  <div>
-                    <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
-                      <span>- Trừ điện nước lẻ:</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={elecWaterDeduction}
-                        onChange={(e) => setElecWaterDeduction(e.target.value)}
-                        className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
-                    </div>
-                  </div>
+                  {isCancellation ? (
+                    /* CANCELLATION COMPONENT INPUTS */
+                    <>
+                      <div>
+                        <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
+                          <span>- Khấu trừ phạt hủy cọc / hợp đồng (20%):</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={cancellationDeduction}
+                            onChange={(e) => setCancellationDeduction(e.target.value)}
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-[#5e5f5d] leading-relaxed italic">
+                        💡 Theo quy trình, khách đã đặt cọc nhưng chưa ký hợp đồng (không đạt điều kiện hoặc muốn hủy) được hoàn **80% tiền cọc** (khấu trừ phạt 20%). Không áp dụng điện nước và hư hại tài sản.
+                      </p>
+                    </>
+                  ) : (
+                    /* STANDARD CHECKOUT INPUTS */
+                    <>
+                      {/* Điện nước lẻ */}
+                      <div>
+                        <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
+                          <span>- Trừ điện nước lẻ:</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={elecWaterDeduction}
+                            onChange={(e) => setElecWaterDeduction(e.target.value)}
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
+                        </div>
+                      </div>
 
-                  {/* Hư hỏng tài sản */}
-                  <div>
-                    <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
-                      <span>- Trừ hư hỏng tài sản:</span>
-                      {activeRefund.damage_deductions && activeRefund.damage_deductions.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setDamageDrawerOpen(true)}
-                          className="font-bold text-[#5a462d] hover:underline"
-                        >
-                          Xem biên bản ({activeRefund.damage_deductions.length})
-                        </button>
-                      )}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={damageDeduction}
-                        onChange={(e) => setDamageDeduction(e.target.value)}
-                        className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
-                    </div>
-                  </div>
+                      {/* Hư hỏng tài sản */}
+                      <div>
+                        <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
+                          <span>- Trừ hư hỏng tài sản:</span>
+                          {activeRefund.damage_deductions && activeRefund.damage_deductions.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setDamageDrawerOpen(true)}
+                              className="font-bold text-[#5a462d] hover:underline"
+                            >
+                              Xem biên bản ({activeRefund.damage_deductions.length})
+                            </button>
+                          )}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={damageDeduction}
+                            onChange={(e) => setDamageDeduction(e.target.value)}
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
+                        </div>
+                      </div>
 
-                  {/* Vệ sinh */}
-                  <div>
-                    <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
-                      <span>- Trừ phí vệ sinh trả phòng:</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={cleaningDeduction}
-                        onChange={(e) => setCleaningDeduction(e.target.value)}
-                        className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
-                    </div>
-                  </div>
+                      {/* Vệ sinh */}
+                      <div>
+                        <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
+                          <span>- Trừ phí vệ sinh trả phòng:</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={cleaningDeduction}
+                            onChange={(e) => setCleaningDeduction(e.target.value)}
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="border-t border-[#d1c4b9] pt-4 flex justify-between items-center bg-[#f0eded] p-3 rounded">
@@ -272,9 +368,13 @@ export default function AccountantRefundsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setElecWaterDeduction('0');
-                    setDamageDeduction('0');
-                    setCleaningDeduction('200000');
+                    if (isCancellation) {
+                      setCancellationDeduction((depositOriginal * 0.2).toString());
+                    } else {
+                      setElecWaterDeduction('0');
+                      setDamageDeduction('0');
+                      setCleaningDeduction('200000');
+                    }
                   }}
                   className="flex-1 border border-[#5a462d] text-[#5a462d] py-2 rounded text-xs font-semibold bg-transparent hover:bg-[#e4e2e1] transition-colors"
                 >

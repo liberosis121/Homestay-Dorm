@@ -165,6 +165,7 @@ export interface DepositInvoice {
   status: 'pending' | 'paid' | 'overdue' | 'cancelled';
   created_at: string;
   note?: string;
+  deposit_request_id?: string;
 }
 
 export interface CheckinInvoice {
@@ -215,6 +216,8 @@ export interface RefundRecord {
   refund_amount: number;
   status: 'pending' | 'calculated' | 'confirmed' | 'paid';
   created_at: string;
+  type?: 'checkout' | 'cancellation';
+  cancellation_reason?: 'failed_residency' | 'user_cancelled' | 'other';
 }
 
 export interface PayoutRecord {
@@ -473,14 +476,29 @@ const generateRefundRecords = (): RefundRecord[] => {
     const room = rooms[i % rooms.length];
     const status = i <= 3 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
     const checkoutDate = new Date(2026, 5, 1 + i);
+    
+    const isCancellation = i % 4 === 0;
+    const type = isCancellation ? 'cancellation' : 'checkout';
+    const cancellation_reason = isCancellation ? (i % 2 === 0 ? 'failed_residency' : 'user_cancelled') : undefined;
     const deposit_original = 2000000;
-    const damage_deductions = i % 3 === 0 ? [
-      { item: 'Vỡ gương nhà tắm', amount: 500000 },
-      { item: 'Hỏng tay nắm cửa tủ quần áo', amount: 350000 }
-    ] : [];
-    const debt_deductions = i % 4 === 0 ? 350000 : 0;
-    const total_deductions = damage_deductions.reduce((sum, item) => sum + item.amount, 0) + debt_deductions;
-    const refund_amount = deposit_original - total_deductions;
+    
+    let damage_deductions: { item: string; amount: number }[] = [];
+    let debt_deductions = 0;
+    let total_deductions = 0;
+    let refund_amount = deposit_original;
+
+    if (isCancellation) {
+      total_deductions = deposit_original * 0.2;
+      refund_amount = deposit_original * 0.8;
+    } else {
+      damage_deductions = i % 3 === 0 ? [
+        { item: 'Vỡ gương nhà tắm', amount: 500000 },
+        { item: 'Hỏng tay nắm cửa tủ quần áo', amount: 350000 }
+      ] : [];
+      debt_deductions = i % 4 === 0 ? 350000 : 0;
+      total_deductions = damage_deductions.reduce((sum, item) => sum + item.amount, 0) + debt_deductions;
+      refund_amount = deposit_original - total_deductions;
+    }
 
     list.push({
       id: `REF-${1000 + i}`,
@@ -495,7 +513,9 @@ const generateRefundRecords = (): RefundRecord[] => {
       total_deductions,
       refund_amount,
       status,
-      created_at: checkoutDate.toISOString().split('T')[0] + ' 10:00'
+      created_at: checkoutDate.toISOString().split('T')[0] + ' 10:00',
+      type,
+      cancellation_reason
     });
   }
   return list;
@@ -692,6 +712,38 @@ const INITIAL_DB = {
       status: 'pending_sale_confirmation',
       note: 'Khách đã xem phòng và muốn được xác nhận đặt cọc.',
       created_at: '2026-04-20T11:00:00Z'
+    },
+    {
+      id: 'cdr-2',
+      customer_id: 'u-mock-cdr2',
+      customer_name: 'Đỗ Phương Thảo',
+      customer_phone: '0981122334',
+      room_id: 'r-2',
+      room_name: 'Phòng 102 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1',
+      viewing_schedule_id: 'vs-1',
+      deposit_amount: 2000000,
+      expected_move_in_date: '2026-06-10',
+      status: 'pending_sale_confirmation',
+      note: 'Khách hàng muốn giữ phòng Studio ban công rộng.',
+      created_at: '2026-06-04T10:00:00Z'
+    },
+    {
+      id: 'cdr-3',
+      customer_id: 'u-mock-cdr3',
+      customer_name: 'Bùi Minh Tuấn',
+      customer_phone: '0938889999',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      viewing_schedule_id: 'vs-9',
+      deposit_amount: 1200000,
+      expected_move_in_date: '2026-06-15',
+      status: 'pending_sale_confirmation',
+      note: 'Yêu cầu giữ chỗ giường Dorm tầng dưới.',
+      created_at: '2026-06-05T09:00:00Z'
     }
   ] as CustomerDepositRequest[],
   today_appointments: [
