@@ -63,32 +63,16 @@ export default function CustomerProfileCard({
 }: CustomerProfileCardProps) {
   // Huy hiệu phân hạng khách hàng
   const getTierBadge = (tier: Customer['tier']) => {
-    switch (tier) {
-      case 'VIP':
-        return {
-          label: 'Khách hàng VIP',
-          cls: 'bg-[#6f583c] text-white border-[#6f583c]/20',
-        };
-      case 'Loyal':
-        return {
-          label: 'Khách hàng thân thiết',
-          cls: 'bg-[#faf2ec] text-[#6f583c] border-[#6f583c]/20',
-        };
-      case 'New':
-        return {
-          label: 'Khách hàng mới',
-          cls: 'bg-[#d2e9cd] text-[#384c37] border-[#4d614b]/20',
-        };
-      case 'Old':
-        return {
-          label: 'Khách hàng cũ',
-          cls: 'bg-[#e6e2de] text-[#605e5b] border-[#d1c4b9]/25',
-        };
-      default:
-        return {
-          label: 'Khách hàng',
-          cls: 'bg-[#faf2ec] text-[#4e453c] border-[#d1c4b9]/20',
-        };
+    if (tier === 'New') {
+      return {
+        label: 'Khách hàng mới',
+        cls: 'bg-[#d2e9cd] text-[#384c37] border-[#4d614b]/20',
+      };
+    } else {
+      return {
+        label: 'Khách hàng cũ',
+        cls: 'bg-[#e6e2de] text-[#605e5b] border-[#d1c4b9]/25',
+      };
     }
   };
 

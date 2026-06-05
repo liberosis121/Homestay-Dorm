@@ -613,10 +613,14 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
 
   return (
     <div className="bg-white rounded-2xl border border-[#d1c4b9] p-5" style={{ boxShadow: '0 4px 12px rgba(45, 42, 38, 0.04)' }}>
-      <h3 className="text-xs font-bold text-[#7f756b] uppercase tracking-widest mb-1">
-        Tiến trình lịch hẹn
-      </h3>
-      <p className="text-sm font-bold text-[#6f583c] mb-4">#{schedule.id}</p>
+      <div className="flex items-center gap-2.5 flex-wrap mb-4">
+        <h3 className="text-xs font-bold text-[#7f756b] uppercase tracking-widest">
+          Tiến trình lịch hẹn
+        </h3>
+        <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#E8E1D3] text-[#5E503F] border border-[#D2C4AF] rounded-lg whitespace-nowrap">
+          #{schedule.id}
+        </span>
+      </div>
       <div className="text-xs text-on-surface-variant mb-4">
         <span className="font-medium">{schedule.customerName}</span>
         {' · '}

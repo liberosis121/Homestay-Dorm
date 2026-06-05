@@ -217,10 +217,9 @@ export default function CustomerLookupPage() {
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
             {filteredCustomers.map(cust => {
               const isActive = activeCustomer?.id === cust.id;
-              const isVIP = cust.tier === 'VIP';
-              const statusLabel = cust.status === 'active' ? (isVIP ? 'VIP' : 'Đang thuê') : 'Đã trả';
+              const statusLabel = cust.status === 'active' ? 'Đang thuê' : 'Đã trả';
               const statusColor = cust.status === 'active'
-                ? (isVIP ? 'bg-[#6f583c] text-white' : 'bg-[#e8ede7] text-[#5f745d]')
+                ? 'bg-[#e8ede7] text-[#5f745d]'
                 : 'bg-gray-100 text-gray-500';
 
               return (
