@@ -619,7 +619,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
               }`}
             >
               <FileSignature className="w-4 h-4" />
-              Lập hợp đồng & Kích hoạt
+              Lập hợp đồng
             </button>
           </div>
         </div>

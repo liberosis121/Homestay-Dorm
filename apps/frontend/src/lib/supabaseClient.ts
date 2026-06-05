@@ -549,7 +549,10 @@ const INITIAL_DB = {
     { id: 'r-3', branch_id: 'b-2', name: 'Phòng 201 (Nam)', capacity: 8, current_occupants: 8, floor: 2, room_type: 'Dorm', gender_type: 'male', has_ac: false, has_private_wc: false, price: 900000, amenities: ['Wifi', 'Washing Machine'], image_url: roomDorm, status: 'occupied' },
     { id: 'r-4', branch_id: 'b-2', name: 'Phòng 202 (Nữ)', capacity: 6, current_occupants: 2, floor: 2, room_type: 'Twin', gender_type: 'female', has_ac: true, has_private_wc: true, price: 1200000, amenities: ['AC', 'Wifi', 'Washing Machine'], image_url: roomTwin, status: 'available' },
     { id: 'r-5', branch_id: 'b-1', name: 'Phòng 103 (Nam)', capacity: 6, current_occupants: 2, floor: 1, room_type: 'Dorm', gender_type: 'male', has_ac: true, has_private_wc: true, price: 1600000, amenities: ['AC', 'Wifi', 'Private WC', 'Washing Machine'], image_url: roomDorm, status: 'available' },
-    { id: 'r-6', branch_id: 'b-2', name: 'Phòng 203 (Nữ)', capacity: 2, current_occupants: 1, floor: 2, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2500000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV'], image_url: roomSingle, status: 'partial' }
+    { id: 'r-6', branch_id: 'b-2', name: 'Phòng 203 (Nữ)', capacity: 2, current_occupants: 1, floor: 2, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2500000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV'], image_url: roomSingle, status: 'partial' },
+    { id: 'r-7', branch_id: 'b-1', name: 'Studio Premium 301', capacity: 1, current_occupants: 0, floor: 3, room_type: 'Studio', gender_type: 'unisex', has_ac: true, has_private_wc: true, price: 5800000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV', 'Desk'], image_url: roomStudio, status: 'available' },
+    { id: 'r-8', branch_id: 'b-1', name: 'Căn hộ 2PN 302', capacity: 3, current_occupants: 0, floor: 3, room_type: '2BR', gender_type: 'unisex', has_ac: true, has_private_wc: true, price: 6800000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV', 'Balcony'], image_url: roomStudio, status: 'available' },
+    { id: 'r-9', branch_id: 'b-2', name: 'Phòng đôi Eco 204', capacity: 2, current_occupants: 0, floor: 2, room_type: 'Double', gender_type: 'unisex', has_ac: true, has_private_wc: false, price: 3200000, amenities: ['AC', 'Wifi', 'Washing Machine'], image_url: roomTwin, status: 'available' }
   ] as Room[],
   beds: [
     { id: 'bed-1-1', room_id: 'r-1', name: 'Giường A1', price: 1500000, status: 'available' },
@@ -691,6 +694,77 @@ const INITIAL_DB = {
       created_at: '2026-04-20T11:00:00Z'
     }
   ] as CustomerDepositRequest[],
+  rental_registrations: [
+    {
+      id: 'RR-2026-101',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam',
+      customer_phone: '0977889900',
+      customer_email: 'newcustomer@gmail.com',
+      gender: 'male',
+      preferred_room_type: 'Studio',
+      rental_type: 'Nguyên phòng',
+      occupants_count: 1,
+      preferred_branch_id: 'b-1',
+      preferred_branch_name: 'Chi nhánh Quận 1',
+      budget_range: '5m_7m',
+      move_in_date: '2026-07-01',
+      lease_term: '12 tháng',
+      preferred_viewing_date: '2026-06-10',
+      preferred_viewing_time: '09:00-11:00',
+      viewing_time_note: 'Rảnh buổi sáng, ưu tiên trước 11h.',
+      preferred_amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen'],
+      note: 'Muốn phòng yên tĩnh để học và làm việc, ưu tiên có bàn làm việc.',
+      status: 'pending_schedule',
+      created_at: '2026-06-03T08:15:00Z'
+    },
+    {
+      id: 'RR-2026-102',
+      customer_id: 'lead-female-01',
+      customer_name: 'Trần Thị Minh Châu',
+      customer_phone: '0908123456',
+      customer_email: 'minhchau@student.edu.vn',
+      gender: 'female',
+      preferred_room_type: 'Dorm',
+      rental_type: 'Theo giường',
+      occupants_count: 1,
+      preferred_branch_id: 'b-2',
+      preferred_branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      budget_range: 'under_2m',
+      move_in_date: '2026-06-25',
+      lease_term: '6 tháng',
+      preferred_viewing_date: '2026-06-08',
+      preferred_viewing_time: '14:00-17:00',
+      viewing_time_note: 'Rảnh sau giờ học, có thể đổi sang cuối tuần.',
+      preferred_amenities: ['Wifi', 'Washing Machine'],
+      note: 'Ưu tiên phòng nữ, chi phí thấp, gần khu giặt sấy.',
+      status: 'pending_schedule',
+      created_at: '2026-06-03T09:40:00Z'
+    },
+    {
+      id: 'RR-2026-103',
+      customer_id: 'lead-group-01',
+      customer_name: 'Lê Gia Bảo',
+      customer_phone: '0933777888',
+      customer_email: 'giabao.group@gmail.com',
+      gender: 'group',
+      preferred_room_type: '2BR',
+      rental_type: 'Theo nhóm',
+      occupants_count: 3,
+      preferred_branch_id: 'b-1',
+      preferred_branch_name: 'Chi nhánh Quận 1',
+      budget_range: '5m_7m',
+      move_in_date: '2026-07-05',
+      lease_term: '12 tháng',
+      preferred_viewing_date: '2026-06-12',
+      preferred_viewing_time: '18:00-20:00',
+      viewing_time_note: 'Cả nhóm chỉ rảnh buổi tối hoặc Chủ nhật.',
+      preferred_amenities: ['AC', 'Wifi', 'Kitchen', 'Private WC'],
+      note: 'Nhóm 3 người muốn ở chung, có thể cân nhắc phòng đôi nếu đủ riêng tư.',
+      status: 'pending_schedule',
+      created_at: '2026-06-03T10:20:00Z'
+    }
+  ],
   today_appointments: [
     { id: 'ta-1', time: '09:30', customer_name: 'Nguyễn Văn A', room_type: 'Phòng Đơn Premium', status: 'confirmed', branch: 'Quận 1' },
     { id: 'ta-2', time: '11:00', customer_name: 'Lê Thị Minh Châu', room_type: 'Phòng Dorm Nam 4 người', status: 'confirmed', branch: 'Thủ Đức' },
@@ -991,6 +1065,18 @@ export const initializeMockDB = () => {
       if (db && (!db.customer_deposit_requests || hasEncodingIssue(db.customer_deposit_requests))) {
         db.customer_deposit_requests = INITIAL_DB.customer_deposit_requests;
         updated = true;
+      }
+      if (db) {
+        const currentRegistrations = Array.isArray(db.rental_registrations) ? db.rental_registrations : [];
+        const missingRegistrations = INITIAL_DB.rental_registrations.filter(
+          (item) => !currentRegistrations.some((existing: { id: string }) => existing.id === item.id)
+        );
+        if (!Array.isArray(db.rental_registrations) || missingRegistrations.length > 0 || hasEncodingIssue(db.rental_registrations)) {
+          db.rental_registrations = hasEncodingIssue(db.rental_registrations)
+            ? INITIAL_DB.rental_registrations
+            : [...currentRegistrations, ...missingRegistrations];
+          updated = true;
+        }
       }
       // Seed Sale Dashboard mock data
       if (db && !db.today_appointments) {

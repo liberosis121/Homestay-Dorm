@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, CheckCircle, Calendar, Clock,
-  RotateCcw, XCircle, User, Building2, FileText, Filter
+  RotateCcw, XCircle, Building2, FileText, Filter
 } from 'lucide-react';
-import { useSaleScheduleStore, ScheduleStatus, CreateSchedulePayload, ReschedulePayload } from './store/useSaleScheduleStore';
+import { useSaleScheduleStore, ScheduleStatus, ReschedulePayload } from './store/useSaleScheduleStore';
 import ScheduleStatusBadge from './components/ScheduleStatusBadge';
 import ScheduleCalendar from './components/ScheduleCalendar';
+import CreateFromRegistrationModal from './components/CreateFromRegistrationModal';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -74,6 +75,7 @@ const SaleSchedulesPage: React.FC = () => {
   const [customers, setCustomers] = useState<MockProfile[]>([]);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [confirmCompleteId, setConfirmCompleteId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState('');
 
   const filteredSchedules = getFilteredSchedules();
   const upcoming24h = getUpcoming24h();
@@ -134,8 +136,13 @@ const SaleSchedulesPage: React.FC = () => {
     }
   };
 
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    window.setTimeout(() => setToastMessage(''), 3200);
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-6 animate-fade-in-up [&_button:not(:disabled)]:cursor-pointer [&_button:disabled]:cursor-not-allowed">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -199,14 +206,22 @@ const SaleSchedulesPage: React.FC = () => {
 
       {/* Modals */}
       {isCreateModalOpen && (
-        <CreateModal
+        <CreateFromRegistrationModal
           rooms={rooms}
           branches={branches}
           customers={customers}
           createdBy={user?.full_name || 'Nhân viên Sale'}
           onClose={closeCreateModal}
           onCreate={createSchedule}
+          onCreated={() => showToast('Đã tạo lịch hẹn và gửi thông báo cho khách.')}
         />
+      )}
+
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-[80] flex items-center gap-3 rounded-2xl border border-[#c6b8a5] bg-white px-5 py-3 shadow-xl shadow-[#6f583c]/15">
+          <CheckCircle className="h-5 w-5 text-[#4f6f4a]" />
+          <p className="text-sm font-semibold text-[#4e453c]">{toastMessage}</p>
+        </div>
       )}
 
       {isRescheduleModalOpen && reschedulingId && (
@@ -675,293 +690,6 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
 };
 
 // ─── Create Modal ─────────────────────────────────────────────────────────────
-
-interface CreateModalProps {
-  rooms: MockRoom[];
-  branches: MockBranch[];
-  customers: MockProfile[];
-  createdBy: string;
-  onClose: () => void;
-  onCreate: (payload: CreateSchedulePayload, createdBy: string) => void;
-}
-
-const CreateModal: React.FC<CreateModalProps> = ({
-  rooms, branches, customers, createdBy, onClose, onCreate,
-}) => {
-  const { user } = useAuthStore();
-  const isSale = user?.role === 'sale';
-
-  const [form, setForm] = useState({
-    customerSearch: '',
-    customerName: '',
-    customerId: '',
-    branchId: isSale ? 'b-1' : '',
-    roomId: '',
-    viewDate: '',
-    startTime: '',
-    endTime: '',
-    notes: '',
-  });
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const filteredRooms = rooms.filter((r) => !form.branchId || r.branch_id === form.branchId);
-  const filteredCustomers = customers.filter((c) =>
-    c.full_name.toLowerCase().includes(form.customerSearch.toLowerCase()) ||
-    c.email.toLowerCase().includes(form.customerSearch.toLowerCase())
-  );
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowCustomerDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const selectedRoom = rooms.find((r) => r.id === form.roomId);
-
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!form.customerName) errs.customerName = 'Vui lòng chọn hoặc nhập tên khách hàng';
-    if (!form.branchId) errs.branchId = 'Vui lòng chọn chi nhánh';
-    if (!form.roomId) errs.roomId = 'Vui lòng chọn phòng';
-    if (!form.viewDate) errs.viewDate = 'Vui lòng chọn ngày xem';
-    if (!form.startTime) errs.startTime = 'Vui lòng chọn giờ bắt đầu';
-    if (!form.endTime) errs.endTime = 'Vui lòng chọn giờ kết thúc';
-    if (form.startTime && form.endTime && form.startTime >= form.endTime) {
-      errs.endTime = 'Giờ kết thúc phải sau giờ bắt đầu';
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    const branch = branches.find((b) => b.id === form.branchId);
-    onCreate(
-      {
-        customerName: form.customerName,
-        customerId: form.customerId || undefined,
-        roomId: form.roomId,
-        roomName: selectedRoom?.name || '',
-        branchId: form.branchId,
-        branchName: branch?.name || '',
-        viewDate: form.viewDate,
-        startTime: form.startTime,
-        endTime: form.endTime,
-        notes: form.notes || undefined,
-      },
-      createdBy
-    );
-    onClose();
-  };
-
-  const inputClass = (field: string) =>
-    `w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-[#6f583c] transition-colors ${
-      errors[field] ? 'border-error bg-error/5' : 'border-[#d1c4b9] bg-white'
-    }`;
-
-  return (
-    <ModalOverlay onClose={onClose}>
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-[#d1c4b9] flex justify-between items-center bg-[#faf2ec]">
-          <h3 className="font-headline-md text-xl text-[#6f583c]">Tạo lịch hẹn mới</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-[#e8e1db] rounded-full transition-colors">
-            <X className="w-5 h-5 text-[#4e453c]" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto bg-white">
-          {/* Customer Search */}
-          <div ref={dropdownRef} className="relative">
-            <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-              Khách hàng <span className="text-error">*</span>
-            </label>
-            <div className="relative">
-              <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm tên hoặc email khách..."
-                value={form.customerSearch || form.customerName}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, customerSearch: e.target.value, customerName: e.target.value, customerId: '' }));
-                  setShowCustomerDropdown(true);
-                }}
-                onFocus={() => setShowCustomerDropdown(true)}
-                className={`${inputClass('customerName')} pl-9`}
-              />
-            </div>
-            {errors.customerName && <p className="text-xs text-error mt-1">{errors.customerName}</p>}
-
-            {showCustomerDropdown && (
-              <div className="absolute top-full mt-1 w-full bg-white border border-[#d1c4b9] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
-                {filteredCustomers.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-[#7f756b]">
-                    Không tìm thấy. Nhập tên để thêm mới.
-                  </div>
-                ) : (
-                  filteredCustomers.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setForm((f) => ({
-                          ...f,
-                          customerName: c.full_name,
-                          customerId: c.id,
-                          customerSearch: '',
-                        }));
-                        setShowCustomerDropdown(false);
-                      }}
-                      className="w-full px-4 py-2.5 text-left hover:bg-[#faf2ec] transition-colors"
-                    >
-                      <p className="text-sm font-medium text-on-surface">{c.full_name}</p>
-                      <p className="text-xs text-on-surface-variant">{c.email}</p>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Branch + Room */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Chi nhánh <span className="text-error">*</span>
-              </label>
-              <div className="relative">
-                {isSale ? (
-                  <div className="flex items-center gap-2 pl-3.5 pr-5 py-2.5 bg-[#f4ede6] border border-[#d1c4b9] rounded-xl text-sm font-bold text-[#6f583c] shadow-sm select-none cursor-not-allowed w-full">
-                    <Building2 className="w-4 h-4 text-[#8c7355] shrink-0" />
-                    <span className="truncate">Quận 1</span>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <Building2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7f756b] z-10 pointer-events-none" />
-                    <CustomSelect
-                      value={form.branchId}
-                      onChange={(val) => setForm((f) => ({ ...f, branchId: val, roomId: '' }))}
-                      options={[
-                        { value: '', label: 'Chọn chi nhánh' },
-                        ...branches.map((b) => ({ value: b.id, label: b.name.replace('Chi nhánh ', '') }))
-                      ]}
-                      className="w-full"
-                      triggerClassName={`pl-10 text-left ${errors.branchId ? 'border-error bg-error/5 rounded-xl' : 'border-[#d1c4b9] rounded-xl'}`}
-                      dropdownClassName="border-[#d1c4b9] rounded-2xl"
-                    />
-                  </div>
-                )}
-              </div>
-              {errors.branchId && <p className="text-xs text-error mt-1">{errors.branchId}</p>}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Phòng <span className="text-error">*</span>
-              </label>
-              <CustomSelect
-                value={form.roomId}
-                onChange={(val) => setForm((f) => ({ ...f, roomId: val }))}
-                options={[
-                  { value: '', label: 'Chọn phòng' },
-                  ...filteredRooms.map((r) => ({ value: r.id, label: r.name }))
-                ]}
-                className="w-full"
-                triggerClassName={`text-left ${errors.roomId ? 'border-error bg-error/5 rounded-xl' : 'border-[#d1c4b9] rounded-xl'}`}
-                dropdownClassName="border-[#d1c4b9] rounded-2xl"
-              />
-              {errors.roomId && <p className="text-xs text-error mt-1">{errors.roomId}</p>}
-            </div>
-          </div>
-
-          {/* Date */}
-          <div>
-            <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-              Ngày xem <span className="text-error">*</span>
-            </label>
-            <CustomDatePicker
-              value={form.viewDate}
-              min="2026-06-02"
-              onChange={(val) => setForm((f) => ({ ...f, viewDate: val }))}
-              placeholder="Chọn ngày"
-              error={errors.viewDate}
-            />
-          </div>
-
-          {/* Start + End Time */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Giờ bắt đầu <span className="text-error">*</span>
-              </label>
-              <div className="relative">
-                <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-                <input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
-                  className={`${inputClass('startTime')} pl-9`}
-                />
-              </div>
-              {errors.startTime && <p className="text-xs text-error mt-1">{errors.startTime}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Giờ kết thúc <span className="text-error">*</span>
-              </label>
-              <div className="relative">
-                <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-                <input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
-                  className={`${inputClass('endTime')} pl-9`}
-                />
-              </div>
-              {errors.endTime && <p className="text-xs text-error mt-1">{errors.endTime}</p>}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">Ghi chú (tùy chọn)</label>
-            <textarea
-              rows={3}
-              placeholder="Yêu cầu đặc biệt, thông tin bổ sung..."
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              className="w-full px-4 py-2.5 border border-[#d1c4b9] rounded-xl text-sm focus:outline-none focus:border-[#6f583c] transition-colors resize-none"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2 border-t border-[#d1c4b9]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 border border-[#d1c4b9] rounded-xl text-sm font-medium text-[#4e453c] hover:bg-[#faf2ec] transition-colors"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-2.5 bg-[#6f583c] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity shadow-md shadow-[#6f583c]/20 active:scale-95"
-            >
-              Xác nhận tạo
-            </button>
-          </div>
-        </form>
-      </div>
-    </ModalOverlay>
-  );
-};
 
 // ─── Reschedule Modal ─────────────────────────────────────────────────────────
 
