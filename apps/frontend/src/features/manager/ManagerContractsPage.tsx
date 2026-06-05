@@ -2,21 +2,22 @@ import { useEffect, useState, useMemo } from 'react';
 import { getMockDB, saveMockDB, ManagerContract, Room, Profile, Bed, TenantMember } from '../../lib/supabaseClient';
 
 const T = {
-  bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
-  border: '#D6CEC8', primary: '#8C7355', primaryLight: '#F5EFE6',
-  sage: '#5F745D', sageBg: '#E1E9DF', amber: '#A67B5B', amberBg: '#FFF0E5',
-  red: '#BA1A1A', redBg: '#FFDAD6', text: '#1E1B17', textMuted: '#4E453C', textFaint: '#7F756B'
+  bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
+  border: '#E7DED2', primary: '#5C4632', primaryLight: '#FAF2E8',
+  sage: '#5F7D4E', sageBg: '#EAF0E6', amber: '#B9792B', amberBg: '#FEF3E6',
+  red: '#A94F4F', redBg: '#FCECEB', blue: '#4A6984', blueBg: '#EAF1F8',
+  text: '#2C2520', textMuted: '#6E6259', textFaint: '#8A7563'
 };
 
 const STATUS_CFG: Record<ManagerContract['status'], { label: string; bg: string; text: string; icon: string }> = {
   active:     { label: 'Đang hiệu lực', bg: T.sageBg,  text: T.sage,  icon: 'verified' },
-  expired:    { label: 'Đã hết hạn',    bg: T.border,  text: T.textMuted, icon: 'schedule' },
+  expired:    { label: 'Đã hết hạn',    bg: T.primaryLight, text: T.textMuted, icon: 'schedule' },
   terminated: { label: 'Đã thanh lý',   bg: T.redBg,   text: T.red,   icon: 'cancel' },
 };
 
 const DEPOSIT_TYPE_CONFIG = {
-  room: { label: 'Cả phòng', icon: 'meeting_room', bg: '#EEF2FF', text: '#3730A3' },
-  bed:  { label: 'Giường lẻ', icon: 'bed',          bg: '#F0FDF4', text: '#166534' },
+  room: { label: 'Cả phòng', icon: 'meeting_room', bg: T.blueBg, text: T.blue },
+  bed:  { label: 'Giường lẻ', icon: 'bed',          bg: T.sageBg, text: T.sage },
 };
 
 export default function ManagerContractsPage() {
@@ -209,15 +210,16 @@ export default function ManagerContractsPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-5 animate-fade-in-up">
+    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="space-y-5 animate-fade-in-up">
       {/* ── Toast Notification ── */}
       {toast && (
         <div style={{
           position: 'fixed', top: 96, right: 24, zIndex: 100,
-          background: toast.type === 'success' ? T.sage : T.red,
-          color: '#FFFFFF', border: `1px solid ${toast.type === 'success' ? '#A8C3A5' : '#FFBDAD'}`,
+          background: toast.type === 'success' ? T.sageBg : T.redBg,
+          color: toast.type === 'success' ? T.sage : T.red,
+          border: `1.5px solid ${toast.type === 'success' ? '#A8C3A5' : '#FFBDAD'}`,
           padding: '14px 20px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+          boxShadow: '0 8px 30px rgba(111,88,60,0.12)',
           animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
@@ -238,37 +240,37 @@ export default function ManagerContractsPage() {
       {/* ── Page Header ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
-          <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 700 }}>
+          <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 800 }}>
             Quản lý hợp đồng
           </h1>
-          <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>
-            UC21 — Tra cứu, xem chi tiết và cập nhật thông tin hợp đồng thuê của khách hàng trong quá trình lưu trú
-          </p>
         </div>
       </div>
 
       {/* ── KPI Widgets ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {([
-          { key: 'all', label: 'Tất cả hợp đồng', count: counts.all, color: T.primary, bg: T.primaryLight, icon: 'description' },
+          { key: 'all', label: 'Tổng số hợp đồng', count: counts.all, color: T.primary, bg: T.primaryLight, icon: 'description' },
           { key: 'active', label: 'Đang hiệu lực', count: counts.active, color: T.sage, bg: T.sageBg, icon: 'verified' },
-          { key: 'expired', label: 'Đã hết hạn', count: counts.expired, color: T.textMuted, bg: T.sidebar, icon: 'schedule' },
+          { key: 'expired', label: 'Đã hết hạn', count: counts.expired, color: T.textMuted, bg: T.primaryLight, icon: 'schedule' },
           { key: 'terminated', label: 'Đã thanh lý', count: counts.terminated, color: T.red, bg: T.redBg, icon: 'cancel' },
         ]).map(kpi => (
           <button key={kpi.key} onClick={() => setFilterStatus(kpi.key)}
             style={{
               background: filterStatus === kpi.key ? kpi.bg : T.surface,
-              border: `2px solid ${filterStatus === kpi.key ? kpi.color : T.border}`,
-              borderRadius: 16, padding: '14px 18px', cursor: 'pointer',
-              textAlign: 'left', transition: 'all 0.18s', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
-            }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 10 }}>
-              <div style={{ background: kpi.bg, borderRadius: 10, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 20, color: kpi.color }}>{kpi.icon}</span>
+              border: `1.5px solid ${filterStatus === kpi.key ? kpi.color : T.border}`,
+              borderRadius: 16, padding: '16px 20px', cursor: 'pointer',
+              textAlign: 'left', transition: 'all 0.15s ease-in-out',
+              boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
+              display: 'flex', flexDirection: 'column', gap: 8
+            }}
+            className="hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.97]">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <div style={{ background: kpi.bg, borderRadius: 10, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: kpi.color }}>{kpi.icon}</span>
               </div>
-              <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 700, textTransform: 'uppercase', marginLeft: 'auto' }}>{kpi.label}</span>
+              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{kpi.label}</span>
             </div>
-            <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 26, fontWeight: 700, color: kpi.color }}>
+            <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: kpi.color, marginTop: 4 }}>
               {kpi.count}
             </div>
           </button>
@@ -276,13 +278,13 @@ export default function ManagerContractsPage() {
       </div>
 
       {/* ── Filter & Search Bar ── */}
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '14px 18px' }}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: '14px 18px', boxShadow: '0 2px 8px rgba(111,88,60,0.02)' }}
         className="flex flex-wrap items-center gap-3">
         
         {/* Search input */}
-        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
+        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 220 }}>
           <span className="material-symbols-outlined"
-            style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: T.textFaint, pointerEvents: 'none' }}>
+            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: T.textFaint, pointerEvents: 'none' }}>
             search
           </span>
           <input
@@ -290,71 +292,103 @@ export default function ManagerContractsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-              padding: '9px 14px 9px 36px', fontSize: 13, color: T.text,
-              background: T.bg, outline: 'none', boxSizing: 'border-box'
+              width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 9999,
+              padding: '10px 16px 10px 42px', fontSize: 13, color: T.text,
+              background: T.bg, outline: 'none', boxSizing: 'border-box',
+              transition: 'border-color 0.15s ease-in-out'
             }}
+            className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
           />
           {search && (
             <button onClick={() => setSearch('')}
               className="material-symbols-outlined"
-              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 17, color: T.textFaint, background: 'none', border: 'none', cursor: 'pointer' }}>
+              style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 17, color: T.textFaint, background: 'none', border: 'none', cursor: 'pointer' }}>
               close
             </button>
           )}
         </div>
 
         {/* Tab-like filter selections */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap gap-2">
           {[
-            { key: 'all', label: 'Tất cả' },
-            { key: 'active', label: 'Đang hiệu lực' },
-            { key: 'expired', label: 'Đã hết hạn' },
-            { key: 'terminated', label: 'Đã thanh lý' }
-          ].map(tab => (
-            <button key={tab.key} onClick={() => setFilterStatus(tab.key)}
-              style={{
-                padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                border: `1.5px solid ${filterStatus === tab.key ? T.primary : T.border}`,
-                background: filterStatus === tab.key ? T.primaryLight : T.surface,
-                color: filterStatus === tab.key ? T.primary : T.textMuted,
-                transition: 'all 0.15s',
-              }}>
-              {tab.label}
-            </button>
-          ))}
+            { key: 'all', label: 'Tất cả', color: T.primary, bg: T.primaryLight },
+            { key: 'active', label: 'Đang hiệu lực', color: T.sage, bg: T.sageBg },
+            { key: 'expired', label: 'Đã hết hạn', color: T.textMuted, bg: T.primaryLight },
+            { key: 'terminated', label: 'Đã thanh lý', color: T.red, bg: T.redBg }
+          ].map(tab => {
+            const isActive = filterStatus === tab.key;
+            return (
+              <button key={tab.key} onClick={() => setFilterStatus(tab.key)}
+                style={{
+                  background: isActive ? tab.bg : T.surface,
+                  border: `1.5px solid ${isActive ? tab.color : T.border}`,
+                  borderRadius: 9999, padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                  color: isActive ? tab.color : T.textMuted, cursor: 'pointer', transition: 'all 0.15s ease-in-out'
+                }}
+                className="hover:-translate-y-0.5 active:scale-[0.96]">
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Count */}
-        <span style={{ fontSize: 12, color: T.textFaint, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, color: T.textFaint, marginLeft: 'auto', whiteSpace: 'nowrap', fontWeight: 600 }}>
           Hiển thị {filteredContracts.length} / {contracts.length} hợp đồng
         </span>
       </div>
 
       {/* ── Contracts Table ── */}
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 2px 12px rgba(111,88,60,0.06)' }}>
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 20px rgba(111,88,60,0.04)' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '12%' }} /> {/* Mã hợp đồng */}
+              <col style={{ width: '16%' }} /> {/* Khách hàng */}
+              <col style={{ width: '15%' }} /> {/* Phòng / Giường */}
+              <col style={{ width: '11%' }} /> {/* Loại thuê */}
+              <col style={{ width: '13%' }} /> {/* Tiền thuê / tháng */}
+              <col style={{ width: '12%' }} /> {/* Tiền đặt cọc */}
+              <col style={{ width: '11%' }} /> {/* Thời hạn */}
+              <col style={{ width: '12%' }} /> {/* Trạng thái */}
+              <col style={{ width: '8%' }} />  {/* Action */}
+            </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
-                {['Mã hợp đồng', 'Khách hàng', 'Phòng / Giường', 'Loại thuê', 'Tiền thuê / tháng', 'Tiền đặt cọc', 'Thời hạn', 'Trạng thái', ''].map(h => (
+                <th style={{
+                  padding: '14px 16px 14px 24px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                  color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                  borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                }}>Mã hợp đồng</th>
+                {['Khách hàng', 'Phòng / Giường', 'Loại thuê', 'Tiền thuê / tháng', 'Tiền đặt cọc', 'Thời hạn', 'Trạng thái'].map(h => (
                   <th key={h} style={{
-                    padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                    padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                     color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                     borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                   }}>{h}</th>
                 ))}
+                <th style={{
+                  padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
+                  color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                  borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                }}></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }}>
-                    {Array.from({ length: 9 }).map((_, j) => (
-                      <td key={j} style={{ padding: '14px 14px' }}>
-                        <div style={{ height: 14, background: '#eee', borderRadius: 6, width: j === 0 ? 80 : 60 }} className="animate-pulse" />
+                    <td style={{ padding: '14px 16px 14px 24px' }}>
+                      <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 80 }} className="animate-pulse" />
+                    </td>
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <td key={j} style={{ padding: '14px 16px' }}>
+                        <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 60 }} className="animate-pulse" />
                       </td>
                     ))}
+                    <td style={{ padding: '14px 24px 14px 16px' }}>
+                      <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 50 }} className="animate-pulse" />
+                    </td>
                   </tr>
                 ))
               ) : filteredContracts.length === 0 ? (
@@ -372,37 +406,37 @@ export default function ManagerContractsPage() {
                   <tr key={c.id}
                     onClick={() => handleOpenDrawer(c)}
                     style={{ borderBottom: `1px solid ${T.border}`, transition: 'background 0.15s', cursor: 'pointer' }}
-                    className="hover:bg-[#FAF2EC]">
+                    className="hover:bg-[#FAF2E8] transition-colors duration-150">
                     
                     {/* Mã hợp đồng */}
-                    <td style={{ padding: '13px 14px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '13px 16px 13px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                       {c.contract_code}
                     </td>
 
                     {/* Khách hàng */}
-                    <td style={{ padding: '13px 14px' }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: 'nowrap' }}>{c.customer_name}</p>
+                    <td style={{ padding: '13px 16px' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.customer_name}</p>
                       <p style={{ fontSize: 11, color: T.textMuted }}>{c.customer_phone}</p>
                     </td>
 
                     {/* Phòng / Giường */}
-                    <td style={{ padding: '13px 14px' }}>
-                      <p style={{ fontSize: 13, color: T.text, fontWeight: 500, whiteSpace: 'nowrap' }}>{c.room_name}</p>
+                    <td style={{ padding: '13px 16px' }}>
+                      <p style={{ fontSize: 13, color: T.text, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.room_name}</p>
                       {c.bed_name && (
-                        <p style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: 12, verticalAlign: 'middle', marginRight: 2 }}>bed</span>
+                        <p style={{ fontSize: 11, color: T.textMuted, marginTop: 1, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 12 }}>bed</span>
                           {c.bed_name}
                         </p>
                       )}
                     </td>
 
                     {/* Loại thuê */}
-                    <td style={{ padding: '13px 14px' }}>
+                    <td style={{ padding: '13px 16px' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         background: typeCfg.bg, color: typeCfg.text,
                         fontSize: 11, fontWeight: 700, padding: '4px 9px',
-                        borderRadius: 20, whiteSpace: 'nowrap'
+                        borderRadius: 20, whiteSpace: 'nowrap', border: `1px solid ${typeCfg.text}1A`
                       }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{typeCfg.icon}</span>
                         {typeCfg.label}
@@ -410,27 +444,28 @@ export default function ManagerContractsPage() {
                     </td>
 
                     {/* Tiền thuê */}
-                    <td style={{ padding: '13px 14px', fontSize: 13, fontWeight: 700, color: T.text, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.text, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                       {c.rent_amount.toLocaleString('vi-VN')}đ
                     </td>
 
                     {/* Tiền cọc */}
-                    <td style={{ padding: '13px 14px', fontSize: 13, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                       {c.deposit_amount.toLocaleString('vi-VN')}đ
                     </td>
 
                     {/* Thời hạn */}
-                    <td style={{ padding: '13px 14px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>
-                      <p>{c.start_date.split('-').reverse().join('/')}</p>
-                      <p style={{ fontSize: 10, color: T.textFaint }}>đến {c.end_date.split('-').reverse().join('/')}</p>
+                    <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>
+                      <p style={{ fontWeight: 600 }}>{c.start_date.split('-').reverse().join('/')}</p>
+                      <p style={{ fontSize: 10, color: T.textFaint, marginTop: 2 }}>đến {c.end_date.split('-').reverse().join('/')}</p>
                     </td>
 
                     {/* Trạng thái */}
-                    <td style={{ padding: '13px 14px' }}>
+                    <td style={{ padding: '13px 16px' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         background: statusMeta.bg, color: statusMeta.text,
-                        fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 20, whiteSpace: 'nowrap'
+                        fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 20, whiteSpace: 'nowrap',
+                        border: `1px solid ${statusMeta.text}1A`
                       }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{statusMeta.icon}</span>
                         {statusMeta.label}
@@ -438,11 +473,13 @@ export default function ManagerContractsPage() {
                     </td>
 
                     {/* Action */}
-                    <td style={{ padding: '13px 14px' }}>
+                    <td style={{ padding: '13px 24px 13px 16px', textAlign: 'right' }} onClick={e => { e.stopPropagation(); handleOpenDrawer(c); }}>
                       <button style={{
                         background: T.primaryLight, border: `1px solid ${T.border}`,
-                        borderRadius: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: T.primary, cursor: 'pointer', whiteSpace: 'nowrap'
-                      }}>Xem & Sửa</button>
+                        borderRadius: 9999, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: T.primary, cursor: 'pointer', whiteSpace: 'nowrap',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
                     </td>
                   </tr>
                 );
@@ -455,40 +492,44 @@ export default function ManagerContractsPage() {
       {/* ── Drawer Chi tiết & Chỉnh sửa ── */}
       {drawerOpen && selected && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setDrawerOpen(false)}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.45)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.45)', backdropFilter: 'blur(8px)' }} />
           <div
             style={{
               position: 'absolute', right: 0, top: 0, bottom: 0, width: 560, maxWidth: '96vw',
-              background: T.surface, borderLeft: `1px solid ${T.border}`, display: 'flex',
+              background: T.surface, borderLeft: 'none', display: 'flex',
               flexDirection: 'column', boxShadow: '-8px 0 40px rgba(111,88,60,0.18)',
+              borderTopLeftRadius: 28, borderBottomLeftRadius: 28, overflow: 'hidden',
               animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
             }}
             onClick={e => e.stopPropagation()}>
 
             {/* Drawer Header */}
-            <div style={{ padding: '22px 24px 18px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
+            <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.primary }}>description</span>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase' }}>Hợp đồng thuê phòng</p>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.primary }}>description</span>
+                    <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hợp đồng thuê phòng</p>
                   </div>
-                  <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>
+                  <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>
                     Mã hợp đồng: {selected.contract_code}
                   </h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 3 }}>Chi nhánh: {selected.branch_name}</p>
+                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Chi nhánh: {selected.branch_name}</p>
                 </div>
-                <button onClick={() => setDrawerOpen(false)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: 8, cursor: 'pointer' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.textMuted }}>close</span>
+                <button onClick={() => setDrawerOpen(false)}
+                  style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                  className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                 </button>
               </div>
 
               {/* Status Badge */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   background: STATUS_CFG[selected.status].bg, color: STATUS_CFG[selected.status].text,
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20
+                  fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                  border: `1px solid ${STATUS_CFG[selected.status].text}1A`
                 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{STATUS_CFG[selected.status].icon}</span>
                   {STATUS_CFG[selected.status].label}
@@ -497,7 +538,8 @@ export default function ManagerContractsPage() {
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   background: DEPOSIT_TYPE_CONFIG[selected.deposit_type].bg,
                   color: DEPOSIT_TYPE_CONFIG[selected.deposit_type].text,
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20
+                  fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                  border: `1px solid ${DEPOSIT_TYPE_CONFIG[selected.deposit_type].text}1A`
                 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
                     {DEPOSIT_TYPE_CONFIG[selected.deposit_type].icon}
@@ -514,33 +556,33 @@ export default function ManagerContractsPage() {
                 // ─── CHẾ ĐỘ XEM CHI TIẾT ───
                 <>
                   {/* Customer Info Panel */}
-                  <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>person</span>
+                  <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>person</span>
                       Thông tin khách thuê
                     </h4>
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       {[
                         { label: 'Họ và tên', val: selected.customer_name },
                         { label: 'Số điện thoại', val: selected.customer_phone },
                         { label: 'Số CCCD/Hộ chiếu', val: selected.customer_cccd },
                         { label: 'Địa chỉ thường trú', val: selected.customer_address },
                       ].map((row, i) => (
-                        <div key={i} className="flex justify-between items-start">
-                          <span style={{ fontSize: 13, color: T.textMuted, width: '30%' }}>{row.label}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: T.text, width: '70%', textAlign: 'right' }}>{row.val}</span>
+                        <div key={i} className="flex justify-between items-start gap-4">
+                          <span style={{ fontSize: 13, color: T.textMuted, width: '35%' }}>{row.label}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: T.text, width: '65%', textAlign: 'right' }}>{row.val}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Room & Lease Info Panel */}
-                  <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>meeting_room</span>
+                  <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>meeting_room</span>
                       Thông tin phòng & giường
                     </h4>
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       {[
                         { label: 'Tên phòng', val: selected.room_name },
                         { label: 'Loại phòng', val: selected.room_type || 'N/A' },
@@ -551,30 +593,30 @@ export default function ManagerContractsPage() {
                         { label: 'Ngày bắt đầu', val: selected.start_date.split('-').reverse().join('/') },
                         { label: 'Ngày kết thúc', val: selected.end_date.split('-').reverse().join('/') },
                       ].map((row, i) => (
-                        <div key={i} className="flex justify-between items-center">
+                        <div key={i} className="flex justify-between items-center gap-4">
                           <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: row.highlight ? T.primary : T.text }}>{row.val}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: row.highlight ? T.sage : T.text }}>{row.val}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Origin Deposit & Staff Panel */}
-                  <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>info</span>
-                      Thông tin lập hợp đồng & Loại hợp đồng
+                  <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>info</span>
+                      Thông tin lập hợp đồng & loại hợp đồng
                     </h4>
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       {[
                         { label: 'Mã đặt cọc liên kết', val: selected.deposit_code || 'Không có' },
                         { label: 'Nhân viên kinh doanh lập', val: selected.sale_staff_name || 'Không xác định' },
                         { label: 'Loại hợp đồng', val: selected.contract_type === 'long_term' ? 'Dài hạn' : 'Ngắn hạn' },
                         { label: 'Kỳ thanh toán', val: selected.payment_cycle === '1_month' ? '1 tháng' : selected.payment_cycle === '3_months' ? '3 tháng' : '6 tháng' },
                       ].map((row, i) => (
-                        <div key={i} className="flex justify-between items-center">
+                        <div key={i} className="flex justify-between items-center gap-4">
                           <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{row.val}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{row.val}</span>
                         </div>
                       ))}
                     </div>
@@ -582,28 +624,28 @@ export default function ManagerContractsPage() {
 
                   {/* Tenants List (CT Hop Dong Khach Hang) */}
                   {selected.tenants && selected.tenants.length > 0 && (
-                    <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
-                      <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>group</span>
+                    <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
+                      <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>group</span>
                         Danh sách thành viên lưu trú ({selected.tenants.length})
                       </h4>
-                      <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', background: T.surface }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <div style={{ border: `1.5px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', background: T.surface }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                           <thead>
                             <tr style={{ background: T.bg, borderBottom: `1px solid ${T.border}` }}>
-                              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: T.textMuted }}>Họ & tên</th>
-                              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: T.textMuted }}>CCCD</th>
-                              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: T.textMuted }}>Số điện thoại</th>
-                              <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: T.textMuted }}>Vai trò</th>
+                              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5 }}>Họ & tên</th>
+                              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5 }}>CCCD</th>
+                              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5 }}>SĐT</th>
+                              <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5 }}>Vai trò</th>
                             </tr>
                           </thead>
                           <tbody>
                             {selected.tenants.map((tenant, idx) => (
                               <tr key={idx} style={{ borderBottom: idx < selected.tenants!.length - 1 ? `1px solid ${T.border}` : 'none' }}>
-                                <td style={{ padding: '10px 10px', fontWeight: 600, color: T.text }}>{tenant.name}</td>
-                                <td style={{ padding: '10px 10px', color: T.textMuted, fontFamily: 'monospace' }}>{tenant.cccd}</td>
-                                <td style={{ padding: '10px 10px', color: T.textMuted }}>{tenant.phone}</td>
-                                <td style={{ padding: '10px 10px', textAlign: 'center' }}>
+                                <td style={{ padding: '12px', fontWeight: 700, color: T.text }}>{tenant.name}</td>
+                                <td style={{ padding: '12px', color: T.textMuted, fontFamily: 'monospace' }}>{tenant.cccd}</td>
+                                <td style={{ padding: '12px', color: T.textMuted }}>{tenant.phone}</td>
+                                <td style={{ padding: '12px', textAlign: 'center' }}>
                                   <span style={{
                                     display: 'inline-block',
                                     fontSize: 10,
@@ -611,7 +653,8 @@ export default function ManagerContractsPage() {
                                     padding: '2px 8px',
                                     borderRadius: 12,
                                     background: tenant.role === 'representative' ? T.sageBg : T.primaryLight,
-                                    color: tenant.role === 'representative' ? T.sage : T.primary
+                                    color: tenant.role === 'representative' ? T.sage : T.primary,
+                                    border: `1px solid ${tenant.role === 'representative' ? T.sage : T.primary}1A`
                                   }}>
                                     {tenant.role === 'representative' ? 'Đại diện' : 'Thành viên'}
                                   </span>
@@ -625,20 +668,20 @@ export default function ManagerContractsPage() {
                   )}
 
                   {/* Finance Info Panel */}
-                  <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>payments</span>
+                  <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>payments</span>
                       Thông tin tài chính
                     </h4>
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       {[
-                        { label: 'Giá thuê hàng tháng', val: `${selected.rent_amount.toLocaleString('vi-VN')}đ`, primary: true },
-                        { label: 'Số tiền đặt cọc', val: `${selected.deposit_amount.toLocaleString('vi-VN')}đ`, primary: true },
+                        { label: 'Giá thuê hàng tháng', val: `${selected.rent_amount.toLocaleString('vi-VN')}đ`, primary: true, color: T.text },
+                        { label: 'Số tiền đặt cọc', val: `${selected.deposit_amount.toLocaleString('vi-VN')}đ`, primary: true, color: T.primary },
                         { label: 'Phí dịch vụ cố định', val: `${selected.service_fee.toLocaleString('vi-VN')}đ` },
                       ].map((row, i) => (
-                        <div key={i} className="flex justify-between items-center">
+                        <div key={i} className="flex justify-between items-center gap-4">
                           <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: row.primary ? T.primary : T.text, fontFamily: 'monospace' }}>{row.val}</span>
+                          <span style={{ fontSize: row.primary ? 15 : 13, fontWeight: 800, color: row.color || T.text, fontFamily: 'monospace' }}>{row.val}</span>
                         </div>
                       ))}
                     </div>
@@ -646,20 +689,20 @@ export default function ManagerContractsPage() {
 
                   {/* Legal Policies */}
                   <div className="space-y-4">
-                    <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8 }}>Các điều khoản hợp lý & Quy định</h4>
+                    <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Các điều khoản hợp đồng & Quy định</h4>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 4 }}>Điều khoản chung:</p>
-                        <p style={{ fontSize: 12, color: T.text, background: T.sidebar, padding: 12, borderRadius: 12, lineHeight: 1.6 }}>{selected.terms}</p>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Điều khoản chung:</p>
+                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.terms}</p>
                       </div>
                       <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 4 }}>Quy định thanh toán:</p>
-                        <p style={{ fontSize: 12, color: T.text, background: T.sidebar, padding: 12, borderRadius: 12, lineHeight: 1.6 }}>{selected.payment_policy}</p>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Quy định thanh toán:</p>
+                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.payment_policy}</p>
                       </div>
                       <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 4 }}>Chính sách thanh lý & hoàn cọc:</p>
-                        <p style={{ fontSize: 12, color: T.text, background: T.sidebar, padding: 12, borderRadius: 12, lineHeight: 1.6 }}>{selected.termination_policy}</p>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Chính sách thanh lý & hoàn cọc:</p>
+                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.termination_policy}</p>
                       </div>
                     </div>
                   </div>
@@ -667,25 +710,27 @@ export default function ManagerContractsPage() {
               ) : (
                 // ─── CHẾ ĐỘ CHỈNH SỬA (FORM EDIT) ───
                 <div className="space-y-5">
-                  <div style={{ background: T.amberBg, border: `1px solid ${T.amber}`, borderRadius: 14, padding: 12, display: 'flex', gap: 8 }}>
+                  <div style={{ background: T.amberBg, border: `1px solid ${T.amber}66`, borderRadius: 14, padding: 14, display: 'flex', gap: 8 }}>
                     <span className="material-symbols-outlined" style={{ color: T.amber, fontSize: 20 }}>info</span>
-                    <p style={{ fontSize: 12, color: '#66512C', lineHeight: 1.5 }}>
+                    <p style={{ fontSize: 12.5, color: '#785923', lineHeight: 1.6, fontWeight: 500 }}>
                       Hãy cập nhật cẩn thận các thông tin hợp đồng. Nếu bạn đổi trạng thái sang <strong>Đã thanh lý</strong> hoặc <strong>Đã hết hạn</strong>, vị trí giường/phòng đó sẽ được tự động giải phóng về trạng thái <strong>Còn trống</strong>.
                     </p>
                   </div>
 
                   {/* Status selection */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                       Trạng thái hợp đồng
                     </label>
                     <select
                       value={editForm.status}
                       onChange={e => handleInputChange('status', e.target.value)}
                       style={{
-                        width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 13, color: T.text, background: T.surface, outline: 'none'
-                      }}>
+                        width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
+                        padding: '10px 14px', fontSize: 13, color: T.text, background: T.surface, outline: 'none',
+                        transition: 'all 0.15s'
+                      }}
+                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]">
                       <option value="active">Đang hiệu lực</option>
                       <option value="expired">Đã hết hạn</option>
                       <option value="terminated">Đã thanh lý</option>
@@ -693,24 +738,26 @@ export default function ManagerContractsPage() {
                   </div>
 
                   {/* Contract Type & Payment Cycle */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                         Loại hợp đồng
                       </label>
                       <select
                         value={editForm.contract_type}
                         onChange={e => handleInputChange('contract_type', e.target.value)}
                         style={{
-                          width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                          padding: 10, fontSize: 13, color: T.text, background: T.surface, outline: 'none'
-                        }}>
+                          width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
+                          padding: '10px 14px', fontSize: 13, color: T.text, background: T.surface, outline: 'none',
+                          transition: 'all 0.15s'
+                        }}
+                        className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]">
                         <option value="long_term">Dài hạn</option>
                         <option value="short_term">Ngắn hạn</option>
                       </select>
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                         Kỳ thanh toán
                       </label>
                       <select
@@ -718,8 +765,10 @@ export default function ManagerContractsPage() {
                         onChange={e => handleInputChange('payment_cycle', e.target.value)}
                         style={{
                           width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                          padding: 10, fontSize: 13, color: T.text, background: T.surface, outline: 'none'
-                        }}>
+                          padding: '10px 14px', fontSize: 13, color: T.text, background: T.surface, outline: 'none',
+                          transition: 'all 0.15s'
+                        }}
+                        className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]">
                         <option value="1_month">1 tháng</option>
                         <option value="3_months">3 tháng</option>
                         <option value="6_months">6 tháng</option>
@@ -728,9 +777,9 @@ export default function ManagerContractsPage() {
                   </div>
 
                   {/* Dates Row */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                         Ngày hiệu lực
                       </label>
                       <input
@@ -738,14 +787,16 @@ export default function ManagerContractsPage() {
                         value={editForm.start_date}
                         onChange={e => handleInputChange('start_date', e.target.value)}
                         style={{
-                          width: '100%', border: `1px solid ${errors.start_date ? T.red : T.border}`,
-                          borderRadius: 12, padding: 9, fontSize: 13, color: T.text, outline: 'none'
+                          width: '100%', border: `1.5px solid ${errors.start_date ? T.red : T.border}`,
+                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
+                          background: errors.start_date ? T.redBg : T.surface, transition: 'all 0.15s'
                         }}
+                        className={errors.start_date ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
                       />
-                      {errors.start_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4 }}>{errors.start_date}</p>}
+                      {errors.start_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.start_date}</p>}
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                         Ngày kết thúc
                       </label>
                       <input
@@ -753,18 +804,20 @@ export default function ManagerContractsPage() {
                         value={editForm.end_date}
                         onChange={e => handleInputChange('end_date', e.target.value)}
                         style={{
-                          width: '100%', border: `1px solid ${errors.end_date ? T.red : T.border}`,
-                          borderRadius: 12, padding: 9, fontSize: 13, color: T.text, outline: 'none'
+                          width: '100%', border: `1.5px solid ${errors.end_date ? T.red : T.border}`,
+                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
+                          background: errors.end_date ? T.redBg : T.surface, transition: 'all 0.15s'
                         }}
+                        className={errors.end_date ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
                       />
-                      {errors.end_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4 }}>{errors.end_date}</p>}
+                      {errors.end_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.end_date}</p>}
                     </div>
                   </div>
 
                   {/* Rent / Deposit Amounts Row */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                         Giá thuê hàng tháng (VNĐ)
                       </label>
                       <input
@@ -772,14 +825,16 @@ export default function ManagerContractsPage() {
                         value={editForm.rent_amount}
                         onChange={e => handleInputChange('rent_amount', Number(e.target.value))}
                         style={{
-                          width: '100%', border: `1px solid ${errors.rent_amount ? T.red : T.border}`,
-                          borderRadius: 12, padding: 9, fontSize: 13, color: T.text, outline: 'none'
+                          width: '100%', border: `1.5px solid ${errors.rent_amount ? T.red : T.border}`,
+                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
+                          background: errors.rent_amount ? T.redBg : T.surface, transition: 'all 0.15s'
                         }}
+                        className={errors.rent_amount ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
                       />
-                      {errors.rent_amount && <p style={{ color: T.red, fontSize: 11, marginTop: 4 }}>{errors.rent_amount}</p>}
+                      {errors.rent_amount && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.rent_amount}</p>}
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                         Tiền đặt cọc (VNĐ)
                       </label>
                       <input
@@ -787,17 +842,19 @@ export default function ManagerContractsPage() {
                         value={editForm.deposit_amount}
                         onChange={e => handleInputChange('deposit_amount', Number(e.target.value))}
                         style={{
-                          width: '100%', border: `1px solid ${errors.deposit_amount ? T.red : T.border}`,
-                          borderRadius: 12, padding: 9, fontSize: 13, color: T.text, outline: 'none'
+                          width: '100%', border: `1.5px solid ${errors.deposit_amount ? T.red : T.border}`,
+                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
+                          background: errors.deposit_amount ? T.redBg : T.surface, transition: 'all 0.15s'
                         }}
+                        className={errors.deposit_amount ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
                       />
-                      {errors.deposit_amount && <p style={{ color: T.red, fontSize: 11, marginTop: 4 }}>{errors.deposit_amount}</p>}
+                      {errors.deposit_amount && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.deposit_amount}</p>}
                     </div>
                   </div>
 
                   {/* Service Fee */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                       Phí dịch vụ cố định (VNĐ)
                     </label>
                     <input
@@ -805,16 +862,18 @@ export default function ManagerContractsPage() {
                       value={editForm.service_fee}
                       onChange={e => handleInputChange('service_fee', Number(e.target.value))}
                       style={{
-                        width: '100%', border: `1px solid ${errors.service_fee ? T.red : T.border}`,
-                        borderRadius: 12, padding: 9, fontSize: 13, color: T.text, outline: 'none'
+                        width: '100%', border: `1.5px solid ${errors.service_fee ? T.red : T.border}`,
+                        borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
+                        background: errors.service_fee ? T.redBg : T.surface, transition: 'all 0.15s'
                       }}
+                      className={errors.service_fee ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
                     />
-                    {errors.service_fee && <p style={{ color: T.red, fontSize: 11, marginTop: 4 }}>{errors.service_fee}</p>}
+                    {errors.service_fee && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.service_fee}</p>}
                   </div>
 
                   {/* Textarea terms */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                       Điều khoản chung của hợp đồng
                     </label>
                     <textarea
@@ -822,15 +881,17 @@ export default function ManagerContractsPage() {
                       onChange={e => handleInputChange('terms', e.target.value)}
                       rows={3}
                       style={{
-                        width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12, color: T.text, outline: 'none', resize: 'none'
+                        width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
+                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
+                        background: T.surface, transition: 'all 0.15s'
                       }}
+                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
                     />
                   </div>
 
                   {/* Textarea payments */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                       Quy định đóng tiền & thanh toán
                     </label>
                     <textarea
@@ -839,14 +900,16 @@ export default function ManagerContractsPage() {
                       rows={3}
                       style={{
                         width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12, color: T.text, outline: 'none', resize: 'none'
+                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
+                        background: T.surface, transition: 'all 0.15s'
                       }}
+                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
                     />
                   </div>
 
                   {/* Textarea termination */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                       Quy định trả phòng & thanh lý cọc
                     </label>
                     <textarea
@@ -855,8 +918,10 @@ export default function ManagerContractsPage() {
                       rows={3}
                       style={{
                         width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12, color: T.text, outline: 'none', resize: 'none'
+                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
+                        background: T.surface, transition: 'all 0.15s'
                       }}
+                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
                     />
                   </div>
                 </div>
@@ -868,12 +933,14 @@ export default function ManagerContractsPage() {
               {!isEditing ? (
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={handleStartEdit}
-                    style={{ flex: 2, background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    style={{ flex: 2, background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s ease-in-out' }}
+                    className="hover:opacity-90 active:scale-[0.98]">
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
                     Chỉnh sửa hợp đồng
                   </button>
                   <button onClick={() => window.print()}
-                    style={{ flex: 1, background: '#F0F0F0', color: T.textMuted, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    style={{ flex: 1, background: T.bg, color: T.textMuted, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all 0.15s ease-in-out' }}
+                    className="hover:bg-primaryLight active:scale-[0.98]">
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>print</span>
                     In
                   </button>
@@ -881,12 +948,14 @@ export default function ManagerContractsPage() {
               ) : (
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={handleSave}
-                    style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s ease-in-out' }}
+                    className="hover:opacity-90 active:scale-[0.98]">
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>save</span>
                     Lưu thay đổi
                   </button>
                   <button onClick={handleCancelEdit}
-                    style={{ flex: 1, background: '#F0F0F0', color: T.textMuted, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ flex: 1, background: T.bg, color: T.textMuted, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
+                    className="hover:bg-primaryLight active:scale-[0.98]">
                     Hủy
                   </button>
                 </div>
