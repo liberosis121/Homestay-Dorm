@@ -129,7 +129,7 @@ export default function ListingRoomCard({ room }: Props) {
               onClick={() => navigate(`/customer/rooms/${room.id}`)}
               className="flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-semibold hover:shadow-[0_8px_20px_-6px_rgba(95,116,93,0.4)] hover:-translate-y-0.5 hover:bg-primary/95 transition-all duration-300 group/btn cursor-pointer"
             >
-              <span>Xem chi tiết & Chọn giường</span>
+              <span>Xem chi tiết</span>
               <span className="material-symbols-outlined text-[14px] transition-transform duration-300 group-hover/btn:translate-x-0.5">arrow_forward</span>
             </button>
           </div>
