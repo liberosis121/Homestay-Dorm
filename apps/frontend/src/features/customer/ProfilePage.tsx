@@ -400,17 +400,6 @@ export default function ProfilePage() {
                 </button>
               </nav>
             </div>
-            
-            {/* Eco-Score Card */}
-            <div className="bg-[#8ba888] rounded-32 p-6 text-white shadow-sm relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
-              <h4 className="font-bold text-lg mb-2 relative z-10">Eco-Score: {isNewCustomer ? 'A (Khởi đầu)' : 'A+'}</h4>
-              <p className="text-sm opacity-90 leading-relaxed relative z-10">
-                {isNewCustomer 
-                  ? 'Hãy bắt đầu thói quen tiết kiệm điện nước khi nhận phòng để tích lũy điểm Eco-Score nhé!'
-                  : 'Bạn đã tiết kiệm được 12kg CO2 trong tháng này thông qua việc sử dụng năng lượng thông minh.'}
-              </p>
-            </div>
           </div>
 
           {/* RIGHT CONTENT */}
