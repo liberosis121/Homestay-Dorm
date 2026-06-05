@@ -155,6 +155,15 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
     }
   };
 
+  const toggleAllChecklist = () => {
+    const nextVal = !allChecklistDone;
+    const next = checklistChecked.map(() => nextVal);
+    setChecklistChecked(next);
+    if (submitted && nextVal) {
+      setErrors((e) => { const c = { ...e }; delete c.checklist; return c; });
+    }
+  };
+
   const allChecklistDone = checklistChecked.every(Boolean);
 
   const checklistLabels = [
@@ -524,9 +533,18 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
           <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6 lg:hidden">
             <div className="flex items-center justify-between mb-4">
               <SectionHeader icon={CheckCircle2} title="Checklist xác nhận bắt buộc" />
-              <span className={`text-xs font-bold px-2 py-1 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
-                {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleAllChecklist}
+                  className="px-2 py-0.5 text-[10px] font-bold text-[#6f583c] bg-[#faf2ec]/60 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 rounded-md transition cursor-pointer active:scale-95 flex items-center"
+                >
+                  {allChecklistDone ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                </button>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+                  {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
+                </span>
+              </div>
             </div>
             <div className="space-y-3">
               {checklistLabels.map((label, i) => (
@@ -563,9 +581,18 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
                   <CheckCircle2 className="w-4 h-4 text-[#6f583c]" />
                   Checklist xác nhận
                 </h4>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
-                  {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleAllChecklist}
+                    className="px-2 py-0.5 text-[10px] font-bold text-[#6f583c] bg-[#faf2ec]/60 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 rounded-md transition cursor-pointer active:scale-95 flex items-center"
+                  >
+                    {allChecklistDone ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+                    {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
+                  </span>
+                </div>
               </div>
               <div className="space-y-2.5">
                 {checklistLabels.map((label, i) => (
