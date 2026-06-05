@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Send } from 'lucide-react';
+import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Send, Sparkles, UserRound } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
@@ -57,7 +57,8 @@ const viewingTimeOptions = [
 ];
 
 const today = new Date().toISOString().split('T')[0];
-const inputClass = 'w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface';
+const inputClass = 'w-full bg-surface-container-lowest border border-surface-variant rounded-24 py-3.5 px-5 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface';
+const selectTriggerClass = 'w-full bg-surface-container-lowest border-surface-variant rounded-24 py-3.5';
 
 export const RegisterLeasePage: React.FC = () => {
   const navigate = useNavigate();
@@ -204,45 +205,46 @@ export const RegisterLeasePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-margin-mobile md:px-margin-desktop py-8">
+    <div className="max-w-[1180px] mx-auto px-margin-mobile md:px-margin-desktop py-7">
       <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-primary font-label-md text-sm mb-6 hover:underline">
         <ChevronLeft className="w-4 h-4" />
         Quay lại
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <section className="lg:col-span-8 bg-surface-container-lowest rounded-32 border border-surface-variant shadow-sm p-6 md:p-8">
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-wider mb-4">
-              <ClipboardList className="w-4 h-4" />
-              Phiếu nhu cầu thuê
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+        <section className="bg-surface-container-lowest rounded-32 border border-surface-variant shadow-sm p-6 md:p-7">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5 mb-7">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+                <ClipboardList className="w-4 h-4" />
+                Phiếu nhu cầu thuê
+              </div>
+              <h1 className="text-3xl font-bold text-primary mb-3">Đăng ký thuê phòng</h1>
+              <p className="text-on-surface-variant text-sm leading-7">
+                Bạn gửi nhu cầu thuê và thời gian có thể đến xem phòng. Nhân viên Sale sẽ kiểm tra điều kiện, tìm phòng/giường phù hợp rồi lập lịch xem phòng cho bạn.
+              </p>
             </div>
-            <h1 className="text-3xl font-bold text-primary mb-2">Đăng ký thuê phòng</h1>
-            <p className="text-on-surface-variant text-sm leading-relaxed">
-              Bạn gửi nhu cầu thuê và thời gian có thể đến xem phòng. Nhân viên Sale sẽ kiểm tra điều kiện, tìm phòng/giường phù hợp rồi lập lịch xem phòng cho bạn.
-            </p>
           </div>
 
           {interestedRoomLabel && (
-            <div className="mb-8 p-5 bg-primary/8 border border-primary/15 rounded-24 flex items-start gap-4">
-              <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <div className="mb-6 p-4 bg-sage-light border border-outline-variant rounded-24 flex flex-col md:flex-row md:items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-surface-container-lowest text-primary flex items-center justify-center shrink-0 border border-outline-variant">
                 <Home className="w-5 h-5" />
               </div>
-              <div>
-                <p className="font-bold text-primary">Phòng bạn đang quan tâm</p>
-                <p className="text-sm text-on-surface mt-1">{interestedRoomLabel.room}</p>
-                <p className="text-xs text-on-surface-variant mt-1">{interestedRoomLabel.branch} · {interestedRoomLabel.price}</p>
-                <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
-                  Phòng này sẽ được ghi nhận như một ưu tiên. Sale vẫn sẽ kiểm tra tình trạng thực tế trước khi sắp lịch xem phòng.
-                </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Phòng bạn đang quan tâm</p>
+                <h2 className="text-lg font-bold text-on-surface">{interestedRoomLabel.room}</h2>
+                <p className="text-sm text-on-surface-variant mt-1">{interestedRoomLabel.branch} · {interestedRoomLabel.price}</p>
               </div>
+              <p className="md:max-w-xs text-sm text-on-surface-variant leading-6">
+                Phòng này sẽ được ghi nhận như một ưu tiên. Sale vẫn kiểm tra tình trạng thực tế trước khi sắp lịch xem phòng.
+              </p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-4">
-              <h2 className="font-bold text-on-surface text-lg">Thông tin liên hệ</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <FormSection icon={<UserRound className="w-5 h-5" />} title="Thông tin liên hệ">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Họ và tên" error={errors.fullName}>
                   <input value={form.fullName} onChange={e => setField('fullName', e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" />
                 </Field>
@@ -253,28 +255,27 @@ export const RegisterLeasePage: React.FC = () => {
                   <input value={form.email} onChange={e => setField('email', e.target.value)} className={inputClass} placeholder="email@example.com" />
                 </Field>
                 <Field label="Giới tính">
-                  <CustomSelect value={form.gender} onChange={val => setField('gender', val)} options={genderOptions} triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5" />
+                  <CustomSelect value={form.gender} onChange={val => setField('gender', val)} options={genderOptions} triggerClassName={selectTriggerClass} />
                 </Field>
               </div>
-            </div>
+            </FormSection>
 
-            <div className="space-y-4">
-              <h2 className="font-bold text-on-surface text-lg">Nhu cầu thuê</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormSection icon={<Home className="w-5 h-5" />} title="Nhu cầu thuê">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 <Field label="Loại phòng mong muốn">
-                  <CustomSelect value={form.preferredRoomType} onChange={val => setField('preferredRoomType', val)} options={roomTypeOptions} triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5" />
+                  <CustomSelect value={form.preferredRoomType} onChange={val => setField('preferredRoomType', val)} options={roomTypeOptions} triggerClassName={selectTriggerClass} />
                 </Field>
                 <Field label="Hình thức thuê">
-                  <CustomSelect value={form.rentalType} onChange={val => setField('rentalType', val)} options={rentalTypeOptions} triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5" />
+                  <CustomSelect value={form.rentalType} onChange={val => setField('rentalType', val)} options={rentalTypeOptions} triggerClassName={selectTriggerClass} />
                 </Field>
                 <Field label="Số người ở">
                   <input type="number" min="1" max="8" value={form.occupantsCount} onChange={e => setField('occupantsCount', e.target.value)} className={inputClass} />
                 </Field>
                 <Field label="Chi nhánh/khu vực mong muốn">
-                  <CustomSelect value={form.preferredBranchId} onChange={val => setField('preferredBranchId', val)} options={branchOptions} triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5" />
+                  <CustomSelect value={form.preferredBranchId} onChange={val => setField('preferredBranchId', val)} options={branchOptions} triggerClassName={selectTriggerClass} />
                 </Field>
                 <Field label="Khoảng giá">
-                  <CustomSelect value={form.budgetRange} onChange={val => setField('budgetRange', val)} options={budgetOptions} triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5" />
+                  <CustomSelect value={form.budgetRange} onChange={val => setField('budgetRange', val)} options={budgetOptions} triggerClassName={selectTriggerClass} />
                 </Field>
                 <Field label="Ngày dự kiến vào ở" error={errors.moveInDate}>
                   <input type="date" min={today} value={form.moveInDate} onChange={e => setField('moveInDate', e.target.value)} className={inputClass} />
@@ -288,55 +289,59 @@ export const RegisterLeasePage: React.FC = () => {
                       { value: '12', label: '12 tháng' },
                       { value: '24', label: '24 tháng' },
                     ]}
-                    triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5"
+                    triggerClassName={selectTriggerClass}
                   />
                 </Field>
               </div>
-            </div>
+            </FormSection>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <CalendarClock className="w-5 h-5 text-primary" />
-                <h2 className="font-bold text-on-surface text-lg">Thời gian xem phòng mong muốn</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormSection icon={<CalendarClock className="w-5 h-5" />} title="Thời gian xem phòng mong muốn">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Ngày có thể đến xem" error={errors.preferredViewingDate}>
                   <input type="date" min={today} value={form.preferredViewingDate} onChange={e => setField('preferredViewingDate', e.target.value)} className={inputClass} />
                 </Field>
                 <Field label="Khung giờ rảnh">
-                  <CustomSelect value={form.preferredViewingTime} onChange={val => setField('preferredViewingTime', val)} options={viewingTimeOptions} triggerClassName="w-full bg-surface-container-low border-surface-variant rounded-24 py-3.5" />
+                  <CustomSelect value={form.preferredViewingTime} onChange={val => setField('preferredViewingTime', val)} options={viewingTimeOptions} triggerClassName={selectTriggerClass} />
+                </Field>
+                <div className="md:col-span-2">
+                  <Field label="Ghi chú thời gian">
+                    <input value={form.viewingTimeNote} onChange={e => setField('viewingTimeNote', e.target.value)} className={inputClass} placeholder="Ví dụ: chỉ rảnh sau 16:00 hoặc cuối tuần" />
+                  </Field>
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection icon={<Sparkles className="w-5 h-5" />} title="Tiện ích và ghi chú">
+              <div className="space-y-5">
+                <div>
+                  <p className="block text-sm font-label-md text-on-surface-variant ml-2 mb-2">Tiện ích mong muốn</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      ['AC', 'Máy lạnh'],
+                      ['Wifi', 'Wifi mạnh'],
+                      ['Private WC', 'WC riêng'],
+                      ['Kitchen', 'Bếp chung'],
+                      ['Washing Machine', 'Máy giặt'],
+                    ].map(([value, label]) => {
+                      const active = form.amenities.includes(value);
+                      return (
+                        <button key={value} type="button" onClick={() => toggleAmenity(value)} className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${active ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container-lowest text-on-surface-variant border-surface-variant hover:border-primary/30'}`}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Field label="Ghi chú thêm">
+                  <textarea value={form.note} onChange={e => setField('note', e.target.value)} className={`${inputClass} min-h-[120px] resize-none`} placeholder="Ví dụ: muốn ở gần trường, cần chỗ để xe, ưu tiên phòng yên tĩnh..." />
                 </Field>
               </div>
-              <Field label="Ghi chú thời gian">
-                <input value={form.viewingTimeNote} onChange={e => setField('viewingTimeNote', e.target.value)} className={inputClass} placeholder="Ví dụ: chỉ rảnh sau 16:00 hoặc cuối tuần" />
-              </Field>
-            </div>
+            </FormSection>
 
-            <div className="space-y-4">
-              <h2 className="font-bold text-on-surface text-lg">Tiện ích mong muốn</h2>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  ['AC', 'Máy lạnh'],
-                  ['Wifi', 'Wifi mạnh'],
-                  ['Private WC', 'WC riêng'],
-                  ['Kitchen', 'Bếp chung'],
-                  ['Washing Machine', 'Máy giặt'],
-                ].map(([value, label]) => {
-                  const active = form.amenities.includes(value);
-                  return (
-                    <button key={value} type="button" onClick={() => toggleAmenity(value)} className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${active ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container-low text-on-surface-variant border-surface-variant hover:border-primary/30'}`}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <Field label="Ghi chú thêm">
-              <textarea value={form.note} onChange={e => setField('note', e.target.value)} className={`${inputClass} min-h-[110px] resize-none`} placeholder="Ví dụ: muốn ở gần trường, cần chỗ để xe, ưu tiên phòng yên tĩnh..." />
-            </Field>
-
-            <div className="flex justify-end pt-4 border-t border-surface-variant">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-surface-variant">
+              <p className="text-xs text-on-surface-variant leading-relaxed max-w-xl">
+                Phiếu này sẽ được gửi đến nhân viên Sale để kiểm tra phòng/giường phù hợp trước khi lập lịch xem phòng.
+              </p>
               <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-timber-accent hover:opacity-90 text-white rounded-full font-label-md text-sm shadow-md transition-all disabled:opacity-60">
                 {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu đăng ký'}
                 <Send className="w-4 h-4" />
@@ -345,22 +350,22 @@ export const RegisterLeasePage: React.FC = () => {
           </form>
         </section>
 
-        <aside className="lg:col-span-4 sticky top-24">
+        <aside className="sticky top-24">
           <div className="bg-sage-light border border-outline-variant rounded-32 p-6 shadow-sm space-y-4">
-            <div className="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center">
-              <Info className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+              <Info className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-primary text-lg">Quy trình sau khi gửi phiếu</h3>
-              <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">
+              <p className="text-sm text-on-surface-variant mt-3 leading-7 text-justify">
                 Sale sẽ kiểm tra nhu cầu, tìm phòng/giường phù hợp, đối chiếu thời gian rảnh của bạn rồi lập lịch xem phòng. Bạn chỉ gửi yêu cầu đặt cọc sau khi đã xem phòng và quyết định thuê.
               </p>
             </div>
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm pt-1">
               {['Gửi phiếu nhu cầu thuê', 'Sale sắp xếp phòng và lịch xem', 'Khách xem phòng thực tế', 'Gửi yêu cầu đặt cọc nếu ưng ý'].map((item, index) => (
                 <div key={item} className="flex items-center gap-3 text-on-surface-variant">
-                  <span className="w-7 h-7 rounded-full bg-surface-container-lowest border border-outline-variant text-primary flex items-center justify-center text-xs font-bold">{index + 1}</span>
-                  <span>{item}</span>
+                  <span className="w-7 h-7 rounded-full bg-surface-container-lowest border border-outline-variant text-primary flex items-center justify-center text-xs font-bold shrink-0">{index + 1}</span>
+                  <span className="leading-6">{item}</span>
                 </div>
               ))}
             </div>
@@ -371,9 +376,23 @@ export const RegisterLeasePage: React.FC = () => {
   );
 };
 
+function FormSection({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-surface-container-low border border-outline-variant/40 rounded-24 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+        <h2 className="font-bold text-on-surface text-base">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
-    <label className="block space-y-2">
+    <label className="block space-y-2 min-w-0">
       <span className="block text-sm font-label-md text-on-surface-variant ml-2">{label}</span>
       {children}
       {error && <span className="block text-xs text-error ml-2">{error}</span>}
