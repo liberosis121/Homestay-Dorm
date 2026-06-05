@@ -1,4 +1,4 @@
-import { Mail, CalendarPlus } from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 export interface Customer {
   id: string;
@@ -53,13 +53,11 @@ export interface Customer {
 interface CustomerProfileCardProps {
   customer: Customer;
   onActionEmail?: () => void;
-  onActionAppointment?: () => void;
 }
 
 export default function CustomerProfileCard({
   customer,
   onActionEmail,
-  onActionAppointment,
 }: CustomerProfileCardProps) {
   // Huy hiệu phân hạng khách hàng
   const getTierBadge = (tier: Customer['tier']) => {
@@ -133,13 +131,6 @@ export default function CustomerProfileCard({
         >
           <Mail className="w-4 h-4 text-[#6f583c]" />
           Gửi email
-        </button>
-        <button
-          onClick={onActionAppointment}
-          className="flex items-center gap-2 px-4 py-2 bg-[#6f583c] hover:bg-[#6f583c]/90 text-white rounded-xl transition-all cursor-pointer font-semibold text-xs shadow-sm shadow-[#6f583c]/10 active:scale-95 duration-200"
-        >
-          <CalendarPlus className="w-4 h-4" />
-          Tạo lịch hẹn
         </button>
       </div>
     </div>
