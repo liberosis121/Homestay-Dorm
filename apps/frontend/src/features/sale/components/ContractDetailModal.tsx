@@ -75,16 +75,17 @@ export default function ContractDetailModal({ contract, onClose, onPrint }: Prop
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#fff8f3]">
           
           {/* Progress Timeline */}
-          <div className="bg-white rounded-2xl border border-[#d1c4b9]/60 p-4 shadow-sm">
-            <h3 className="text-xs font-bold text-[#6f583c] uppercase tracking-wider mb-4 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" /> Tiến trình hợp đồng
+          <div className="bg-white rounded-2xl border border-[#d1c4b9]/60 p-3 shadow-sm">
+            <h3 className="text-[11px] font-bold text-[#6f583c] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5" /> Tiến trình hợp đồng
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+            <div className="grid grid-cols-3 gap-2 relative">
+              <div className="pointer-events-none absolute left-8 right-8 top-5 hidden h-px bg-[#d1c4b9]/50 md:block" />
               {steps.map((step, idx) => (
-                <div key={idx} className="flex flex-col relative bg-[#faf2ec]/60 rounded-xl p-3 border border-[#d1c4b9]/30">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                <div key={idx} className="relative z-10 flex min-w-0 flex-col rounded-lg border border-[#d1c4b9]/30 bg-[#faf2ec] px-2.5 py-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${
                       step.done 
                         ? 'bg-[#4a6549] text-white' 
                         : step.active 
@@ -93,13 +94,13 @@ export default function ContractDetailModal({ contract, onClose, onPrint }: Prop
                     }`}>
                       {step.done ? '✓' : idx + 1}
                     </span>
-                    <span className={`text-xs font-bold ${
+                    <span className={`min-w-0 truncate text-[11px] font-bold ${
                       step.done ? 'text-[#4a6549]' : step.active ? 'text-[#92400e]' : 'text-[#9d8879]'
                     }`}>
                       {step.label}
                     </span>
                   </div>
-                  <p className="text-[10px] text-[#9d8879] mt-1.5 font-medium pl-8">{step.time}</p>
+                  <p className="mt-0.5 truncate pl-6 text-[9.5px] font-medium leading-tight text-[#9d8879]">{step.time}</p>
                 </div>
               ))}
             </div>
