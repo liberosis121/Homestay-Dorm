@@ -33,37 +33,48 @@ export default function InvoiceDetailDrawer({
     }
   }
 
+  // Load deposit details if deposit_ref is present
+  let depositDetails: any = undefined;
+  if (invoiceData && invoiceData.deposit_ref) {
+    try {
+      const db = getMockDB();
+      depositDetails = db.deposit_invoices?.find((d: any) => d.id === invoiceData.deposit_ref);
+    } catch (e) {
+      console.error("Failed to load deposit details", e);
+    }
+  }
+
   // Status badge style helper
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
       case 'completed':
         return (
-          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#E8EDE5] text-[#5F7D4E]">
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#F5EFE6] text-[#5C4632] border border-[#DCCFC0]/60">
             Đã thanh toán
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF2E8] text-[#B9792B]">
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF6F0] text-[#B9792B] border border-[#E7DED2]">
             Chờ thanh toán
           </span>
         );
       case 'overdue':
         return (
-          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#F8EAE8] text-[#A94F4F]">
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FBF6F5] text-[#A94F4F] border border-[#F1DFDD]">
             Quá hạn
           </span>
         );
       case 'cancelled':
         return (
-          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#ECEAE6] text-[#8A7563]">
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF9F6] text-[#8A7563] border border-[#E7DED2]">
             Đã hủy
           </span>
         );
       default:
         return (
-          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#ECEAE6] text-[#8A7563]">
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF9F6] text-[#8A7563] border border-[#E7DED2]">
             {status || 'Bản nháp'}
           </span>
         );
@@ -71,7 +82,7 @@ export default function InvoiceDetailDrawer({
   };
 
   const formattedAmount = (amount: number) => {
-    return (amount || 0).toLocaleString('vi-VN') + '\u00A0đ';
+    return <span className="whitespace-nowrap font-mono">{(amount || 0).toLocaleString('vi-VN')}\u00A0đ</span>;
   };
 
   return (
@@ -159,102 +170,127 @@ export default function InvoiceDetailDrawer({
           )}
 
           {/* 2. CHECKIN TYPE */}
-          {invoiceType === 'checkin' && (
-            <>
-              {/* Section 1: Thông tin hóa đơn */}
-              <div className="space-y-3">
-                <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin hóa đơn</h4>
-                <div className="grid grid-cols-2 gap-y-2">
-                  <div className="text-[#8A7563]">Mã hóa đơn nhận phòng:</div>
-                  <div className="text-right font-mono font-semibold text-[#1b1c1c]">{invoiceData.id || '---'}</div>
-                  
-                  <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.created_at || '---'}</div>
-                  
-                  <div className="text-[#8A7563]">Hạn thanh toán:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">
-                    {invoiceData.created_at ? invoiceData.created_at.substring(0, 10) : '---'}
-                  </div>
+          {invoiceType === 'checkin' && (() => {
+            const rent = invoiceData.rent_amount || 0;
+            const deposit = depositDetails?.amount || invoiceData.rent_amount || 0;
+            const servicesList = invoiceData.services || [];
+            const servicesTotal = servicesList.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+            const calculatedTotal = rent + deposit + servicesTotal;
+            const otherFee = invoiceData.total - calculatedTotal;
 
-                  <div className="text-[#8A7563]">Phương thức thanh toán:</div>
-                  <div className="text-right text-[#1b1c1c] font-semibold">
-                    {invoiceData.payment_method || 'Chuyển khoản (QR)'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Thông tin hợp đồng */}
-              <div className="space-y-3">
-                <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin hợp đồng</h4>
-                <div className="grid grid-cols-2 gap-y-2">
-                  <div className="text-[#8A7563]">Mã hợp đồng:</div>
-                  <div className="text-right font-mono font-semibold text-[#1b1c1c]">
-                    {invoiceData.deposit_ref ? invoiceData.deposit_ref.replace('DEP', 'HĐ') : 'HĐ-MOCK'}
-                  </div>
-                  
-                  <div className="text-[#8A7563]">Ngày bắt đầu thuê:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.checkin_date || '---'}</div>
-                  
-                  <div className="text-[#8A7563]">Kỳ thanh toán:</div>
-                  <div className="text-right text-[#1b1c1c] font-semibold">
-                    {invoiceData.created_at ? 'Tháng ' + invoiceData.created_at.substring(5, 7) + '/' + invoiceData.created_at.substring(0, 4) : 'Kỳ nhận phòng'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Thông tin khách thuê */}
-              <div className="space-y-3">
-                <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin khách thuê</h4>
-                <div className="grid grid-cols-2 gap-y-2">
-                  <div className="text-[#8A7563]">Tên khách thuê:</div>
-                  <div className="text-right font-semibold text-[#1b1c1c]">{invoiceData.customer_name || '---'}</div>
-                </div>
-              </div>
-
-              {/* Section 4: Thông tin phòng/giường */}
-              <div className="space-y-3">
-                <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin phòng / giường</h4>
-                <div className="grid grid-cols-2 gap-y-2">
-                  <div className="text-[#8A7563]">Mã phòng / giường:</div>
-                  <div className="text-right font-mono font-semibold text-[#1b1c1c]">{invoiceData.room_id || '---'}</div>
-                  
-                  <div className="text-[#8A7563]">Tên phòng:</div>
-                  <div className="text-right font-semibold text-[#1b1c1c]">Phòng {invoiceData.room_name || '---'}</div>
-                  
-                  <div className="text-[#8A7563]">Loại phòng:</div>
-                  <div className="text-right text-[#1b1c1c]">
-                    {roomDetails?.room_type || 'Ký túc xá cao cấp'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 5: Chi tiết khoản thu ban đầu */}
-              <div className="space-y-3">
-                <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Chi tiết khoản thu ban đầu</h4>
-                <div className="divide-y divide-[#E7DED2]/65 text-xs font-mono">
-                  <div className="flex justify-between py-2">
-                    <span className="font-sans text-[#1b1c1c]">Tiền thuê (Tháng đầu):</span>
-                    <span className="text-[#1b1c1c]">{formattedAmount(invoiceData.rent_amount)}</span>
-                  </div>
-                  <div className="flex justify-between py-2">
-                    <span className="font-sans text-[#1b1c1c]">Tiền cọc phòng định kỳ:</span>
-                    <span className="text-[#1b1c1c]">{formattedAmount(invoiceData.rent_amount)}</span>
-                  </div>
-                  {invoiceData.services && invoiceData.services.map((srv: any, i: number) => (
-                    <div key={i} className="flex justify-between py-2">
-                      <span className="font-sans text-[#1b1c1c]">{srv.name}:</span>
-                      <span className="text-[#1b1c1c]">{formattedAmount(srv.amount)}</span>
+            return (
+              <>
+                {/* Section 1: Thông tin hóa đơn */}
+                <div className="space-y-3">
+                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin hóa đơn</h4>
+                  <div className="grid grid-cols-2 gap-y-2 text-xs">
+                    <div className="text-[#8A7563]">Mã hóa đơn nhận phòng:</div>
+                    <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.id || '---'}</div>
+                    
+                    <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
+                    <div className="text-right text-[#5C4632] font-mono">{invoiceData.created_at || '---'}</div>
+                    
+                    <div className="text-[#8A7563]">Hạn thanh toán:</div>
+                    <div className="text-right text-[#5C4632] font-mono">
+                      {invoiceData.deadline || invoiceData.checkin_date || (invoiceData.created_at ? invoiceData.created_at.substring(0, 10) : '---')}
                     </div>
-                  ))}
+
+                    <div className="text-[#8A7563]">Phương thức thanh toán:</div>
+                    <div className="text-right text-[#5C4632] font-semibold">
+                      {invoiceData.payment_method === 'transfer' ? 'Chuyển khoản' : invoiceData.payment_method === 'cash' ? 'Tiền mặt' : invoiceData.payment_method || 'Chuyển khoản (QR)'}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-center py-2.5 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10 mt-3">
-                  <span className="font-bold text-[#5C4632] text-sm">Tổng cộng thanh toán:</span>
-                  <span className="font-mono text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total)}</span>
+                {/* Section 2: Thông tin hợp đồng */}
+                <div className="space-y-3">
+                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin hợp đồng</h4>
+                  <div className="grid grid-cols-2 gap-y-2 text-xs">
+                    <div className="text-[#8A7563]">Mã hợp đồng:</div>
+                    <div className="text-right font-mono font-semibold text-[#5C4632]">
+                      {invoiceData.deposit_ref ? invoiceData.deposit_ref.replace('DEP', 'HĐ') : 'HĐ-MOCK'}
+                    </div>
+                    
+                    <div className="text-[#8A7563]">Ngày bắt đầu thuê:</div>
+                    <div className="text-right text-[#5C4632] font-mono">{invoiceData.checkin_date || '---'}</div>
+                    
+                    <div className="text-[#8A7563]">Kỳ thanh toán:</div>
+                    <div className="text-right text-[#5C4632] font-semibold">
+                      {invoiceData.created_at ? 'Tháng ' + invoiceData.created_at.substring(5, 7) + '/' + invoiceData.created_at.substring(0, 4) : 'Kỳ nhận phòng'}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+
+                {/* Section 3: Thông tin khách thuê */}
+                <div className="space-y-3">
+                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin khách thuê</h4>
+                  <div className="grid grid-cols-2 gap-y-2 text-xs">
+                    <div className="text-[#8A7563]">Tên khách thuê:</div>
+                    <div className="text-right font-semibold text-[#5C4632]">{invoiceData.customer_name || '---'}</div>
+                  </div>
+                </div>
+
+                {/* Section 4: Thông tin phòng/giường */}
+                <div className="space-y-3">
+                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin phòng / giường</h4>
+                  <div className="grid grid-cols-2 gap-y-2 text-xs">
+                    <div className="text-[#8A7563]">Mã phòng / giường:</div>
+                    <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.room_id || '---'}</div>
+                    
+                    <div className="text-[#8A7563]">Tên phòng:</div>
+                    <div className="text-right font-semibold text-[#5C4632]">{invoiceData.room_name || '---'}</div>
+                    
+                    <div className="text-[#8A7563]">Loại phòng:</div>
+                    <div className="text-right text-[#5C4632]">
+                      {roomDetails?.room_type || 'Ký túc xá cao cấp'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 5: Chi tiết khoản thu ban đầu */}
+                <div className="space-y-3">
+                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Chi tiết khoản thu ban đầu</h4>
+                  <div className="divide-y divide-[#E7DED2]/65 text-xs">
+                    <div className="flex justify-between py-2 items-center">
+                      <span className="text-[#8A7563]">Tiền thuê phòng (Tháng đầu):</span>
+                      <span className="text-[#5C4632] font-semibold">{formattedAmount(rent)}</span>
+                    </div>
+                    <div className="flex justify-between py-2 items-center">
+                      <span className="text-[#8A7563]">Tiền đặt cọc phòng / giường:</span>
+                      <span className="text-[#5C4632] font-semibold">{formattedAmount(deposit)}</span>
+                    </div>
+                    {servicesList.map((srv: any, i: number) => (
+                      <div key={i} className="flex justify-between py-2 items-center">
+                        <span className="text-[#8A7563]">{srv.name}:</span>
+                        <span className="text-[#5C4632] font-semibold">{formattedAmount(srv.amount)}</span>
+                      </div>
+                    ))}
+                    {otherFee !== 0 && (
+                      <div className="flex justify-between py-2 items-center">
+                        <span className="text-[#8A7563]">Các khoản khác / Ưu đãi:</span>
+                        <span className={`font-semibold ${otherFee > 0 ? 'text-[#B9792B]' : 'text-[#5F7D4E]'}`}>
+                          {otherFee > 0 ? '+' : ''}{formattedAmount(otherFee)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center py-2 bg-[#FAF9F6] border-t border-[#DCCFC0]/65 text-xs text-[#8A7563] pt-3">
+                    <span>Tổng cộng các khoản thu:</span>
+                    <span className="font-semibold">{formattedAmount(invoiceData.total)}</span>
+                  </div>
+                </div>
+
+                {/* Section 6: Tổng cộng */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center py-3 bg-[#5C4632]/5 px-4 rounded-xl border border-[#5C4632]/15 shadow-xs">
+                    <span className="font-bold text-[#5C4632] text-sm">Tổng cộng cần thanh toán:</span>
+                    <span className="font-bold text-lg text-[#5C4632]">{formattedAmount(invoiceData.total)}</span>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
 
           {/* 3. MONTHLY TYPE */}
           {invoiceType === 'monthly' && (
@@ -389,7 +425,7 @@ export default function InvoiceDetailDrawer({
         <div className="p-6 border-t border-[#DCCFC0] flex gap-3 bg-[#FAF9F6]">
           <button 
             onClick={handlePrint}
-            className="flex-1 border border-[#7f756c] text-[#8A7563] py-2.5 rounded-lg text-sm font-semibold bg-transparent hover:bg-[#E7DED2] hover:text-[#5C4632] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            className="flex-1 border border-[#DCCFC0] text-[#5C4632] py-2.5 rounded-lg text-sm font-semibold bg-[#FAF9F6] hover:bg-[#E7DED2] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             In PDF
