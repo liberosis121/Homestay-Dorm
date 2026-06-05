@@ -3,7 +3,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
 import { 
   User, Shield, Camera, ChevronRight, Lock, Bell, Globe, 
-  Compass, Calendar, FileText, CreditCard, LogOut, Info,
+  Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
   X, Eye, EyeOff, Check, Zap
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
@@ -370,6 +370,9 @@ export default function ProfilePage() {
                     </Link>
                     <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
+                    </Link>
+                    <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
                     </Link>
                   </>
                 ) : (

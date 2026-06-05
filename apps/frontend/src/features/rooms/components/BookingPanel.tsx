@@ -1,4 +1,4 @@
-import { Calendar, CreditCard, KeyRound, Sparkles, AlertCircle } from 'lucide-react';
+import { ClipboardList, Sparkles, AlertCircle } from 'lucide-react';
 
 interface Bed {
   id: string;
@@ -13,7 +13,7 @@ interface Props {
   selectedBeds: string[];
   beds: Bed[];
   isFullRoomSelected: boolean;
-  onAction: (type: 'rent' | 'deposit' | 'schedule') => void;
+  onAction: (type: 'interest') => void;
   roomStatus: string;
 }
 
@@ -159,44 +159,27 @@ export default function BookingPanel({
       {/* Action CTA Buttons */}
       <div className="space-y-3">
         <button
-          onClick={() => onAction('rent')}
-          disabled={count === 0 || roomStatus === 'maintenance'}
+          onClick={() => onAction('interest')}
+          disabled={roomStatus === 'maintenance'}
           className={`w-full py-4 rounded-full font-label-md text-label-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer shadow-md ${
-            count > 0 && roomStatus !== 'maintenance'
+            roomStatus !== 'maintenance'
               ? 'bg-primary text-on-primary hover:shadow-lg hover:shadow-primary/20'
               : 'bg-surface-variant text-on-surface-variant opacity-60 cursor-not-allowed shadow-none'
           }`}
         >
-          <KeyRound className="w-4 h-4" />
-          Đăng ký thuê ngay
+          <ClipboardList className="w-4 h-4" />
+          Tôi quan tâm phòng này
         </button>
 
-        <button
-          onClick={() => onAction('deposit')}
-          disabled={count === 0 || roomStatus === 'maintenance'}
-          className={`w-full py-4 rounded-full font-label-md text-label-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer shadow-md ${
-            count > 0 && roomStatus !== 'maintenance'
-              ? 'bg-timber-accent text-on-primary hover:shadow-lg hover:shadow-timber-accent/20'
-              : 'bg-surface-variant text-on-surface-variant opacity-60 cursor-not-allowed shadow-none'
-          }`}
-        >
-          <CreditCard className="w-4 h-4" />
-          Đặt cọc giữ chỗ
-        </button>
-
-        <button
-          onClick={() => onAction('schedule')}
-          className="w-full py-4 border-2 border-primary text-primary rounded-full font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-sage-light transition-all active:scale-[0.98] cursor-pointer"
-        >
-          <Calendar className="w-4 h-4" />
-          Đặt lịch hẹn xem phòng
-        </button>
+        <p className="text-xs text-on-surface-variant leading-relaxed text-center px-2">
+          Nhân viên Sale sẽ kiểm tra tình trạng thực tế và sắp xếp lịch xem phòng phù hợp. Khách chỉ đặt cọc sau khi đã xem phòng.
+        </p>
       </div>
 
       {/* Bottom guarantee badge */}
       <p className="text-center text-caption text-on-surface-variant flex items-center justify-center gap-1.5">
         <span className="material-symbols-outlined text-[16px] text-primary">verified_user</span>
-        Hoàn cọc 100% nếu không hài lòng sau khi xem
+        Gửi phiếu nhu cầu trước, Sale xếp phòng sau
       </p>
     </div>
   );
