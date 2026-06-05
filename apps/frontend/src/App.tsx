@@ -218,7 +218,6 @@ function DashboardLayout() {
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
           { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
           { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/admin/backup', label: 'Sao lưu & Khôi phục', icon: Database }
         ];
       case 'manager':
@@ -548,7 +547,7 @@ function DashboardLayout() {
             {user.role === 'admin' && <Route path="/admin/conditions" element={<AdminConditionsPage />} />}
             {user.role === 'admin' && <Route path="/admin/assets" element={<AdminAssetsPage />} />}
             {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupPage />} />}
-            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant' || user.role === 'admin') && (
+            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
               <Route path="/sale/customers" element={<CustomerLookupPage />} />
             )}
             
