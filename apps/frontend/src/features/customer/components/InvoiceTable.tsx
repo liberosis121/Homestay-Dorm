@@ -13,19 +13,19 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
     switch (status) {
       case 'paid':
         return (
-          <span className="status-badge bg-status-success/15 text-status-success font-semibold px-3 py-1 rounded-full text-xs">
+          <span className="inline-flex h-7 min-w-[104px] items-center justify-center rounded-full bg-status-success/15 px-3 text-xs font-semibold text-status-success">
             Đã thanh toán
           </span>
         );
       case 'unpaid':
         return (
-          <span className="status-badge bg-status-warning/15 text-status-warning font-semibold px-3 py-1 rounded-full text-xs">
+          <span className="inline-flex h-7 min-w-[104px] items-center justify-center rounded-full bg-status-warning/15 px-3 text-xs font-semibold text-status-warning">
             Chờ thanh toán
           </span>
         );
       case 'overdue':
         return (
-          <span className="status-badge bg-status-error/15 text-status-error font-semibold px-3 py-1 rounded-full text-xs">
+          <span className="inline-flex h-7 min-w-[104px] items-center justify-center rounded-full bg-status-error/15 px-3 text-xs font-semibold text-status-error">
             Quá hạn
           </span>
         );
@@ -43,6 +43,17 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
     }
   };
 
+  const getInvoiceTypeBadgeClass = (type: Invoice['type']) => {
+    switch (type) {
+      case 'monthly':
+        return 'border-primary/15 bg-primary/10 text-primary';
+      case 'service':
+        return 'border-[#d1c4b9] bg-[#faf2ec] text-[#6f583c]';
+      case 'incidental':
+        return 'border-[#d8cbb8] bg-[#f4f1ec] text-[#7a6b5b]';
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const parts = dateStr.split('-');
     if (parts.length === 3) {
@@ -54,16 +65,25 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full min-w-[920px] table-fixed text-left border-collapse">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[16%]" />
+            <col className="w-[12%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[15%]" />
+          </colgroup>
           <thead className="bg-surface-container-low border-b border-outline-variant/20">
             <tr>
-              <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Mã hóa đơn</th>
-              <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider hidden sm:table-cell">Kỳ thanh toán</th>
-              <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider hidden md:table-cell">Loại</th>
-              <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Số tiền</th>
-              <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">Hạn thanh toán</th>
-              <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Trạng thái</th>
-              <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-right">Hành động</th>
+              <th className="px-5 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Mã hóa đơn</th>
+              <th className="px-5 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider hidden sm:table-cell">Kỳ thanh toán</th>
+              <th className="px-5 py-4 text-center text-xs font-bold text-on-surface-variant uppercase tracking-wider hidden md:table-cell">Loại</th>
+              <th className="px-4 py-4 text-center text-xs font-bold text-on-surface-variant uppercase tracking-wider">Số tiền</th>
+              <th className="px-5 py-4 text-center text-xs font-bold text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">Hạn thanh toán</th>
+              <th className="px-5 py-4 text-center text-xs font-bold text-on-surface-variant uppercase tracking-wider">Trạng thái</th>
+              <th className="px-4 py-4 text-center text-xs font-bold text-on-surface-variant uppercase tracking-wider">Hành động</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant/20">
@@ -86,28 +106,28 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         : 'hover:bg-surface-container-low hover:shadow-sm'
                     }`}
                   >
-                    <td className="px-6 py-4 font-medium text-primary text-sm sm:text-base">
+                    <td className="px-5 py-4 text-[13px] font-semibold text-primary">
                       {invoice.id}
                     </td>
-                    <td className="px-6 py-4 text-sm text-on-surface-variant hidden sm:table-cell">
+                    <td className="px-5 py-4 text-sm text-on-surface-variant hidden sm:table-cell">
                       {invoice.billingPeriod}
                     </td>
-                    <td className="px-6 py-4 text-sm text-on-surface-variant hidden md:table-cell">
-                      <span className="bg-surface-container-high px-2.5 py-1 rounded-md text-xs font-medium text-on-surface">
+                    <td className="px-5 py-4 text-center text-sm text-on-surface-variant hidden md:table-cell">
+                      <span className={`inline-flex h-7 min-w-[74px] items-center justify-center rounded-full border px-2.5 text-[11px] font-bold ${getInvoiceTypeBadgeClass(invoice.type)}`}>
                         {getInvoiceTypeLabel(invoice.type)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-bold text-on-surface text-sm sm:text-base">
+                    <td className="px-4 py-4 text-center font-bold text-on-surface text-sm">
                       {invoice.totalAmount.toLocaleString('vi-VN')}đ
                     </td>
-                    <td className="px-6 py-4 text-sm text-on-surface-variant hidden lg:table-cell">
+                    <td className="px-5 py-4 text-center text-sm text-on-surface-variant hidden lg:table-cell">
                       {formatDate(invoice.dueDate)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4 text-center">
                       {getStatusBadge(invoice.status)}
                     </td>
-                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                      <div className={`flex items-center gap-2 ${invoice.status === 'paid' ? 'justify-center' : 'justify-start pl-2'}`}>
                         <button
                           onClick={() => onSelect(invoice.id)}
                           className="p-2 text-secondary hover:bg-secondary-container/40 hover:text-primary rounded-lg transition-all cursor-pointer active:scale-90"

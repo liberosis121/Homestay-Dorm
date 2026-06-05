@@ -680,7 +680,7 @@ const INITIAL_DB = {
     {
       id: 'cdr-1',
       customer_id: 'u-6',
-      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_name: 'Nguyễn Văn Nam',
       customer_phone: '0977889900',
       room_id: 'r-1',
       room_name: 'Phòng 101 (Nam)',
@@ -688,10 +688,42 @@ const INITIAL_DB = {
       branch_name: 'Chi nhánh Quận 1',
       viewing_schedule_id: 'vs-3',
       deposit_amount: 1000000,
-      expected_move_in_date: '2026-05-01',
+      expected_move_in_date: '2026-06-10',
+      status: 'confirmed',
+      note: 'Khách đã xem phòng và đồng ý cọc giữ chỗ.',
+      created_at: '2026-06-03T11:00:00Z'
+    },
+    {
+      id: 'cdr-2',
+      customer_id: 'u-5',
+      customer_name: 'Lê Lâm Trí Đức',
+      customer_phone: '0933344556',
+      room_id: 'r-2',
+      room_name: 'Phòng 102 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1',
+      viewing_schedule_id: 'vs-1',
+      deposit_amount: 1500000,
+      expected_move_in_date: '2026-06-15',
+      status: 'confirmed',
+      note: 'Khách hàng đặt cọc phòng đơn.',
+      created_at: '2026-06-04T09:30:00Z'
+    },
+    {
+      id: 'cdr-3',
+      customer_id: 'lead-female-01',
+      customer_name: 'Trần Thị Minh Châu',
+      customer_phone: '0908123456',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      viewing_schedule_id: 'vs-2',
+      deposit_amount: 1200000,
+      expected_move_in_date: '2026-06-25',
       status: 'pending_sale_confirmation',
-      note: 'Khách đã xem phòng và muốn được xác nhận đặt cọc.',
-      created_at: '2026-04-20T11:00:00Z'
+      note: 'Muốn phòng dorm giá rẻ.',
+      created_at: '2026-06-04T15:20:00Z'
     }
   ] as CustomerDepositRequest[],
   rental_registrations: [
@@ -1062,7 +1094,7 @@ export const initializeMockDB = () => {
           updated = true;
         }
       }
-      if (db && (!db.customer_deposit_requests || hasEncodingIssue(db.customer_deposit_requests))) {
+      if (db && (!db.customer_deposit_requests || db.customer_deposit_requests.length < 3 || hasEncodingIssue(db.customer_deposit_requests))) {
         db.customer_deposit_requests = INITIAL_DB.customer_deposit_requests;
         updated = true;
       }
