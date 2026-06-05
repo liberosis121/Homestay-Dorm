@@ -173,6 +173,12 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
     'Khách hàng đồng ý và sẵn sàng ký hợp đồng',
   ];
 
+  const roomAmenities = (
+    (deposit as DepositRecord & { amenities?: string[]; roomAmenities?: string[] }).roomAmenities ||
+    (deposit as DepositRecord & { amenities?: string[]; roomAmenities?: string[] }).amenities ||
+    []
+  ).filter(Boolean);
+
   return (
     <div className="animate-fade-in-up theme-sale">
       {/* Breadcrumb */}
@@ -360,17 +366,29 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-[#1e1b17] text-base">{deposit.roomCode}</p>
-                  <p className="text-sm text-[#4e453c]">{deposit.roomType}</p>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div className="flex items-center gap-1.5 text-sm text-[#4e453c]">
-                      <MapPin className="w-3.5 h-3.5 text-[#9d8879]" />
-                      Chi nhánh {deposit.branch}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm font-bold text-[#2d6a4f]">
-                      <Banknote className="w-3.5 h-3.5" />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-[#e2d8ca] bg-[#fffdf9] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-[#9d8879]" />
+                      <span className="truncate">Chi nhánh {deposit.branch}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#e2d8ca] bg-[#fffdf9] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">
+                      <Home className="h-3.5 w-3.5 shrink-0 text-[#9d8879]" />
+                      {deposit.roomType}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#c8d9c0] bg-[#eef6ea] px-2.5 py-1 text-[11px] font-bold text-[#2d6a4f]">
+                      <Banknote className="h-3.5 w-3.5 shrink-0" />
                       {deposit.roomMonthlyRent.toLocaleString('vi-VN')} đ/tháng
-                    </div>
+                    </span>
                   </div>
+                  {roomAmenities.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {roomAmenities.map((amenity) => (
+                        <span key={amenity} className="inline-flex items-center rounded-full bg-[#f4f1ec] px-2 py-0.5 text-[10.5px] font-medium text-[#7a6b5b]">
+                          {amenity}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
