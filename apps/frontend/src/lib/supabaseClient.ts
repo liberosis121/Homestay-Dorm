@@ -328,6 +328,50 @@ export interface ManagedAsset {
   transfer_history: { from: string; to: string; date: string; reason: string; by: string }[];
 }
 
+export interface TenantMember {
+  name: string;
+  cccd: string;
+  phone: string;
+  email?: string;
+  role: 'representative' | 'member';
+}
+
+export interface ManagerContract {
+  id: string;             // "CON-XXXX"
+  contract_code: string;  // "HD-2026-XXXX"
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_cccd: string;
+  customer_address: string;
+  room_id: string;
+  room_name: string;
+  deposit_type: 'room' | 'bed';
+  bed_name?: string;
+  branch_name: string;
+  rent_amount: number;
+  deposit_amount: number;
+  service_fee: number;
+  start_date: string;
+  end_date: string;
+  duration: string;
+  status: 'active' | 'expired' | 'terminated';
+  terms: string;
+  payment_policy: string;
+  termination_policy: string;
+  manager_name: string;
+  manager_phone: string;
+  created_at: string;
+  // Thuộc tính bổ sung theo ERD
+  deposit_code: string;    // Khóa ngoại Ma dat coc
+  sale_staff_name: string; // Khóa ngoại Ma nv lap (Sale phụ trách)
+  payment_cycle: '1_month' | '3_months' | '6_months'; // Kỳ thanh toán
+  contract_type: 'long_term' | 'short_term';          // Loại hợp đồng
+  room_type: string;       // Loại phòng (từ bảng Phong)
+  floor_number: number;    // Tầng (từ bảng Phong)
+  tenants?: TenantMember[]; // Chi tiết khách thuê (bảng CT Hop Dong Khach Hang)
+}
+
 // Helper to generate dynamic mock data for Accountant Phase
 const generateDepositInvoices = (): DepositInvoice[] => {
   const list: DepositInvoice[] = [];
@@ -771,7 +815,8 @@ const INITIAL_DB = {
   residency_checks: generateResidencyChecks(),
   asset_handovers: generateAssetHandovers(),
   asset_inspections: generateAssetInspections(),
-  managed_assets: generateManagedAssets()
+  managed_assets: generateManagedAssets(),
+  contracts: generateContracts()
 };
 
 // ─── Manager Phase Mock Data Generators ──────────────────────────────────────
@@ -961,6 +1006,126 @@ function generateManagedAssets(): ManagedAsset[] {
       transfer_history: i % 3 === 0 ? [
         { from: 'Kho tầng 1', to: locations[i % 6], date: new Date(2023, 5, (i % 28) + 1).toISOString().split('T')[0], reason: 'Bàn giao phòng mới', by: 'QL. Minh Đức' }
       ] : []
+    });
+  }
+  return list;
+}
+
+function generateContracts(): ManagerContract[] {
+  const names = [
+    'Nguyễn Hoàng Nam', 'Trần Thị Mai Anh', 'Lê Văn Phúc', 'Phạm Thị Hương',
+    'Hoàng Minh Tuấn', 'Đinh Thị Lan', 'Vũ Quang Huy', 'Bùi Thị Thanh Hoa',
+    'Ngô Văn Tâm', 'Lý Thu Ngân', 'Đặng Quốc Hưng', 'Trương Minh Khoa'
+  ];
+  const rooms = [
+    { id: 'r-1', name: 'Phòng 101 (Nam)', price: 1500000 },
+    { id: 'r-2', name: 'Phòng 102 (Nữ)', price: 2000000 },
+    { id: 'r-3', name: 'Phòng 201 (Nam)', price: 900000 },
+    { id: 'r-4', name: 'Phòng 202 (Nữ)', price: 1200000 },
+    { id: 'r-5', name: 'Phòng 103 (Nam)', price: 1600000 },
+    { id: 'r-6', name: 'Phòng 203 (Nữ)', price: 2500005 }
+  ];
+  const statuses: ManagerContract['status'][] = ['active', 'active', 'expired', 'terminated', 'active', 'expired', 'active', 'terminated', 'active', 'active', 'expired', 'active'];
+  const bedNames = ['Giường A1', 'Giường A2', 'Giường G1', 'Giường G2', 'Giường B1', 'Giường B2'];
+
+  const roomDetailsMap: Record<string, { floor: number; type: string }> = {
+    'r-1': { floor: 1, type: 'Dorm' },
+    'r-2': { floor: 1, type: 'Studio' },
+    'r-3': { floor: 2, type: 'Dorm' },
+    'r-4': { floor: 2, type: 'Twin' },
+    'r-5': { floor: 1, type: 'Dorm' },
+    'r-6': { floor: 2, type: 'Studio' }
+  };
+
+  const list: ManagerContract[] = [];
+  for (let i = 0; i < names.length; i++) {
+    const name = names[i];
+    const room = rooms[i % rooms.length];
+    const isBed = i % 2 === 0;
+    const status = statuses[i];
+    
+    // Dates
+    const startYear = status === 'expired' || status === 'terminated' ? 2024 : 2025;
+    const endYear = startYear + 1;
+    const startDate = `${startYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
+    const endDate = `${endYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
+
+    let tenantsList: TenantMember[] | undefined = undefined;
+    const selfPhone = `090${(i * 1357924) % 9000000 + 1000000}`;
+    const selfCccd = `079203${String(100000 + i * 1234).padStart(6, '0')}`;
+
+    if (name === 'Ngô Văn Tâm') {
+      tenantsList = [
+        {
+          name: 'Ngô Văn Tâm',
+          cccd: selfCccd,
+          phone: selfPhone,
+          role: 'representative'
+        },
+        {
+          name: 'Lê Hoàng Long',
+          cccd: '079203112233',
+          phone: '0912445566',
+          role: 'member'
+        },
+        {
+          name: 'Trần Minh Quân',
+          cccd: '079203445566',
+          phone: '0987334455',
+          role: 'member'
+        }
+      ];
+    } else if (name === 'Nguyễn Hoàng Nam') {
+      tenantsList = [
+        {
+          name: 'Nguyễn Hoàng Nam',
+          cccd: selfCccd,
+          phone: selfPhone,
+          role: 'representative'
+        },
+        {
+          name: 'Phan Văn Đức',
+          cccd: '079203778899',
+          phone: '0909112233',
+          role: 'member'
+        }
+      ];
+    }
+
+    list.push({
+      id: `CON-${7000 + i}`,
+      contract_code: `HD-2026-${String(100 + i)}`,
+      customer_id: `u-mock-cust-${200 + i}`,
+      customer_name: name,
+      customer_phone: selfPhone,
+      customer_cccd: selfCccd,
+      customer_address: `Số ${i * 12 + 1} Đường Lê Lợi, Quận ${i % 3 + 1}, TP.HCM`,
+      room_id: room.id,
+      room_name: room.name,
+      deposit_type: isBed ? 'bed' : 'room',
+      bed_name: isBed ? bedNames[i % bedNames.length] : undefined,
+      branch_name: i % 2 === 0 ? 'Chi nhánh Quận 1' : 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      rent_amount: room.price,
+      deposit_amount: room.price * 2,
+      service_fee: 150000 + (i % 3) * 50000,
+      start_date: startDate,
+      end_date: endDate,
+      duration: '12 tháng',
+      status: status,
+      terms: `Bên A đồng ý cho bên B thuê 01 vị trí ${isBed ? `giường (${bedNames[i % bedNames.length]})` : 'phòng'} tại ${room.name}. Tài sản bàn giao bao gồm các trang thiết bị cơ bản phục vụ sinh hoạt cá nhân.`,
+      payment_policy: `Tiền thuê đóng định kỳ vào từ ngày 01 đến ngày 05 hàng tháng. Chậm thanh toán quá 3 ngày sẽ chịu phạt theo quy định.`,
+      termination_policy: `Bên B cần báo trước 30 ngày nếu có ý định trả phòng trước hạn. Hoàn trả phòng sạch sẽ, bàn giao đầy đủ trang thiết bị như ban đầu để nhận lại tiền đặt cọc.`,
+      manager_name: 'Trần Kim Yến',
+      manager_phone: '0907654321',
+      created_at: new Date(startYear, i % 12, 5).toISOString(),
+      // Thuộc tính bổ sung theo ERD
+      deposit_code: `DEP-${1000 + i}`,
+      sale_staff_name: ['Nguyễn Thị Trúc Hằng', 'Phan Thanh Tùng', 'Vũ Thị Hạnh'][i % 3],
+      payment_cycle: ['1_month', '3_months', '6_months'][i % 3] as '1_month' | '3_months' | '6_months',
+      contract_type: i % 2 === 0 ? 'long_term' : 'short_term',
+      room_type: roomDetailsMap[room.id]?.type || 'Dorm',
+      floor_number: roomDetailsMap[room.id]?.floor || 1,
+      tenants: tenantsList
     });
   }
   return list;
