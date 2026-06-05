@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Printer, Download, CreditCard,
+  ArrowLeft, FileText, Printer, Download, CreditCard,
   Building2, Phone, ShieldCheck, AlertCircle,
   FileSignature, CheckCircle2, Activity
 } from 'lucide-react';
@@ -322,6 +323,7 @@ const MOCK_CONTRACTS: ContractData[] = [
 ];
 
 export default function CustomerContractsPage() {
+  const navigate = useNavigate();
   const [selectedContractId, setSelectedContractId] = useState<string>('c1');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -382,6 +384,14 @@ export default function CustomerContractsPage() {
       {/* Page Header & Selector */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#d1c4b9] pb-6">
         <div>
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại hồ sơ cá nhân
+          </button>
           <h1 className="font-headline-lg text-2xl font-bold text-primary flex items-center gap-2">
             <FileText className="w-7 h-7 text-primary" />
             Hợp đồng thuê phòng
