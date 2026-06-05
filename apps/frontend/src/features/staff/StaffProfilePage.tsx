@@ -456,8 +456,11 @@ export default function StaffProfilePage() {
                 <div className="flex-1 text-center sm:text-left">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
                     <h2 className="text-2xl font-extrabold text-[#1e1b17]">{formData.full_name}</h2>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#6f583c]/10 text-[#6f583c] border border-[#6f583c]/20 self-center sm:self-auto">
-                      {roleInfo.badge} {roleInfo.label}
+                    <span className={`inline-flex items-center rounded-full text-xs font-bold bg-[#6f583c]/10 text-[#6f583c] border border-[#6f583c]/20 self-center sm:self-auto ${
+                      user.role === 'sale' ? 'px-3.5 py-1' : 'gap-1.5 px-3 py-1'
+                    }`}>
+                      {user.role !== 'sale' && <span>{roleInfo.badge}</span>}
+                      {roleInfo.label}
                     </span>
                   </div>
                   <p className="text-sm text-[#4e453c] font-medium mb-4 flex items-center gap-1.5 justify-center sm:justify-start">
