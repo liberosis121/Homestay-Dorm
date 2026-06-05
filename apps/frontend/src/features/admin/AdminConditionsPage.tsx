@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -153,20 +154,28 @@ export default function AdminConditionsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả danh mục</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả mức độ</option>
-          <option value="high">Bắt buộc</option>
-          <option value="medium">Quan trọng</option>
-          <option value="low">Khuyến nghị</option>
-        </select>
+        <CustomSelect
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={[
+            { value: '', label: 'Tất cả danh mục' },
+            ...categories.map(c => ({ value: c, label: c }))
+          ]}
+          className="min-w-[150px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
+        <CustomSelect
+          value={filterPriority}
+          onChange={setFilterPriority}
+          options={[
+            { value: '', label: 'Tất cả mức độ' },
+            { value: 'high', label: 'Bắt buộc' },
+            { value: 'medium', label: 'Quan trọng' },
+            { value: 'low', label: 'Khuyến nghị' }
+          ]}
+          className="min-w-[150px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
         <button onClick={() => { setSearch(''); setFilterCategory(''); setFilterPriority(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -334,24 +343,27 @@ export default function AdminConditionsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Danh mục</label>
-                <select value={form.category || 'Nội quy'} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option>Nội quy</option>
-                  <option>Pháp lý</option>
-                  <option>Vệ sinh</option>
-                  <option>An ninh</option>
-                </select>
+                <CustomSelect
+                  value={form.category || 'Nội quy'}
+                  onChange={val => setForm(prev => ({ ...prev, category: val }))}
+                  options={['Nội quy', 'Pháp lý', 'Vệ sinh', 'An ninh']}
+                  className="w-full"
+                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mức độ</label>
-                <select value={form.priority || 'medium'} onChange={e => setForm(prev => ({ ...prev, priority: e.target.value as any }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="high">Bắt buộc</option>
-                  <option value="medium">Quan trọng</option>
-                  <option value="low">Khuyến nghị</option>
-                </select>
+                <CustomSelect
+                  value={form.priority || 'medium'}
+                  onChange={val => setForm(prev => ({ ...prev, priority: val as any }))}
+                  options={[
+                    { value: 'high', label: 'Bắt buộc' },
+                    { value: 'medium', label: 'Quan trọng' },
+                    { value: 'low', label: 'Khuyến nghị' }
+                  ]}
+                  className="w-full"
+                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                />
               </div>
             </div>
             <div className="flex gap-3 pt-1">

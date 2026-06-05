@@ -62,9 +62,14 @@ export default function Navbar() {
         {/* RIGHT SIDE: Auth & Profile */}
         <div className="flex items-center gap-4">
           {!user ? (
-            <Link to="/login" className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md hover:opacity-90 transition-all text-sm shadow-sm hover:shadow cursor-pointer">
-              Đăng nhập
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link to="/register" className="border border-primary text-primary px-5 py-2.5 rounded-full font-label-md hover:bg-primary/5 transition-all text-sm shadow-sm hover:shadow cursor-pointer">
+                Đăng ký
+              </Link>
+              <Link to="/login" className="bg-primary text-on-primary px-5 py-2.5 rounded-full font-label-md hover:opacity-90 transition-all text-sm shadow-sm hover:shadow cursor-pointer">
+                Đăng nhập
+              </Link>
+            </div>
           ) : (
             <>
               {/* Notifications Dropdown */}

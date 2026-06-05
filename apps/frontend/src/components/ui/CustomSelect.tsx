@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface CustomSelectOption {
   value: string;
@@ -32,6 +33,8 @@ export default function CustomSelect({
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
 
   // Normalize options to { value, label } format
   const normalizedOptions = options.map((opt) => {
@@ -45,10 +48,38 @@ export default function CustomSelect({
   const activeOption = normalizedOptions.find((opt) => opt.value === value);
   const displayLabel = activeOption ? activeOption.label : placeholder || value || '';
 
+  // Calculate coordinates when dropdown opens
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const updateCoords = () => {
+        const rect = containerRef.current!.getBoundingClientRect();
+        setCoords({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      };
+      updateCoords();
+
+      window.addEventListener('resize', updateCoords);
+      const handleScroll = () => setIsOpen(false);
+      window.addEventListener('scroll', handleScroll, true);
+
+      return () => {
+        window.removeEventListener('resize', updateCoords);
+        window.removeEventListener('scroll', handleScroll, true);
+      };
+    }
+  }, [isOpen]);
+
   // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(event.target as Node))
+      ) {
         setIsOpen(false);
       }
     }
@@ -59,6 +90,18 @@ export default function CustomSelect({
   const handleSelect = (val: string) => {
     onChange(val);
     setIsOpen(false);
+  };
+
+  const handleToggle = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
   };
 
   const isAccountant = theme === 'accountant';
@@ -73,7 +116,7 @@ export default function CustomSelect({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className={`w-full flex items-center justify-between bg-white border ${borderClass} px-4 py-2.5 outline-none transition-all cursor-pointer font-label-md text-on-surface text-sm ${
           pill ? 'rounded-[24px]' : 'rounded-[12px]'
         } ${
@@ -97,10 +140,17 @@ export default function CustomSelect({
         </span>
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
+      {/* Dropdown Menu (Rendered via Portal to body) */}
+      {isOpen && coords.width > 0 && createPortal(
         <div
-          className={`absolute left-0 right-0 mt-2 bg-white border border-[#e0e3df] rounded-2xl shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150 ${dropdownClassName}`}
+          ref={dropdownRef}
+          style={{
+            position: 'absolute',
+            top: `${coords.top + 8}px`, // +8px equivalent to mt-2
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+          }}
+          className={`bg-white border border-[#e0e3df] rounded-2xl shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150 ${dropdownClassName}`}
         >
           {normalizedOptions.length === 0 ? (
             <div className="px-4 py-2 text-xs text-on-surface-variant italic">Không có lựa chọn</div>
@@ -109,10 +159,10 @@ export default function CustomSelect({
               const isSelected = opt.value === value;
               const itemActiveStyle = isAccountant 
                 ? 'bg-[#5a462d]/10 text-[#5a462d] font-bold' 
-                : 'bg-primary/10 text-primary font-bold';
+                : 'bg-[#D8CBB8] text-[#3F3528] font-bold';
               const itemHoverStyle = isAccountant
                 ? 'text-[#1b1c1c] hover:bg-[#faf2ec] hover:text-[#5a462d]'
-                : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface';
+                : 'text-on-surface hover:bg-[#E8E1D3] hover:text-[#3F3528]';
 
               return (
                 <button
@@ -128,7 +178,8 @@ export default function CustomSelect({
               );
             })
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

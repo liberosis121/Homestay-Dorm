@@ -1,54 +1,6 @@
 import { Mail, CalendarPlus } from 'lucide-react';
-
-export interface Customer {
-  id: string;
-  code: string;
-  fullName: string;
-  avatar: string;
-  status: 'active' | 'inactive';
-  tier: 'VIP' | 'Loyal' | 'New' | 'Old';
-  joinDate: string;
-  personalInfo: {
-    cccd: string;
-    phone: string;
-    email: string;
-    birthDate: string;
-    nationality: string;
-    job: string;
-    address: string;
-  };
-  registrations: Array<{
-    id: string;
-    roomType: string;
-    date: string;
-    status: 'completed' | 'pending' | 'cancelled';
-  }>;
-  viewings: Array<{
-    roomName: string;
-    branch: string;
-    date: string;
-    staffName: string;
-    status: 'confirmed' | 'cancelled' | 'viewed';
-  }>;
-  deposits: Array<{
-    content: string;
-    date: string;
-    amount: string;
-    status: 'approved' | 'pending' | 'refunded';
-  }>;
-  contracts: Array<{
-    id: string;
-    period: string;
-    status: 'active' | 'expired' | 'pending';
-  }>;
-  recentActivities: Array<{
-    icon: string;
-    iconBg: string;
-    time: string;
-    title: string;
-  }>;
-  importantNote: string;
-}
+import { Customer } from '../../../lib/mockCustomers';
+export type { Customer };
 
 interface CustomerProfileCardProps {
   customer: Customer;

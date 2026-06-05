@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 // ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
 const A = {
@@ -24,6 +25,11 @@ interface CustomerRow {
   accountStatus: 'active' | 'locked';
   joinDate: string;
   note?: string;
+  cccd?: string;
+  birthDate?: string;
+  gender?: string;
+  nationality?: string;
+  address?: string;
 }
 
 const STATUS_MAP = {
@@ -46,7 +52,112 @@ export default function AdminUsersPage() {
   const [filterAcct, setFilterAcct] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null);
   const [drawerTab, setDrawerTab] = useState<'info' | 'history' | 'invoice'>('info');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCust, setEditCust] = useState<CustomerRow | null>(null);
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      setEditCust({ ...selectedCustomer });
+      setIsEditing(false);
+    } else {
+      setEditCust(null);
+      setIsEditing(false);
+    }
+  }, [selectedCustomer]);
+
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const [newCust, setNewCust] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    cccd: '',
+    birthDate: '',
+    gender: 'Nam',
+    nationality: 'Việt Nam',
+    address: '',
+  });
+
+  const openAddModal = () => {
+    setNewCust({
+      fullName: '',
+      email: '',
+      phone: '',
+      password: '',
+      cccd: '',
+      birthDate: '',
+      gender: 'Nam',
+      nationality: 'Việt Nam',
+      address: '',
+    });
+    setShowAddModal(true);
+  };
+
+  const handleAddCustomer = () => {
+    if (!newCust.fullName || !newCust.email || !newCust.phone) {
+      alert('Vui lòng điền đầy đủ Họ tên, Email và Số điện thoại!');
+      return;
+    }
+    const newRow: CustomerRow = {
+      id: `KH-${String(customers.length + 1).padStart(3, '0')}`,
+      full_name: newCust.fullName,
+      email: newCust.email,
+      phone: newCust.phone,
+      renting_room_name: undefined,
+      status: 'not_renting',
+      accountStatus: 'active',
+      joinDate: new Date().toLocaleDateString('vi-VN'),
+      cccd: newCust.cccd,
+      birthDate: newCust.birthDate,
+      gender: newCust.gender,
+      nationality: newCust.nationality,
+      address: newCust.address,
+    };
+    setCustomers(prev => [newRow, ...prev]);
+
+    // Save to local Supabase mock db
+    const db = getMockDB();
+    const newCustomerObj = {
+      id: newRow.id,
+      code: newRow.id,
+      fullName: newCust.fullName,
+      full_name: newCust.fullName,
+      email: newCust.email,
+      phone: newCust.phone,
+      avatar: '',
+      status: 'active' as const,
+      tier: 'New' as const,
+      joinDate: new Date().toISOString().split('T')[0],
+      created_at: new Date().toISOString(),
+      personalInfo: {
+        cccd: newCust.cccd,
+        phone: newCust.phone,
+        email: newCust.email,
+        birthDate: newCust.birthDate,
+        nationality: newCust.nationality,
+        job: '',
+        address: newCust.address,
+      },
+      registrations: [],
+      viewings: [],
+      deposits: [],
+      contracts: [],
+      recentActivities: [
+        {
+          icon: 'person_add',
+          iconBg: 'bg-emerald-100 text-emerald-800',
+          time: 'Vừa xong',
+          title: 'Đăng ký tài khoản mới thành công'
+        }
+      ],
+      importantNote: '',
+      gender: newCust.gender
+    };
+    db.customers = [newCustomerObj, ...(db.customers || [])];
+    saveMockDB(db);
+    setShowAddModal(false);
+  };
 
   // Load from mock DB
   useEffect(() => {
@@ -55,14 +166,19 @@ export default function AdminUsersPage() {
       const db = getMockDB();
       const rows: CustomerRow[] = (db.customers || []).map((c: any, idx: number) => ({
         id: `KH-${String(idx + 1).padStart(3, '0')}`,
-        full_name: c.full_name || 'Khách hàng',
-        email: c.email || '',
-        phone: c.phone || '09x xxx xxxx',
+        full_name: c.full_name || c.fullName || 'Khách hàng',
+        email: c.email || c.personalInfo?.email || '',
+        phone: c.phone || c.personalInfo?.phone || '09x xxx xxxx',
         renting_room_name: c.renting_room_name,
         status: c.renting_room_name ? 'renting' : 'not_renting',
         accountStatus: 'active',
-        joinDate: c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '01/01/2024',
-        note: '',
+        joinDate: c.created_at || c.joinDate ? new Date(c.created_at || c.joinDate).toLocaleDateString('vi-VN') : '01/01/2024',
+        note: c.importantNote || '',
+        cccd: c.personalInfo?.cccd || c.cccd || '',
+        birthDate: c.personalInfo?.birthDate || c.birthDate || '',
+        gender: c.gender || 'Nam',
+        nationality: c.personalInfo?.nationality || c.nationality || 'Việt Nam',
+        address: c.personalInfo?.address || c.address || '',
       }));
       // Add mock locked account for demo
       if (rows.length > 2) rows[2].accountStatus = 'locked';
@@ -125,7 +241,7 @@ export default function AdminUsersPage() {
             Xuất dữ liệu
           </button>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={openAddModal}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow transition-all hover:opacity-90 active:scale-95"
             style={{ background: A.primary }}
           >
@@ -185,28 +301,30 @@ export default function AdminUsersPage() {
             onBlur={e => (e.currentTarget.style.borderColor = A.border)}
           />
         </div>
-        <select
+        <CustomSelect
           value={filterRent}
-          onChange={e => setFilterRent(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}
-        >
-          <option value="">Trạng thái thuê</option>
-          <option value="renting">Đang thuê</option>
-          <option value="not_renting">Chưa thuê</option>
-          <option value="pending">Chờ duyệt</option>
-          <option value="checked_out">Đã trả phòng</option>
-        </select>
-        <select
+          onChange={setFilterRent}
+          options={[
+            { value: '', label: 'Trạng thái thuê' },
+            { value: 'renting', label: 'Đang thuê' },
+            { value: 'not_renting', label: 'Chưa thuê' },
+            { value: 'pending', label: 'Chờ duyệt' },
+            { value: 'checked_out', label: 'Đã trả phòng' }
+          ]}
+          className="min-w-[180px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
+        <CustomSelect
           value={filterAcct}
-          onChange={e => setFilterAcct(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}
-        >
-          <option value="">Trạng thái tài khoản</option>
-          <option value="active">Hoạt động</option>
-          <option value="locked">Bị khóa</option>
-        </select>
+          onChange={setFilterAcct}
+          options={[
+            { value: '', label: 'Trạng thái tài khoản' },
+            { value: 'active', label: 'Hoạt động' },
+            { value: 'locked', label: 'Bị khóa' }
+          ]}
+          className="min-w-[180px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
         <button
           onClick={() => { setSearch(''); setFilterRent(''); setFilterAcct(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
@@ -328,7 +446,7 @@ export default function AdminUsersPage() {
                           <span className="material-symbols-outlined text-[18px]">visibility</span>
                         </button>
                         <button
-                          onClick={e => { e.stopPropagation(); setSelectedCustomer(c); setDrawerTab('info'); }}
+                          onClick={e => { e.stopPropagation(); setSelectedCustomer(c); setDrawerTab('info'); setIsEditing(true); }}
                           className="p-1.5 rounded-full transition-colors hover:opacity-70"
                           style={{ color: A.accent }}
                           title="Chỉnh sửa"
@@ -411,14 +529,14 @@ export default function AdminUsersPage() {
                   className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold text-white"
                   style={{ background: A.primary }}
                 >
-                  {selectedCustomer.full_name.charAt(0).toUpperCase()}
+                  {(editCust?.full_name || selectedCustomer.full_name).charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>{selectedCustomer.full_name}</h3>
+                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>{editCust?.full_name || selectedCustomer.full_name}</h3>
                   <p className="text-sm" style={{ color: A.textMuted }}>
                     Mã: {selectedCustomer.id} •{' '}
-                    <span className={ACCT_MAP[selectedCustomer.accountStatus].text}>
-                      {ACCT_MAP[selectedCustomer.accountStatus].label}
+                    <span className={ACCT_MAP[editCust?.accountStatus || selectedCustomer.accountStatus].text}>
+                      {ACCT_MAP[editCust?.accountStatus || selectedCustomer.accountStatus].label}
                     </span>
                   </p>
                 </div>
@@ -443,40 +561,62 @@ export default function AdminUsersPage() {
               {/* Tab Content */}
               {drawerTab === 'info' && (
                 <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Email</p>
-                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.email || 'Chưa cập nhật'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Điện thoại</p>
-                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.phone}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Ngày tạo tài khoản</p>
-                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.joinDate}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Trạng thái</p>
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-0.5 ${STATUS_MAP[selectedCustomer.status].cls}`}>
-                        {STATUS_MAP[selectedCustomer.status].label}
-                      </span>
-                    </div>
-                  </div>
-
-                  {selectedCustomer.renting_room_name && (
-                    <div
-                      className="p-4 rounded-lg"
-                      style={{ background: A.bg, border: `1px solid ${A.border}` }}
-                    >
-                      <h4 className="text-sm font-semibold mb-2" style={{ color: A.accent }}>Thông tin phòng hiện tại</h4>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm" style={{ color: A.textPrimary }}>
-                          Mã phòng: <strong style={{ color: A.primary }}>{selectedCustomer.renting_room_name}</strong>
-                        </span>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Email</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.email || 'Chưa cập nhật'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Điện thoại</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.phone}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Số CCCD</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.cccd || 'Chưa cập nhật'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Ngày sinh</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.birthDate || 'Chưa cập nhật'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Giới tính</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.gender || 'Chưa cập nhật'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Quốc tịch</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.nationality || 'Chưa cập nhật'}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Địa chỉ</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.address || 'Chưa cập nhật'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Ngày tạo tài khoản</p>
+                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.joinDate}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Trạng thái</p>
+                          <div>
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-0.5 ${STATUS_MAP[selectedCustomer.status].cls}`}>
+                              {STATUS_MAP[selectedCustomer.status].label}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+
+                      {selectedCustomer.renting_room_name && (
+                        <div
+                          className="p-4 rounded-lg"
+                          style={{ background: A.bg, border: `1px solid ${A.border}` }}
+                        >
+                          <h4 className="text-sm font-semibold mb-2" style={{ color: A.accent }}>Thông tin phòng hiện tại</h4>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm" style={{ color: A.textPrimary }}>
+                              Mã phòng: <strong style={{ color: A.primary }}>{selectedCustomer.renting_room_name}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      )}
                 </div>
               )}
 
@@ -515,6 +655,7 @@ export default function AdminUsersPage() {
               style={{ background: A.sidebar, borderTop: `1px solid ${A.border}` }}
             >
               <button
+                onClick={() => setIsEditing(true)}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
                 style={{ background: A.primary }}
               >
@@ -531,7 +672,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* ── ADD MODAL (minimal) ── */}
+       {/* ── ADD MODAL (minimal) ── */}
       {showAddModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
@@ -539,24 +680,115 @@ export default function AdminUsersPage() {
           onClick={e => { if (e.target === e.currentTarget) setShowAddModal(false); }}
         >
           <div
-            className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+            className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
             style={{ background: A.surface }}
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>Thêm khách hàng mới</h2>
               <button onClick={() => setShowAddModal(false)}><span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span></button>
             </div>
-            {['Họ và tên', 'Email', 'Số điện thoại', 'Mật khẩu tạm thời'].map(label => (
-              <div key={label}>
-                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>{label}</label>
+            
+            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Họ và tên *</label>
                 <input
-                  type={label === 'Mật khẩu tạm thời' ? 'password' : 'text'}
-                  placeholder={`Nhập ${label.toLowerCase()}...`}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  type="text"
+                  value={newCust.fullName}
+                  onChange={e => setNewCust({ ...newCust, fullName: e.target.value })}
+                  placeholder="Nhập họ và tên..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                   style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
-            ))}
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Email *</label>
+                <input
+                  type="email"
+                  value={newCust.email}
+                  onChange={e => setNewCust({ ...newCust, email: e.target.value })}
+                  placeholder="Nhập email..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Số điện thoại *</label>
+                <input
+                  type="text"
+                  value={newCust.phone}
+                  onChange={e => setNewCust({ ...newCust, phone: e.target.value })}
+                  placeholder="Nhập số điện thoại..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Số CCCD / Hộ chiếu</label>
+                <input
+                  type="text"
+                  value={newCust.cccd}
+                  onChange={e => setNewCust({ ...newCust, cccd: e.target.value })}
+                  placeholder="Nhập số CCCD..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Ngày sinh</label>
+                <input
+                  type="text"
+                  value={newCust.birthDate}
+                  onChange={e => setNewCust({ ...newCust, birthDate: e.target.value })}
+                  placeholder="DD/MM/YYYY"
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Giới tính</label>
+                <CustomSelect
+                  value={newCust.gender}
+                  onChange={val => setNewCust({ ...newCust, gender: val })}
+                  options={['Nam', 'Nữ', 'Khác']}
+                  className="w-full"
+                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Quốc tịch</label>
+                <input
+                  type="text"
+                  value={newCust.nationality}
+                  onChange={e => setNewCust({ ...newCust, nationality: e.target.value })}
+                  placeholder="Nhập quốc tịch..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Địa chỉ</label>
+                <input
+                  type="text"
+                  value={newCust.address}
+                  onChange={e => setNewCust({ ...newCust, address: e.target.value })}
+                  placeholder="Nhập địa chỉ..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Mật khẩu tạm thời</label>
+                <input
+                  type="password"
+                  value={newCust.password}
+                  onChange={e => setNewCust({ ...newCust, password: e.target.value })}
+                  placeholder="Nhập mật khẩu tạm thời..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowAddModal(false)}
@@ -566,11 +798,231 @@ export default function AdminUsersPage() {
                 Hủy
               </button>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={handleAddCustomer}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
                 style={{ background: A.primary }}
               >
                 Tạo tài khoản
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Customer Modal */}
+      {isEditing && editCust && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: `${A.primary}66` }}
+          onClick={e => { if (e.target === e.currentTarget) setIsEditing(false); }}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl shadow-2xl p-5 flex flex-col gap-4 overflow-hidden"
+            style={{ background: A.surface }}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold" style={{ color: A.primary }}>Chỉnh sửa thông tin khách hàng</h2>
+              <button onClick={() => setIsEditing(false)}>
+                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Họ và tên *</label>
+                <input
+                  type="text"
+                  value={editCust.full_name || ''}
+                  onChange={e => setEditCust({ ...editCust, full_name: e.target.value })}
+                  placeholder="Nhập họ và tên..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Email *</label>
+                <input
+                  type="email"
+                  value={editCust.email || ''}
+                  onChange={e => setEditCust({ ...editCust, email: e.target.value })}
+                  placeholder="Nhập email..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Số điện thoại *</label>
+                <input
+                  type="text"
+                  value={editCust.phone || ''}
+                  onChange={e => setEditCust({ ...editCust, phone: e.target.value })}
+                  placeholder="Nhập số điện thoại..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Số CCCD / Hộ chiếu</label>
+                <input
+                  type="text"
+                  value={editCust.cccd || ''}
+                  onChange={e => setEditCust({ ...editCust, cccd: e.target.value })}
+                  placeholder="Nhập số CCCD..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Ngày sinh</label>
+                <input
+                  type="text"
+                  value={editCust.birthDate || ''}
+                  onChange={e => setEditCust({ ...editCust, birthDate: e.target.value })}
+                  placeholder="DD/MM/YYYY"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Giới tính</label>
+                <CustomSelect
+                  value={editCust.gender || 'Nam'}
+                  onChange={val => setEditCust({ ...editCust, gender: val })}
+                  options={['Nam', 'Nữ', 'Khác']}
+                  className="w-full"
+                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Quốc tịch</label>
+                <input
+                  type="text"
+                  value={editCust.nationality || ''}
+                  onChange={e => setEditCust({ ...editCust, nationality: e.target.value })}
+                  placeholder="Nhập quốc tịch..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Địa chỉ</label>
+                <input
+                  type="text"
+                  value={editCust.address || ''}
+                  onChange={e => setEditCust({ ...editCust, address: e.target.value })}
+                  placeholder="Nhập địa chỉ..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Thuê phòng</label>
+                <CustomSelect
+                  value={editCust.status || 'not_renting'}
+                  onChange={val => setEditCust({ ...editCust, status: val as any })}
+                  options={[
+                    { value: 'renting', label: 'Đang thuê' },
+                    { value: 'not_renting', label: 'Chưa thuê' },
+                    { value: 'pending', label: 'Chờ duyệt' },
+                    { value: 'checked_out', label: 'Đã trả phòng' }
+                  ]}
+                  className="w-full"
+                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Tài khoản</label>
+                <CustomSelect
+                  value={editCust.accountStatus || 'active'}
+                  onChange={val => setEditCust({ ...editCust, accountStatus: val as any })}
+                  options={[
+                    { value: 'active', label: 'Hoạt động' },
+                    { value: 'locked', label: 'Bị khóa' }
+                  ]}
+                  className="w-full"
+                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  if (!editCust.full_name || !editCust.email || !editCust.phone) {
+                    alert('Vui lòng điền đầy đủ Họ tên, Email và Số điện thoại!');
+                    return;
+                  }
+                  setCustomers(prev => prev.map(c => c.id === editCust.id ? editCust : c));
+                  setSelectedCustomer(editCust);
+                  setIsEditing(false);
+
+                  // Save to mock database
+                  const db = getMockDB();
+                  if (db && db.customers) {
+                    const idx = db.customers.findIndex((c: any) => (c.code === editCust.id || c.id === editCust.id));
+                    if (idx !== -1) {
+                      db.customers[idx] = {
+                        ...db.customers[idx],
+                        full_name: editCust.full_name,
+                        fullName: editCust.full_name,
+                        email: editCust.email,
+                        phone: editCust.phone,
+                        gender: editCust.gender,
+                        nationality: editCust.nationality,
+                        address: editCust.address,
+                        cccd: editCust.cccd,
+                        birthDate: editCust.birthDate,
+                        personalInfo: {
+                          ...(db.customers[idx].personalInfo || {}),
+                          email: editCust.email,
+                          phone: editCust.phone,
+                          cccd: editCust.cccd,
+                          birthDate: editCust.birthDate,
+                          nationality: editCust.nationality,
+                          address: editCust.address,
+                        }
+                      };
+                      saveMockDB(db);
+                    } else {
+                      const fallbackIdx = parseInt(editCust.id.replace('KH-', ''), 10) - 1;
+                      if (fallbackIdx >= 0 && fallbackIdx < db.customers.length) {
+                        db.customers[fallbackIdx] = {
+                          ...db.customers[fallbackIdx],
+                          full_name: editCust.full_name,
+                          fullName: editCust.full_name,
+                          email: editCust.email,
+                          phone: editCust.phone,
+                          gender: editCust.gender,
+                          nationality: editCust.nationality,
+                          address: editCust.address,
+                          cccd: editCust.cccd,
+                          birthDate: editCust.birthDate,
+                          personalInfo: {
+                            ...(db.customers[fallbackIdx].personalInfo || {}),
+                            email: editCust.email,
+                            phone: editCust.phone,
+                            cccd: editCust.cccd,
+                            birthDate: editCust.birthDate,
+                            nationality: editCust.nationality,
+                            address: editCust.address,
+                          }
+                        };
+                        saveMockDB(db);
+                      }
+                    }
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
+                style={{ background: A.primary }}
+              >
+                Lưu thay đổi
               </button>
             </div>
           </div>

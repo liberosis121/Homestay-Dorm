@@ -223,6 +223,8 @@ export interface ManagerDeposit {
   customer_phone: string;
   room_id: string;
   room_name: string;
+  deposit_type: 'room' | 'bed';  // Đặt cọc cả phòng hoặc giường lẻ
+  bed_name?: string;             // Tên giường (chỉ có khi deposit_type = 'bed')
   amount: number;
   deposit_date: string;
   bill_image_url: string;
@@ -731,16 +733,21 @@ function generateManagerDeposits(): ManagerDeposit[] {
   const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)', 'Phòng 302 (Nữ)'];
   const statuses: ManagerDeposit['status'][] = ['pending', 'pending', 'approved', 'approved', 'approved', 'rejected', 'need_more', 'expired'];
   const banks = ['Vietcombank', 'BIDV', 'Techcombank', 'MB Bank', 'ACB', 'TPBank'];
+  const bedSuffixes = ['A1', 'A2', 'A3', 'B1', 'B2', 'C1'];
   const list: ManagerDeposit[] = [];
   for (let i = 1; i <= 32; i++) {
     const name = names[i % names.length];
+    const isBed = i % 3 === 0; // 1/3 deposits are bed-level
+    const roomName = rooms[i % rooms.length];
     list.push({
       id: `MGR-DEP-${2000 + i}`,
       customer_id: `u-mock-${200 + i}`,
       customer_name: name,
       customer_phone: `090${(i * 1234567) % 9000000 + 1000000}`,
       room_id: `r-${(i % 6) + 1}`,
-      room_name: rooms[i % rooms.length],
+      room_name: roomName,
+      deposit_type: isBed ? 'bed' : 'room',
+      bed_name: isBed ? `Giường ${bedSuffixes[i % bedSuffixes.length]}` : undefined,
       amount: [1000000, 1500000, 2000000][i % 3],
       deposit_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
       bill_image_url: `https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80`,
@@ -999,6 +1006,25 @@ export const mockSupabase = {
         return { user, error: null };
       }
       return { user: null, error: 'Email không tồn tại trong hệ thống demo!' };
+    },
+    register: (email: string, fullName: string, phone: string): { user: Profile | null; error: string | null } => {
+      const db = getMockDB();
+      const emailLower = email.toLowerCase();
+      const userExists = db.profiles.some((p: Profile) => p.email.toLowerCase() === emailLower);
+      if (userExists) {
+        return { user: null, error: 'Email đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.' };
+      }
+      const newProfile: Profile = {
+        id: `u-mock-${Date.now()}`,
+        email: emailLower,
+        role: 'customer',
+        full_name: fullName,
+        phone: phone
+      };
+      db.profiles.push(newProfile);
+      saveMockDB(db);
+      localStorage.setItem('homestay_session_user', JSON.stringify(newProfile));
+      return { user: newProfile, error: null };
     },
     logout: () => {
       localStorage.removeItem('homestay_session_user');

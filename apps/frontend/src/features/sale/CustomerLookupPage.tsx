@@ -134,6 +134,18 @@ export default function CustomerLookupPage() {
     }
   };
 
+  // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
+  const handleUpdateCustomer = (updatedCust: Customer) => {
+    const db = getMockDB();
+    const updatedList = customers.map(c => 
+      c.id === updatedCust.id ? updatedCust : c
+    );
+    setCustomers(updatedList);
+    db.customers = updatedList;
+    saveMockDB(db);
+    setActiveCustomer(updatedCust);
+  };
+
   return (
     <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
       
@@ -321,7 +333,7 @@ export default function CustomerLookupPage() {
                 
                 {/* Left & Middle Column: Detailed Tabs */}
                 <div className="xl:col-span-2 space-y-6">
-                  <CustomerTabs customer={activeCustomer} />
+                  <CustomerTabs customer={activeCustomer} onUpdateCustomer={handleUpdateCustomer} />
                 </div>
 
                 {/* Right Column: Activities Timeline & Important Sticky Notes */}
