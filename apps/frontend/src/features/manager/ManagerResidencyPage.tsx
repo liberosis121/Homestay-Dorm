@@ -776,12 +776,12 @@ export default function ManagerResidencyPage() {
 
             <div style={{ background: T.bg, borderRadius: 16, padding: 14 }} className="space-y-3">
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: T.sage, textTransform: 'uppercase', marginBottom: 6 }}>🇻🇳 Thành viên Đạt ({eligibleMembers.length})</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: T.sage, textTransform: 'uppercase', marginBottom: 6 }}>Thành viên Đạt ({eligibleMembers.length})</p>
                 {eligibleMembers.length > 0 ? (
                   <div style={{ fontSize: 12, fontWeight: 600, color: T.text }} className="space-y-1">
                     {eligibleMembers.map(m => (
                       <div key={m.id} className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-[#5F745D]">check_circle</span>
+                        <span className="material-symbols-outlined text-[16px] text-[#5F745D]"></span>
                         {m.customer_name} ({m.customer_phone})
                       </div>
                     ))}
@@ -792,11 +792,11 @@ export default function ManagerResidencyPage() {
               </div>
               
               <div style={{ borderTop: `1px dashed ${T.border}`, paddingTop: 10 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: T.red, textTransform: 'uppercase', marginBottom: 6 }}>✗ Thành viên Không Đạt ({selectedGroup.members.length - eligibleMembers.length})</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: T.red, textTransform: 'uppercase', marginBottom: 6 }}>Thành viên Không Đạt ({selectedGroup.members.length - eligibleMembers.length})</p>
                 <div style={{ fontSize: 12, fontWeight: 600, color: T.text }} className="space-y-1">
                   {selectedGroup.members.filter(m => m.status === 'rejected').map(m => (
                     <div key={m.id} className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[16px] text-[#BA1A1A]">cancel</span>
+                      <span className="material-symbols-outlined text-[16px] text-[#BA1A1A]"></span>
                       {m.customer_name} ({m.customer_phone})
                     </div>
                   ))}
