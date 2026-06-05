@@ -400,11 +400,24 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
         <table className="w-full text-left border-collapse">
           <thead className="bg-[#faf2ec] border-b border-[#d1c4b9]">
             <tr>
-              {['Mã lịch', 'Khách hàng', 'Phòng / Chi nhánh', 'Ngày xem', 'Giờ xem', 'Trạng thái', 'Thao tác'].map((h) => (
-                <th key={h} className="px-4 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[80px] min-w-[80px]">
+                Mã lịch
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[200px] min-w-[200px]">
+                Khách hàng
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">
+                Phòng / Chi nhánh
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[120px] min-w-[120px]">
+                Thời gian hẹn
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[110px] min-w-[110px]">
+                Trạng thái
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[120px] min-w-[120px]">
+                Thao tác
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#d1c4b9]/60">
@@ -419,45 +432,46 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                   }`}
                 >
                   {/* Mã lịch */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap w-[80px] min-w-[80px]">
                     <span className="font-mono font-bold text-sm text-[#6f583c]">#{s.id}</span>
                   </td>
 
                   {/* Khách hàng */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 w-[200px] min-w-[200px] max-w-[200px]">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full ${avatarColors[idx % avatarColors.length]} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
                         {getInitials(s.customerName)}
                       </div>
-                      <span className="text-sm font-medium text-on-surface whitespace-nowrap">{s.customerName}</span>
+                      <span 
+                        className="text-sm font-medium text-on-surface truncate block" 
+                        title={s.customerName}
+                      >
+                        {s.customerName}
+                      </span>
                     </div>
                   </td>
 
                   {/* Phòng / Chi nhánh */}
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-bold text-on-surface">{s.roomName}</p>
-                    <p className="text-xs text-on-surface-variant">{s.branchName.replace('Chi nhánh ', '')}</p>
+                  <td className="px-3 py-3">
+                    <p className="text-sm font-bold text-on-surface truncate max-w-[160px]" title={s.roomName}>{s.roomName}</p>
+                    <p className="text-xs text-on-surface-variant truncate max-w-[160px]" title={s.branchName}>{s.branchName.replace('Chi nhánh ', '')}</p>
                   </td>
 
-                  {/* Ngày xem */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  {/* Thời gian hẹn */}
+                  <td className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[120px]">
                     <p className="text-sm font-bold text-on-surface">
                       {parseLocalDate(s.viewDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </p>
-                  </td>
-
-                  {/* Giờ xem */}
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-sm text-on-surface">{s.startTime} – {s.endTime}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{s.startTime} – {s.endTime}</p>
                   </td>
 
                   {/* Trạng thái */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 w-[110px] min-w-[110px]">
                     <ScheduleStatusBadge status={s.status} />
                   </td>
 
                   {/* Thao tác */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[120px]">
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       {canComplete(s.status) && (
                         <button
