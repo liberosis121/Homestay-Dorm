@@ -128,7 +128,7 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
           {invoice.status !== 'paid' ? (
             <button
               onClick={() => onPay(invoice.id)}
-              className="w-full py-3.5 bg-primary hover:bg-[#253228] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-primary/10"
+              className="w-full py-3.5 bg-primary hover:bg-[#253228] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-primary/10 hover:shadow-lg cursor-pointer"
             >
               <CreditCard className="w-5 h-5" />
               THANH TOÁN NGAY

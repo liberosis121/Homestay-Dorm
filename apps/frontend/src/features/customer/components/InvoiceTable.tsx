@@ -80,10 +80,10 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                   <tr
                     key={invoice.id}
                     onClick={() => onSelect(invoice.id)}
-                    className={`transition-colors cursor-pointer select-none ${
+                    className={`transition-colors cursor-pointer select-none active:bg-primary/10 ${
                       isSelected 
                         ? 'bg-primary/5 hover:bg-primary/10 border-l-4 border-l-primary' 
-                        : 'hover:bg-surface-container-low'
+                        : 'hover:bg-surface-container-low hover:shadow-sm'
                     }`}
                   >
                     <td className="px-6 py-4 font-medium text-primary text-sm sm:text-base">
@@ -110,7 +110,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => onSelect(invoice.id)}
-                          className="p-2 text-secondary hover:bg-secondary-container/40 rounded-lg transition-colors"
+                          className="p-2 text-secondary hover:bg-secondary-container/40 hover:text-primary rounded-lg transition-all cursor-pointer active:scale-90"
                           title="Xem chi tiết"
                         >
                           <Eye className="w-4 h-4" />
@@ -118,7 +118,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         {invoice.status !== 'paid' && (
                           <button
                             onClick={() => onPay(invoice.id)}
-                            className="bg-primary hover:bg-[#253228] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                            className="bg-primary hover:bg-[#253228] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer hover:shadow-md"
                           >
                             <CreditCard className="w-3.5 h-3.5" />
                             Thanh toán

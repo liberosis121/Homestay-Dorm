@@ -25,9 +25,6 @@ export default function InvoicesDashboardPage() {
   const navigate = useNavigate();
   const { invoices, filters, setFilters, selectedInvoiceId, setSelectedInvoiceId } = useInvoiceStore();
 
-  // Local state for filter inputs until "Tìm kiếm" is pressed
-  const [selectedMonth, setSelectedMonth] = useState(filters.month);
-  const [selectedYear, setSelectedYear] = useState(filters.year);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const handleSelectInvoice = (id: string) => {
@@ -82,10 +79,6 @@ export default function InvoicesDashboardPage() {
   const selectedInvoice = useMemo(() => {
     return invoices.find((inv) => inv.id === selectedInvoiceId) || null;
   }, [invoices, selectedInvoiceId]);
-
-  const handleSearch = () => {
-    setFilters({ month: selectedMonth, year: selectedYear });
-  };
 
   const handleStatusFilterChange = (status: string) => {
     setFilters({ status });
@@ -162,23 +155,25 @@ export default function InvoicesDashboardPage() {
 
       {/* Filter Bar */}
       <section className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/30 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full">
           {/* Month selector */}
           <CustomSelect
-            value={selectedMonth}
-            onChange={setSelectedMonth}
+            value={filters.month}
+            onChange={(month) => setFilters({ month })}
             options={MONTH_OPTIONS}
             pill
             className="w-full sm:w-[180px]"
+            triggerClassName="hover:bg-primary/5 active:scale-[0.99]"
           />
 
           {/* Year selector */}
           <CustomSelect
-            value={selectedYear}
-            onChange={setSelectedYear}
+            value={filters.year}
+            onChange={(year) => setFilters({ year })}
             options={YEAR_OPTIONS}
             pill
             className="w-full sm:w-[140px]"
+            triggerClassName="hover:bg-primary/5 active:scale-[0.99]"
           />
 
           {/* Vertical divider */}
@@ -197,10 +192,10 @@ export default function InvoicesDashboardPage() {
                 <button
                   key={btn.id}
                   onClick={() => handleStatusFilterChange(btn.id)}
-                  className={`px-4 py-2 text-xs sm:text-sm rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`px-4 py-2 text-xs sm:text-sm rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap active:scale-[0.97] ${
                     isStatusActive 
                       ? 'bg-primary text-white shadow-sm' 
-                      : 'hover:bg-surface-container text-on-surface-variant'
+                      : 'hover:bg-surface-container hover:text-primary text-on-surface-variant'
                   }`}
                 >
                   {btn.label}
@@ -209,15 +204,6 @@ export default function InvoicesDashboardPage() {
             })}
           </div>
         </div>
-
-        {/* Search button */}
-        <button 
-          onClick={handleSearch}
-          className="w-full md:w-auto bg-primary hover:bg-[#253228] text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
-        >
-          <span className="material-symbols-outlined text-[18px]">search</span>
-          <span>Tìm kiếm</span>
-        </button>
       </section>
 
       {/* Main Table Layout (Full Width) */}
@@ -243,7 +229,7 @@ export default function InvoicesDashboardPage() {
             {/* Close button */}
             <button 
               onClick={() => setIsDetailModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/25 hover:bg-black/40 text-white transition-colors cursor-pointer z-50 flex items-center justify-center animate-fade-in"
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/25 hover:bg-black/40 text-white transition-all cursor-pointer z-50 flex items-center justify-center animate-fade-in active:scale-90"
               title="Đóng"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
