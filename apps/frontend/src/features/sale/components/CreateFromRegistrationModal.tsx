@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   Calendar,
   CheckCircle,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   MapPin,
@@ -361,7 +362,6 @@ export default function CreateFromRegistrationModal({
                     </div>
                     <div className="space-y-3">
                       {suggestedRooms.map((room) => {
-                        const match = matchInfo(room, selectedRegistration);
                         const active = selectedRoom?.id === room.id;
                         return (
                           <button key={room.id} type="button" onMouseEnter={() => setHoveredRoom(room)} onFocus={() => setHoveredRoom(room)} onClick={() => { setSelectedRoom(room); setHoveredRoom(room); }} className={`w-full text-left rounded-2xl border p-4 transition-all active:scale-[0.995] ${active ? 'border-[#4f6f4a] bg-[#f2f7ef] shadow-md' : 'border-[#d8cbb8] bg-white hover:border-[#9a866b] hover:bg-[#faf8f4] hover:shadow-sm'}`}>
@@ -370,16 +370,32 @@ export default function CreateFromRegistrationModal({
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <h5 className="font-bold text-[#3f3528]">{room.name}</h5>
-                                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${match.tone}`}>{match.label}</span>
                                   {active && <BadgeCheck className="h-4 w-4 text-[#4f6f4a]" />}
                                 </div>
-                                <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-[#5f584f]">
-                                  <span><MapPin className="mr-1 inline h-3.5 w-3.5" />{branchName(room.branch_id).replace('Chi nhánh ', '')}</span>
-                                  <span>{room.room_type}</span>
-                                  <span>{money(room.price)}</span>
-                                  <span>{room.current_occupants || 0}/{room.capacity || 0} người • {statusLabel(room.status)}</span>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">{branchName(room.branch_id).replace('Chi nhánh ', '')}</span>
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{room.room_type}</span>
+                                  <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{money(room.price)}</span>
+                                  <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{room.current_occupants || 0}/{room.capacity || 0} người</span>
+                                  <span className="inline-flex items-center rounded-full border border-[#c8d9c0] bg-[#eef6ea] px-2.5 py-1 text-[11px] font-bold text-[#4f6f4a]">{statusLabel(room.status)}</span>
                                 </div>
-                                <p className="mt-2 text-xs text-[#7f756b] line-clamp-1">{(room.amenities || []).join(', ')}</p>
+                                {(room.amenities || []).length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {(room.amenities || []).slice(0, 4).map((amenity) => (
+                                      <span key={amenity} className="inline-flex items-center rounded-full bg-[#f4f1ec] px-2 py-0.5 text-[10.5px] font-medium text-[#7a6b5b]">
+                                        {amenity}
+                                      </span>
+                                    ))}
+                                    {(room.amenities || []).length > 4 && (
+                                      <span className="inline-flex items-center rounded-full bg-[#f4f1ec] px-2 py-0.5 text-[10.5px] font-medium text-[#7a6b5b]">
+                                        +{(room.amenities || []).length - 4}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </button>
@@ -393,7 +409,8 @@ export default function CreateFromRegistrationModal({
 
                 <aside className="col-span-12 lg:col-span-4 space-y-5">
                   <section className="rounded-2xl border border-[#d8cbb8] bg-white p-5 shadow-sm">
-                    <div className="mb-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ClipboardCheck className="h-5 w-5 text-[#4f6f4a]" />
                       <h4 className="font-bold text-[#3f3528]">Đối chiếu nhanh</h4>
                     </div>
                     {comparisonRoom ? (
