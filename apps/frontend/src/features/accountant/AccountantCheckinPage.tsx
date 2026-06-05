@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Receipt, Search, Eye, Printer
+  Search, Eye, Printer
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
 
@@ -199,8 +199,7 @@ export default function AccountantCheckinPage() {
                         : 'hover:border-[#5a462d]/50'
                     }`}
                   >
-                    <div className="flex items-center gap-2 truncate text-left">
-                      <Receipt className="w-4 h-4 text-[#8A7563] shrink-0" />
+                    <div className="truncate text-left">
                       {selectedDeposit ? (
                         <span className="truncate font-medium text-[#1b1c1c]">
                           {selectedDeposit.id.replace('DEP', 'HĐ')} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
@@ -386,10 +385,9 @@ export default function AccountantCheckinPage() {
               <button
                 type="button"
                 onClick={handleCreateCheckinInvoice}
-                className="bg-[#5C4632] text-white font-bold py-2 px-5 rounded-xl text-sm hover:bg-[#4E3927] active:scale-[0.97] flex items-center gap-1.5 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40 transition-all"
+                className="bg-[#5C4632] text-white font-bold py-2 px-5 rounded-xl text-sm hover:bg-[#4E3927] active:scale-[0.97] shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40 transition-all"
               >
-                <Receipt className="w-4 h-4" />
-                <span>Xuất Hóa Đơn</span>
+                Xuất Hóa Đơn
               </button>
             </div>
           </div>
@@ -397,16 +395,12 @@ export default function AccountantCheckinPage() {
 
         {/* Right Column: Invoice Preview */}
         <div className="xl:col-span-5 bg-white border border-[#DCCFC0] rounded-lg overflow-hidden flex flex-col relative shadow-sm">
-          <div className="bg-[#ECE6DE] p-4 border-b border-[#DCCFC0] flex justify-between items-center">
-            <h3 className="font-bold text-[#5C4632] text-sm">Preview Hóa Đơn #INV-CI-NEW</h3>
-            <span className="bg-[#8A7563] text-[#F6F2EC] text-[10px] font-bold px-2 py-0.5 rounded uppercase">BẢN NHÁP</span>
-          </div>
-
           <div className="p-6 flex-1 bg-[#FAF9F6] min-h-[400px] flex flex-col justify-between">
             <div>
               <div className="text-center mb-6 border-b border-[#E7DED2] pb-4">
                 <h4 className="text-lg text-[#5C4632] font-bold uppercase tracking-wider">HomeStay Dorm</h4>
                 <p className="text-xs text-[#8A7563] font-semibold mt-1">HÓA ĐƠN THANH TOÁN NHẬN PHÒNG</p>
+                <p className="text-[10px] text-[#8A7563]/60 font-bold tracking-widest mt-1 uppercase">Bản nháp</p>
               </div>
 
               <div className="mb-6 space-y-2">

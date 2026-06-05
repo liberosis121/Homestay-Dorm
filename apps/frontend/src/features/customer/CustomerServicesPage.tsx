@@ -26,9 +26,8 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
           {question}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-outline flex-shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180 text-primary' : ''
-          }`}
+          className={`w-4 h-4 text-outline flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-primary' : ''
+            }`}
         />
       </button>
       {open && (
@@ -63,14 +62,14 @@ function ServiceRegistrationModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-outline-variant/30">
           <h2 className="text-lg font-bold text-on-surface font-lexend">Đăng ký dịch vụ</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container hover:text-on-surface transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20">
             <X className="w-5 h-5 text-on-surface-variant" />
           </button>
         </div>
 
         {/* Service info */}
         <div className="px-6 py-4">
-          <div className="bg-surface-container-low rounded-2xl p-4 flex gap-3 items-start border border-outline-variant/50">
+          <div className="bg-primary/5 rounded-2xl p-4 flex gap-3 items-start border border-primary/10">
             <div className="p-2 bg-primary/10 rounded-xl flex-shrink-0 text-primary">
               <Zap className="w-5 h-5" />
             </div>
@@ -97,26 +96,37 @@ function ServiceRegistrationModal({
                 return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               })()}
               placeholder="Chọn ngày"
+              variant="surface"
             />
           </div>
 
           {/* Notice */}
-          <div className="flex gap-2.5 p-3 bg-amber-50 rounded-[12px] border border-amber-100">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700 leading-relaxed font-medium">
-              Dịch vụ sẽ được kích hoạt và tính phí từ ngày bắt đầu bạn chọn. 
+          <div className="flex gap-2.5 p-3.5 bg-[#FAF6EC] rounded-xl border border-[#EBE6DA]">
+            <AlertCircle className="w-4 h-4 text-[#8C7355] flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[#5a4e3d] leading-relaxed font-medium">
+              Dịch vụ sẽ được kích hoạt và tính phí từ ngày bắt đầu bạn chọn.
               Chi phí sẽ được cộng vào hóa đơn thanh toán tiền phòng mỗi tháng.
             </p>
           </div>
 
-          <label className="flex items-start gap-2.5 cursor-pointer">
+          <label className="flex items-start gap-2.5 cursor-pointer group">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 accent-primary w-4 h-4 flex-shrink-0"
+              className="sr-only"
             />
-            <span className="text-xs text-on-surface-variant leading-relaxed select-none">
+            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${agreed
+                ? 'bg-primary border-primary text-white shadow-sm'
+                : 'bg-white border-outline-variant group-hover:border-primary'
+              }`}>
+              {agreed && (
+                <svg className="w-2.5 h-2.5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </div>
+            <span className="text-xs text-on-surface-variant leading-relaxed select-none group-hover:text-on-surface transition-colors">
               Tôi đồng ý với các điều khoản sử dụng tiện ích của HomeStay Dorm và xác nhận đăng ký.
             </span>
           </label>
@@ -126,17 +136,17 @@ function ServiceRegistrationModal({
         <div className="flex gap-3 px-6 pb-6">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-full border border-outline-variant text-sm font-semibold text-on-surface-variant
-                       hover:bg-surface-container transition-all"
+            className="flex-1 py-2.5 rounded-xl border border-outline-variant bg-[#FAF8F5] text-sm font-bold text-on-surface-variant
+                       hover:bg-surface-container hover:text-on-surface cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
           >
             Huỷ
           </button>
           <button
             onClick={onConfirm}
             disabled={!agreed}
-            className="flex-1 py-2.5 rounded-full bg-primary text-white text-sm font-semibold
-                       hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed
-                       active:scale-95 transition-all"
+            className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-sm
+                       hover:bg-primary/95 disabled:bg-primary/40 disabled:text-white/60 disabled:cursor-not-allowed
+                       cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             Xác nhận đăng ký
           </button>
@@ -183,12 +193,11 @@ function ServiceDetailModal({
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-on-surface text-lg font-lexend">{service.name}</h3>
-              <span className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full mt-1.5 uppercase tracking-wide border ${
-                service.category === 'essential'   ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                service.category === 'utility'     ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                service.category === 'convenience' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                     'bg-purple-50 text-purple-700 border-purple-100'
-              }`}>
+              <span className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full mt-1.5 uppercase tracking-wide border ${service.category === 'essential' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                  service.category === 'utility' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                    service.category === 'convenience' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                      'bg-purple-50 text-purple-700 border-purple-100'
+                }`}>
                 {service.category === 'essential' ? 'Thiết yếu' : service.category === 'utility' ? 'Tiện ích' : service.category === 'convenience' ? 'Tiện nghi' : 'Cao cấp'}
               </span>
             </div>
@@ -213,8 +222,8 @@ function ServiceDetailModal({
             </div>
             <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed font-medium">
               {service.billing_cycle === 'monthly' ? '* Tính phí định kỳ hàng tháng vào hóa đơn tổng.' :
-               service.billing_cycle === 'per_use' ? '* Tính phí dựa trên mỗi lần khách hàng sử dụng dịch vụ.' :
-               '* Tính phí thực tế theo chỉ số công tơ ghi nhận cuối tháng.'}
+                service.billing_cycle === 'per_use' ? '* Tính phí dựa trên mỗi lần khách hàng sử dụng dịch vụ.' :
+                  '* Tính phí thực tế theo chỉ số công tơ ghi nhận cuối tháng.'}
             </p>
           </div>
 
@@ -223,17 +232,15 @@ function ServiceDetailModal({
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/30">
                 <p className="text-xs font-medium text-on-surface-variant mb-1">Trạng thái hệ thống</p>
-                <span className={`text-sm font-semibold ${
-                  service.status === 'available' ? 'text-emerald-600' : 'text-amber-600'
-                }`}>
+                <span className={`text-sm font-semibold ${service.status === 'available' ? 'text-emerald-600' : 'text-amber-600'
+                  }`}>
                   {service.status === 'available' ? '✓ Đang mở' : '⏳ Sắp ra mắt'}
                 </span>
               </div>
               <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/30">
                 <p className="text-xs font-medium text-on-surface-variant mb-1">Đăng ký của bạn</p>
-                <span className={`text-sm font-semibold ${
-                  isActive ? 'text-primary' : isSuspended ? 'text-amber-600' : 'text-on-surface-variant'
-                }`}>
+                <span className={`text-sm font-semibold ${isActive ? 'text-primary' : isSuspended ? 'text-amber-600' : 'text-on-surface-variant'
+                  }`}>
                   {isActive ? '✓ Đang sử dụng' : isSuspended ? '⏸ Tạm ngưng' : '— Chưa đăng ký'}
                 </span>
               </div>
@@ -302,7 +309,7 @@ function CancelConfirmModal({
           <h3 className="font-bold text-on-surface font-lexend">Huỷ đăng ký dịch vụ?</h3>
         </div>
         <p className="text-sm text-on-surface-variant leading-relaxed mb-5 font-medium">
-          Bạn có chắc chắn muốn huỷ đăng ký <strong className="text-on-surface">"{subscriptionName}"</strong>? 
+          Bạn có chắc chắn muốn huỷ đăng ký <strong className="text-on-surface">"{subscriptionName}"</strong>?
           Dịch vụ sẽ tạm dừng tính phí và ngừng hoạt động từ kỳ thanh toán tháng tiếp theo.
         </p>
         <div className="flex gap-3">
@@ -431,7 +438,7 @@ function GuestServicesView({
             Tra cứu danh mục dịch vụ, bảng giá và các tiện ích đi kèm trước khi đăng ký thuê phòng.
           </p>
         </div>
-        
+
         <div className="flex gap-4 w-full md:w-auto">
           <div className="flex-1 md:flex-none p-4 bg-surface-container-low rounded-2xl border border-outline-variant/60 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
@@ -442,7 +449,7 @@ function GuestServicesView({
               <p className="font-headline-md text-md font-bold text-primary font-lexend">{services.length} dịch vụ</p>
             </div>
           </div>
-          
+
           <div className="flex-1 md:flex-none p-4 bg-surface-container-low rounded-2xl border border-outline-variant/60 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
               <Wifi className="w-5 h-5" />
@@ -508,7 +515,7 @@ function GuestServicesView({
             onChange={setFeeType}
           />
 
-          <button 
+          <button
             onClick={() => { setSearch(''); setCategory('all'); setPriceRange('all'); setFeeType('all'); }}
             className="w-full md:w-auto bg-primary text-white px-6 py-2.5 rounded-xl font-label-md text-sm font-bold hover:opacity-90 transition-opacity whitespace-nowrap active:scale-95"
           >
@@ -591,7 +598,7 @@ function GuestServicesView({
             <Shield className="w-6 h-6 text-tertiary" />
             <h2 className="font-headline-lg text-lg font-bold text-on-background font-lexend">Chính sách dịch vụ</h2>
           </div>
-          
+
           <ul className="space-y-4 text-sm font-medium text-on-surface-variant">
             <li className="flex gap-3 items-start">
               <CheckCircle2 className="w-5 h-5 text-tertiary flex-shrink-0 mt-0.5" />
@@ -673,13 +680,13 @@ function ConsumptionChart({
     );
   }
 
-  const COLOR_ELEC       = '#3d6b35';
+  const COLOR_ELEC = '#3d6b35';
   const COLOR_ELEC_HOVER = '#2a4d25';
-  const COLOR_WATER       = '#b89a72';
+  const COLOR_WATER = '#b89a72';
   const COLOR_WATER_HOVER = '#9a7d59';
 
-  const BAR_H   = 200;  // usable bar height (px) — tallest bar fills exactly this
-  const BAR_W   = 10;   // width per individual bar (px)
+  const BAR_H = 200;  // usable bar height (px) — tallest bar fills exactly this
+  const BAR_W = 10;   // width per individual bar (px)
   const BAR_GAP = 1;    // gap between the two bars inside a pair
   const GRP_PAD = 9;    // left+right padding inside each month column (gap between groups)
   const LABEL_H = 28;   // height reserved for x-axis labels below the baseline
@@ -736,7 +743,7 @@ function ConsumptionChart({
           }}>
             {chartMonths.map((m, idx) => {
               // Each series scales against its own global max → tallest bar = BAR_H exactly
-              const hElec  = m.elec  > 0 ? Math.max(Math.round((m.elec  / maxValues.elec)  * BAR_H), 4) : 0;
+              const hElec = m.elec > 0 ? Math.max(Math.round((m.elec / maxValues.elec) * BAR_H), 4) : 0;
               const hWater = m.water > 0 ? Math.max(Math.round((m.water / maxValues.water) * BAR_H), 4) : 0;
               const isHovered = hoveredIdx === idx;
 
@@ -1028,45 +1035,42 @@ function RenterServicesView({
 
       {/* Main 2-column layout */}
       <div className="flex flex-col lg:flex-row gap-8">
-        
+
         {/* Left Column (Main Content) */}
         <div className="flex-1 min-w-0">
-          
+
           {/* Tabs Navigation */}
           <nav className="border-b border-outline-variant/60 mb-6">
             <div className="flex gap-6 overflow-x-auto pb-0.5">
               <button
                 type="button"
                 onClick={() => setActiveTab('active')}
-                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${
-                  activeTab === 'active'
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${activeTab === 'active'
                     ? 'text-primary border-b-2 border-primary bg-primary/5'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
-                }`}
+                  }`}
               >
                 Dịch vụ đang dùng
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => setActiveTab('catalog')}
-                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${
-                  activeTab === 'catalog'
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${activeTab === 'catalog'
                     ? 'text-primary border-b-2 border-primary bg-primary/5'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
-                }`}
+                  }`}
               >
                 Danh mục &amp; Đăng ký
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => setActiveTab('consumption')}
-                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${
-                  activeTab === 'consumption'
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${activeTab === 'consumption'
                     ? 'text-primary border-b-2 border-primary bg-primary/5'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
-                }`}
+                  }`}
               >
                 Chỉ số Điện &amp; Nước
               </button>
@@ -1118,7 +1122,7 @@ function RenterServicesView({
                     className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl focus:outline-none focus:border-primary transition-all text-xs font-semibold text-on-surface"
                   />
                 </div>
-                
+
                 <DropdownSelect
                   label=""
                   value={renterCategory}
@@ -1252,7 +1256,7 @@ function RenterServicesView({
 
         {/* Right Column (Sidebar) */}
         <aside className="w-full lg:w-[320px] space-y-6 flex-shrink-0">
-          
+
           {/* Stay Info Card */}
           <div className="bg-white border border-outline-variant rounded-2xl p-6">
             <div className="flex items-center gap-4 mb-4 pb-4 border-b border-outline-variant/30">
@@ -1264,7 +1268,7 @@ function RenterServicesView({
                 <p className="font-headline-md text-lg font-bold text-primary font-lexend mt-0.5">{userRoomName}</p>
               </div>
             </div>
-            
+
             <div className="space-y-2.5 text-xs font-medium">
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Hợp đồng:</span>
@@ -1283,7 +1287,9 @@ function RenterServicesView({
 
           {/* Monthly Cost Summary */}
           <div className="bg-primary text-on-primary rounded-2xl p-6 shadow-xl border border-primary/20">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-on-primary/70 mb-5">Tóm tắt phí tháng 10</h4>
+            <h4 className="inline-flex items-center rounded-full border border-on-tertiary-fixed/25 bg-tertiary-fixed/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-on-tertiary-fixed mb-5">
+              Tóm tắt phí tháng 10
+            </h4>
             <div className="space-y-3.5 mb-6 text-sm">
               <div className="flex justify-between items-center font-medium">
                 <span className="text-on-primary/80">Tiền phòng</span>
@@ -1297,7 +1303,7 @@ function RenterServicesView({
                 <span className="text-on-primary/80">Dịch vụ (4)</span>
                 <span className="font-bold">435.000đ</span>
               </div>
-              
+
               <div className="pt-4 border-t border-on-primary/20 flex justify-between items-end">
                 <span className="font-bold text-xs uppercase tracking-wide">Tổng cộng</span>
                 <div className="text-right">
@@ -1306,7 +1312,7 @@ function RenterServicesView({
                 </div>
               </div>
             </div>
-            
+
             <button
               type="button"
               onClick={() => navigate('/customer/invoices')}
