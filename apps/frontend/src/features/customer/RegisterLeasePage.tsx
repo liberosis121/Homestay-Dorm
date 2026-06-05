@@ -342,7 +342,7 @@ export const RegisterLeasePage: React.FC = () => {
               <p className="text-xs text-on-surface-variant leading-relaxed max-w-xl">
                 Phiếu này sẽ được gửi đến nhân viên Sale để kiểm tra phòng/giường phù hợp trước khi lập lịch xem phòng.
               </p>
-              <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-timber-accent hover:opacity-90 text-white rounded-full font-label-md text-sm shadow-md transition-all disabled:opacity-60">
+              <button type="submit" disabled={isSubmitting} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
                 {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu đăng ký'}
                 <Send className="w-4 h-4" />
               </button>
