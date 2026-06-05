@@ -108,7 +108,7 @@ export default function ManagerAssetsPage() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 800 }}>Phân bổ và điều phối tài sản</h1>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Phân bổ và điều phối tài sản</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

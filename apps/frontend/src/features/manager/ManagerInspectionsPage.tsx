@@ -109,7 +109,7 @@ export default function ManagerInspectionsPage() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 800 }}>Biên bản kiểm kê & đền bù tài sản</h1>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Biên bản kiểm kê & đền bù tài sản</h1>
       </div>
 
       {/* Filters */}

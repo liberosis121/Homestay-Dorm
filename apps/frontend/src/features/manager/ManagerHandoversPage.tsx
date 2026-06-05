@@ -76,7 +76,7 @@ export default function ManagerHandoversPage() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 800 }}>Biên bản bàn giao tài sản phòng</h1>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Biên bản bàn giao tài sản phòng</h1>
       </div>
 
       {/* Stats */}

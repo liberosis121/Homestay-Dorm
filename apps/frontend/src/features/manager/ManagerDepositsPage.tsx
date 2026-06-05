@@ -97,7 +97,7 @@ export default function ManagerDepositsPage() {
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
-          <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 800 }}>
+          <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>
             Kiểm duyệt đặt cọc
           </h1>
         </div>

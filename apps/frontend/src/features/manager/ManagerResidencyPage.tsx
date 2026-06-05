@@ -244,7 +244,7 @@ export default function ManagerResidencyPage() {
 
       {/* ── Header ── */}
       <div className="mb-6">
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 24, fontWeight: 800, color: T.text }}>Kiểm tra điều kiện lưu trú</h1>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 24, fontWeight: 700, color: T.primary }}>Kiểm tra điều kiện lưu trú</h1>
       </div>
 
       {/* ── KPI Cards ── */}

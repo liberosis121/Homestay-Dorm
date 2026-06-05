@@ -55,7 +55,7 @@ export default function ManagerRoomsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 700 }}>Sơ đồ phòng trực quan</h1>
+          <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Sơ đồ phòng trực quan</h1>
         </div>
         <div className="flex flex-wrap gap-3.5">
           {Object.entries(STATUS_META).slice(0, 4).map(([key, meta]) => (

@@ -74,7 +74,7 @@ export default function ManagerReportsPage() {
     <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="space-y-6 animate-fade-in-up">
       {/* Header */}
       <div>
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 800 }}>Báo cáo thống kê tài sản</h1>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Báo cáo thống kê tài sản</h1>
       </div>
 
       {/* KPIs */}
