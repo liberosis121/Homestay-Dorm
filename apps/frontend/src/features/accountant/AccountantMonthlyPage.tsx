@@ -154,8 +154,8 @@ export default function AccountantMonthlyPage() {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="font-headline-md text-2xl text-[#5a462d] font-semibold">Hóa đơn định kỳ</h2>
-          <p className="text-[#5e5f5d] text-sm mt-1">Quản lý và chốt chỉ số điện/nước hàng tháng</p>
+          <h2 className="font-headline-md text-2xl text-[#5C4632] font-semibold">Hóa đơn định kỳ</h2>
+          <p className="text-[#8A7563] text-sm mt-1">Quản lý và chốt chỉ số điện/nước hàng tháng</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <CustomSelect
@@ -184,31 +184,31 @@ export default function AccountantMonthlyPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm">
-          <h3 className="font-headline-sm text-sm text-[#5e5f5d] font-bold uppercase tracking-wider mb-1">Dự kiến tháng</h3>
-          <p className="text-3xl font-semibold tabular-nums text-[#1b1c1c]">{expectedMonthlySum.toLocaleString('vi-VN')} đ</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm">
+          <h3 className="font-headline-sm text-sm text-[#8A7563] font-bold uppercase tracking-wider mb-1">Dự kiến tháng</h3>
+          <p className="text-3xl font-semibold tabular-nums text-[#5C4632]">{expectedMonthlySum.toLocaleString('vi-VN')} đ</p>
         </div>
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm border-b-4 border-b-[#2E7D32]">
-          <h3 className="font-headline-sm text-sm text-[#2E7D32] font-bold uppercase tracking-wider mb-1">Đã thu</h3>
-          <p className="text-3xl font-semibold tabular-nums text-[#1b1c1c]">{paidMonthlySum.toLocaleString('vi-VN')} đ</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-b-4 border-b-[#5F7D4E]">
+          <h3 className="font-headline-sm text-sm text-[#5F7D4E] font-bold uppercase tracking-wider mb-1">Đã thu</h3>
+          <p className="text-3xl font-semibold tabular-nums text-[#5F7D4E]">{paidMonthlySum.toLocaleString('vi-VN')} đ</p>
         </div>
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm border-b-4 border-b-[#ba1a1a]">
-          <h3 className="font-headline-sm text-sm text-[#ba1a1a] font-bold uppercase tracking-wider mb-1">Còn nợ</h3>
-          <p className="text-3xl font-semibold tabular-nums text-[#1b1c1c]">{debtMonthlySum.toLocaleString('vi-VN')} đ</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-b-4 border-b-[#A94F4F]">
+          <h3 className="font-headline-sm text-sm text-[#A94F4F] font-bold uppercase tracking-wider mb-1">Còn nợ</h3>
+          <p className="text-3xl font-semibold tabular-nums text-[#A94F4F]">{debtMonthlySum.toLocaleString('vi-VN')} đ</p>
         </div>
-        <div className="bg-white border border-[#d1c4b9] p-4 rounded-lg shadow-sm">
-          <h3 className="font-headline-sm text-sm text-[#5e5f5d] font-bold uppercase tracking-wider mb-1">Tỷ lệ thanh toán</h3>
-          <p className="text-3xl font-semibold tabular-nums text-[#1b1c1c]">{paymentRate} %</p>
+        <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm">
+          <h3 className="font-headline-sm text-sm text-[#8A7563] font-bold uppercase tracking-wider mb-1">Tỷ lệ thanh toán</h3>
+          <p className="text-3xl font-semibold tabular-nums text-[#5C4632]">{paymentRate} %</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border border-[#d1c4b9] rounded-lg">
-        <div className="flex border-b border-[#d1c4b9]">
+      <div className="bg-white border border-[#DCCFC0] rounded-lg">
+        <div className="flex border-b border-[#DCCFC0]">
           <button
             onClick={() => setActiveTab('input')}
             className={`px-4 py-3 font-semibold text-sm transition-colors border-b-2 ${
-              activeTab === 'input' ? 'border-[#5a462d] text-[#5a462d]' : 'border-transparent text-[#5e5f5d] hover:text-[#5a462d]'
+              activeTab === 'input' ? 'border-[#5C4632] text-[#5C4632]' : 'border-transparent text-[#8A7563] hover:text-[#5C4632]'
             }`}
           >
             Bảng nhập chỉ số
@@ -216,7 +216,7 @@ export default function AccountantMonthlyPage() {
           <button
             onClick={() => setActiveTab('list')}
             className={`px-4 py-3 font-semibold text-sm transition-colors border-b-2 ${
-              activeTab === 'list' ? 'border-[#5a462d] text-[#5a462d]' : 'border-transparent text-[#5e5f5d] hover:text-[#5a462d]'
+              activeTab === 'list' ? 'border-[#5C4632] text-[#5C4632]' : 'border-transparent text-[#8A7563] hover:text-[#5C4632]'
             }`}
           >
             Danh sách hóa đơn
@@ -227,61 +227,61 @@ export default function AccountantMonthlyPage() {
         {activeTab === 'input' && (
           <div className="p-4 space-y-4 animate-fade-in">
             <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-[#5a462d] text-sm">Chỉ số sử dụng kỳ {selectedPeriod}</h3>
+              <h3 className="font-semibold text-[#5C4632] text-sm">Chỉ số sử dụng kỳ {selectedPeriod}</h3>
               <button
                 onClick={handleGenerateInvoices}
-                className="bg-[#5a462d] text-[#ffffff] hover:opacity-90 font-bold text-xs py-1.5 px-3 rounded flex items-center gap-1.5 transition shadow-sm"
+                className="bg-[#5C4632] text-[#ffffff] hover:opacity-90 font-bold text-xs py-1.5 px-3 rounded flex items-center gap-1.5 transition shadow-sm cursor-pointer"
               >
                 <Receipt className="w-3.5 h-3.5" />
                 Chốt chỉ số & Sinh hóa đơn
               </button>
             </div>
 
-            <div className="overflow-x-auto border border-[#d1c4b9] rounded">
+            <div className="overflow-x-auto border border-[#DCCFC0] rounded">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="bg-[#e4e2e1] text-[#4e453d] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#d1c4b9]">
+                  <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0]">
                     <th className="p-3 w-28">Phòng</th>
-                    <th className="p-3 border-l border-[#d1c4b9]">Điện cũ</th>
+                    <th className="p-3 border-l border-[#DCCFC0]">Điện cũ</th>
                     <th className="p-3">Điện mới</th>
                     <th className="p-3">Tiêu thụ (kWh)</th>
-                    <th className="p-3 border-l border-[#d1c4b9]">Nước cũ</th>
+                    <th className="p-3 border-l border-[#DCCFC0]">Nước cũ</th>
                     <th className="p-3">Nước mới</th>
                     <th className="p-3">Tiêu thụ (m³)</th>
-                    <th className="p-3 text-right border-l border-[#d1c4b9]">Tạm tính (VND)</th>
+                    <th className="p-3 text-right border-l border-[#DCCFC0]">Tạm tính (VND)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#d1c4b9] font-mono">
-                  {rooms.map((r, idx) => {
+                <tbody className="divide-y divide-[#E7DED2] font-mono">
+                  {rooms.map((r) => {
                     const idxs = roomIndices[r.id] || { elecOld: 0, elecNew: 0, waterOld: 0, waterNew: 0 };
                     const elecUse = Math.max(0, idxs.elecNew - idxs.elecOld);
                     const waterUse = Math.max(0, idxs.waterNew - idxs.waterOld);
                     const estCost = r.price + (elecUse * 3500) + (waterUse * 15000) + 150000;
                     
                     return (
-                      <tr key={r.id} className={idx % 2 === 0 ? 'bg-[#FAF9F6] hover:bg-[#f0eded]' : 'bg-[#F2F0EA] hover:bg-[#f0eded]'}>
+                      <tr key={r.id} className="hover:bg-[#FBF9F7] border-l-2 border-l-transparent hover:border-l-[#5C4632] transition-colors">
                         <td className="p-3 font-semibold text-sm font-sans text-[#1b1c1c]">{r.name.replace('Phòng ', '')}</td>
-                        <td className="p-3 border-l border-[#d1c4b9] text-[#5e5f5d]">{idxs.elecOld}</td>
+                        <td className="p-3 border-l border-[#DCCFC0] text-[#8A7563]">{idxs.elecOld}</td>
                         <td className="p-3">
                           <input
                             type="number"
                             value={idxs.elecNew}
                             onChange={(e) => handleIndexChange(r.id, 'elecNew', parseInt(e.target.value) || 0)}
-                            className="w-20 bg-white border border-[#d1c4b9] rounded px-1.5 py-0.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            className="w-20 bg-white border border-[#DCCFC0] rounded px-1.5 py-0.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5C4632] focus:border-[#5C4632] focus:outline-none"
                           />
                         </td>
                         <td className="p-3 text-right font-bold text-[#1b1c1c]">{elecUse}</td>
-                        <td className="p-3 border-l border-[#d1c4b9] text-[#5e5f5d]">{idxs.waterOld}</td>
+                        <td className="p-3 border-l border-[#DCCFC0] text-[#8A7563]">{idxs.waterOld}</td>
                         <td className="p-3">
                           <input
                             type="number"
                             value={idxs.waterNew}
                             onChange={(e) => handleIndexChange(r.id, 'waterNew', parseInt(e.target.value) || 0)}
-                            className="w-16 bg-white border border-[#d1c4b9] rounded px-1.5 py-0.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            className="w-16 bg-white border border-[#DCCFC0] rounded px-1.5 py-0.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5C4632] focus:border-[#5C4632] focus:outline-none"
                           />
                         </td>
                         <td className="p-3 text-right font-bold text-[#1b1c1c]">{waterUse}</td>
-                        <td className="p-3 text-right border-l border-[#d1c4b9] font-bold text-[#5a462d]">{estCost.toLocaleString('vi-VN')}</td>
+                        <td className="p-3 text-right border-l border-[#DCCFC0] font-bold text-[#5C4632]">{estCost.toLocaleString('vi-VN')}</td>
                       </tr>
                     );
                   })}
@@ -295,9 +295,9 @@ export default function AccountantMonthlyPage() {
         {activeTab === 'list' && (
           <div className="p-4 space-y-4 animate-fade-in">
             <div className="flex justify-between items-center flex-wrap gap-2">
-              <h3 className="font-semibold text-[#5a462d] text-sm">Danh sách hóa đơn tháng {selectedPeriod}</h3>
+              <h3 className="font-semibold text-[#5C4632] text-sm">Danh sách hóa đơn tháng {selectedPeriod}</h3>
               <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5e5f5d]">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8A7563]">
                   <Search className="w-3.5 h-3.5" />
                 </span>
                 <input
@@ -305,15 +305,15 @@ export default function AccountantMonthlyPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Tìm khách hàng, phòng..."
-                  className="pl-8 pr-3 py-1 bg-white border border-[#d1c4b9] rounded text-xs focus:outline-none focus:border-[#5a462d] w-48"
+                  className="pl-8 pr-3 py-1 bg-white border border-[#DCCFC0] rounded text-xs focus:outline-none focus:border-[#5C4632] w-48"
                 />
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-[#d1c4b9] rounded">
+            <div className="overflow-x-auto border border-[#DCCFC0] rounded">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="bg-[#e4e2e1] text-[#4e453d] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#d1c4b9]">
+                  <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0]">
                     <th className="p-3">Mã HĐ</th>
                     <th className="p-3">Khách hàng</th>
                     <th className="p-3">Phòng</th>
@@ -325,21 +325,21 @@ export default function AccountantMonthlyPage() {
                     <th className="p-3 text-right">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#d1c4b9] font-mono text-xs">
+                <tbody className="divide-y divide-[#E7DED2] font-mono text-xs">
                   {filteredInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-[#f6f3f2] cursor-pointer" onClick={() => { setSelectedInvoice(inv); setDrawerOpen(true); }}>
-                      <td className="p-3 font-bold text-[#5a462d]">{inv.id}</td>
+                    <tr key={inv.id} className="hover:bg-[#FBF9F7] cursor-pointer border-l-2 border-l-transparent hover:border-l-[#5C4632] transition-colors" onClick={() => { setSelectedInvoice(inv); setDrawerOpen(true); }}>
+                      <td className="p-3 font-bold text-[#5C4632]">{inv.id}</td>
                       <td className="p-3 font-sans font-medium text-[#1b1c1c]">{inv.customer_name}</td>
-                      <td className="p-3 font-sans text-[#4e453d]">{inv.room_name}</td>
-                      <td className="p-3 text-right">{inv.rent_amount.toLocaleString('vi-VN')}</td>
-                      <td className="p-3 text-right">{inv.electricity_cost.toLocaleString('vi-VN')}</td>
-                      <td className="p-3 text-right">{inv.water_cost.toLocaleString('vi-VN')}</td>
+                      <td className="p-3 font-sans text-[#8A7563]">{inv.room_name}</td>
+                      <td className="p-3 text-right text-[#8A7563]">{inv.rent_amount.toLocaleString('vi-VN')}</td>
+                      <td className="p-3 text-right text-[#8A7563]">{inv.electricity_cost.toLocaleString('vi-VN')}</td>
+                      <td className="p-3 text-right text-[#8A7563]">{inv.water_cost.toLocaleString('vi-VN')}</td>
                       <td className="p-3 text-right font-bold text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')}</td>
                       <td className="p-3 text-center">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          inv.status === 'paid' ? 'bg-[#E8F5E9] text-[#2E7D32]' :
-                          inv.status === 'pending' ? 'bg-[#FFF3E0] text-[#E65100]' :
-                          'bg-[#ffdad6] text-[#93000a]'
+                          inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
+                          inv.status === 'pending' ? 'bg-[#FAF2E8] text-[#B9792B]' :
+                          'bg-[#F8EAE8] text-[#A94F4F]'
                         }`}>
                           {inv.status === 'paid' ? 'Đã thu' :
                            inv.status === 'pending' ? 'Chờ TT' : 'Quá hạn'}
@@ -350,14 +350,14 @@ export default function AccountantMonthlyPage() {
                           {inv.status === 'pending' && (
                             <button
                               onClick={() => handleConfirmPayment(inv.id)}
-                              className="px-2 py-0.5 bg-[#2E7D32] text-white rounded text-[10px] font-semibold hover:opacity-90"
+                              className="px-2 py-0.5 bg-[#5F7D4E] text-white rounded text-[10px] font-semibold hover:opacity-90 cursor-pointer"
                             >
                               Thu tiền
                             </button>
                           )}
                           <button
                             onClick={() => { setSelectedInvoice(inv); setDrawerOpen(true); }}
-                            className="p-1 hover:bg-[#e4e2e1] rounded text-[#5e5f5d]"
+                            className="p-1 hover:bg-[#E7DED2] rounded text-[#8A7563] cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -367,7 +367,7 @@ export default function AccountantMonthlyPage() {
                   ))}
                   {filteredInvoices.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-[#5e5f5d] font-sans">
+                      <td colSpan={9} className="p-8 text-center text-[#8A7563] font-sans">
                         Không tìm thấy hóa đơn định kỳ nào trong kỳ này.
                       </td>
                     </tr>
@@ -385,50 +385,50 @@ export default function AccountantMonthlyPage() {
           {/* Overlay backdrop */}
           <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
           
-          <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white border-l border-[#d1c4b9] shadow-2xl z-50 flex flex-col justify-between animate-slide-left">
-            <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8]">
+          <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white border-l border-[#DCCFC0] shadow-2xl z-50 flex flex-col justify-between animate-slide-left">
+            <div className="p-6 border-b border-[#DCCFC0] flex justify-between items-center bg-[#FAF9F6]">
               <div>
-                <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Chi tiết Hóa đơn</h3>
-                <p className="font-mono text-xs text-[#5e5f5d] mt-1">#{selectedInvoice.id}</p>
+                <h3 className="font-headline-sm text-base text-[#5C4632] font-bold">Chi tiết Hóa đơn</h3>
+                <p className="font-mono text-xs text-[#8A7563] mt-1">#{selectedInvoice.id}</p>
               </div>
-              <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full">
+              <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#8A7563] hover:bg-[#E7DED2] rounded-full cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 flex-1 overflow-y-auto space-y-6 text-sm">
               <div className="flex justify-between items-center">
-                <span className="font-label-caps text-[11px] text-[#5a462d] font-bold uppercase tracking-wider">Trạng thái</span>
+                <span className="font-label-caps text-[11px] text-[#8A7563] font-bold uppercase tracking-wider">Trạng thái</span>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
-                  selectedInvoice.status === 'paid' ? 'bg-[#E8F5E9] text-[#2E7D32]' :
-                  selectedInvoice.status === 'pending' ? 'bg-[#FFF3E0] text-[#E65100]' :
-                  'bg-[#ffdad6] text-[#93000a]'
+                  selectedInvoice.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
+                  selectedInvoice.status === 'pending' ? 'bg-[#FAF2E8] text-[#B9792B]' :
+                  'bg-[#F8EAE8] text-[#A94F4F]'
                 }`}>
                   {selectedInvoice.status === 'paid' ? 'Đã thanh toán' :
                    selectedInvoice.status === 'pending' ? 'Chờ thanh toán' : 'Quá hạn'}
                 </span>
               </div>
 
-              <div className="border-t border-[#d1c4b9] pt-4">
-                <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin phòng</h4>
+              <div className="border-t border-[#DCCFC0] pt-4">
+                <h4 className="font-label-caps text-[11px] text-[#8A7563] mb-2 font-bold uppercase tracking-wider">Thông tin phòng</h4>
                 <div className="grid grid-cols-2 gap-y-2">
-                  <div className="text-[#5e5f5d]">Phòng:</div>
+                  <div className="text-[#8A7563]">Phòng:</div>
                   <div className="text-right font-bold text-[#1b1c1c]">{selectedInvoice.room_name}</div>
-                  <div className="text-[#5e5f5d]">Khách thuê:</div>
+                  <div className="text-[#8A7563]">Khách thuê:</div>
                   <div className="text-right text-[#1b1c1c]">{selectedInvoice.customer_name}</div>
-                  <div className="text-[#5e5f5d]">Kỳ thanh toán:</div>
+                  <div className="text-[#8A7563]">Kỳ thanh toán:</div>
                   <div className="text-right text-[#1b1c1c]">Tháng {selectedInvoice.period}</div>
                 </div>
               </div>
 
-              <div className="border-t border-[#d1c4b9] pt-4">
-                <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Chi tiết phí</h4>
+              <div className="border-t border-[#DCCFC0] pt-4">
+                <h4 className="font-label-caps text-[11px] text-[#8A7563] mb-2 font-bold uppercase tracking-wider">Chi tiết phí</h4>
                 <div className="space-y-2 font-mono text-xs">
                   <div className="flex justify-between text-sm">
                     <span className="font-sans font-medium text-[#1b1c1c]">Tiền phòng:</span>
                     <span>{selectedInvoice.rent_amount.toLocaleString('vi-VN')} đ</span>
                   </div>
-                  <div className="pl-3 border-l-2 border-[#d1c4b9] space-y-1 text-[#5e5f5d]">
+                  <div className="pl-3 border-l-2 border-[#DCCFC0] space-y-1 text-[#8A7563]">
                     <div className="flex justify-between">
                       <span>Điện ({selectedInvoice.electricity_kwh} kWh x 3,500):</span>
                       <span>{selectedInvoice.electricity_cost.toLocaleString('vi-VN')} đ</span>
@@ -445,21 +445,21 @@ export default function AccountantMonthlyPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
+              <div className="p-4 bg-[#FAF2E8] border border-[#DCCFC0] rounded flex justify-between items-center">
                 <span className="font-bold text-[#1b1c1c]">Tổng cộng:</span>
-                <span className="text-xl font-bold text-[#5a462d] font-mono">{selectedInvoice.total.toLocaleString('vi-VN')} VND</span>
+                <span className="text-xl font-bold text-[#5C4632] font-mono">{selectedInvoice.total.toLocaleString('vi-VN')} VND</span>
               </div>
             </div>
 
-            <div className="p-6 border-t border-[#d1c4b9] flex gap-3 bg-[#fbf9f8]">
-              <button className="flex-1 border border-[#5a462d] text-[#5a462d] py-2 rounded text-sm font-semibold bg-transparent hover:bg-[#e4e2e1] transition-colors flex items-center justify-center gap-1.5">
+            <div className="p-6 border-t border-[#DCCFC0] flex gap-3 bg-[#FAF9F6]">
+              <button className="flex-1 border border-[#7f756c] text-[#8A7563] py-2 rounded text-sm font-semibold bg-transparent hover:bg-[#E7DED2] hover:text-[#5C4632] transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
                 <Printer className="w-4 h-4" />
                 In PDF
               </button>
               {selectedInvoice.status === 'pending' && (
                 <button
                   onClick={() => handleConfirmPayment(selectedInvoice.id)}
-                  className="flex-1 bg-[#5a462d] text-[#ffffff] py-2 rounded text-sm font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                  className="flex-1 bg-[#5C4632] text-[#ffffff] py-2 rounded text-sm font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   Ghi nhận TT
