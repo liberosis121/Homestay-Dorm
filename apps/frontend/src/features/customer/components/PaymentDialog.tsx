@@ -109,6 +109,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                 const isActive = activeTab === tab.id;
                 return (
                   <button
+                    type="button"
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as TabType)}
                     className={`flex-1 py-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-4 transition-all cursor-pointer ${
@@ -152,6 +153,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                           <p className="font-bold text-on-surface text-sm tracking-wide">1012345678</p>
                         </div>
                         <button 
+                          type="button"
                           onClick={() => handleCopy('1012345678', 'stk')}
                           className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                           title="Sao chép"
@@ -166,6 +168,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                           <p className="font-bold text-on-surface text-sm">{`HOMESTAY ${invoice.id}`}</p>
                         </div>
                         <button 
+                          type="button"
                           onClick={() => handleCopy(`HOMESTAY ${invoice.id}`, 'ndck')}
                           className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                           title="Sao chép"
@@ -185,6 +188,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
 
                   <div className="pt-2 flex justify-end">
                     <button
+                      type="button"
                       onClick={() => startPaymentSimulation('qr')}
                       className="px-6 py-2.5 bg-primary hover:bg-[#253228] text-white text-sm font-bold rounded-lg shadow-md transition-all cursor-pointer"
                     >
@@ -202,6 +206,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                   </p>
                   <div className="grid grid-cols-2 gap-4">
                     <button 
+                      type="button"
                       onClick={() => startPaymentSimulation('wallet')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
@@ -211,6 +216,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                       <span className="font-bold text-sm text-on-surface">Ví điện tử MoMo</span>
                     </button>
                     <button 
+                      type="button"
                       onClick={() => startPaymentSimulation('wallet')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
@@ -231,9 +237,11 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                     <input 
                       required
                       type="text" 
+                      inputMode="numeric"
+                      autoComplete="cc-number"
                       value={cardNumber}
                       onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').substring(0, 16))}
-                      className="w-full border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium bg-surface-container-low" 
+                      className="relative z-10 w-full border border-outline-variant/30 rounded-xl px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm font-medium bg-surface-container-low pointer-events-auto" 
                       placeholder="4123 4567 8901 2345" 
                     />
                   </div>
@@ -244,9 +252,11 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                       <input 
                         required
                         type="text" 
+                        inputMode="numeric"
+                        autoComplete="cc-exp"
                         value={cardExpiry}
                         onChange={(e) => setCardExpiry(e.target.value.substring(0, 5))}
-                        className="w-full border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium bg-surface-container-low text-center" 
+                        className="relative z-10 w-full border border-outline-variant/30 rounded-xl px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm font-medium bg-surface-container-low pointer-events-auto" 
                         placeholder="MM/YY" 
                       />
                     </div>
@@ -255,9 +265,11 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
                       <input 
                         required
                         type="password" 
+                        inputMode="numeric"
+                        autoComplete="cc-csc"
                         value={cardCvv}
                         onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').substring(0, 3))}
-                        className="w-full border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium bg-surface-container-low text-center" 
+                        className="relative z-10 w-full border border-outline-variant/30 rounded-xl px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm font-medium bg-surface-container-low pointer-events-auto" 
                         placeholder="***" 
                       />
                     </div>

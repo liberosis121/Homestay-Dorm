@@ -184,6 +184,21 @@ export default function AccountantDepositPage() {
 
   return (
     <div className="space-y-6 text-[#1b1c1c] font-body-md">
+      <style>{`
+        .accountant-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .accountant-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .accountant-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(92, 70, 45, 0.2);
+          border-radius: 4px;
+        }
+        .accountant-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(92, 70, 45, 0.4);
+        }
+      `}</style>
       {/* Page Header */}
       <div>
         <h2 className="font-headline-md text-2xl text-[#5C4632] font-semibold">Lập hóa đơn cọc</h2>
@@ -241,7 +256,7 @@ export default function AccountantDepositPage() {
             </div>
 
             {/* Scrollable list of request cards */}
-            <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+            <div className="max-h-[280px] overflow-y-auto accountant-scrollbar space-y-2 pr-2.5">
               {filteredRequests.map((req) => {
                 const isSelected = req.id === selectedRequestId;
                 return (
@@ -534,20 +549,30 @@ export default function AccountantDepositPage() {
                 <th className="p-4">Mã HĐ</th>
                 <th className="p-4">Khách hàng</th>
                 <th className="p-4">Phòng</th>
-                <th className="p-4 text-right">Số tiền (VND)</th>
+                <th className="p-4 text-right">Số tiền</th>
                 <th className="p-4">Hạn TT</th>
                 <th className="p-4 text-center">Trạng thái</th>
-                <th className="p-4 text-right">Thao tác</th>
+                <th className="p-4 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
                   <td className="p-4 font-mono font-bold text-[#5C4632] text-sm">{inv.id}</td>
-                  <td className="p-4 font-semibold text-[#1b1c1c]">{inv.customer_name}</td>
-                  <td className="p-4 text-[#8A7563]">{inv.room_name}</td>
-                  <td className="p-4 text-right font-mono font-semibold text-[#1b1c1c]">{inv.amount.toLocaleString('vi-VN')} đ</td>
-                  <td className="p-4 text-xs font-mono text-[#8A7563]">{inv.deadline}</td>
+                  <td className="p-4 text-sm font-medium text-[#1b1c1c]">{inv.customer_name}</td>
+                  <td className="p-4 text-xs text-[#8A7563]">{inv.room_name}</td>
+                  <td className="p-4 text-right font-mono font-semibold text-[#5C4632]">{inv.amount.toLocaleString('vi-VN')} đ</td>
+                  <td className="p-4 text-xs font-mono text-[#8A7563] leading-tight">
+                    {(() => {
+                      const parts = inv.deadline.split(' ');
+                      return (
+                        <>
+                          <div>{parts[0]}</div>
+                          {parts[1] && <div className="text-[10px] text-[#8A7563]/70 mt-0.5">{parts[1]}</div>}
+                        </>
+                      );
+                    })()}
+                  </td>
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
@@ -560,8 +585,8 @@ export default function AccountantDepositPage() {
                        inv.status === 'overdue' ? 'Quá hạn' : 'Hủy'}
                     </span>
                   </td>
-                  <td className="p-4 text-right">
-                    <div className="flex justify-end gap-1.5">
+                  <td className="p-4">
+                    <div className="flex items-center justify-center gap-2">
                       {inv.status === 'pending' && (
                         <>
                           <button
@@ -578,7 +603,7 @@ export default function AccountantDepositPage() {
                           </button>
                         </>
                       )}
-                      <button className="p-1 hover:bg-[#E7DED2] rounded text-[#8A7563] cursor-pointer">
+                      <button className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]">
                         <Eye className="w-4 h-4" />
                       </button>
                     </div>
