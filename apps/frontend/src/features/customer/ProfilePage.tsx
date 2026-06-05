@@ -318,6 +318,7 @@ export default function ProfilePage() {
           disabled={disabled || !isEditing}
           placeholder={placeholder || 'Chọn ngày'}
           required={label.includes('*')}
+          variant="surface"
         />
       );
     }

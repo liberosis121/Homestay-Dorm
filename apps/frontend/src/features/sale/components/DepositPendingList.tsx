@@ -49,7 +49,7 @@ export default function DepositPendingList({ deposits, onSelect, staffBranch, on
         <div className="flex items-center gap-2 text-sm flex-wrap">
           <button
             onClick={onViewContracts}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-xs font-semibold hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-xs font-semibold hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5" />
             Hợp đồng & Bản nháp
@@ -188,7 +188,7 @@ export default function DepositPendingList({ deposits, onSelect, staffBranch, on
                     <td className="px-5 py-4 text-center">
                       <button
                         onClick={() => onSelect(deposit)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#6f583c] hover:bg-[#5c4830] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#6f583c] hover:bg-[#5c4830] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95 cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5" />
                         Lập HĐ

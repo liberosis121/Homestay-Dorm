@@ -13,6 +13,7 @@ interface CustomDatePickerProps {
   disabled?: boolean;
   error?: string | boolean;
   className?: string;
+  variant?: 'brown' | 'surface';
 }
 
 export default function CustomDatePicker({
@@ -26,6 +27,7 @@ export default function CustomDatePicker({
   disabled = false,
   error,
   className = '',
+  variant = 'brown',
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -188,6 +190,21 @@ export default function CustomDatePicker({
 
   const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
   const hasError = !!error;
+  const isSurface = variant === 'surface';
+
+  const buttonStateClass = hasError
+    ? 'border-red-400 bg-red-50/50 focus:ring-2 focus:ring-red-400/20'
+    : isSurface
+      ? isOpen
+        ? 'border-primary bg-surface-container-low ring-2 ring-primary/20'
+        : 'border-surface-variant bg-surface-container-low hover:border-primary/50'
+      : isOpen
+        ? 'border-[#6f583c] ring-2 ring-[#6f583c]/20 bg-[#faf2ec]'
+        : 'border-[#d1c4b9] bg-[#faf2ec] hover:border-[#6f583c]';
+
+  const iconClass = isSurface ? 'text-on-surface-variant' : 'text-[#9d8879]';
+  const valueClass = isSurface ? 'text-on-surface font-body-md' : 'text-[#1e1b17] font-medium';
+  const placeholderClass = isSurface ? 'text-on-surface-variant' : 'text-[#b5a89c]';
 
   return (
     <div className={`space-y-1.5 ${className}`} ref={containerRef}>
@@ -200,17 +217,11 @@ export default function CustomDatePicker({
           type="button"
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between text-left py-3.5 pl-6 pr-10 rounded-full border text-sm transition-all focus:outline-none select-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-            hasError
-              ? 'border-red-400 bg-red-50/50 focus:ring-2 focus:ring-red-400/20'
-              : isOpen
-                ? 'border-[#6f583c] ring-2 ring-[#6f583c]/20 bg-[#faf2ec]'
-                : 'border-[#d1c4b9] bg-[#faf2ec] hover:border-[#6f583c]'
-          }`}
+          className={`w-full flex items-center justify-between text-left py-3.5 pl-6 pr-10 rounded-full border text-sm transition-all focus:outline-none select-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${buttonStateClass}`}
         >
           <div className="flex items-center gap-2 truncate">
-            <CalendarDays className="w-4 h-4 text-[#9d8879] shrink-0" />
-            <span className={value ? 'text-[#1e1b17] font-medium' : 'text-[#b5a89c]'}>
+            <CalendarDays className={`w-4 h-4 shrink-0 ${iconClass}`} />
+            <span className={value ? valueClass : placeholderClass}>
               {formatDateDisplay(value) || placeholder}
             </span>
           </div>

@@ -170,7 +170,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
       <div className="flex items-center gap-2 mb-6">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-[#6f583c] hover:text-[#5c4830] font-medium transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-[#6f583c] hover:text-[#5c4830] bg-[#faf2ec]/50 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 font-medium transition-all duration-200 cursor-pointer active:scale-[0.98] active:bg-[#e8e1d3]/60 focus:outline-none focus:ring-2 focus:ring-[#6f583c]/20"
         >
           <ChevronLeft className="w-4 h-4" />
           Danh sách phiếu cọc
