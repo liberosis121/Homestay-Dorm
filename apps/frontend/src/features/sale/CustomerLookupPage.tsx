@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Users, RefreshCw, HelpCircle, AlertTriangle, Edit, Check 
+  Users, RefreshCw, HelpCircle, AlertTriangle 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CustomerProfileCard from './components/CustomerProfileCard';
 import CustomerTabs from './components/CustomerTabs';
 import CustomerTimeline from './components/CustomerTimeline';
 import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
-import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import { getMockDB } from '../../lib/supabaseClient';
 
 export default function CustomerLookupPage() {
   const navigate = useNavigate();
@@ -21,10 +21,6 @@ export default function CustomerLookupPage() {
   // Danh sách khách hàng và khách hàng đang chọn
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [activeCustomer, setActiveCustomer] = useState<Customer | null>(null);
-
-  // Quản lý ghi chú quan trọng
-  const [isEditingNote, setIsEditingNote] = useState(false);
-  const [noteContent, setNoteContent] = useState('');
 
   // Load database từ LocalStorage lúc khởi tạo
   useEffect(() => {
@@ -102,14 +98,6 @@ export default function CustomerLookupPage() {
     }
   }, [filteredCustomers, activeCustomer]);
 
-  // Đồng bộ nội dung ghi chú khi chuyển đổi khách hàng hoạt động
-  useEffect(() => {
-    if (activeCustomer) {
-      setNoteContent(activeCustomer.importantNote || '');
-      setIsEditingNote(false);
-    }
-  }, [activeCustomer]);
-
   // Reset tìm kiếm / Retry khi bị lỗi
   const handleResetSearch = () => {
     setSearchName('');
@@ -145,6 +133,7 @@ export default function CustomerLookupPage() {
     saveMockDB(db);
     setActiveCustomer(updatedCust);
   };
+
 
   return (
     <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
@@ -229,10 +218,9 @@ export default function CustomerLookupPage() {
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
             {filteredCustomers.map(cust => {
               const isActive = activeCustomer?.id === cust.id;
-              const isVIP = cust.tier === 'VIP';
-              const statusLabel = cust.status === 'active' ? (isVIP ? 'VIP' : 'Đang thuê') : 'Đã trả';
+              const statusLabel = cust.status === 'active' ? 'Đang thuê' : 'Đã trả';
               const statusColor = cust.status === 'active'
-                ? (isVIP ? 'bg-[#6f583c] text-white' : 'bg-[#e8ede7] text-[#5f745d]')
+                ? 'bg-[#e8ede7] text-[#5f745d]'
                 : 'bg-gray-100 text-gray-500';
 
               return (
@@ -336,7 +324,7 @@ export default function CustomerLookupPage() {
                   <CustomerTabs customer={activeCustomer} onUpdateCustomer={handleUpdateCustomer} />
                 </div>
 
-                {/* Right Column: Activities Timeline & Important Sticky Notes */}
+                {/* Right Column: Activities Timeline */}
                 <div className="space-y-6">
                   
                   {/* Hoạt động gần đây */}
@@ -346,46 +334,6 @@ export default function CustomerLookupPage() {
                       Hoạt động gần đây
                     </h4>
                     <CustomerTimeline activities={activeCustomer.recentActivities} />
-                  </div>
-
-                  {/* Ghi chú quan trọng (Interactive Note) */}
-                  <div className="bg-[#faf2ec] p-6 rounded-24 border border-[#d1c4b9] shadow-sm relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold text-[#6f583c] text-sm tracking-wider uppercase flex items-center gap-2">
-                        <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 0" }}>lightbulb</span>
-                        Ghi chú quan trọng
-                      </h4>
-                      {!isEditingNote ? (
-                        <button
-                          onClick={() => setIsEditingNote(true)}
-                          className="text-[#6f583c] hover:text-[#4d614b] p-1 rounded-full hover:bg-white/50 transition-colors cursor-pointer"
-                          title="Sửa ghi chú"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleSaveNote}
-                          className="text-[#4d614b] hover:text-[#384c37] p-1 rounded-full bg-white shadow-sm border border-[#d1c4b9]/50 transition-colors cursor-pointer"
-                          title="Lưu ghi chú"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                    
-                    {isEditingNote ? (
-                      <textarea
-                        value={noteContent}
-                        onChange={(e) => setNoteContent(e.target.value)}
-                        rows={4}
-                        className="w-full p-3 text-sm border border-[#d1c4b9] bg-white rounded-xl focus:ring-1 focus:ring-[#6f583c] focus:border-[#6f583c] outline-none text-[#1e1b17] font-medium leading-relaxed resize-none"
-                      />
-                    ) : (
-                      <p className="text-sm text-[#4e453c] leading-relaxed font-semibold italic">
-                        "{activeCustomer.importantNote || 'Không có ghi chú nào đặc biệt.'}"
-                      </p>
-                    )}
                   </div>
 
                 </div>

@@ -16,7 +16,8 @@ interface CustomSelectProps {
   placeholder?: string;
   icon?: string;
   pill?: boolean;
-  theme?: 'default' | 'accountant';
+  theme?: 'default' | 'accountant' | 'sale';
+  disabled?: boolean;
 }
 
 export default function CustomSelect({
@@ -30,6 +31,7 @@ export default function CustomSelect({
   icon = '',
   pill = false,
   theme = 'default',
+  disabled = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -88,6 +90,7 @@ export default function CustomSelect({
   }, []);
 
   const handleSelect = (val: string) => {
+    if (disabled) return;
     onChange(val);
     setIsOpen(false);
   };
@@ -105,11 +108,22 @@ export default function CustomSelect({
   };
 
   const isAccountant = theme === 'accountant';
-  const borderClass = isAccountant ? 'border-[#7f756c]' : 'border-[#c3c8bf]';
-  const focusRingClass = isAccountant 
-    ? 'ring-2 ring-[#5a462d] border-transparent shadow-sm' 
-    : 'ring-2 ring-primary border-transparent shadow-sm';
-  const hoverBorderClass = isAccountant ? 'hover:border-[#5a462d]/50' : 'hover:border-primary/50';
+  const isSale = theme === 'sale';
+  const borderClass = isSale
+    ? 'border-[#d1c4b9]'
+    : isAccountant
+      ? 'border-[#7f756c]'
+      : 'border-[#c3c8bf]';
+  const focusRingClass = isSale
+    ? 'ring-2 ring-[#6f583c]/30 border-[#6f583c] shadow-sm'
+    : isAccountant 
+      ? 'ring-2 ring-[#5a462d] border-transparent shadow-sm' 
+      : 'ring-2 ring-primary border-transparent shadow-sm';
+  const hoverBorderClass = isSale
+    ? 'hover:border-[#6f583c]'
+    : isAccountant 
+      ? 'hover:border-[#5a462d]/50' 
+      : 'hover:border-primary/50';
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -121,7 +135,7 @@ export default function CustomSelect({
           pill ? 'rounded-[24px]' : 'rounded-[12px]'
         } ${
           isOpen ? focusRingClass : hoverBorderClass
-        } ${triggerClassName}`}
+        } disabled:cursor-not-allowed disabled:opacity-60 ${triggerClassName}`}
       >
         <div className="flex items-center gap-2 truncate">
           {icon && (
@@ -157,12 +171,16 @@ export default function CustomSelect({
           ) : (
             normalizedOptions.map((opt) => {
               const isSelected = opt.value === value;
-              const itemActiveStyle = isAccountant 
-                ? 'bg-[#5a462d]/10 text-[#5a462d] font-bold' 
-                : 'bg-[#D8CBB8] text-[#3F3528] font-bold';
-              const itemHoverStyle = isAccountant
-                ? 'text-[#1b1c1c] hover:bg-[#faf2ec] hover:text-[#5a462d]'
-                : 'text-on-surface hover:bg-[#E8E1D3] hover:text-[#3F3528]';
+              const itemActiveStyle = isSale
+                ? 'bg-[#E8E1D3] text-[#5E503F] font-bold'
+                : isAccountant 
+                  ? 'bg-[#5a462d]/10 text-[#5a462d] font-bold' 
+                  : 'bg-primary/10 text-primary font-bold';
+              const itemHoverStyle = isSale
+                ? 'text-[#4e453c] hover:bg-[#E8E1D3] hover:text-[#5E503F]'
+                : isAccountant
+                  ? 'text-[#1b1c1c] hover:bg-[#faf2ec] hover:text-[#5a462d]'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface';
 
               return (
                 <button

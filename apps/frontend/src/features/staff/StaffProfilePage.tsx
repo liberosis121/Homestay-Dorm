@@ -4,6 +4,9 @@ import {
   User, Shield, Lock, Bell, Globe, ChevronRight,
   X, Eye, EyeOff, Check, Camera, Briefcase, MapPin, Phone
 } from 'lucide-react';
+import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import FormLabel from '../../components/ui/FormLabel';
 
 // ─── Brown Tone Palette (Staff Dashboard) ─────────────────────────────────────
 // Primary accent: #6f583c  |  Surface: #faf2ec  |  Border: #d1c4b9
@@ -322,20 +325,39 @@ export default function StaffProfilePage() {
   // ── Shared InputField ─────────────────────────────────────────────────────
   const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: {
     label: string; name: string; value: string; type?: string; placeholder?: string; disabled?: boolean;
-  }) => (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-[#4e453c] ml-2">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={handleProfileChange}
-        placeholder={placeholder}
-        disabled={disabled || !isEditing}
-        className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
-      />
-    </div>
-  );
+  }) => {
+    const isDate = type === 'date';
+    if (isDate) {
+      return (
+        <CustomDatePicker
+          label={label}
+          value={value}
+          onChange={(val) => {
+            handleProfileChange({
+              target: { name, value: val }
+            } as any);
+          }}
+          disabled={disabled || !isEditing}
+          placeholder={placeholder || 'Chọn ngày'}
+          required={label.includes('*')}
+        />
+      );
+    }
+    return (
+      <div className="space-y-2">
+        <FormLabel label={label} required={label.includes('*')} />
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={handleProfileChange}
+          placeholder={placeholder}
+          disabled={disabled || !isEditing}
+          className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+    );
+  };
 
   const ReadOnlyField = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
     <div className="space-y-2">
@@ -385,7 +407,7 @@ export default function StaffProfilePage() {
         />
       )}
 
-      <div className="animate-fade-in-up space-y-6">
+      <div className="animate-fade-in-up space-y-6 theme-sale">
         {/* ── Page Header ────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
@@ -455,8 +477,11 @@ export default function StaffProfilePage() {
                 <div className="flex-1 text-center sm:text-left">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
                     <h2 className="text-2xl font-extrabold text-[#1e1b17]">{formData.full_name}</h2>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#6f583c]/10 text-[#6f583c] border border-[#6f583c]/20 self-center sm:self-auto">
-                      {roleInfo.badge} {roleInfo.label}
+                    <span className={`inline-flex items-center rounded-full text-xs font-bold bg-[#6f583c]/10 text-[#6f583c] border border-[#6f583c]/20 self-center sm:self-auto ${
+                      user.role === 'sale' ? 'px-3.5 py-1' : 'gap-1.5 px-3 py-1'
+                    }`}>
+                      {user.role !== 'sale' && <span>{roleInfo.badge}</span>}
+                      {roleInfo.label}
                     </span>
                   </div>
                   <p className="text-sm text-[#4e453c] font-medium mb-4 flex items-center gap-1.5 justify-center sm:justify-start">
@@ -545,18 +570,21 @@ export default function StaffProfilePage() {
 
                   <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-[#4e453c] ml-2">Giới tính *</label>
-                    <select
-                      name="gender"
+                    <FormLabel label="Giới tính" required />
+                    <CustomSelect
                       value={formData.gender}
-                      onChange={handleProfileChange}
+                      onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
                       disabled={!isEditing}
-                      className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      <option value="male">Nam</option>
-                      <option value="female">Nữ</option>
-                      <option value="other">Khác</option>
-                    </select>
+                      pill
+                      theme="accountant"
+                      options={[
+                        { value: 'male', label: 'Nam' },
+                        { value: 'female', label: 'Nữ' },
+                        { value: 'other', label: 'Khác' },
+                      ]}
+                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3.5 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
+                      dropdownClassName="border-[#d1c4b9]"
+                    />
                   </div>
 
                   <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" />

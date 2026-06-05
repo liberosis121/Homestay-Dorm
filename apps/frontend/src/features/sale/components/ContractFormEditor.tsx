@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
-  User, Phone, Mail, MapPin, Home, Building2, CalendarDays,
+  User, Users, Phone, Mail, MapPin, Home, Building2,
   FileText, Banknote, ChevronLeft, Save, FileSignature,
   AlertCircle, CheckCircle2, Info, Edit3
 } from 'lucide-react';
 import { ContractFormData, DepositRecord } from '../SaleContractsPage';
 import ContractReceiptWidget from './ContractReceiptWidget';
+import CustomSelect from '../../../components/ui/CustomSelect';
+import CustomDatePicker from '../../../components/ui/CustomDatePicker';
+import FormLabel from '../../../components/ui/FormLabel';
 
 interface Props {
   deposit: DepositRecord;
@@ -162,12 +165,12 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
   ];
 
   return (
-    <div className="animate-fade-in-up">
+    <div className="animate-fade-in-up theme-sale">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-[#6f583c] hover:text-[#5c4830] font-medium transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-[#6f583c] hover:text-[#5c4830] bg-[#faf2ec]/50 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 font-medium transition-all duration-200 cursor-pointer active:scale-[0.98] active:bg-[#e8e1d3]/60 focus:outline-none focus:ring-2 focus:ring-[#6f583c]/20"
         >
           <ChevronLeft className="w-4 h-4" />
           Danh sách phiếu cọc
@@ -183,38 +186,158 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
 
           {/* Section 1: Thông tin khách thuê */}
           <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6">
-            <SectionHeader icon={User} title="Thông tin khách thuê" />
-            <div className="bg-[#fff8f3] rounded-xl p-4 border border-[#eee7e1]">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#6f583c] to-[#8C7355] flex items-center justify-center text-white font-bold text-lg shrink-0">
-                  {deposit.customerName.charAt(0)}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <SectionHeader
+                icon={User}
+                title={deposit.rentalType === 'group' ? 'Thông tin nhóm khách thuê' : 'Thông tin khách thuê'}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                {deposit.rentalType === 'group' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-[#e8e1d3]/60 text-[#5e503f] border border-[#d2c4b9]">
+                    <Users className="w-3.5 h-3.5 text-[#5e503f]/80" />
+                    Nhóm khách thuê
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-[#faf2ec] text-[#6f583c] border border-[#d1c4b9]">
+                    <User className="w-3.5 h-3.5 text-[#6f583c]/80" />
+                    Khách cá nhân
+                  </span>
+                )}
+                {deposit.roomCapacity && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#faf2ec] text-[#4e453c] border border-[#d1c4b9]">
+                    Sức chứa: {deposit.roomCapacity} người
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {deposit.rentalType === 'group' ? (
+              <div className="space-y-4">
+                {/* Số lượng khách */}
+                <div className="text-xs text-[#9d8879] bg-[#faf2ec] rounded-lg px-3 py-1.5 flex items-center justify-between">
+                  <span>Số khách đăng ký: <strong className="text-[#1e1b17]">{deposit.tenants?.length || 0} người</strong></span>
+                  {deposit.roomCapacity && (
+                    <span>Tình trạng: <strong className="text-[#2d6a4f]">Hợp lệ (≤ {deposit.roomCapacity} người)</strong></span>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <p className="font-bold text-[#1e1b17] text-base">{deposit.customerName}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-2">
-                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
-                      <User className="w-3.5 h-3.5 text-[#9d8879]" />
-                      <span>CCCD: <strong className="font-mono">{deposit.customerCCCD}</strong></span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
-                      <Phone className="w-3.5 h-3.5 text-[#9d8879]" />
-                      <span>{deposit.customerPhone}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
-                      <Mail className="w-3.5 h-3.5 text-[#9d8879]" />
-                      <span>{deposit.customerEmail}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#4e453c]">
-                      <MapPin className="w-3.5 h-3.5 text-[#9d8879]" />
-                      <span className="truncate">{deposit.customerAddress}</span>
+
+                {/* Representative (Trưởng nhóm) */}
+                <div className="bg-[#fff8f3] rounded-xl p-4 border border-[#eee7e1] relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-[#6f583c] text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+                    Đại diện / Trưởng nhóm
+                  </div>
+                  
+                  {(() => {
+                    const rep = deposit.tenants?.find(t => t.role === 'representative') || {
+                      name: deposit.customerName,
+                      cccd: deposit.customerCCCD,
+                      phone: deposit.customerPhone,
+                      email: deposit.customerEmail,
+                      role: 'representative'
+                    };
+                    return (
+                      <div className="flex items-start gap-4 mt-2 sm:mt-0">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#6f583c] to-[#8C7355] flex items-center justify-center text-white font-bold text-lg shrink-0">
+                          {rep.name.charAt(0)}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-[#1e1b17] text-base flex items-center gap-2">
+                            {rep.name}
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-2">
+                            <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                              <User className="w-3.5 h-3.5 text-[#9d8879]" />
+                              <span>CCCD: <strong className="font-mono">{rep.cccd}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                              <Phone className="w-3.5 h-3.5 text-[#9d8879]" />
+                              <span>{rep.phone}</span>
+                            </div>
+                            {rep.email && (
+                              <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                                <Mail className="w-3.5 h-3.5 text-[#9d8879]" />
+                                <span>{rep.email}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                              <MapPin className="w-3.5 h-3.5 text-[#9d8879]" />
+                              <span className="truncate">{deposit.customerAddress}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Other members */}
+                <div>
+                  <h4 className="text-xs font-bold text-[#8c7355] uppercase tracking-wider mb-2.5 ml-1 flex items-center gap-1.5">
+                    Thành viên đi cùng ({(deposit.tenants?.filter(t => t.role === 'member').length || 0)} người)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {deposit.tenants?.filter(t => t.role === 'member').map((member, idx) => (
+                      <div key={idx} className="bg-white rounded-xl p-3 border border-[#eee7e1] flex items-start gap-3 hover:shadow-sm transition-shadow">
+                        <div className="w-9 h-9 rounded-full bg-[#faf2ec] border border-[#d1c4b9] flex items-center justify-center text-[#6f583c] font-bold text-sm shrink-0">
+                          {member.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-[#1e1b17] text-xs truncate">{member.name}</p>
+                          <div className="space-y-0.5 mt-1 text-[11px] text-[#4e453c]">
+                            <p className="flex items-center gap-1.5">
+                              <span className="text-[#9d8879]">CCCD:</span>
+                              <span className="font-mono font-medium">{member.cccd}</span>
+                            </p>
+                            <p className="flex items-center gap-1.5">
+                              <span className="text-[#9d8879]">SĐT:</span>
+                              <span>{member.phone}</span>
+                            </p>
+                            {member.email && (
+                              <p className="flex items-center gap-1.5 truncate">
+                                <span className="text-[#9d8879]">Email:</span>
+                                <span className="truncate">{member.email}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#fff8f3] rounded-xl p-4 border border-[#eee7e1]">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#6f583c] to-[#8C7355] flex items-center justify-center text-white font-bold text-lg shrink-0">
+                    {deposit.customerName.charAt(0)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-[#1e1b17] text-base">{deposit.customerName}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-2">
+                      <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                        <User className="w-3.5 h-3.5 text-[#9d8879]" />
+                        <span>CCCD: <strong className="font-mono">{deposit.customerCCCD}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                        <Phone className="w-3.5 h-3.5 text-[#9d8879]" />
+                        <span>{deposit.customerPhone}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                        <Mail className="w-3.5 h-3.5 text-[#9d8879]" />
+                        <span>{deposit.customerEmail}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#4e453c]">
+                        <MapPin className="w-3.5 h-3.5 text-[#9d8879]" />
+                        <span className="truncate">{deposit.customerAddress}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-1.5 text-xs text-[#9d8879] bg-[#faf2ec] rounded-lg px-3 py-2">
-                <Info className="w-3.5 h-3.5 shrink-0" />
-                Thông tin khách thuê được tự động điền từ phiếu đặt cọc. Liên hệ quản lý nếu cần cập nhật.
-              </div>
+            )}
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-[#9d8879] bg-[#faf2ec] rounded-lg px-3 py-2">
+              <Info className="w-3.5 h-3.5 shrink-0" />
+              Thông tin khách thuê được tự động điền từ phiếu đặt cọc. Liên hệ quản lý nếu cần cập nhật.
             </div>
           </div>
 
@@ -251,9 +374,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Loại hợp đồng */}
               <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
-                  Loại hợp đồng <span className="text-red-500">*</span>
-                </label>
+                <FormLabel label="Loại hợp đồng" required className="mb-2" />
                 <div className="grid grid-cols-2 gap-3">
                   {([
                     { val: 'long_term', label: 'Dài hạn', desc: '≥ 12 tháng' },
@@ -280,61 +401,55 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
 
               {/* Ngày bắt đầu */}
               <div>
-                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
-                  Ngày bắt đầu <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9d8879]" />
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition ${
-                      errors.startDate ? 'border-red-400 bg-red-50' : 'border-[#d1c4b9]'
-                    }`}
-                  />
-                </div>
-                <FieldError message={errors.startDate} />
+                <CustomDatePicker
+                  label="Ngày bắt đầu"
+                  required
+                  value={startDate}
+                  onChange={setStartDate}
+                  min={(() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  })()}
+                  error={errors.startDate}
+                  placeholder="Chọn ngày bắt đầu"
+                />
               </div>
 
               {/* Ngày kết thúc */}
               <div>
-                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
-                  Ngày kết thúc <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9d8879]" />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate || new Date().toISOString().split('T')[0]}
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition ${
-                      errors.endDate ? 'border-red-400 bg-red-50' : 'border-[#d1c4b9]'
-                    }`}
-                  />
-                </div>
-                <FieldError message={errors.endDate} />
+                <CustomDatePicker
+                  label="Ngày kết thúc"
+                  required
+                  value={endDate}
+                  onChange={setEndDate}
+                  min={startDate || (() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  })()}
+                  error={errors.endDate}
+                  placeholder="Chọn ngày kết thúc"
+                />
               </div>
 
               {/* Giá thuê */}
               <div>
-                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
-                  Giá thuê thực tế (đ/tháng) <span className="text-red-500">*</span>
-                </label>
+                <FormLabel label="Giá thuê thực tế (đ/tháng)" required className="mb-2" />
                 <div className="relative">
                   <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9d8879]" />
                   <input
-                    type="number"
-                    value={rentPrice}
-                    onChange={(e) => setRentPrice(Number(e.target.value))}
-                    min={0}
-                    step={100000}
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition ${
+                    type="text"
+                    value={rentPrice === 0 ? '' : new Intl.NumberFormat('vi-VN').format(rentPrice)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      setRentPrice(raw ? parseInt(raw, 10) : 0);
+                    }}
+                    className={`w-full pl-10 pr-20 py-2.5 rounded-xl border text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition ${
                       errors.rentPrice ? 'border-red-400 bg-red-50' : 'border-[#d1c4b9]'
                     }`}
                   />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[#9d8879]">
+                    đ/tháng
+                  </span>
                 </div>
                 <p className="text-[11px] text-[#9d8879] mt-1">
                   Giá chuẩn phòng: {deposit.roomMonthlyRent.toLocaleString('vi-VN')} đ/tháng
@@ -344,25 +459,24 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
 
               {/* Kỳ thanh toán */}
               <div>
-                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
-                  Kỳ thanh toán <span className="text-red-500">*</span>
-                </label>
-                <select
+                <FormLabel label="Kỳ thanh toán" required className="mb-2" />
+                <CustomSelect
                   value={paymentCycle}
-                  onChange={(e) => setPaymentCycle(e.target.value as PaymentCycle)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-[#d1c4b9] text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition"
-                >
-                  <option value="1_month">Hàng tháng (1 tháng/kỳ)</option>
-                  <option value="3_months">Hàng quý (3 tháng/kỳ)</option>
-                  <option value="6_months">Nửa năm (6 tháng/kỳ)</option>
-                </select>
+                  onChange={(val) => setPaymentCycle(val as PaymentCycle)}
+                  theme="sale"
+                  options={[
+                    { value: '1_month', label: 'Hàng tháng (1 tháng/kỳ)' },
+                    { value: '3_months', label: 'Hàng quý (3 tháng/kỳ)' },
+                    { value: '6_months', label: 'Nửa năm (6 tháng/kỳ)' },
+                  ]}
+                  triggerClassName="w-full !py-[11px] !px-4 !bg-[#fff8f3] !border-[#d1c4b9] !rounded-xl text-sm"
+                  dropdownClassName="!border-[#d1c4b9]"
+                />
               </div>
 
               {/* Tiền cọc (read-only) */}
               <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
-                  Tiền đặt cọc (tự động từ phiếu cọc)
-                </label>
+                <FormLabel label="Tiền đặt cọc (tự động từ phiếu cọc)" className="mb-2" />
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#d1c4b9] bg-[#f0faf2] text-sm">
                   <CheckCircle2 className="w-4 h-4 text-[#2d6a4f] shrink-0" />
                   <span className="font-bold text-[#2d6a4f]">
@@ -374,9 +488,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
 
               {/* Ghi chú */}
               <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2 block">
-                  Ghi chú (không bắt buộc)
-                </label>
+                <FormLabel label="Ghi chú (không bắt buộc)" className="mb-2" />
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}

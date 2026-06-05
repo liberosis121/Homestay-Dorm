@@ -41,6 +41,7 @@ import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
 import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
+import DepositHistoryPage from './features/customer/DepositHistoryPage';
 import CustomerContractsPage from './features/customer/CustomerContractsPage';
 import CustomerServicesPage from './features/customer/CustomerServicesPage';
 import InvoicesDashboardPage from './features/customer/InvoicesDashboardPage';
@@ -162,6 +163,7 @@ function CustomerLayout() {
           <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
+          <Route path="/customer/deposit-history" element={<DepositHistoryPage />} />
           <Route path="/customer/contracts" element={<CustomerContractsPage />} />
           <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
           <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />

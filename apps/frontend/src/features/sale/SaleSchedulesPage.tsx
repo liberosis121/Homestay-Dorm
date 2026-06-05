@@ -9,6 +9,7 @@ import ScheduleCalendar from './components/ScheduleCalendar';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -400,11 +401,24 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
         <table className="w-full text-left border-collapse">
           <thead className="bg-[#faf2ec] border-b border-[#d1c4b9]">
             <tr>
-              {['Mã lịch', 'Khách hàng', 'Phòng / Chi nhánh', 'Ngày xem', 'Giờ xem', 'Trạng thái', 'Thao tác'].map((h) => (
-                <th key={h} className="px-4 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[80px] min-w-[80px]">
+                Mã lịch
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[200px] min-w-[200px]">
+                Khách hàng
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">
+                Phòng / Chi nhánh
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[120px] min-w-[120px]">
+                Thời gian hẹn
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[110px] min-w-[110px]">
+                Trạng thái
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[120px] min-w-[120px]">
+                Thao tác
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#d1c4b9]/60">
@@ -419,45 +433,46 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                   }`}
                 >
                   {/* Mã lịch */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap w-[80px] min-w-[80px]">
                     <span className="font-mono font-bold text-sm text-[#6f583c]">#{s.id}</span>
                   </td>
 
                   {/* Khách hàng */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 w-[200px] min-w-[200px] max-w-[200px]">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full ${avatarColors[idx % avatarColors.length]} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
                         {getInitials(s.customerName)}
                       </div>
-                      <span className="text-sm font-medium text-on-surface whitespace-nowrap">{s.customerName}</span>
+                      <span 
+                        className="text-sm font-medium text-on-surface truncate block" 
+                        title={s.customerName}
+                      >
+                        {s.customerName}
+                      </span>
                     </div>
                   </td>
 
                   {/* Phòng / Chi nhánh */}
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-bold text-on-surface">{s.roomName}</p>
-                    <p className="text-xs text-on-surface-variant">{s.branchName.replace('Chi nhánh ', '')}</p>
+                  <td className="px-3 py-3">
+                    <p className="text-sm font-bold text-on-surface truncate max-w-[160px]" title={s.roomName}>{s.roomName}</p>
+                    <p className="text-xs text-on-surface-variant truncate max-w-[160px]" title={s.branchName}>{s.branchName.replace('Chi nhánh ', '')}</p>
                   </td>
 
-                  {/* Ngày xem */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  {/* Thời gian hẹn */}
+                  <td className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[120px]">
                     <p className="text-sm font-bold text-on-surface">
                       {parseLocalDate(s.viewDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </p>
-                  </td>
-
-                  {/* Giờ xem */}
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-sm text-on-surface">{s.startTime} – {s.endTime}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{s.startTime} – {s.endTime}</p>
                   </td>
 
                   {/* Trạng thái */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 w-[110px] min-w-[110px]">
                     <ScheduleStatusBadge status={s.status} />
                   </td>
 
                   {/* Thao tác */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[120px]">
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       {canComplete(s.status) && (
                         <button
@@ -599,10 +614,14 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
 
   return (
     <div className="bg-white rounded-2xl border border-[#d1c4b9] p-5" style={{ boxShadow: '0 4px 12px rgba(45, 42, 38, 0.04)' }}>
-      <h3 className="text-xs font-bold text-[#7f756b] uppercase tracking-widest mb-1">
-        Tiến trình lịch hẹn
-      </h3>
-      <p className="text-sm font-bold text-[#6f583c] mb-4">#{schedule.id}</p>
+      <div className="flex items-center gap-2.5 flex-wrap mb-4">
+        <h3 className="text-xs font-bold text-[#7f756b] uppercase tracking-widest">
+          Tiến trình lịch hẹn
+        </h3>
+        <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#E8E1D3] text-[#5E503F] border border-[#D2C4AF] rounded-lg whitespace-nowrap">
+          #{schedule.id}
+        </span>
+      </div>
       <div className="text-xs text-on-surface-variant mb-4">
         <span className="font-medium">{schedule.customerName}</span>
         {' · '}
@@ -867,17 +886,13 @@ const CreateModal: React.FC<CreateModalProps> = ({
             <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
               Ngày xem <span className="text-error">*</span>
             </label>
-            <div className="relative">
-              <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-              <input
-                type="date"
-                value={form.viewDate}
-                min="2026-06-02"
-                onChange={(e) => setForm((f) => ({ ...f, viewDate: e.target.value }))}
-                className={`${inputClass('viewDate')} pl-9`}
-              />
-            </div>
-            {errors.viewDate && <p className="text-xs text-error mt-1">{errors.viewDate}</p>}
+            <CustomDatePicker
+              value={form.viewDate}
+              min="2026-06-02"
+              onChange={(val) => setForm((f) => ({ ...f, viewDate: val }))}
+              placeholder="Chọn ngày"
+              error={errors.viewDate}
+            />
           </div>
 
           {/* Start + End Time */}
@@ -1026,14 +1041,13 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ scheduleId, schedule,
             <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
               Ngày mới <span className="text-error">*</span>
             </label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={form.newDate}
               min="2026-06-02"
-              onChange={(e) => setForm((f) => ({ ...f, newDate: e.target.value }))}
-              className={inputClass('newDate')}
+              onChange={(val) => setForm((f) => ({ ...f, newDate: val }))}
+              placeholder="Chọn ngày mới"
+              error={errors.newDate}
             />
-            {errors.newDate && <p className="text-xs text-error mt-1">{errors.newDate}</p>}
           </div>
 
           {/* New Times */}

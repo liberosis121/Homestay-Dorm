@@ -54,7 +54,7 @@ const ScheduleStatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' }
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-bold ${sizeClass} ${config.bgClass} ${config.textClass}`}
+      className={`inline-flex items-center gap-1.5 rounded-full font-bold whitespace-nowrap ${sizeClass} ${config.bgClass} ${config.textClass}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${config.dotClass} flex-shrink-0`} />
       {config.label}

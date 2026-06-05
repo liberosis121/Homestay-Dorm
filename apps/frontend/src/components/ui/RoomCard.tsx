@@ -63,7 +63,7 @@ export default function RoomCard({
             href={registerLink}
             onClick={onRegisterClick}
           >
-            Đăng ký
+            Xem ngay
           </a>
         </div>
       </div>
