@@ -416,9 +416,9 @@ const AppointmentCard = ({
   };
 
   return (
-    <div className={`bg-white rounded-[24px] border shadow-sm overflow-hidden transition-shadow hover:shadow-md ${
+    <div className={`bg-white rounded-[24px] border shadow-sm transition-shadow hover:shadow-md relative ${
       schedule.status === 'cancelled' ? 'border-error/20 opacity-80' : 'border-outline-variant/40'
-    }`}>
+    } ${reschedulingId === schedule.id ? 'overflow-visible z-20' : 'overflow-hidden'}`}>
       {/* Toast */}
       {toast && (
         <div className="bg-primary text-on-primary text-sm px-5 py-2.5 flex items-center gap-2">
@@ -483,6 +483,8 @@ const AppointmentCard = ({
                     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                   })()}
                   placeholder="Chọn ngày"
+                  variant="surface"
+                  triggerClassName="bg-white border-outline-variant rounded-[12px] py-2 px-3 focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm text-on-surface hover:border-primary/50"
                 />
               </div>
               <div>
@@ -766,7 +768,7 @@ export default function ViewingSchedulePage() {
     <>
       {showMapModal && <BranchMapModal onClose={() => setShowMapModal(false)} />}
 
-      <div className="max-w-[1280px] mx-auto w-full px-4 md:px-10">
+      <div className="max-w-[1280px] mx-auto w-full px-4 md:px-10 theme-customer">
         <button
           type="button"
           onClick={() => navigate('/profile')}
