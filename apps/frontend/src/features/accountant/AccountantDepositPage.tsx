@@ -278,10 +278,8 @@ export default function AccountantDepositPage() {
                           {req.created_at.includes('T') ? new Date(req.created_at).toLocaleDateString('vi-VN') : req.created_at.substring(0, 10)}
                         </span>
                       </div>
-                      <div className="text-right text-[#8A7563] flex items-center justify-end gap-1.5">
-                        <span>Dự kiến vào: {req.expected_move_in_date}</span>
-                        <span>•</span>
-                        <span className="font-mono text-[10px] text-[#8A7563]/80">Mã: {req.id}</span>
+                      <div className="text-right text-[#8A7563]">
+                        Dự kiến vào: {req.expected_move_in_date}
                       </div>
                     </div>
                   </div>
@@ -411,7 +409,7 @@ export default function AccountantDepositPage() {
               {!selectedRequestId && (
                 <div className="mb-6 p-4 bg-[#FAF2E8]/40 border border-dashed border-[#B9792B]/40 rounded-xl text-center">
                   <p className="text-sm font-semibold text-[#B9792B]">Chưa chọn phiếu đặt cọc</p>
-                  <p className="text-[11px] text-[#8A7563] mt-1">Vui lòng chọn một phiếu yêu cầu đặt cọc bên trái để xem trước thông tin hóa đơn.</p>
+                  <p className="text-[11px] text-[#8A7563] mt-1 whitespace-nowrap">Chọn một phiếu bên trái để xem trước hóa đơn.</p>
                 </div>
               )}
 
