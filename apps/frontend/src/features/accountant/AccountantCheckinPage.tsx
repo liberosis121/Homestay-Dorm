@@ -1,15 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Receipt, Search, Eye, Printer
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
-import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function AccountantCheckinPage() {
   const [invoices, setInvoices] = useState<CheckinInvoice[]>([]);
   const [selectedContractId, setSelectedContractId] = useState('');
   const [cardFeeChecked, setCardFeeChecked] = useState(true);
   const [cleaningFeeChecked, setCleaningFeeChecked] = useState(true);
+  
+  // Searchable select state for contracts
+  const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
+  const [contractSearchQuery, setContractSearchQuery] = useState('');
+  const contractDropdownRef = useRef<HTMLDivElement>(null);
   
   // Contracts list referencing deposits
   const [pendingDeposits, setPendingDeposits] = useState<DepositInvoice[]>([]);
@@ -22,6 +26,17 @@ export default function AccountantCheckinPage() {
     setInvoices(db.checkin_invoices || []);
     // Contracts available for checkin are paid deposits
     setPendingDeposits(db.deposit_invoices?.filter((d: DepositInvoice) => d.status === 'paid') || []);
+  }, []);
+
+  // Click outside handler for contract dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (contractDropdownRef.current && !contractDropdownRef.current.contains(event.target as Node)) {
+        setIsContractDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const selectedDeposit = pendingDeposits.find(d => d.id === selectedContractId);
@@ -110,10 +125,16 @@ export default function AccountantCheckinPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const contractOptions = useMemo(() => pendingDeposits.map((d) => ({
-    value: d.id,
-    label: `${d.id.replace('DEP', 'HĐ')} - Phòng ${d.room_name} - ${d.customer_name}`
-  })), [pendingDeposits]);
+  const filteredContracts = useMemo(() => {
+    return pendingDeposits.filter((d) => {
+      const code = d.id.toLowerCase();
+      const friendlyCode = d.id.replace('DEP', 'HĐ').toLowerCase();
+      const customer = d.customer_name.toLowerCase();
+      const room = d.room_name.toLowerCase();
+      const q = contractSearchQuery.toLowerCase();
+      return code.includes(q) || friendlyCode.includes(q) || customer.includes(q) || room.includes(q);
+    });
+  }, [pendingDeposits, contractSearchQuery]);
 
   return (
     <div className="space-y-6 text-[#1b1c1c] font-body-md">
@@ -164,14 +185,98 @@ export default function AccountantCheckinPage() {
             {/* Form Fields */}
             <form onSubmit={handleCreateCheckinInvoice} className="space-y-4">
               <div>
-                <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1 font-bold uppercase tracking-wider">Chọn Hợp Đồng (Đã Duyệt)</label>
-                <CustomSelect
-                  value={selectedContractId}
-                  onChange={setSelectedContractId}
-                  options={contractOptions}
-                  placeholder="-- Chọn hợp đồng --"
-                  theme="accountant"
-                />
+                <label className="block font-label-caps text-[11px] text-[#5a462d] mb-1.5 font-bold uppercase tracking-wider">Chọn Hợp Đồng (Đã Duyệt)</label>
+                <div className="relative" ref={contractDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsContractDropdownOpen(!isContractDropdownOpen);
+                      setContractSearchQuery('');
+                    }}
+                    className={`w-full flex items-center justify-between bg-white border border-[#7f756c] px-4 py-2.5 rounded-xl outline-none transition-all cursor-pointer font-label-md text-sm ${
+                      isContractDropdownOpen
+                        ? 'ring-2 ring-[#5a462d] border-transparent shadow-sm'
+                        : 'hover:border-[#5a462d]/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate text-left">
+                      <Receipt className="w-4 h-4 text-[#8A7563] shrink-0" />
+                      {selectedDeposit ? (
+                        <span className="truncate font-medium text-[#1b1c1c]">
+                          {selectedDeposit.id.replace('DEP', 'HĐ')} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
+                        </span>
+                      ) : (
+                        <span className="text-[#8A7563]">— Chọn hợp đồng (Đã duyệt cọc) —</span>
+                      )}
+                    </div>
+                    <span
+                      className={`material-symbols-outlined text-[#737970] text-[20px] transition-transform duration-200 shrink-0 ${
+                        isContractDropdownOpen ? 'rotate-180' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
+                  </button>
+
+                  {isContractDropdownOpen && (
+                    <div className="absolute left-0 right-0 mt-2 bg-white border border-[#DCCFC0] rounded-2xl shadow-xl z-50 p-2 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                      {/* Search Input Box */}
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A7563]">
+                          <Search className="w-4 h-4" />
+                        </span>
+                        <input
+                          type="text"
+                          value={contractSearchQuery}
+                          onChange={(e) => setContractSearchQuery(e.target.value)}
+                          placeholder="Tìm mã HĐ, phòng, tên khách..."
+                          className="w-full pl-9 pr-3 py-2 bg-[#FAF9F6] border border-[#DCCFC0] rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#5C4632] focus:border-[#5C4632] placeholder:text-[#8A7563]/60 text-[#1b1c1c]"
+                          autoFocus
+                        />
+                      </div>
+
+                      {/* Options List */}
+                      <div className="max-h-60 overflow-y-auto pr-1 flex flex-col gap-1 custom-scrollbar">
+                        {filteredContracts.length === 0 ? (
+                          <div className="px-4 py-3 text-xs text-[#8A7563] italic text-center">
+                            Không tìm thấy hợp đồng nào phù hợp
+                          </div>
+                        ) : (
+                          filteredContracts.map((d) => {
+                            const isSelected = d.id === selectedContractId;
+                            return (
+                              <button
+                                key={d.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedContractId(d.id);
+                                  setIsContractDropdownOpen(false);
+                                }}
+                                className={`w-full text-left p-2.5 rounded-lg text-xs font-body-md transition-all flex flex-col gap-1 cursor-pointer active:scale-[0.99] ${
+                                  isSelected
+                                    ? 'bg-[#5C4632]/10 border-l-4 border-l-[#5C4632] text-[#5C4632]'
+                                    : 'hover:bg-[#FAF2EC] text-[#1b1c1c] border-l-4 border-l-transparent hover:border-l-[#5C4632]/40'
+                                }`}
+                              >
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="font-mono font-bold text-[#5C4632]">
+                                    {d.id.replace('DEP', 'HĐ')}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#E8EDE5] text-[#5F7D4E] uppercase">
+                                    Đã cọc
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-[#8A7563] truncate">
+                                  Phòng: <span className="font-semibold text-[#1b1c1c]">{d.room_name}</span> | Khách đại diện: <span className="font-semibold text-[#1b1c1c]">{d.customer_name}</span>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -180,7 +285,7 @@ export default function AccountantCheckinPage() {
                   <input
                     type="text"
                     value={selectedDeposit ? selectedDeposit.customer_name : ''}
-                    className="w-full bg-[#ECE6DE] border border-[#DCCFC0] text-[#8A7563] text-sm rounded py-2 px-3 cursor-not-allowed focus:outline-none"
+                    className="w-full bg-[#ECE6DE] border border-[#DCCFC0] text-[#8A7563] text-sm rounded-xl py-2 px-3 cursor-not-allowed focus:outline-none"
                     readOnly
                     placeholder="Tự động điền..."
                   />
@@ -190,7 +295,7 @@ export default function AccountantCheckinPage() {
                   <input
                     type="text"
                     value={selectedDeposit ? selectedDeposit.room_name : ''}
-                    className="w-full bg-[#ECE6DE] border border-[#DCCFC0] text-[#8A7563] text-sm rounded py-2 px-3 cursor-not-allowed focus:outline-none"
+                    className="w-full bg-[#ECE6DE] border border-[#DCCFC0] text-[#8A7563] text-sm rounded-xl py-2 px-3 cursor-not-allowed focus:outline-none"
                     readOnly
                     placeholder="Tự động điền..."
                   />
@@ -213,27 +318,49 @@ export default function AccountantCheckinPage() {
               </div>
               
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
-                <label className="flex items-center gap-2 text-sm text-[#1b1c1c] cursor-pointer">
+                <label className="flex items-center gap-2.5 text-sm text-[#1b1c1c] cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={cardFeeChecked}
                     onChange={(e) => setCardFeeChecked(e.target.checked)}
-                    className="rounded border-[#7f756c] text-[#5C4632] focus:ring-[#5C4632]"
+                    className="sr-only"
                   />
-                  <span>Phí Cấp Thẻ Từ (2 thẻ)</span>
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                    cardFeeChecked 
+                      ? 'bg-[#5C4632] border-[#5C4632] text-white shadow-sm' 
+                      : 'bg-white border-[#7f756c] hover:border-[#5C4632]'
+                  }`}>
+                    {cardFeeChecked && (
+                      <svg className="w-2.5 h-2.5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="select-none group-hover:text-[#5C4632] transition-colors">Phí Cấp Thẻ Từ (2 thẻ)</span>
                 </label>
                 <span className="font-mono font-medium text-sm text-[#1b1c1c]">{cardFee.toLocaleString('vi-VN')} ₫</span>
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
-                <label className="flex items-center gap-2 text-sm text-[#1b1c1c] cursor-pointer">
+                <label className="flex items-center gap-2.5 text-sm text-[#1b1c1c] cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={cleaningFeeChecked}
                     onChange={(e) => setCleaningFeeChecked(e.target.checked)}
-                    className="rounded border-[#7f756c] text-[#5C4632] focus:ring-[#5C4632]"
+                    className="sr-only"
                   />
-                  <span>Phí Vệ Sinh Ban Đầu</span>
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                    cleaningFeeChecked 
+                      ? 'bg-[#5C4632] border-[#5C4632] text-white shadow-sm' 
+                      : 'bg-white border-[#7f756c] hover:border-[#5C4632]'
+                  }`}>
+                    {cleaningFeeChecked && (
+                      <svg className="w-2.5 h-2.5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="select-none group-hover:text-[#5C4632] transition-colors">Phí Vệ Sinh Ban Đầu</span>
                 </label>
                 <span className="font-mono font-medium text-sm text-[#1b1c1c]">{cleaningFee.toLocaleString('vi-VN')} ₫</span>
               </div>
@@ -252,14 +379,14 @@ export default function AccountantCheckinPage() {
                   setCardFeeChecked(true);
                   setCleaningFeeChecked(true);
                 }}
-                className="px-4 py-2 border border-[#7f756c] text-[#8A7563] rounded text-sm font-semibold hover:bg-[#E7DED2] hover:text-[#5C4632] transition-colors"
+                className="px-4 py-2 border border-[#7f756c] text-[#8A7563] rounded-xl text-sm font-semibold hover:bg-[#E7DED2] hover:text-[#5C4632] cursor-pointer active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40 transition-all"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleCreateCheckinInvoice}
-                className="bg-[#5C4632] text-white font-bold py-2 px-5 rounded text-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+                className="bg-[#5C4632] text-white font-bold py-2 px-5 rounded-xl text-sm hover:bg-[#4E3927] active:scale-[0.97] flex items-center gap-1.5 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40 transition-all"
               >
                 <Receipt className="w-4 h-4" />
                 <span>Xuất Hóa Đơn</span>
@@ -352,14 +479,14 @@ export default function AccountantCheckinPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm khách hàng, phòng..."
-                className="pl-9 pr-3 py-1.5 bg-white border border-[#DCCFC0] rounded text-xs focus:outline-none focus:border-[#5C4632] w-full md:w-56"
+                className="pl-9 pr-3 py-1.5 bg-white border border-[#DCCFC0] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#5C4632] focus:border-transparent transition-all w-full md:w-56"
               />
             </div>
             
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-[#DCCFC0] rounded text-xs py-1.5 px-3 focus:outline-none focus:border-[#5C4632]"
+              className="bg-white border border-[#DCCFC0] rounded-lg text-xs py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#5C4632] focus:border-transparent hover:border-[#5C4632] transition-all cursor-pointer"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="pending">Chờ thanh toán</option>
@@ -372,24 +499,24 @@ export default function AccountantCheckinPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0]">
-                <th className="p-4">Mã HĐ</th>
-                <th className="p-4">Hợp Đồng</th>
-                <th className="p-4">Khách hàng</th>
-                <th className="p-4">Ngày Lập</th>
+              <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0] border-l-2 border-l-transparent">
+                <th className="p-4 text-left">Mã HĐ</th>
+                <th className="p-4 text-left">Hợp Đồng</th>
+                <th className="p-4 text-left">Khách hàng</th>
+                <th className="p-4 text-left">Ngày Lập</th>
                 <th className="p-4 text-right">Tổng Tiền</th>
                 <th className="p-4 text-center">Trạng Thái</th>
-                <th className="p-4 text-right">Thao Tác</th>
+                <th className="p-4 text-center">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
-                <tr key={inv.id} className="hover:bg-[#FBF9F7] transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
-                  <td className="p-4 font-mono font-bold text-[#5C4632]">{inv.id}</td>
-                  <td className="p-4 font-mono text-xs text-[#8A7563]">{inv.deposit_ref.replace('DEP', 'HĐ')} ({inv.room_name})</td>
-                  <td className="p-4 font-semibold text-[#1b1c1c]">{inv.customer_name}</td>
-                  <td className="p-4 text-xs font-mono text-[#8A7563]">{inv.checkin_date}</td>
-                  <td className="p-4 text-right font-mono font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')}</td>
+                <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
+                  <td className="p-4 font-mono font-bold text-[#5C4632] text-left">{inv.id}</td>
+                  <td className="p-4 font-mono text-xs text-[#8A7563] text-left">{inv.deposit_ref.replace('DEP', 'HĐ')} ({inv.room_name})</td>
+                  <td className="p-4 font-semibold text-[#1b1c1c] text-left">{inv.customer_name}</td>
+                  <td className="p-4 text-xs font-mono text-[#8A7563] text-left">{inv.checkin_date}</td>
+                  <td className="p-4 text-right font-mono font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')} ₫</td>
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
@@ -400,20 +527,20 @@ export default function AccountantCheckinPage() {
                        inv.status === 'pending' ? 'Chờ TT' : 'Bản nháp'}
                     </span>
                   </td>
-                  <td className="p-4 text-right">
-                    <div className="flex justify-end gap-1.5">
+                  <td className="p-4">
+                    <div className="flex items-center justify-center gap-2">
                       {inv.status === 'pending' && (
                         <button
                           onClick={() => handleConfirmPayment(inv.id)}
-                          className="px-2.5 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:opacity-90 cursor-pointer"
+                          className="px-2.5 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:bg-[#4E6840] transition-colors cursor-pointer active:scale-[0.95] focus:outline-none focus:ring-2 focus:ring-[#5F7D4E]/40"
                         >
                           Xác nhận thu
                         </button>
                       )}
-                      <button className="p-1 hover:bg-[#E7DED2] rounded text-[#8A7563] cursor-pointer">
+                      <button className="p-1.5 hover:bg-[#E7DED2] rounded text-[#8A7563] hover:text-[#5C4632] transition-colors cursor-pointer active:scale-[0.93] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40">
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button className="p-1 hover:bg-[#E7DED2] rounded text-[#8A7563] cursor-pointer">
+                      <button className="p-1.5 hover:bg-[#E7DED2] rounded text-[#8A7563] hover:text-[#5C4632] transition-colors cursor-pointer active:scale-[0.93] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40">
                         <Printer className="w-4 h-4" />
                       </button>
                     </div>
@@ -433,9 +560,9 @@ export default function AccountantCheckinPage() {
         <div className="p-3 bg-[#fbf9f8] flex justify-between items-center border-t border-[#DCCFC0] text-xs text-[#8A7563]">
           <span>Hiển thị {Math.min(15, filteredInvoices.length)} / {filteredInvoices.length} bản ghi</span>
           <div className="flex gap-1.5">
-            <button className="px-2.5 py-1 border border-[#DCCFC0] rounded hover:bg-[#E7DED2] disabled:opacity-50 cursor-pointer" disabled>Trước</button>
-            <button className="px-3 py-1 bg-[#5C4632] text-white rounded font-bold cursor-pointer">1</button>
-            <button className="px-2.5 py-1 border border-[#DCCFC0] rounded hover:bg-[#E7DED2] disabled:opacity-50 cursor-pointer" disabled={filteredInvoices.length <= 15}>Sau</button>
+            <button className="px-2.5 py-1 border border-[#DCCFC0] rounded-lg hover:bg-[#E7DED2] hover:text-[#5C4632] disabled:opacity-50 disabled:pointer-events-none cursor-pointer active:scale-[0.95] transition-all focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40" disabled>Trước</button>
+            <button className="px-3 py-1 bg-[#5C4632] text-white rounded-lg font-bold cursor-default focus:outline-none">1</button>
+            <button className="px-2.5 py-1 border border-[#DCCFC0] rounded-lg hover:bg-[#E7DED2] hover:text-[#5C4632] disabled:opacity-50 disabled:pointer-events-none cursor-pointer active:scale-[0.95] transition-all focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40" disabled={filteredInvoices.length <= 15}>Sau</button>
           </div>
         </div>
       </div>
