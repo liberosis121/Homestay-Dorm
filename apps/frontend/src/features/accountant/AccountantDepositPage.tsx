@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, CreditCard, Save, Eye, QrCode
+  Search, CreditCard, Save, Eye, QrCode, CheckCircle2
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, DepositInvoice, Profile, Room, CustomerDepositRequest } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 
 export default function AccountantDepositPage() {
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
@@ -22,6 +23,19 @@ export default function AccountantDepositPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [requestSearchQuery, setRequestSearchQuery] = useState('');
+
+  // Toast and Drawer state
+  const [toastMessage, setToastMessage] = useState('');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedDetailInvoice, setSelectedDetailInvoice] = useState<DepositInvoice | null>(null);
+
+  // Clear toast automatically
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   // Load initial data
   useEffect(() => {
@@ -53,7 +67,7 @@ export default function AccountantDepositPage() {
   const handleCreateInvoice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRequestId || !selectedCustomerId || !selectedRoomId) {
-      alert('Vui lòng chọn phiếu đặt cọc trước!');
+      setToastMessage('Vui lòng chọn phiếu đặt cọc trước!');
       return;
     }
 
@@ -117,7 +131,7 @@ export default function AccountantDepositPage() {
 
       // Reset form
       handleResetForm();
-      alert('Tạo hóa đơn cọc thành công!');
+      setToastMessage('Tạo hóa đơn cọc thành công.');
     }
   };
 
@@ -130,6 +144,10 @@ export default function AccountantDepositPage() {
     if (res.data) {
       const updatedDb = getMockDB();
       setInvoices(updatedDb.deposit_invoices || []);
+      if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
+        setSelectedDetailInvoice({ ...selectedDetailInvoice, status: nextStatus });
+      }
+      setToastMessage(nextStatus === 'paid' ? 'Đã xác nhận thu tiền thành công.' : 'Đã hủy hóa đơn thành công.');
     }
   };
 
@@ -603,7 +621,10 @@ export default function AccountantDepositPage() {
                           </button>
                         </>
                       )}
-                      <button className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]">
+                      <button 
+                        onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
+                        className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]"
+                      >
                         <Eye className="w-4 h-4" />
                       </button>
                     </div>
@@ -629,6 +650,25 @@ export default function AccountantDepositPage() {
           </div>
         </div>
       </div>
+
+      {/* Invoice Detail Drawer */}
+      <InvoiceDetailDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        invoiceType="deposit"
+        invoiceData={selectedDetailInvoice}
+        onConfirmPayment={(id) => {
+          handleUpdateStatus(id, 'paid');
+        }}
+      />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-[9999] bg-[#E8EDE5] border border-[#5F7D4E]/30 text-[#5F7D4E] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4" />
+          <span className="text-xs font-semibold">{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

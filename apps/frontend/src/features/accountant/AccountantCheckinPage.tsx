@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Search, Eye, Printer, Save
+  Search, Eye, Printer, Save, CheckCircle2
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
+import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 
 export default function AccountantCheckinPage() {
   const [invoices, setInvoices] = useState<CheckinInvoice[]>([]);
@@ -19,6 +20,19 @@ export default function AccountantCheckinPage() {
   const [pendingDeposits, setPendingDeposits] = useState<DepositInvoice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Toast and Drawer state
+  const [toastMessage, setToastMessage] = useState('');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedDetailInvoice, setSelectedDetailInvoice] = useState<CheckinInvoice | null>(null);
+
+  // Clear toast automatically
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   // Load data
   useEffect(() => {
@@ -51,7 +65,7 @@ export default function AccountantCheckinPage() {
   const handleCreateCheckinInvoice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedContractId || !selectedDeposit) {
-      alert('Vui lòng chọn một hợp đồng đã duyệt!');
+      setToastMessage('Vui lòng chọn một hợp đồng đã duyệt!');
       return;
     }
 
@@ -93,7 +107,7 @@ export default function AccountantCheckinPage() {
       setSelectedContractId('');
       setCardFeeChecked(true);
       setCleaningFeeChecked(true);
-      alert('Lập hóa đơn nhận phòng thành công!');
+      setToastMessage('Lập hóa đơn nhận phòng thành công.');
     }
   };
 
@@ -102,6 +116,10 @@ export default function AccountantCheckinPage() {
     if (res.data) {
       const db = getMockDB();
       setInvoices(db.checkin_invoices || []);
+      if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
+        setSelectedDetailInvoice({ ...selectedDetailInvoice, status: 'paid' });
+      }
+      setToastMessage('Đã xác nhận thu tiền thành công.');
     }
   };
 
@@ -533,7 +551,10 @@ export default function AccountantCheckinPage() {
                           Xác nhận thu
                         </button>
                       )}
-                      <button className="p-1.5 hover:bg-[#E7DED2] rounded text-[#8A7563] hover:text-[#5C4632] transition-colors cursor-pointer active:scale-[0.93] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40">
+                      <button 
+                        onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
+                        className="p-1.5 hover:bg-[#E7DED2] rounded text-[#8A7563] hover:text-[#5C4632] transition-colors cursor-pointer active:scale-[0.93] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40"
+                      >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button className="p-1.5 hover:bg-[#E7DED2] rounded text-[#8A7563] hover:text-[#5C4632] transition-colors cursor-pointer active:scale-[0.93] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40">
@@ -562,6 +583,25 @@ export default function AccountantCheckinPage() {
           </div>
         </div>
       </div>
+
+      {/* Invoice Detail Drawer */}
+      <InvoiceDetailDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        invoiceType="checkin"
+        invoiceData={selectedDetailInvoice}
+        onConfirmPayment={(id) => {
+          handleConfirmPayment(id);
+        }}
+      />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-[9999] bg-[#E8EDE5] border border-[#5F7D4E]/30 text-[#5F7D4E] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4" />
+          <span className="text-xs font-semibold">{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }
