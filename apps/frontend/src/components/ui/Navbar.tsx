@@ -40,31 +40,19 @@ export default function Navbar() {
         {/* MIDDLE SIDE: Navigation Links */}
         <div className="hidden md:flex items-center gap-8">
           <Link 
-            className={`font-body-md px-4 py-2 rounded-xl transition-all duration-200 active:scale-95 cursor-pointer ${
-              location.pathname === '/' 
-                ? 'text-primary font-extrabold bg-primary/10 hover:bg-primary/15' 
-                : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
-            }`} 
+            className={`font-body-md transition-colors ${location.pathname === '/' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`} 
             to="/"
           >
             Giới thiệu
           </Link>
           <Link 
-            className={`font-body-md px-4 py-2 rounded-xl transition-all duration-200 active:scale-95 cursor-pointer ${
-              location.pathname === '/customer/services' 
-                ? 'text-primary font-extrabold bg-primary/10 hover:bg-primary/15' 
-                : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
-            }`}
+            className={`font-body-md transition-colors ${location.pathname === '/customer/services' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`}
             to="/customer/services"
           >
             Dịch vụ
           </Link>
           <Link 
-            className={`font-body-md px-4 py-2 rounded-xl transition-all duration-200 active:scale-95 cursor-pointer ${
-              location.pathname.includes('/rooms') 
-                ? 'text-primary font-extrabold bg-primary/10 hover:bg-primary/15' 
-                : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
-            }`} 
+            className={`font-body-md transition-colors ${location.pathname.includes('/rooms') ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`} 
             to="/rooms"
           >
             Phòng trống
