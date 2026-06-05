@@ -207,7 +207,7 @@ export default function CustomDatePicker({
   const placeholderClass = isSurface ? 'text-on-surface-variant' : 'text-[#b5a89c]';
 
   return (
-    <div className={`space-y-1.5 ${className}`} ref={containerRef}>
+    <div className={`relative space-y-1.5 ${className}`} ref={containerRef}>
       {/* Label and Required Indicator */}
       <FormLabel label={label || ''} required={required} />
 

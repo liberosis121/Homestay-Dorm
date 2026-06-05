@@ -7,7 +7,6 @@ import {
   CheckCircle,
   ClipboardList,
   Clock,
-  Eye,
   MapPin,
   Send,
   SlidersHorizontal,
@@ -102,10 +101,41 @@ const statusLabel = (value?: string) => ({
   maintenance: 'Bảo trì',
 }[value || ''] || 'Chưa rõ');
 
-const InfoTile = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-2xl bg-[#f7f4ef] px-3.5 py-3">
-    <p className="text-[11px] font-bold uppercase tracking-wide text-[#7f756b]">{label}</p>
-    <p className="mt-1 text-sm font-semibold text-[#3f3528] line-clamp-2">{value}</p>
+const formatDate = (value?: string) => {
+  if (!value) return 'Chưa chọn';
+  const [year, month, day] = value.split('-');
+  return day && month && year ? `${day}/${month}/${year}` : value;
+};
+
+const viewingTimeLabel = (registration: RentalRegistration) => {
+  const date = formatDate(registration.preferred_viewing_date);
+  const time = registration.preferred_viewing_time || 'Chưa chọn giờ';
+  return `${date} • ${time.replace('-', ' – ')}`;
+};
+
+const timeOptions = Array.from({ length: 27 }, (_, index) => {
+  const totalMinutes = 7 * 60 + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  return { value, label: value };
+});
+
+const InfoGrid = ({ items }: { items: { label: string; value: string; wide?: boolean }[] }) => (
+  <dl className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-4">
+    {items.map((item) => (
+      <div key={item.label} className={item.wide ? 'sm:col-span-2 xl:col-span-3' : ''}>
+        <dt className="text-[11px] font-bold uppercase tracking-wide text-[#8a7b6a]">{item.label}</dt>
+        <dd className="mt-1 text-sm font-semibold text-[#3f3528] leading-relaxed">{item.value}</dd>
+      </div>
+    ))}
+  </dl>
+);
+
+const SummaryLine = ({ label, value }: { label: string; value: string }) => (
+  <div className="min-w-0">
+    <span className="block text-[11px] font-bold uppercase tracking-wide text-[#8a7b6a]">{label}</span>
+    <span className="mt-0.5 block truncate text-sm font-semibold text-[#3f3528]">{value}</span>
   </div>
 );
 
@@ -253,7 +283,7 @@ export default function CreateFromRegistrationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="bg-white w-full max-w-6xl rounded-[28px] shadow-2xl overflow-hidden border border-[#d8cbb8]">
+      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-[#d8cbb8] bg-white shadow-2xl">
         <div className="px-6 py-4 border-b border-[#d8cbb8] flex justify-between items-center bg-[#f7f4ef]">
           <div>
             <h3 className="font-headline-md text-xl text-[#4f6f4a]">Tạo lịch xem phòng</h3>
@@ -264,21 +294,23 @@ export default function CreateFromRegistrationModal({
           </button>
         </div>
 
-        <div className="max-h-[82vh] overflow-y-auto bg-[#fbfaf7] p-5">
-          {!selectedRegistration ? (
+        {!selectedRegistration ? (
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] p-5 pb-8">
             <RegistrationPicker registrations={registrations} branchName={branchName} onSelect={selectRegistration} />
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <button type="button" onClick={() => setSelectedRegistration(null)} className="inline-flex items-center gap-2 text-sm font-semibold text-[#4f6f4a] hover:text-[#3f6038]">
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] p-5 pb-10">
+              <div className="space-y-5">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRegistration(null)}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#d8cbb8] bg-white px-4 py-2 text-sm font-semibold text-[#4f6f4a] shadow-sm transition-all hover:border-[#9a866b] hover:bg-[#f4f1ec] hover:text-[#3f6038] active:scale-[0.98]"
+                >
                   <ArrowLeft className="h-4 w-4" />
                   Chọn phiếu khác
                 </button>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#7a6448]">
-                  <span className="rounded-full bg-white border border-[#d8cbb8] px-3 py-1">1. Phiếu nhu cầu</span>
-                  <span className="rounded-full bg-white border border-[#d8cbb8] px-3 py-1">2. Chọn phòng</span>
-                  <span className="rounded-full bg-white border border-[#d8cbb8] px-3 py-1">3. Lập lịch</span>
-                </div>
               </div>
 
               <div className="grid grid-cols-12 gap-5">
@@ -292,15 +324,18 @@ export default function CreateFromRegistrationModal({
                       </div>
                       <span className="rounded-full bg-[#e7ede4] px-3 py-1 text-xs font-bold text-[#4f6f4a]">Phiếu đang xử lý</span>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <InfoTile label="Chi nhánh mong muốn" value={selectedRegistration.preferred_branch_name || branchName(selectedRegistration.preferred_branch_id)} />
-                      <InfoTile label="Loại phòng" value={selectedRegistration.preferred_room_type || 'Linh hoạt'} />
-                      <InfoTile label="Ngân sách" value={budgetLabel(selectedRegistration.budget_range)} />
-                      <InfoTile label="Số người" value={`${selectedRegistration.occupants_count || 1} người`} />
-                      <InfoTile label="Giới tính" value={genderLabel(selectedRegistration.gender)} />
-                      <InfoTile label="Ngày muốn xem" value={selectedRegistration.preferred_viewing_date || 'Chưa chọn'} />
-                      <InfoTile label="Khung giờ rảnh" value={selectedRegistration.preferred_viewing_time || 'Chưa chọn'} />
-                      <InfoTile label="Ngày vào ở" value={selectedRegistration.move_in_date || 'Chưa chọn'} />
+                    <div className="mt-5 border-t border-[#eee6dc] pt-4">
+                      <InfoGrid
+                        items={[
+                          { label: 'Chi nhánh mong muốn', value: selectedRegistration.preferred_branch_name || branchName(selectedRegistration.preferred_branch_id) },
+                          { label: 'Loại phòng', value: selectedRegistration.preferred_room_type || 'Linh hoạt' },
+                          { label: 'Số người', value: `${selectedRegistration.occupants_count || 1} người` },
+                          { label: 'Ngân sách', value: budgetLabel(selectedRegistration.budget_range) },
+                          { label: 'Giới tính', value: genderLabel(selectedRegistration.gender) },
+                          { label: 'Ngày vào ở', value: formatDate(selectedRegistration.move_in_date) },
+                          { label: 'Thời gian xem phòng mong muốn', value: viewingTimeLabel(selectedRegistration), wide: true },
+                        ]}
+                      />
                     </div>
                     {(selectedRegistration.note || selectedRegistration.viewing_time_note) && (
                       <div className="mt-4 rounded-2xl bg-[#f4f1ec] px-4 py-3 text-sm text-[#5f584f]">
@@ -315,18 +350,18 @@ export default function CreateFromRegistrationModal({
                       <SlidersHorizontal className="h-5 w-5 text-[#4f6f4a]" />
                       <h4 className="font-bold text-[#3f3528]">Phòng/giường hệ thống gợi ý</h4>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-                      {!isSale && <CustomSelect value={filters.branchId} onChange={(value) => setFilters((prev) => ({ ...prev, branchId: value }))} options={[{ value: '', label: 'Tất cả CN' }, ...branches.map((branch) => ({ value: branch.id, label: branch.name.replace('Chi nhánh ', '') }))]} triggerClassName="rounded-xl border-[#d8cbb8] text-sm" theme="sale" />}
-                      <CustomSelect value={filters.roomType} onChange={(value) => setFilters((prev) => ({ ...prev, roomType: value }))} options={[{ value: '', label: 'Mọi loại phòng' }, ...Array.from(new Set(rooms.map((room) => room.room_type))).map((type) => ({ value: type, label: type }))]} triggerClassName="rounded-xl border-[#d8cbb8] text-sm" theme="sale" />
-                      <CustomSelect value={filters.priceRange} onChange={(value) => setFilters((prev) => ({ ...prev, priceRange: value }))} options={[{ value: '', label: 'Mọi mức giá' }, { value: 'under_2m', label: 'Dưới 2tr' }, { value: '2m_5m', label: '2-5tr' }, { value: '5m_7m', label: '5-7tr' }]} triggerClassName="rounded-xl border-[#d8cbb8] text-sm" theme="sale" />
-                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'partial', label: 'Còn chỗ' }, { value: 'occupied', label: 'Đã thuê' }]} triggerClassName="rounded-xl border-[#d8cbb8] text-sm" theme="sale" />
-                      <CustomSelect value={filters.sort} onChange={(value) => setFilters((prev) => ({ ...prev, sort: value }))} options={[{ value: 'match', label: 'Phù hợp nhất' }, { value: 'price_asc', label: 'Giá tăng' }, { value: 'price_desc', label: 'Giá giảm' }]} triggerClassName="rounded-xl border-[#d8cbb8] text-sm" theme="sale" />
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-4">
+                      {!isSale && <CustomSelect value={filters.branchId} onChange={(value) => setFilters((prev) => ({ ...prev, branchId: value }))} options={[{ value: '', label: 'Tất cả CN' }, ...branches.map((branch) => ({ value: branch.id, label: branch.name.replace('Chi nhánh ', '') }))]} className="min-w-[150px]" triggerClassName="rounded-xl border-[#d8cbb8] text-sm py-2 px-3 min-h-[40px]" dropdownClassName="min-w-[190px]" theme="sale" />}
+                      <CustomSelect value={filters.roomType} onChange={(value) => setFilters((prev) => ({ ...prev, roomType: value }))} options={[{ value: '', label: 'Mọi loại phòng' }, ...Array.from(new Set(rooms.map((room) => room.room_type))).map((type) => ({ value: type, label: type }))]} className="min-w-[150px]" triggerClassName="rounded-xl border-[#d8cbb8] text-sm py-2 px-3 min-h-[40px]" dropdownClassName="min-w-[190px]" theme="sale" />
+                      <CustomSelect value={filters.priceRange} onChange={(value) => setFilters((prev) => ({ ...prev, priceRange: value }))} options={[{ value: '', label: 'Mọi mức giá' }, { value: 'under_2m', label: 'Dưới 2tr' }, { value: '2m_5m', label: '2-5tr' }, { value: '5m_7m', label: '5-7tr' }]} className="min-w-[150px]" triggerClassName="rounded-xl border-[#d8cbb8] text-sm py-2 px-3 min-h-[40px]" dropdownClassName="min-w-[180px]" theme="sale" />
+                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'partial', label: 'Còn chỗ' }, { value: 'occupied', label: 'Đã thuê' }]} className="min-w-[160px]" triggerClassName="rounded-xl border-[#d8cbb8] text-sm py-2 px-3 min-h-[40px]" dropdownClassName="min-w-[190px]" theme="sale" />
+                      <CustomSelect value={filters.sort} onChange={(value) => setFilters((prev) => ({ ...prev, sort: value }))} options={[{ value: 'match', label: 'Phù hợp nhất' }, { value: 'price_asc', label: 'Giá tăng' }, { value: 'price_desc', label: 'Giá giảm' }]} className="min-w-[150px]" triggerClassName="rounded-xl border-[#d8cbb8] text-sm py-2 px-3 min-h-[40px]" dropdownClassName="min-w-[180px]" theme="sale" />
                     </div>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {allAmenities.map((amenity) => {
                         const active = amenityFilters.includes(amenity);
                         return (
-                          <button key={amenity} type="button" onClick={() => setAmenityFilters((list) => active ? list.filter((item) => item !== amenity) : [...list, amenity])} className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${active ? 'bg-[#6f583c] border-[#6f583c] text-white' : 'bg-white border-[#d8cbb8] text-[#5f584f] hover:bg-[#f0ebe3]'}`}>
+                          <button key={amenity} type="button" onClick={() => setAmenityFilters((list) => active ? list.filter((item) => item !== amenity) : [...list, amenity])} className={`rounded-full border px-3 py-1 text-xs font-semibold transition-all active:scale-[0.97] ${active ? 'bg-[#6f583c] border-[#6f583c] text-white shadow-sm' : 'bg-white border-[#d8cbb8] text-[#5f584f] hover:border-[#9a866b] hover:bg-[#f0ebe3]'}`}>
                             {amenity}
                           </button>
                         );
@@ -337,7 +372,7 @@ export default function CreateFromRegistrationModal({
                         const match = matchInfo(room, selectedRegistration);
                         const active = selectedRoom?.id === room.id;
                         return (
-                          <button key={room.id} type="button" onMouseEnter={() => setHoveredRoom(room)} onFocus={() => setHoveredRoom(room)} onClick={() => { setSelectedRoom(room); setHoveredRoom(room); }} className={`w-full text-left rounded-2xl border p-4 transition-all ${active ? 'border-[#4f6f4a] bg-[#f2f7ef] shadow-md' : 'border-[#d8cbb8] bg-white hover:border-[#9a866b] hover:bg-[#faf8f4]'}`}>
+                          <button key={room.id} type="button" onMouseEnter={() => setHoveredRoom(room)} onFocus={() => setHoveredRoom(room)} onClick={() => { setSelectedRoom(room); setHoveredRoom(room); }} className={`w-full text-left rounded-2xl border p-4 transition-all active:scale-[0.995] ${active ? 'border-[#4f6f4a] bg-[#f2f7ef] shadow-md' : 'border-[#d8cbb8] bg-white hover:border-[#9a866b] hover:bg-[#faf8f4] hover:shadow-sm'}`}>
                             <div className="flex gap-4">
                               <img src={room.image_url} alt={room.name} className="h-20 w-24 rounded-2xl object-cover bg-[#eee8df]" />
                               <div className="min-w-0 flex-1">
@@ -366,21 +401,24 @@ export default function CreateFromRegistrationModal({
 
                 <aside className="col-span-12 lg:col-span-4 space-y-5">
                   <section className="rounded-2xl border border-[#d8cbb8] bg-white p-5 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Eye className="h-5 w-5 text-[#4f6f4a]" />
+                    <div className="mb-4">
                       <h4 className="font-bold text-[#3f3528]">Đối chiếu nhanh</h4>
                     </div>
                     {comparisonRoom ? (
                       <div className="space-y-2">
                         <p className="font-bold text-[#3f3528]">{comparisonRoom.name}</p>
                         {matchInfo(comparisonRoom, selectedRegistration).checks.map((item) => (
-                          <div key={item.label} className="rounded-xl bg-[#f7f4ef] px-3 py-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold text-[#5f584f]">{item.label}</span>
-                              {item.ok ? <CheckCircle className="h-4 w-4 text-[#4f6f4a]" /> : <AlertTriangle className="h-4 w-4 text-[#b27432]" />}
+                          <div key={item.label} className="rounded-xl border border-[#eee6dc] bg-[#fbfaf7] px-3 py-2.5">
+                            <div className="flex items-start gap-2">
+                              <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${item.ok ? 'bg-[#e7ede4] text-[#4f6f4a]' : 'bg-[#fff3df] text-[#a66f2b]'}`}>
+                                {item.ok ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-[#5f584f]">{item.label}</p>
+                                <p className="mt-1 text-xs text-[#7f756b]">Khách: {item.need}</p>
+                                <p className="text-xs text-[#3f3528]">Phòng: {item.actual}</p>
+                              </div>
                             </div>
-                            <p className="mt-1 text-xs text-[#7f756b]">Khách: {item.need}</p>
-                            <p className="text-xs text-[#3f3528]">Phòng: {item.actual}</p>
                           </div>
                         ))}
                       </div>
@@ -393,11 +431,17 @@ export default function CreateFromRegistrationModal({
                       <h4 className="font-bold text-[#3f3528]">Lập lịch xem phòng</h4>
                     </div>
                     <div className="space-y-3">
-                      <InfoTile label="Khách hàng" value={selectedRegistration.customer_name} />
-                      <InfoTile label="Phòng đã chọn" value={selectedRoom?.name || 'Chưa chọn'} />
+                      <div className="rounded-2xl border border-[#eee6dc] bg-[#fbfaf7] p-3">
+                        <InfoGrid
+                          items={[
+                            { label: 'Khách hàng', value: selectedRegistration.customer_name },
+                            { label: 'Phòng đã chọn', value: selectedRoom?.name || 'Chưa chọn' },
+                          ]}
+                        />
+                      </div>
                       <div>
                         <label className="block text-xs font-bold text-[#4e453c] mb-1.5">Ngày xem</label>
-                        <CustomDatePicker value={form.viewDate} min="2026-06-02" onChange={(val) => setForm((prev) => ({ ...prev, viewDate: val }))} placeholder="Chọn ngày xem" error={errors.viewDate} />
+                        <CustomDatePicker value={form.viewDate} min="2026-06-02" onChange={(val) => setForm((prev) => ({ ...prev, viewDate: val }))} placeholder="Chọn ngày xem" error={errors.viewDate} className="z-[70]" />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <TimeField label="Bắt đầu" value={form.startTime} error={errors.startTime} onChange={(value) => setForm((prev) => ({ ...prev, startTime: value }))} />
@@ -412,16 +456,18 @@ export default function CreateFromRegistrationModal({
                 </aside>
               </div>
 
-              <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-[#d8cbb8] bg-white/95 backdrop-blur px-5 py-4 flex justify-end gap-3">
-                <button type="button" onClick={onClose} className="rounded-full border border-[#d8cbb8] px-5 py-2.5 text-sm font-semibold text-[#4e453c] hover:bg-[#f4f1ec]">Hủy bỏ</button>
-                <button type="submit" className="inline-flex items-center gap-2 rounded-full bg-[#6f583c] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#6f583c]/20 hover:opacity-90 active:scale-95">
-                  Tạo lịch hẹn & gửi cho khách
-                  <Send className="h-4 w-4" />
-                </button>
               </div>
-            </form>
-          )}
-        </div>
+            </div>
+
+            <div className="flex shrink-0 justify-end gap-3 border-t border-[#d8cbb8] bg-white px-5 py-4 shadow-[0_-8px_18px_rgba(63,53,40,0.06)]">
+              <button type="button" onClick={onClose} className="rounded-full border border-[#d8cbb8] px-5 py-2.5 text-sm font-semibold text-[#4e453c] transition-all hover:border-[#9a866b] hover:bg-[#f4f1ec] active:scale-[0.98]">Hủy bỏ</button>
+              <button type="submit" className="inline-flex items-center gap-2 rounded-full bg-[#6f583c] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#6f583c]/20 transition-all hover:bg-[#5f4a32] active:scale-[0.98]">
+                Tạo lịch hẹn & gửi cho khách
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -430,9 +476,17 @@ export default function CreateFromRegistrationModal({
 const TimeField = ({ label, value, error, onChange }: { label: string; value: string; error?: string; onChange: (value: string) => void }) => (
   <div>
     <label className="block text-xs font-bold text-[#4e453c] mb-1.5">{label}</label>
-    <div className="relative">
-      <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-      <input type="time" value={value} onChange={(event) => onChange(event.target.value)} className={`w-full rounded-2xl border bg-white py-3 pl-9 pr-3 text-sm focus:outline-none focus:border-[#6f583c] ${error ? 'border-error bg-error/5' : 'border-[#d8cbb8]'}`} />
+    <div className="relative z-[60]">
+      <Clock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[#7f756b]" />
+      <CustomSelect
+        value={value}
+        onChange={onChange}
+        options={timeOptions}
+        placeholder="Giờ"
+        theme="sale"
+        triggerClassName={`rounded-2xl py-3 pl-9 pr-3 text-sm ${error ? 'border-error bg-error/5' : 'border-[#d8cbb8]'}`}
+        dropdownClassName="min-w-[120px]"
+      />
     </div>
     {error && <p className="mt-1 text-xs text-error">{error}</p>}
   </div>
@@ -464,7 +518,7 @@ const RegistrationPicker = ({
           <p className="text-xs text-[#7f756b] mt-1">Các phiếu đã lên lịch sẽ không xuất hiện trong danh sách này.</p>
         </div>
       ) : registrations.map((registration) => (
-        <button key={registration.id} type="button" onClick={() => onSelect(registration)} className="group text-left rounded-2xl border border-[#d8cbb8] bg-white p-4 hover:border-[#9a866b] hover:bg-[#f7f4ef] transition-all shadow-sm">
+        <button key={registration.id} type="button" onClick={() => onSelect(registration)} className="group text-left rounded-2xl border border-[#d8cbb8] bg-white p-4 shadow-sm transition-all hover:border-[#9a866b] hover:bg-[#f7f4ef] hover:shadow-md active:scale-[0.995]">
           <div className="flex flex-col xl:flex-row xl:items-start gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -478,15 +532,15 @@ const RegistrationPicker = ({
                 <span>{genderLabel(registration.gender)}</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-[1.7]">
-              <InfoTile label="Chi nhánh" value={registration.preferred_branch_name || branchName(registration.preferred_branch_id)} />
-              <InfoTile label="Loại phòng" value={registration.preferred_room_type || 'Linh hoạt'} />
-              <InfoTile label="Số người" value={`${registration.occupants_count || 1} người`} />
-              <InfoTile label="Ngân sách" value={budgetLabel(registration.budget_range)} />
-              <InfoTile label="Ngày muốn xem" value={registration.preferred_viewing_date || 'Chưa chọn'} />
-              <InfoTile label="Khung giờ rảnh" value={registration.preferred_viewing_time || 'Chưa chọn'} />
-              <InfoTile label="Hình thức" value={registration.rental_type || 'Chưa rõ'} />
-              <InfoTile label="Ngày vào ở" value={registration.move_in_date || 'Chưa chọn'} />
+            <div className="grid flex-[1.7] grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
+              <SummaryLine label="Chi nhánh" value={registration.preferred_branch_name || branchName(registration.preferred_branch_id)} />
+              <SummaryLine label="Loại phòng" value={registration.preferred_room_type || 'Linh hoạt'} />
+              <SummaryLine label="Số người" value={`${registration.occupants_count || 1} người`} />
+              <SummaryLine label="Ngân sách" value={budgetLabel(registration.budget_range)} />
+              <SummaryLine label="Thời gian xem mong muốn" value={viewingTimeLabel(registration)} />
+              <SummaryLine label="Hình thức" value={registration.rental_type || 'Chưa rõ'} />
+              <SummaryLine label="Ngày vào ở" value={formatDate(registration.move_in_date)} />
+              <SummaryLine label="Giới tính" value={genderLabel(registration.gender)} />
             </div>
           </div>
           {registration.note && <p className="mt-3 text-sm text-[#5f584f] line-clamp-2">{registration.note}</p>}
