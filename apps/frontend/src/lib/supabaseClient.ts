@@ -660,6 +660,17 @@ const INITIAL_DB = {
       status: 'cancelled', timeline_step: 1,
       note: 'Không liên lạc được với khách hàng sau 3 cuộc gọi xác nhận trước giờ hẹn.',
       created_at: '2026-05-30T14:00:00Z'
+    },
+    {
+      id: 'vs-test-unavailable', customer_id: 'u-6', room_id: 'r-3',
+      room_name: 'Phòng 201 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
+      scheduled_date: '2026-05-18', scheduled_time: '15:00',
+      staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
+      status: 'completed', timeline_step: 3,
+      note: 'Tình huống test: phòng này hiện đã có người thuê nên khách không thể gửi yêu cầu đặt cọc.',
+      created_at: '2026-05-16T09:00:00Z'
     }
   ] as ViewingSchedule[],
   customer_deposit_requests: [
@@ -969,6 +980,13 @@ export const initializeMockDB = () => {
       if (db && (!db.viewing_schedules || db.viewing_schedules.length < 8)) {
         db.viewing_schedules = INITIAL_DB.viewing_schedules;
         updated = true;
+      }
+      if (db && db.viewing_schedules && !db.viewing_schedules.some((s: ViewingSchedule) => s.id === 'vs-test-unavailable')) {
+        const testSchedule = INITIAL_DB.viewing_schedules.find(s => s.id === 'vs-test-unavailable');
+        if (testSchedule) {
+          db.viewing_schedules = [...db.viewing_schedules, testSchedule];
+          updated = true;
+        }
       }
       if (db && (!db.customer_deposit_requests || hasEncodingIssue(db.customer_deposit_requests))) {
         db.customer_deposit_requests = INITIAL_DB.customer_deposit_requests;
