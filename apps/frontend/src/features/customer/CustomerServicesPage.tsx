@@ -176,51 +176,57 @@ function ServiceDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-lg rounded-[28px] shadow-2xl border border-outline-variant animate-fade-in-up max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-outline-variant/30 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-bold text-on-surface font-lexend">Chi tiết dịch vụ</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
-            <X className="w-5 h-5 text-on-surface-variant" />
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-primary/10 animate-fade-in-up max-h-[90vh] overflow-y-auto">
+        {/* Header with clean theme alignment */}
+        <div className="border-b border-primary/10 sticky top-0 bg-[#FAF9F6]/95 backdrop-blur-md z-10 px-6 py-4 flex items-center justify-between">
+          <span className="inline-flex items-center rounded-full border border-[#EBE8E0] bg-[#FAF2EC] px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-[#8C7355]">
+            Chi tiết dịch vụ
+          </span>
+          <button 
+            onClick={onClose} 
+            className="p-1.5 rounded-full hover:bg-primary/10 text-on-surface-variant hover:text-primary transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="px-6 py-5 space-y-5">
           {/* Card Header */}
-          <div className="flex gap-4 items-start">
-            <div className="p-3.5 bg-primary/10 rounded-2xl text-primary flex-shrink-0">
-              <Zap className="w-6 h-6" />
+          <div className="flex gap-4 items-start pb-4 border-b border-outline-variant/10">
+            <div className="p-3 bg-primary/10 rounded-2xl text-primary flex-shrink-0">
+              <Zap className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-on-surface text-lg font-lexend">{service.name}</h3>
-              <span className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full mt-1.5 uppercase tracking-wide border ${service.category === 'essential' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                  service.category === 'utility' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                    service.category === 'convenience' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                      'bg-purple-50 text-purple-700 border-purple-100'
-                }`}>
+              <h3 className="font-bold text-on-surface text-lg font-lexend tracking-tight">{service.name}</h3>
+              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5 uppercase tracking-wider border ${
+                service.category === 'essential' ? 'bg-blue-50/80 text-blue-700 border-blue-200' :
+                service.category === 'utility' ? 'bg-primary/10 text-primary border-primary/20' :
+                service.category === 'convenience' ? 'bg-amber-50/80 text-amber-700 border-amber-200' :
+                'bg-purple-50/80 text-purple-700 border-purple-200'
+              }`}>
                 {service.category === 'essential' ? 'Thiết yếu' : service.category === 'utility' ? 'Tiện ích' : service.category === 'convenience' ? 'Tiện nghi' : 'Cao cấp'}
               </span>
             </div>
           </div>
 
           {/* Description */}
-          <div>
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Mô tả dịch vụ</p>
-            <p className="text-sm text-on-surface leading-relaxed">{service.description}</p>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-primary/70 uppercase tracking-widest">Mô tả dịch vụ</p>
+            <p className="text-sm text-on-surface leading-relaxed font-medium">{service.description}</p>
           </div>
 
           {/* Pricing */}
-          <div className="bg-surface-container-low border border-outline-variant/60 rounded-2xl p-4">
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Đơn giá áp dụng</p>
+          <div className="bg-primary/[0.03] border border-primary/10 rounded-2xl p-4.5">
+            <p className="text-[10px] font-bold text-primary/70 uppercase tracking-widest mb-1">Đơn giá áp dụng</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-primary font-lexend">
+              <span className="text-2xl font-bold text-primary font-lexend tracking-tight">
                 {service.unit_price === 0 ? 'Miễn phí' : `${service.unit_price.toLocaleString('vi-VN')} VNĐ`}
               </span>
-              <span className="text-sm text-on-surface-variant font-medium">
+              <span className="text-xs text-on-surface-variant font-semibold">
                 {service.billing_cycle === 'monthly' ? '/Tháng' : service.billing_cycle === 'per_use' ? '/Lần' : service.billing_cycle === 'per_kwh' ? '/kWh' : '/m³'}
               </span>
             </div>
-            <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed font-medium">
+            <p className="text-xs text-on-surface-variant/80 mt-1.5 leading-relaxed font-medium">
               {service.billing_cycle === 'monthly' ? '* Tính phí định kỳ hàng tháng vào hóa đơn tổng.' :
                 service.billing_cycle === 'per_use' ? '* Tính phí dựa trên mỗi lần khách hàng sử dụng dịch vụ.' :
                   '* Tính phí thực tế theo chỉ số công tơ ghi nhận cuối tháng.'}
@@ -230,17 +236,19 @@ function ServiceDetailModal({
           {/* User Status */}
           {isRenter && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/30">
-                <p className="text-xs font-medium text-on-surface-variant mb-1">Trạng thái hệ thống</p>
-                <span className={`text-sm font-semibold ${service.status === 'available' ? 'text-emerald-600' : 'text-amber-600'
-                  }`}>
+              <div className="bg-[#FAF9F6] rounded-2xl p-3 border border-[#EBE8E0] flex flex-col justify-between">
+                <p className="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-wider mb-1">Trạng thái hệ thống</p>
+                <span className={`text-xs font-bold flex items-center gap-1 ${
+                  service.status === 'available' ? 'text-[#4C7A4F]' : 'text-[#8C7355]'
+                }`}>
                   {service.status === 'available' ? '✓ Đang mở' : '⏳ Sắp ra mắt'}
                 </span>
               </div>
-              <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/30">
-                <p className="text-xs font-medium text-on-surface-variant mb-1">Đăng ký của bạn</p>
-                <span className={`text-sm font-semibold ${isActive ? 'text-primary' : isSuspended ? 'text-amber-600' : 'text-on-surface-variant'
-                  }`}>
+              <div className="bg-[#FAF9F6] rounded-2xl p-3 border border-[#EBE8E0] flex flex-col justify-between">
+                <p className="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-wider mb-1">Đăng ký của bạn</p>
+                <span className={`text-xs font-bold flex items-center gap-1 ${
+                  isActive ? 'text-[#4C7A4F]' : isSuspended ? 'text-[#8C7355]' : 'text-on-surface-variant'
+                }`}>
                   {isActive ? '✓ Đang sử dụng' : isSuspended ? '⏸ Tạm ngưng' : '— Chưa đăng ký'}
                 </span>
               </div>
@@ -248,9 +256,9 @@ function ServiceDetailModal({
           )}
 
           {/* Policies */}
-          <div className="border border-outline-variant/80 rounded-2xl p-4 space-y-2">
-            <p className="text-xs font-bold text-on-surface uppercase tracking-wider mb-2">Chính sách sử dụng & huỷ dịch vụ</p>
-            <ul className="text-xs text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-4 font-medium">
+          <div className="bg-[#FAF9F6] border-l-4 border-primary/45 border-y border-r border-[#EBE8E0] rounded-2xl p-4 space-y-2">
+            <p className="text-xs font-bold text-on-surface uppercase tracking-wider">Chính sách sử dụng & huỷ dịch vụ</p>
+            <ul className="text-xs text-on-surface-variant leading-relaxed space-y-2 list-disc pl-4 font-medium">
               <li>Chi phí được chốt vào ngày 30 hàng tháng và cộng vào hoá đơn thanh toán phòng tổng hợp.</li>
               <li>Có thể đăng ký/huỷ dịch vụ bất cứ lúc nào qua Resident Portal. Hiệu lực tính phí/ngừng tính phí từ tháng tiếp theo.</li>
               <li>Đối với dịch vụ theo lần (vệ sinh phòng, giặt là): vui lòng hẹn trước tối thiểu 24 giờ. Huỷ hẹn muộn trong vòng 2 giờ tính 50% phí dịch vụ.</li>
@@ -265,20 +273,21 @@ function ServiceDetailModal({
               !isComingSoon && (
                 <button
                   onClick={() => { onClose(); onRegister?.(); }}
-                  className="px-6 py-2.5 bg-primary text-white rounded-full text-sm font-semibold hover:opacity-90 transition-all"
+                  className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow hover:bg-primary/95 cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   Đăng ký sử dụng
                 </button>
               )
             ) : (
-              <span className="text-sm font-semibold text-primary py-2.5 px-4 bg-primary/10 rounded-full flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Đang hoạt động
+              <span className="text-xs font-bold text-[#4C7A4F] py-2 px-4 bg-[#4C7A4F]/10 border border-[#4C7A4F]/25 rounded-full flex items-center gap-1.5 shadow-sm">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Đang hoạt động
               </span>
             )
           ) : (
             <button
               onClick={onClose}
-              className="px-6 py-2.5 border border-outline-variant rounded-full text-sm font-semibold hover:bg-surface-container transition-all"
+              className="px-6 py-2.5 border border-outline-variant bg-[#FAF8F5] text-sm font-bold text-on-surface-variant rounded-xl
+                         hover:bg-surface-container hover:text-on-surface cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
             >
               Đóng lại
             </button>

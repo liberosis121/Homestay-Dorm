@@ -543,13 +543,13 @@ export default function AccountantDepositPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="bg-[#E7DED2] text-[#8A7563] font-label-caps text-[11px] font-bold uppercase tracking-wider border-b border-[#DCCFC0] border-l-2 border-l-transparent">
                 <th className="p-4 text-left">Mã HĐ</th>
                 <th className="p-4 text-left">Khách hàng</th>
-                <th className="p-4 text-left">Phòng</th>
-                <th className="p-4 text-right">Số tiền</th>
+                <th className="p-4 text-center">Phòng</th>
+                <th className="p-4 text-center">Số tiền</th>
                 <th className="p-4 text-left">Hạn TT</th>
                 <th className="p-4 text-center">Trạng thái</th>
                 <th className="p-4 text-center">Thao tác</th>
@@ -560,8 +560,8 @@ export default function AccountantDepositPage() {
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
                   <td className="p-4 font-mono font-bold text-[#5C4632] text-sm text-left">{inv.id}</td>
                   <td className="p-4 text-sm font-medium text-[#1b1c1c] text-left">{inv.customer_name}</td>
-                  <td className="p-4 text-xs text-[#8A7563] text-left">{inv.room_name}</td>
-                  <td className="p-4 text-right font-mono font-semibold text-[#5C4632]">{inv.amount.toLocaleString('vi-VN')} đ</td>
+                  <td className="p-4 text-xs text-[#8A7563] text-center">{inv.room_name}</td>
+                  <td className="p-4 text-center font-mono font-medium text-[#1b1c1c] text-sm">{inv.amount.toLocaleString('vi-VN')} ₫</td>
                   <td className="p-4 text-xs font-mono text-[#8A7563] leading-tight text-left">
                     {(() => {
                       const parts = inv.deadline.split(' ');
