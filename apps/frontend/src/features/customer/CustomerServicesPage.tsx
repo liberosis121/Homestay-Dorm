@@ -1172,24 +1172,31 @@ function RenterServicesView({
                   <h3 className="font-bold text-on-surface text-sm">Lịch sử chi tiết (12 kỳ gần nhất)</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse">
+                  <table className="w-full min-w-[720px] table-fixed text-left text-sm border-collapse">
+                    <colgroup>
+                      <col className="w-[24%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[19%]" />
+                    </colgroup>
                     <thead>
                       <tr className="bg-surface-container border-b border-outline-variant/60 font-bold text-xs uppercase tracking-wider text-on-surface-variant">
-                        <th className="px-5 py-3.5">Kỳ</th>
-                        <th className="px-5 py-3.5 text-right">Chỉ số Điện (kWh)</th>
-                        <th className="px-5 py-3.5 text-right">Chi phí điện</th>
-                        <th className="px-5 py-3.5 text-right">Chỉ số Nước (m³)</th>
-                        <th className="px-5 py-3.5 text-right">Chi phí nước</th>
+                        <th className="px-5 py-3.5 text-center">Kỳ</th>
+                        <th className="px-5 py-3.5 text-center">Chỉ số Điện (kWh)</th>
+                        <th className="px-5 py-3.5 text-center">Chi phí điện</th>
+                        <th className="px-5 py-3.5 text-center">Chỉ số Nước (m³)</th>
+                        <th className="px-5 py-3.5 text-center">Chi phí nước</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/40 font-medium">
                       {consumptionRecords.map((r, index) => (
                         <tr key={index} className="hover:bg-surface-container/20 transition-colors">
-                          <td className="px-5 py-3.5 font-bold">Tháng {r.period.split('-')[1]}/{r.period.split('-')[0]}</td>
-                          <td className="px-5 py-3.5 text-right">{r.electricity_kwh}</td>
-                          <td className="px-5 py-3.5 text-right text-amber-700 font-bold">{r.electricity_cost.toLocaleString('vi-VN')} đ</td>
-                          <td className="px-5 py-3.5 text-right">{r.water_m3}</td>
-                          <td className="px-5 py-3.5 text-right text-sky-700 font-bold">{r.water_cost.toLocaleString('vi-VN')} đ</td>
+                          <td className="px-5 py-3.5 text-center font-bold">Tháng {r.period.split('-')[1]}/{r.period.split('-')[0]}</td>
+                          <td className="px-5 py-3.5 text-center">{r.electricity_kwh}</td>
+                          <td className="px-5 py-3.5 text-center text-amber-700 font-bold">{r.electricity_cost.toLocaleString('vi-VN')} đ</td>
+                          <td className="px-5 py-3.5 text-center">{r.water_m3}</td>
+                          <td className="px-5 py-3.5 text-center text-sky-700 font-bold">{r.water_cost.toLocaleString('vi-VN')} đ</td>
                         </tr>
                       ))}
                     </tbody>
