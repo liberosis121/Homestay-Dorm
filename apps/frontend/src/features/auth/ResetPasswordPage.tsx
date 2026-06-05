@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AuthBackground from '../../components/ui/AuthBackground';
 import Logo from '../../components/ui/Logo';
 
 export default function ResetPasswordPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { message?: string } | null;
+  const initialMessage = state?.message || '';
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(initialMessage);
   
   const [status, setStatus] = useState<'normal' | 'weak' | 'mismatch' | 'saving' | 'success'>('normal');
-  const navigate = useNavigate();
 
   // Password strength calculation
   const calculateStrength = (pass: string) => {
@@ -36,7 +41,11 @@ export default function ResetPasswordPage() {
     } else {
       setStatus('normal');
     }
-  }, [password, confirmPassword, strength, status]);
+
+    if (password || confirmPassword) {
+      if (successMessage) setSuccessMessage('');
+    }
+  }, [password, confirmPassword, strength, status, successMessage]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +94,13 @@ export default function ResetPasswordPage() {
             <p className="font-body-md text-on-surface-variant mb-8">
               Mật khẩu mới của bạn phải khác với các mật khẩu trước đây và đủ độ an toàn.
             </p>
+
+            {successMessage && status === 'normal' && (
+              <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3 animate-fade-in">
+                <span className="material-symbols-outlined text-emerald-500">check_circle</span>
+                <p className="font-body-md text-emerald-500 text-sm">{successMessage}</p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               

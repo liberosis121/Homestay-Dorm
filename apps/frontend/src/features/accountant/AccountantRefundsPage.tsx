@@ -8,14 +8,19 @@ export default function AccountantRefundsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'checkout' | 'cancellation'>('checkout');
   
-  // Deduction states for the active computation card
+  // Refund calculation states
+  const [residencyRate, setResidencyRate] = useState<number>(100); // 80, 50, 70, 100
   const [elecWaterDeduction, setElecWaterDeduction] = useState('350000');
   const [damageDeduction, setDamageDeduction] = useState('850000');
   const [cleaningDeduction, setCleaningDeduction] = useState('200000');
-
-  // Deduction state for cancellation
-  const [cancellationDeduction, setCancellationDeduction] = useState('400000');
+  const [violationDeduction, setViolationDeduction] = useState('0');
   
+  // Calculation results state
+  const [basicRefundAmount, setBasicRefundAmount] = useState(0);
+  const [totalDeductions, setTotalDeductions] = useState(0);
+  const [netRefund, setNetRefund] = useState(0);
+  const [isCalculated, setIsCalculated] = useState(false);
+
   // Inspection report drawer
   const [damageDrawerOpen, setDamageDrawerOpen] = useState(false);
 
@@ -26,6 +31,7 @@ export default function AccountantRefundsPage() {
   }, []);
 
   const activeRefund = refunds.find(r => r.id === selectedRefundId);
+  const isCancellation = activeRefund?.type === 'cancellation';
 
   // Automatically select first record of active tab when tab or refunds list changes
   useEffect(() => {
@@ -35,49 +41,71 @@ export default function AccountantRefundsPage() {
     } else {
       setSelectedRefundId('');
     }
+    setIsCalculated(false);
   }, [activeTab, refunds]);
 
-  // Automatically update input fields when activeRefund changes
+  // Automatically update input fields and rates when activeRefund changes
   useEffect(() => {
     if (activeRefund) {
+      setIsCalculated(false);
       if (activeRefund.type === 'cancellation') {
-        const penalty = activeRefund.total_deductions !== undefined ? activeRefund.total_deductions : (activeRefund.deposit_original * 0.2);
-        setCancellationDeduction(penalty.toString());
+        setResidencyRate(80); // 80% for cancellation
+        const penalty = activeRefund.total_deductions !== undefined ? activeRefund.total_deductions : 0;
+        setViolationDeduction(penalty.toString());
+        setElecWaterDeduction('0');
+        setDamageDeduction('0');
+        setCleaningDeduction('0');
       } else {
+        setResidencyRate(100); // default to 100% for normal checkout, accountant can select others
         const damageTotal = activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0;
         setDamageDeduction(damageTotal.toString());
-        setElecWaterDeduction(activeRefund.debt_deductions.toString());
+        setElecWaterDeduction(activeRefund.debt_deductions?.toString() || '0');
         setCleaningDeduction('200000'); // default cleaning fee
+        setViolationDeduction('0');
       }
     }
   }, [selectedRefundId, activeRefund]);
 
-  // Calculations
-  const depositOriginal = activeRefund ? activeRefund.deposit_original : 0;
-  const isCancellation = activeRefund?.type === 'cancellation';
+  // Perform Calculation (Step 5 & 6)
+  const handleCalculate = () => {
+    if (!activeRefund) return;
+    const depositOriginal = activeRefund.deposit_original;
+    const basicAmount = depositOriginal * (residencyRate / 100);
 
-  const numElec = parseInt(elecWaterDeduction.replace(/\D/g, '')) || 0;
-  const numDamage = parseInt(damageDeduction.replace(/\D/g, '')) || 0;
-  const numClean = parseInt(cleaningDeduction.replace(/\D/g, '')) || 0;
-  const numCancellation = parseInt(cancellationDeduction.replace(/\D/g, '')) || 0;
-  
-  const totalDeductions = isCancellation ? numCancellation : (numElec + numDamage + numClean);
-  const netRefund = Math.max(0, depositOriginal - totalDeductions);
+    const numElec = parseInt(elecWaterDeduction.replace(/\D/g, '')) || 0;
+    const numDamage = parseInt(damageDeduction.replace(/\D/g, '')) || 0;
+    const numClean = parseInt(cleaningDeduction.replace(/\D/g, '')) || 0;
+    const numViolation = parseInt(violationDeduction.replace(/\D/g, '')) || 0;
+
+    const totalD = numElec + numDamage + numClean + numViolation;
+    const finalBalance = basicAmount - totalD;
+
+    setBasicRefundAmount(basicAmount);
+    setTotalDeductions(totalD);
+    setNetRefund(finalBalance);
+    setIsCalculated(true);
+  };
 
   const handleApproveRefund = () => {
     if (!activeRefund) return;
+    if (!isCalculated) {
+      alert("Vui lòng nhấn 'Tính toán đối soát' trước khi phê duyệt!");
+      return;
+    }
+    
+    const db = getMockDB();
     
     // Create payout record automatically first in UC17 list
-    const db = getMockDB();
+    const payoutId = `PAY-${Date.now().toString().slice(-4)}`;
     const newPayout = {
-      id: `PAY-${Date.now().toString().slice(-4)}`,
+      id: payoutId,
       refund_id: activeRefund.id,
       customer_id: activeRefund.customer_id,
       customer_name: activeRefund.customer_name,
       bank_account: `001100${Math.floor(100000 + Math.random() * 900000)}`,
       bank_name: 'Vietcombank',
       account_holder: activeRefund.customer_name.toUpperCase(),
-      amount: netRefund,
+      amount: netRefund, // Can be positive (hoàn cọc) or negative (thu thêm)
       payment_method: 'transfer' as const,
       status: 'pending' as const,
       created_at: new Date().toISOString().split('T')[0]
@@ -85,13 +113,13 @@ export default function AccountantRefundsPage() {
     
     db.payout_records = [newPayout, ...(db.payout_records || [])];
     
-    // Update refund status to confirmed
+    // Update refund status to confirmed (Chờ xử lý hoàn cọc)
     const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
       if (r.id === activeRefund.id) {
         return {
           ...r,
           status: 'confirmed',
-          debt_deductions: isCancellation ? 0 : numElec,
+          debt_deductions: parseInt(elecWaterDeduction) || 0,
           total_deductions: totalDeductions,
           refund_amount: netRefund
         };
@@ -102,7 +130,8 @@ export default function AccountantRefundsPage() {
     
     saveMockDB(db);
     setRefunds(updatedRefunds);
-    alert('Đã phê duyệt đối soát hoàn cọc & chuyển lệnh sang phân hệ chi tiền!');
+    setIsCalculated(false);
+    alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
   };
 
   // Stats
@@ -218,9 +247,9 @@ export default function AccountantRefundsPage() {
                         r.status === 'calculated' ? 'bg-[#FFF3E0] text-[#E65100]' :
                         'bg-[#eae8e7] text-[#5e5f5d]'
                       }`}>
-                        {r.status === 'confirmed' ? 'Đã duyệt' :
+                        {r.status === 'confirmed' ? 'Chờ chi' :
                          r.status === 'paid' ? 'Đã chi' :
-                         r.status === 'calculated' ? 'Đang duyệt' : 'Chờ xử lý'}
+                         r.status === 'calculated' ? 'Đang duyệt' : 'Chờ đối soát'}
                       </span>
                     </td>
                   </tr>
@@ -239,8 +268,8 @@ export default function AccountantRefundsPage() {
 
         {/* Refund Calculation Card (Right Side) */}
         {activeRefund ? (
-          <div className="w-full lg:w-[380px] shrink-0">
-            <div className="bg-white border-2 border-[#5a462d] rounded-lg overflow-hidden shadow-sm">
+          <div className="w-full lg:w-[400px] shrink-0">
+            <div className="bg-white border-2 border-[#5a462d] rounded-lg overflow-hidden shadow-sm space-y-4">
               <div className="p-4 bg-[#fbf9f8] border-b border-[#d1c4b9]">
                 <h3 className="font-bold text-[#5a462d] text-sm">
                   {isCancellation ? 'Chi tiết hủy cọc / hợp đồng' : 'Chi tiết hoàn cọc'} {activeRefund.room_name}
@@ -248,14 +277,29 @@ export default function AccountantRefundsPage() {
               </div>
 
               <div className="p-4 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#5e5f5d]">Tiền cọc gốc:</span>
-                  <span className="font-mono font-bold text-[#1b1c1c]">{depositOriginal.toLocaleString('vi-VN')} ₫</span>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-[#5e5f5d]">Tiền cọc gốc:</span>
+                  <span className="font-mono font-bold text-[#1b1c1c]">{activeRefund.deposit_original.toLocaleString('vi-VN')} đ</span>
+                </div>
+
+                {/* Residency / Refund Rate Selector (UC Step 6) */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-[#5a462d]">Tỷ lệ hoàn cọc cơ bản</label>
+                  <select
+                    value={residencyRate}
+                    onChange={(e) => { setResidencyRate(parseInt(e.target.value)); setIsCalculated(false); }}
+                    className="w-full bg-white border border-[#d1c4b9] rounded py-1.5 px-3 text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                  >
+                    <option value={100}>Hết hạn hợp đồng (Hoàn 100%)</option>
+                    <option value={70}>Trả trước hạn, ở trên 6 tháng (Hoàn 70%)</option>
+                    <option value={50}>Trả trước hạn, ở dưới 6 tháng (Hoàn 50%)</option>
+                    <option value={80}>Chưa ký hợp đồng / Hủy thuê (Hoàn 80%)</option>
+                  </select>
                 </div>
 
                 {/* Cancellation Info Badge */}
                 {isCancellation && (
-                  <div className="bg-[#FFF3E0] border border-[#FFE0B2] text-[#E65100] p-3 rounded text-xs space-y-1.5">
+                  <div className="bg-[#FFF3E0] border border-[#FFE0B2] text-[#E65100] p-3 rounded text-xs space-y-1">
                     <div className="font-bold flex items-center gap-1.5">
                       <Info className="w-3.5 h-3.5" />
                       Quy trình Hủy hợp đồng / cọc
@@ -270,41 +314,37 @@ export default function AccountantRefundsPage() {
                   </div>
                 )}
 
-                <div className="border-t border-dashed border-[#d1c4b9] pt-4 space-y-3">
+                <div className="border-t border-dashed border-[#d1c4b9] pt-3 space-y-3">
+                  <h4 className="font-bold text-xs text-[#5a462d]">Các khoản khấu trừ phát sinh (Bước 4)</h4>
                   {isCancellation ? (
                     /* CANCELLATION COMPONENT INPUTS */
-                    <>
-                      <div>
-                        <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
-                          <span>- Khấu trừ phạt hủy cọc / hợp đồng (20%):</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={cancellationDeduction}
-                            onChange={(e) => setCancellationDeduction(e.target.value)}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
-                        </div>
+                    <div>
+                      <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
+                        <span>Khoản phạt hủy hợp đồng:</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={violationDeduction}
+                          onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
+                          className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                       </div>
-                      <p className="text-[10px] text-[#5e5f5d] leading-relaxed italic">
-                        💡 Theo quy trình, khách đã đặt cọc nhưng chưa ký hợp đồng (không đạt điều kiện hoặc muốn hủy) được hoàn **80% tiền cọc** (khấu trừ phạt 20%). Không áp dụng điện nước và hư hại tài sản.
-                      </p>
-                    </>
+                    </div>
                   ) : (
                     /* STANDARD CHECKOUT INPUTS */
-                    <>
+                    <div className="space-y-3">
                       {/* Điện nước lẻ */}
                       <div>
                         <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
-                          <span>- Trừ điện nước lẻ:</span>
+                          <span>Trừ điện nước / công nợ cũ:</span>
                         </label>
                         <div className="relative">
                           <input
                             type="text"
                             value={elecWaterDeduction}
-                            onChange={(e) => setElecWaterDeduction(e.target.value)}
+                            onChange={(e) => { setElecWaterDeduction(e.target.value); setIsCalculated(false); }}
                             className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
@@ -314,7 +354,7 @@ export default function AccountantRefundsPage() {
                       {/* Hư hỏng tài sản */}
                       <div>
                         <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
-                          <span>- Trừ hư hỏng tài sản:</span>
+                          <span>Trừ hư hỏng tài sản:</span>
                           {activeRefund.damage_deductions && activeRefund.damage_deductions.length > 0 && (
                             <button
                               type="button"
@@ -329,7 +369,7 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={damageDeduction}
-                            onChange={(e) => setDamageDeduction(e.target.value)}
+                            onChange={(e) => { setDamageDeduction(e.target.value); setIsCalculated(false); }}
                             className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
@@ -339,64 +379,113 @@ export default function AccountantRefundsPage() {
                       {/* Vệ sinh */}
                       <div>
                         <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
-                          <span>- Trừ phí vệ sinh trả phòng:</span>
+                          <span>Phí vệ sinh trả phòng:</span>
                         </label>
                         <div className="relative">
                           <input
                             type="text"
                             value={cleaningDeduction}
-                            onChange={(e) => setCleaningDeduction(e.target.value)}
+                            onChange={(e) => { setCleaningDeduction(e.target.value); setIsCalculated(false); }}
                             className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
                       </div>
-                    </>
+
+                      {/* Phạt vi phạm khác */}
+                      <div>
+                        <label className="flex justify-between items-center text-xs text-[#ba1a1a] mb-1 font-semibold">
+                          <span>Khoản phạt vi phạm khác:</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={violationDeduction}
+                            onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                <div className="border-t border-[#d1c4b9] pt-4 flex justify-between items-center bg-[#f0eded] p-3 rounded">
-                  <span className="font-bold text-[#1b1c1c] text-sm">Số tiền thực hoàn:</span>
-                  <div className="text-right">
-                    <span className="text-2xl font-extrabold text-[#5a462d] block leading-none font-mono">{netRefund.toLocaleString('vi-VN')}</span>
-                    <span className="text-[10px] text-[#5e5f5d] font-bold uppercase tracking-wider font-sans">VND</span>
+                {/* Calculate Actions button (Step 5) */}
+                <button
+                  type="button"
+                  onClick={handleCalculate}
+                  className="w-full py-2 bg-[#5a462d]/10 hover:bg-[#5a462d]/20 text-[#5a462d] rounded text-xs font-bold transition cursor-pointer"
+                >
+                  Tính toán đối soát
+                </button>
+
+                {/* Computation Results Panel (Step 7 & 8) */}
+                {isCalculated && (
+                  <div className="border-t border-[#d1c4b9] pt-3 space-y-2 text-xs bg-[#fbf9f8] p-3 rounded border">
+                    <div className="flex justify-between">
+                      <span className="text-[#5e5f5d]">Tiền hoàn cơ bản ({residencyRate}%):</span>
+                      <span className="font-mono text-[#1b1c1c]">{basicRefundAmount.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#5e5f5d]">Tổng các khoản trừ:</span>
+                      <span className="font-mono text-error">-{totalDeductions.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                    
+                    <div className="h-[1px] bg-[#d1c4b9] my-1.5" />
+                    
+                    <div className="p-2.5 rounded flex justify-between items-center bg-white border border-[#d1c4b9]">
+                      <span className="font-bold text-[#1b1c1c]">Kết quả (Net):</span>
+                      <div className="text-right">
+                        {netRefund >= 0 ? (
+                          <>
+                            <span className="text-lg font-extrabold text-[#2E7D32] block font-mono">+{netRefund.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-[9px] text-[#2E7D32] font-bold uppercase tracking-wider block">Hoàn trả khách</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-lg font-extrabold text-[#ba1a1a] block font-mono">{netRefund.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-[9px] text-[#ba1a1a] font-bold uppercase tracking-wider block">Khách đóng thêm</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="p-4 bg-[#fbf9f8] border-t border-[#d1c4b9] flex gap-2">
                 <button
                   type="button"
                   onClick={() => {
-                    if (isCancellation) {
-                      setCancellationDeduction((depositOriginal * 0.2).toString());
-                    } else {
-                      setElecWaterDeduction('0');
-                      setDamageDeduction('0');
-                      setCleaningDeduction('200000');
-                    }
+                    setResidencyRate(100);
+                    setElecWaterDeduction('0');
+                    setDamageDeduction('0');
+                    setCleaningDeduction('200000');
+                    setViolationDeduction('0');
+                    setIsCalculated(false);
                   }}
-                  className="flex-1 border border-[#5a462d] text-[#5a462d] py-2 rounded text-xs font-semibold bg-transparent hover:bg-[#e4e2e1] transition-colors"
+                  className="flex-1 border border-[#5a462d] text-[#5a462d] py-2 rounded text-xs font-semibold bg-transparent hover:bg-[#e4e2e1] transition-colors cursor-pointer"
                 >
                   Xóa trắng
                 </button>
                 <button
                   type="button"
                   onClick={handleApproveRefund}
-                  disabled={activeRefund.status === 'confirmed'}
-                  className={`flex-1 py-2 rounded text-xs font-bold transition ${
-                    activeRefund.status === 'confirmed'
+                  disabled={activeRefund.status === 'confirmed' || activeRefund.status === 'paid'}
+                  className={`flex-1 py-2 rounded text-xs font-bold transition cursor-pointer ${
+                    activeRefund.status === 'confirmed' || activeRefund.status === 'paid'
                       ? 'bg-[#e4e2e1] text-[#7f756c] cursor-not-allowed'
-                      : 'bg-[#5a462d] text-white hover:opacity-90'
+                      : 'bg-[#5a462d] text-white hover:opacity-90 shadow-sm'
                   }`}
                 >
-                  Duyệt & Tạo lệnh chi
+                  Duyệt đối soát
                 </button>
               </div>
             </div>
           </div>
         ) : (
-          <div className="w-full lg:w-[380px] shrink-0 border border-[#d1c4b9] rounded-lg p-6 text-center text-[#5e5f5d] flex flex-col justify-center items-center h-[240px] bg-white">
+          <div className="w-full lg:w-[400px] shrink-0 border border-[#d1c4b9] rounded-lg p-6 text-center text-[#5e5f5d] flex flex-col justify-center items-center h-[240px] bg-white">
             <Info className="w-8 h-8 text-[#d1c4b9] mb-2" />
             <p className="text-sm">Vui lòng chọn khách hàng bên trái để thực hiện đối soát hoàn cọc.</p>
           </div>
@@ -415,7 +504,7 @@ export default function AccountantRefundsPage() {
                 <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Biên bản hư hỏng tài sản</h3>
                 <p className="text-xs text-[#5e5f5d] mt-1">{activeRefund.room_name} - {activeRefund.customer_name}</p>
               </div>
-              <button onClick={() => setDamageDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full">
+              <button onClick={() => setDamageDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
