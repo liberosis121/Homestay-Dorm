@@ -107,12 +107,6 @@ const formatDate = (value?: string) => {
   return day && month && year ? `${day}/${month}/${year}` : value;
 };
 
-const viewingTimeLabel = (registration: RentalRegistration) => {
-  const date = formatDate(registration.preferred_viewing_date);
-  const time = registration.preferred_viewing_time || 'Chưa chọn giờ';
-  return `${date} • ${time.replace('-', ' – ')}`;
-};
-
 const timeOptions = Array.from({ length: 27 }, (_, index) => {
   const totalMinutes = 7 * 60 + index * 30;
   const hour = Math.floor(totalMinutes / 60);
@@ -130,13 +124,6 @@ const InfoGrid = ({ items }: { items: { label: string; value: string; wide?: boo
       </div>
     ))}
   </dl>
-);
-
-const SummaryLine = ({ label, value }: { label: string; value: string }) => (
-  <div className="min-w-0">
-    <span className="block text-[11px] font-bold uppercase tracking-wide text-[#8a7b6a]">{label}</span>
-    <span className="mt-0.5 block truncate text-sm font-semibold text-[#3f3528]">{value}</span>
-  </div>
 );
 
 export default function CreateFromRegistrationModal({
@@ -161,7 +148,6 @@ export default function CreateFromRegistrationModal({
     priceRange: '',
     capacity: '',
     status: '',
-    sort: 'match',
   });
   const [form, setForm] = useState({ viewDate: '', startTime: '', endTime: '', notes: '' });
 
@@ -209,11 +195,7 @@ export default function CreateFromRegistrationModal({
         if (filters.priceRange === '5m_7m' && ((room.price || 0) < 5000000 || (room.price || 0) > 7000000)) return false;
         return !amenityFilters.some((item) => !(room.amenities || []).includes(item));
       })
-      .sort((a, b) => {
-        if (filters.sort === 'price_asc') return (a.price || 0) - (b.price || 0);
-        if (filters.sort === 'price_desc') return (b.price || 0) - (a.price || 0);
-        return matchInfo(b, selectedRegistration).score - matchInfo(a, selectedRegistration).score;
-      });
+      .sort((a, b) => matchInfo(b, selectedRegistration).score - matchInfo(a, selectedRegistration).score);
   }, [rooms, selectedRegistration, filters, amenityFilters]);
 
   const selectRegistration = (registration: RentalRegistration) => {
@@ -227,7 +209,6 @@ export default function CreateFromRegistrationModal({
       priceRange: '',
       capacity: registration.occupants_count ? String(registration.occupants_count) : '',
       status: '',
-      sort: 'match',
     });
     setAmenityFilters(registration.preferred_amenities || []);
     const [start = '', end = ''] = (registration.preferred_viewing_time || '').split('-');
@@ -296,7 +277,7 @@ export default function CreateFromRegistrationModal({
 
         {!selectedRegistration ? (
           <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] p-5 pb-8">
-            <RegistrationPicker registrations={registrations} branchName={branchName} onSelect={selectRegistration} />
+            <RegistrationPicker registrations={registrations} onSelect={selectRegistration} />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
@@ -320,7 +301,18 @@ export default function CreateFromRegistrationModal({
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-[#7a6448]">{selectedRegistration.id}</p>
                         <h4 className="mt-1 text-2xl font-bold text-[#3f3528]">{selectedRegistration.customer_name}</h4>
-                        <p className="mt-1 text-sm text-[#5f584f]">{selectedRegistration.customer_phone} • {selectedRegistration.customer_email}</p>
+                        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                          {selectedRegistration.customer_phone && (
+                            <span className="inline-flex max-w-full items-center rounded-full border border-[#d8cbb8] bg-[#f7f4ef] px-3 py-1 text-xs font-semibold text-[#5f584f]">
+                              {selectedRegistration.customer_phone}
+                            </span>
+                          )}
+                          {selectedRegistration.customer_email && (
+                            <span className="inline-flex max-w-full items-center rounded-full border border-[#d8cbb8] bg-[#f7f4ef] px-3 py-1 text-xs font-semibold text-[#5f584f]">
+                              <span className="truncate">{selectedRegistration.customer_email}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className="rounded-full bg-[#e7ede4] px-3 py-1 text-xs font-bold text-[#4f6f4a]">Phiếu đang xử lý</span>
                     </div>
@@ -333,7 +325,8 @@ export default function CreateFromRegistrationModal({
                           { label: 'Ngân sách', value: budgetLabel(selectedRegistration.budget_range) },
                           { label: 'Giới tính', value: genderLabel(selectedRegistration.gender) },
                           { label: 'Ngày vào ở', value: formatDate(selectedRegistration.move_in_date) },
-                          { label: 'Thời gian xem phòng mong muốn', value: viewingTimeLabel(selectedRegistration), wide: true },
+                          { label: 'Ngày xem', value: formatDate(selectedRegistration.preferred_viewing_date) },
+                          { label: 'Khung giờ rảnh', value: selectedRegistration.preferred_viewing_time?.replace('-', ' – ') || 'Chưa chọn giờ' },
                         ]}
                       />
                     </div>
@@ -355,7 +348,6 @@ export default function CreateFromRegistrationModal({
                       <CustomSelect value={filters.roomType} onChange={(value) => setFilters((prev) => ({ ...prev, roomType: value }))} options={[{ value: '', label: 'Mọi loại phòng' }, ...Array.from(new Set(rooms.map((room) => room.room_type))).map((type) => ({ value: type, label: type }))]} className="w-full min-w-[140px] sm:w-[154px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[190px]" theme="sale" />
                       <CustomSelect value={filters.priceRange} onChange={(value) => setFilters((prev) => ({ ...prev, priceRange: value }))} options={[{ value: '', label: 'Mọi mức giá' }, { value: 'under_2m', label: 'Dưới 2tr' }, { value: '2m_5m', label: '2-5tr' }, { value: '5m_7m', label: '5-7tr' }]} className="w-full min-w-[150px] sm:w-[164px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[185px]" theme="sale" />
                       <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'partial', label: 'Còn chỗ' }, { value: 'occupied', label: 'Đã thuê' }]} className="w-full min-w-[160px] sm:w-[178px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[205px]" theme="sale" />
-                      <CustomSelect value={filters.sort} onChange={(value) => setFilters((prev) => ({ ...prev, sort: value }))} options={[{ value: 'match', label: 'Phù hợp nhất' }, { value: 'price_asc', label: 'Giá tăng' }, { value: 'price_desc', label: 'Giá giảm' }]} className="w-full min-w-[150px] sm:w-[166px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[185px]" theme="sale" />
                     </div>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {allAmenities.map((amenity) => {
@@ -432,12 +424,20 @@ export default function CreateFromRegistrationModal({
                     </div>
                     <div className="space-y-3">
                       <div className="rounded-2xl border border-[#eee6dc] bg-[#fbfaf7] p-3">
-                        <InfoGrid
-                          items={[
-                            { label: 'Khách hàng', value: selectedRegistration.customer_name },
-                            { label: 'Phòng đã chọn', value: selectedRoom?.name || 'Chưa chọn' },
-                          ]}
-                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-[#8a7b6a]">Khách hàng</p>
+                            <p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-[#3f3528]" title={selectedRegistration.customer_name}>
+                              {selectedRegistration.customer_name}
+                            </p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-[#8a7b6a]">Phòng đã chọn</p>
+                            <p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-[#3f3528]" title={selectedRoom?.name || 'Chưa chọn'}>
+                              {selectedRoom?.name || 'Chưa chọn'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-[#4e453c] mb-1.5">Ngày xem</label>
@@ -494,11 +494,9 @@ const TimeField = ({ label, value, error, onChange }: { label: string; value: st
 
 const RegistrationPicker = ({
   registrations,
-  branchName,
   onSelect,
 }: {
   registrations: RentalRegistration[];
-  branchName: (id?: string) => string;
   onSelect: (registration: RentalRegistration) => void;
 }) => (
   <div className="space-y-4">
@@ -518,29 +516,19 @@ const RegistrationPicker = ({
           <p className="text-xs text-[#7f756b] mt-1">Các phiếu đã lên lịch sẽ không xuất hiện trong danh sách này.</p>
         </div>
       ) : registrations.map((registration) => (
-        <button key={registration.id} type="button" onClick={() => onSelect(registration)} className="group text-left rounded-2xl border border-[#d8cbb8] bg-white p-4 shadow-sm transition-all hover:border-[#9a866b] hover:bg-[#f7f4ef] hover:shadow-md active:scale-[0.995]">
-          <div className="flex flex-col xl:flex-row xl:items-start gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-[#7a6448] bg-[#eee8df] rounded-full px-3 py-1">{registration.id}</span>
-                <span className="text-xs font-semibold text-[#4f6f4a] bg-[#e7ede4] rounded-full px-3 py-1">Chờ xếp lịch</span>
-              </div>
-              <h4 className="mt-3 text-lg font-bold text-[#3f3528]">{registration.customer_name}</h4>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#5f584f]">
-                <span>{registration.customer_phone}</span>
-                <span>{registration.customer_email}</span>
-                <span>{genderLabel(registration.gender)}</span>
-              </div>
+        <button key={registration.id} type="button" onClick={() => onSelect(registration)} className="group w-full cursor-pointer rounded-2xl border border-[#d8cbb8] bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#9a866b] hover:bg-[#f7f4ef] hover:shadow-md active:translate-y-0 active:scale-[0.995]">
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-[#7a6448] bg-[#eee8df] rounded-full px-3 py-1">{registration.id}</span>
+              <span className="text-xs font-semibold text-[#4f6f4a] bg-[#e7ede4] rounded-full px-3 py-1">Chờ xếp lịch</span>
             </div>
-            <div className="grid flex-[1.7] grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
-              <SummaryLine label="Chi nhánh" value={registration.preferred_branch_name || branchName(registration.preferred_branch_id)} />
-              <SummaryLine label="Loại phòng" value={registration.preferred_room_type || 'Linh hoạt'} />
-              <SummaryLine label="Số người" value={`${registration.occupants_count || 1} người`} />
-              <SummaryLine label="Ngân sách" value={budgetLabel(registration.budget_range)} />
-              <SummaryLine label="Thời gian xem mong muốn" value={viewingTimeLabel(registration)} />
-              <SummaryLine label="Hình thức" value={registration.rental_type || 'Chưa rõ'} />
-              <SummaryLine label="Ngày vào ở" value={formatDate(registration.move_in_date)} />
-              <SummaryLine label="Giới tính" value={genderLabel(registration.gender)} />
+            <div className="min-w-0">
+              <h4 className="text-lg font-bold text-[#3f3528]">{registration.customer_name}</h4>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#5f584f]">
+                {registration.customer_phone && <span>{registration.customer_phone}</span>}
+                {registration.customer_email && <span className="break-all">{registration.customer_email}</span>}
+                <span>{registration.rental_type || genderLabel(registration.gender)}</span>
+              </div>
             </div>
           </div>
           {registration.note && <p className="mt-3 text-sm text-[#5f584f] line-clamp-2">{registration.note}</p>}
