@@ -548,71 +548,55 @@ export default function CustomerContractsPage() {
           </div>
 
           {/* Contract Legal Text */}
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-3xl p-5 shadow-sm space-y-3 hover:shadow-md transition">
-            <div className="flex items-center justify-between border-b border-[#eee7e1] pb-3 flex-wrap gap-2">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition">
+            <div className="flex justify-between items-center border-b border-[#eee7e1] pb-2 flex-wrap gap-2">
               <h3 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <ShieldCheck className="w-4 h-4" />
-                </span>
+                <ShieldCheck className="w-5 h-5 text-primary" />
                 Điều khoản hợp đồng thuê
               </h3>
-              <span className="rounded-full border border-primary/15 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold text-primary/80">
-                Văn bản pháp lý có hiệu lực
-              </span>
+              <span className="text-[10px] text-on-surface-variant italic font-semibold">Văn bản pháp lý có hiệu lực</span>
             </div>
             
-            <div className="contract-document-preview h-[350px] overflow-y-auto rounded-2xl border border-outline-variant/50 bg-[#fffdf9] px-4 py-5 text-on-surface shadow-inner shadow-primary/5">
-              <div className="mx-auto max-w-[680px]">
-                <div className="rounded-2xl border border-[#e8e1d3] bg-white px-5 py-4 text-center">
-                  <h4 className="text-sm font-extrabold tracking-wide text-on-surface">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4>
-                  <p className="mt-1 text-xs font-bold text-on-surface-variant">Độc lập - Tự do - Hạnh phúc</p>
-                </div>
+            <div className="bg-surface border border-outline-variant/60 rounded-2xl p-5 h-[350px] overflow-y-auto custom-scrollbar font-body-md text-on-surface leading-relaxed text-sm space-y-4">
+              <div className="max-w-prose mx-auto">
+                <h4 className="font-extrabold text-center text-on-surface tracking-wide">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4>
+                <p className="text-center font-bold text-xs text-on-surface-variant mt-0.5">Độc lập - Tự do - Hạnh phúc</p>
                 
-                <div className="my-5 h-px bg-outline-variant/50"></div>
+                <div className="h-px bg-outline-variant/50 my-5"></div>
                 
-                <div className="space-y-4">
-                  <article className="rounded-2xl border border-[#e8e1d3]/80 bg-white px-4 py-3.5">
-                    <h5 className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide text-primary">
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Điều 1</span>
-                      Đối tượng hợp đồng
-                    </h5>
-                    <p className="text-[13px] leading-6 text-on-surface/85">
-                      {contract.terms}
-                    </p>
-                  </article>
-
-                  <article className="rounded-2xl border border-[#e8e1d3]/80 bg-white px-4 py-3.5">
-                    <h5 className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide text-primary">
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Điều 2</span>
-                      Giá thuê và thanh toán
-                    </h5>
-                    <p className="text-[13px] leading-6 text-on-surface/85">
-                      {contract.paymentPolicy}
-                    </p>
-                  </article>
-
-                  <article className="rounded-2xl border border-[#e8e1d3]/80 bg-white px-4 py-3.5">
-                    <h5 className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide text-primary">
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Điều 3</span>
-                      Trách nhiệm bảo quản tài sản
-                    </h5>
-                    <p className="text-[13px] leading-6 text-on-surface/85">
-                      Bên B có trách nhiệm bảo quản và giữ gìn các tài sản, trang thiết bị đi kèm giường thuê. Mọi hư hỏng do lỗi chủ quan phải bồi thường theo thời giá thị trường. Không tự ý đóng đinh, đục khoét tường hoặc thay đổi vị trí giường/tủ cá nhân.
-                    </p>
-                  </article>
-
-                  <article className="rounded-2xl border border-[#e8e1d3]/80 bg-white px-4 py-3.5">
-                    <h5 className="mb-2 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide text-primary">
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Điều 4</span>
-                      Nội quy chung & chấm dứt hợp đồng
-                    </h5>
-                    <p className="text-[13px] leading-6 text-on-surface/85">
-                      {contract.terminationPolicy} Tuân thủ nghiêm ngặt giờ giấc sinh hoạt tập thể, nội quy phòng chống cháy nổ và bảo đảm vệ sinh chung.
-                    </p>
-                  </article>
-                </div>
+                <h5 className="font-bold text-primary uppercase mt-4 flex items-center gap-1.5">
+                  <span className="w-1.5 h-3 bg-primary rounded-full"></span>
+                  ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG
+                </h5>
+                <p className="text-on-surface/90 pl-3 mt-1.5 text-xs">
+                  {contract.terms}
+                </p>
                 
-                <p className="mt-6 text-center text-[11px] italic text-on-surface-variant">--- Văn bản lưu trữ nội bộ HomeStay Dorm ---</p>
+                <h5 className="font-bold text-primary uppercase mt-5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-3 bg-primary rounded-full"></span>
+                  ĐIỀU 2: GIÁ THUÊ VÀ THANH TOÁN
+                </h5>
+                <p className="text-on-surface/90 pl-3 mt-1.5 text-xs">
+                  {contract.paymentPolicy}
+                </p>
+                
+                <h5 className="font-bold text-primary uppercase mt-5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-3 bg-primary rounded-full"></span>
+                  ĐIỀU 3: TRÁCH NHIỆM BẢO QUẢN TÀI SẢN
+                </h5>
+                <p className="text-on-surface/90 pl-3 mt-1.5 text-xs">
+                  Bên B có trách nhiệm bảo quản và giữ gìn các tài sản, trang thiết bị đi kèm giường thuê. Mọi hư hỏng do lỗi chủ quan phải bồi thường theo thời giá thị trường. Không tự ý đóng đinh, đục khoét tường hoặc thay đổi vị trí giường/tủ cá nhân.
+                </p>
+                
+                <h5 className="font-bold text-primary uppercase mt-5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-3 bg-primary rounded-full"></span>
+                  ĐIỀU 4: NỘI QUY CHUNG & CHẤM DỨT HỢP ĐỒNG
+                </h5>
+                <p className="text-on-surface/90 pl-3 mt-1.5 text-xs">
+                  {contract.terminationPolicy} Tuân thủ nghiêm ngặt giờ giấc sinh hoạt tập thể, nội quy phòng chống cháy nổ và bảo đảm vệ sinh chung.
+                </p>
+                
+                <p className="mt-8 italic text-on-surface-variant text-[11px] text-center">--- Văn bản lưu trữ nội bộ HomeStay Dorm ---</p>
               </div>
             </div>
           </div>
