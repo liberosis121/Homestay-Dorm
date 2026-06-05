@@ -61,20 +61,16 @@ export default function ContractSuccessModal({
         </button>
 
         {/* ── Success Header ── */}
-        <div className="relative bg-[#faf2ec] border-b border-[#d1c4b9]/50 px-8 pt-5 pb-7 text-center">
-          <h2 className="text-[#1e1b17] text-lg font-extrabold leading-tight">
-            Lập hợp đồng thuê thành công!
-          </h2>
-          <p className="text-[#4e453c] text-xs mt-1 leading-relaxed">
-            Hợp đồng đã ghi nhận và chuyển sang trạng thái<br />
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 mt-1 rounded-full bg-[#fef3c7] text-[#92400e] text-[10px] font-bold border border-[#fcd34d]">
-              Chờ thanh toán nhận phòng
-            </span>
-          </p>
+        <div className="relative bg-[#faf2ec] border-b border-[#d1c4b9]/50 px-8 pt-4 pb-8 text-center">
+          <div className="mx-auto inline-flex max-w-full rounded-2xl border border-[#d1c4b9]/70 bg-[#fffdf9] px-5 py-2.5 shadow-sm">
+            <h2 className="text-[#1e1b17] text-base font-bold leading-tight">
+              Lập hợp đồng thuê thành công
+            </h2>
+          </div>
         </div>
 
         {/* ── Contract Code Card (floating) ── */}
-        <div className="mx-6 -mt-4 relative z-10">
+        <div className="mx-6 -mt-3 relative z-10">
           <div className="bg-white rounded-2xl shadow-md border border-[#d1c4b9] overflow-hidden">
             <div className="bg-[#6f583c] px-5 py-3.5 flex items-center justify-between">
               <div>
