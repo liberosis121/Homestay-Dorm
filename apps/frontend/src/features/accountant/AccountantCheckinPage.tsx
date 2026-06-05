@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Search, Eye, Printer
+  Search, Eye, Printer, Save
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
 
@@ -378,16 +378,18 @@ export default function AccountantCheckinPage() {
                   setCardFeeChecked(true);
                   setCleaningFeeChecked(true);
                 }}
-                className="px-4 py-2 border border-[#7f756c] text-[#8A7563] rounded-xl text-sm font-semibold hover:bg-[#E7DED2] hover:text-[#5C4632] cursor-pointer active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40 transition-all"
+                className="px-4 py-2 border border-[#7f756c] text-[#8A7563] rounded-lg text-sm font-semibold hover:bg-[#E7DED2] hover:text-[#5C4632] cursor-pointer active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40 transition-all"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleCreateCheckinInvoice}
-                className="bg-[#5C4632] text-white font-bold py-2 px-5 rounded-xl text-sm hover:bg-[#4E3927] active:scale-[0.97] shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5C4632]/40 transition-all"
+                disabled={!selectedContractId}
+                className="px-5 py-2 bg-[#5C4632] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               >
-                Xuất Hóa Đơn
+                <Save className="w-4 h-4" />
+                <span>Tạo hóa đơn</span>
               </button>
             </div>
           </div>
