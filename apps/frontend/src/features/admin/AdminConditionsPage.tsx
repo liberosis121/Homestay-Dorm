@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -159,28 +158,20 @@ export default function AdminConditionsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <CustomSelect
-          value={filterCategory}
-          onChange={setFilterCategory}
-          options={[
-            { value: '', label: 'Tất cả danh mục' },
-            ...categories.map(c => ({ value: c, label: c }))
-          ]}
-          className="min-w-[150px]"
-          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-        />
-        <CustomSelect
-          value={filterPriority}
-          onChange={setFilterPriority}
-          options={[
-            { value: '', label: 'Tất cả mức độ' },
-            { value: 'high', label: 'Bắt buộc' },
-            { value: 'medium', label: 'Quan trọng' },
-            { value: 'low', label: 'Khuyến nghị' }
-          ]}
-          className="min-w-[150px]"
-          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-        />
+        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
+          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
+          <option value="">Tất cả danh mục</option>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
+          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
+          <option value="">Tất cả mức độ</option>
+          <option value="high">Bắt buộc</option>
+          <option value="medium">Quan trọng</option>
+          <option value="low">Khuyến nghị</option>
+        </select>
         <button onClick={() => { setSearch(''); setFilterCategory(''); setFilterPriority(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -247,6 +238,8 @@ export default function AdminConditionsPage() {
         )}
       </section>
 
+
+
       {/* Add / Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
@@ -294,63 +287,78 @@ export default function AdminConditionsPage() {
             )}
 
             {/* Editable Fields */}
-            <div>
-              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tiêu đề <span className="text-red-500">*</span></label>
-              <input value={form.title || ''} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Tiêu đề điều kiện..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Nội dung quy định <span className="text-red-500">*</span></label>
-              <textarea value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-                rows={5} placeholder="Mô tả chi tiết điều kiện..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
-                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Danh mục</label>
-                <CustomSelect
-                  value={form.category || 'Nội quy'}
-                  onChange={val => setForm(prev => ({ ...prev, category: val }))}
-                  options={['Nội quy', 'Pháp lý', 'Vệ sinh', 'An ninh']}
-                  className="w-full"
-                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tiêu đề <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={form.title || ''}
+                  onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Tiêu đề điều kiện..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mức độ</label>
-                <CustomSelect
-                  value={form.priority || 'medium'}
-                  onChange={val => setForm(prev => ({ ...prev, priority: val as any }))}
-                  options={[
-                    { value: 'high', label: 'Bắt buộc' },
-                    { value: 'medium', label: 'Quan trọng' },
-                    { value: 'low', label: 'Khuyến nghị' }
-                  ]}
-                  className="w-full"
-                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-                />
-              </div>
-            </div>
 
-            {/* Status Field (Only for Edit Mode) */}
-            {modalMode === 'edit' && (
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                <CustomSelect
-                  value={form.isActive ? 'true' : 'false'}
-                  onChange={val => setForm(prev => ({ ...prev, isActive: val === 'true' }))}
-                  options={[
-                    { value: 'true', label: 'Đang áp dụng' },
-                    { value: 'false', label: 'Ngưng áp dụng' }
-                  ]}
-                  className="w-full"
-                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Nội dung quy định <span className="text-red-500">*</span></label>
+                <textarea
+                  value={form.description || ''}
+                  onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={4}
+                  placeholder="Mô tả chi tiết điều kiện..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
-            )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Danh mục</label>
+                  <select
+                    value={form.category || 'Nội quy'}
+                    onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  >
+                    <option value="Nội quy">Nội quy</option>
+                    <option value="Pháp lý">Pháp lý</option>
+                    <option value="Vệ sinh">Vệ sinh</option>
+                    <option value="An ninh">An ninh</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mức độ</label>
+                  <select
+                    value={form.priority || 'medium'}
+                    onChange={e => setForm(prev => ({ ...prev, priority: e.target.value as any }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  >
+                    <option value="high">Bắt buộc</option>
+                    <option value="medium">Quan trọng</option>
+                    <option value="low">Khuyến nghị</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Status Field (Only for Edit Mode) */}
+              {modalMode === 'edit' && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
+                  <select
+                    value={form.isActive ? 'true' : 'false'}
+                    onChange={e => setForm(prev => ({ ...prev, isActive: e.target.value === 'true' }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  >
+                    <option value="true">Đang áp dụng</option>
+                    <option value="false">Ngưng áp dụng</option>
+                  </select>
+                </div>
+              )}
+            </div>
 
             {/* Modal Actions */}
             <div className="flex gap-3 pt-3 border-t mt-2" style={{ borderColor: A.border }}>
@@ -368,6 +376,8 @@ export default function AdminConditionsPage() {
           </div>
         </div>
       )}
+
+
 
       <style>{`
         @keyframes slideInRight {

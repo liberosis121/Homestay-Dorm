@@ -98,11 +98,9 @@ export default function AdminBackupPage() {
     if (!confirmRestore) return;
     setRestoring(true);
     setTimeout(() => {
-      localStorage.removeItem('homestay_dorm_mock_db');
       setRestoring(false);
       setConfirmRestore(null);
-      window.location.reload();
-    }, 1500);
+    }, 2000);
   };
 
   const downloadBackup = (b: BackupEntry) => {
@@ -127,29 +125,16 @@ export default function AdminBackupPage() {
             Quản lý sao lưu cơ sở dữ liệu và khôi phục hệ thống từ các bản backup đã tạo.
           </p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              if (window.confirm("Bạn có chắc chắn muốn khôi phục dữ liệu về ban đầu? Toàn bộ thay đổi của bạn sẽ bị xóa.")) {
-                localStorage.removeItem('homestay_dorm_mock_db');
-                window.location.reload();
-              }
-            }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-[#BA1A1A] bg-[#FFDAD6] border border-[#BA1A1A]/20 hover:opacity-90 active:scale-95 cursor-pointer">
-            <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-            Khôi phục dữ liệu gốc
-          </button>
-          <button
-            onClick={startBackup}
-            disabled={isCreating}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            style={{ background: A.primary }}>
-            <span className="material-symbols-outlined text-[18px]">
-              {isCreating ? 'hourglass_top' : 'backup'}
-            </span>
-            {isCreating ? 'Đang sao lưu...' : 'Tạo sao lưu ngay'}
-          </button>
-        </div>
+        <button
+          onClick={startBackup}
+          disabled={isCreating}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ background: A.primary }}>
+          <span className="material-symbols-outlined text-[18px]">
+            {isCreating ? 'hourglass_top' : 'backup'}
+          </span>
+          {isCreating ? 'Đang sao lưu...' : 'Tạo sao lưu ngay'}
+        </button>
       </header>
 
       {/* Database Stats */}
