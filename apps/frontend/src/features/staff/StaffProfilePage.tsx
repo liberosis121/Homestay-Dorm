@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import {
-  User, Shield, Lock, Globe, ChevronRight,
+  User, Shield, Lock, Bell, Globe, ChevronRight,
   X, Eye, EyeOff, Check, Camera, Briefcase, MapPin, Phone
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -313,6 +313,12 @@ export default function StaffProfilePage() {
   };
 
   // ── Settings State ────────────────────────────────────────────────────────
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [notifSchedule, setNotifSchedule] = useState(true);
+  const [notifContract, setNotifContract] = useState(true);
+  const [notifReport, setNotifReport] = useState(false);
+  const [notifSystem, setNotifSystem] = useState(true);
   const [language, setLanguage] = useState('vi');
   const currentLang = LANGUAGES.find(l => l.code === language);
 
@@ -362,6 +368,7 @@ export default function StaffProfilePage() {
       </div>
     </div>
   );
+
 
   // ── Toggle Switch ─────────────────────────────────────────────────────────
   const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
@@ -639,6 +646,58 @@ export default function StaffProfilePage() {
                   </div>
                   <ChevronRight className="w-5 h-5 text-[#4e453c] group-hover:text-[#6f583c] transition-colors" />
                 </button>
+              </div>
+            </div>
+
+            {/* Section: Thông báo */}
+            <div className="bg-white rounded-[28px] border border-[#d1c4b9] shadow-sm p-8 md:p-10">
+              <h3 className="text-base font-bold text-[#4e453c] flex items-center gap-2 mb-6 uppercase tracking-wider">
+                <Bell className="w-4 h-4 text-[#6f583c]" /> Thông báo công việc
+              </h3>
+              <div className="space-y-3">
+                {[
+                  {
+                    label: 'Thông báo lịch hẹn',
+                    desc: 'Nhận thông báo khi có lịch xem phòng mới hoặc thay đổi lịch hẹn.',
+                    value: notifSchedule,
+                    toggle: () => setNotifSchedule(v => !v),
+                    icon: <Bell className="w-5 h-5" />,
+                  },
+                  {
+                    label: 'Thông báo hợp đồng',
+                    desc: 'Nhận thông báo khi hợp đồng cần xử lý hoặc được phê duyệt.',
+                    value: notifContract,
+                    toggle: () => setNotifContract(v => !v),
+                    icon: <Bell className="w-5 h-5" />,
+                  },
+                  {
+                    label: 'Báo cáo & Thống kê',
+                    desc: 'Nhận báo cáo tổng hợp hoạt động hàng tuần qua email.',
+                    value: notifReport,
+                    toggle: () => setNotifReport(v => !v),
+                    icon: <Bell className="w-5 h-5" />,
+                  },
+                  {
+                    label: 'Thông báo hệ thống',
+                    desc: 'Cập nhật bảo trì hệ thống, nâng cấp phần mềm nội bộ.',
+                    value: notifSystem,
+                    toggle: () => setNotifSystem(v => !v),
+                    icon: <Bell className="w-5 h-5" />,
+                  },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between p-5 bg-[#faf2ec] border border-[#d1c4b9] rounded-2xl hover:bg-[#f4ede6] transition-colors">
+                    <div className="flex items-center gap-5">
+                      <div className={`p-3 rounded-full shadow-sm border transition-colors ${item.value ? 'bg-[#6f583c]/10 text-[#6f583c] border-[#6f583c]/20' : 'bg-white text-[#4e453c] border-[#d1c4b9]'}`}>
+                        {item.icon}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#1e1b17] text-base">{item.label}</h4>
+                        <p className="text-sm text-[#4e453c] mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                    <Toggle value={item.value} onChange={item.toggle} />
+                  </div>
+                ))}
               </div>
             </div>
 

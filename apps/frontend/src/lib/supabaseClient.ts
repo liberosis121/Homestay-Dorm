@@ -92,6 +92,33 @@ export interface CustomerDepositRequest {
   created_at: string;
 }
 
+export interface RentalRegistration {
+  id: string;
+  customer_id?: string;
+  customer_name: string;
+  phone?: string;
+  customer_phone?: string;
+  email?: string;
+  customer_email?: string;
+  gender?: string;
+  preferred_room_type?: string;
+  rental_type?: string;
+  occupants_count?: number;
+  preferred_branch_id?: string;
+  preferred_branch_name?: string;
+  budget_range?: string;
+  move_in_date?: string;
+  preferred_viewing_date?: string;
+  preferred_viewing_time?: string;
+  viewing_time_note?: string;
+  preferred_amenities?: string[];
+  note?: string;
+  status?: 'pending_schedule' | 'scheduled' | 'cancelled';
+  created_at: string;
+  interested_room_id?: string;
+  interested_room_name?: string;
+}
+
 // ─── Sale Dashboard Interfaces ────────────────────────────────────────────────
 export interface TodayAppointment {
   id: string;
@@ -753,7 +780,7 @@ const INITIAL_DB = {
       viewing_schedule_id: 'vs-3',
       deposit_amount: 1000000,
       expected_move_in_date: '2026-05-01',
-      status: 'pending_sale_confirmation',
+      status: 'confirmed',
       note: 'Khách đã xem phòng và muốn được xác nhận đặt cọc.',
       created_at: '2026-04-20T11:00:00Z'
     },
@@ -769,7 +796,7 @@ const INITIAL_DB = {
       viewing_schedule_id: 'vs-1',
       deposit_amount: 2000000,
       expected_move_in_date: '2026-06-10',
-      status: 'pending_sale_confirmation',
+      status: 'confirmed',
       note: 'Khách hàng muốn giữ phòng Studio ban công rộng.',
       created_at: '2026-06-04T10:00:00Z'
     },
@@ -790,6 +817,80 @@ const INITIAL_DB = {
       created_at: '2026-06-05T09:00:00Z'
     }
   ] as CustomerDepositRequest[],
+  rental_registrations: [
+    {
+      id: 'rr-101',
+      customer_id: 'u-6',
+      customer_name: 'Lê Minh Tuấn',
+      phone: '0901234567',
+      customer_phone: '0901234567',
+      email: 'leminhtuan@gmail.com',
+      customer_email: 'leminhtuan@gmail.com',
+      gender: 'male',
+      preferred_room_type: 'Dorm',
+      rental_type: 'shared',
+      occupants_count: 1,
+      preferred_branch_id: 'b-1',
+      preferred_branch_name: 'Chi nhánh Quận 1',
+      budget_range: 'under_2m',
+      move_in_date: '2026-06-15',
+      preferred_viewing_date: '2026-06-12',
+      preferred_viewing_time: '10:00-12:00',
+      viewing_time_note: 'Rảnh sáng thứ 6',
+      preferred_amenities: ['AC', 'Wifi'],
+      note: 'Mong muốn phòng yên tĩnh, sạch sẽ.',
+      status: 'pending_schedule',
+      created_at: '2026-06-02T08:00:00Z'
+    },
+    {
+      id: 'rr-102',
+      customer_id: 'u-mock-rr102',
+      customer_name: 'Hoàng Thu Thủy',
+      phone: '0987654321',
+      customer_phone: '0987654321',
+      email: 'thuthuy@gmail.com',
+      customer_email: 'thuthuy@gmail.com',
+      gender: 'female',
+      preferred_room_type: 'Studio',
+      rental_type: 'full_room',
+      occupants_count: 1,
+      preferred_branch_id: 'b-2',
+      preferred_branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      budget_range: '2m_5m',
+      move_in_date: '2026-06-20',
+      preferred_viewing_date: '2026-06-15',
+      preferred_viewing_time: '13:30-15:30',
+      viewing_time_note: 'Có xe máy riêng cần bãi xe',
+      preferred_amenities: ['AC', 'Wifi', 'Kitchen'],
+      note: 'Ưu tiên tầng cao thoáng mát.',
+      status: 'pending_schedule',
+      created_at: '2026-06-02T09:15:00Z'
+    },
+    {
+      id: 'rr-103',
+      customer_id: 'u-mock-rr103',
+      customer_name: 'Nguyễn Bảo Long',
+      phone: '0912345678',
+      customer_phone: '0912345678',
+      email: 'baolong@gmail.com',
+      customer_email: 'baolong@gmail.com',
+      gender: 'male',
+      preferred_room_type: 'Twin',
+      rental_type: 'flexible',
+      occupants_count: 1,
+      preferred_branch_id: 'b-1',
+      preferred_branch_name: 'Chi nhánh Quận 1',
+      budget_range: 'flexible',
+      move_in_date: '2026-06-18',
+      preferred_viewing_date: '2026-06-18',
+      preferred_viewing_time: 'flexible',
+      viewing_time_note: 'Linh hoạt theo Sale',
+      preferred_amenities: ['AC', 'Wifi', 'Washing Machine'],
+      note: 'Cần xem phòng thực tế để chốt nhanh.',
+      status: 'pending_schedule',
+      created_at: '2026-06-02T10:00:00Z'
+    }
+  ] as RentalRegistration[],
   today_appointments: [
     { id: 'ta-1', time: '09:30', customer_name: 'Nguyễn Văn A', room_type: 'Phòng Đơn Premium', status: 'confirmed', branch: 'Quận 1' },
     { id: 'ta-2', time: '11:00', customer_name: 'Lê Thị Minh Châu', room_type: 'Phòng Dorm Nam 4 người', status: 'confirmed', branch: 'Thủ Đức' },
