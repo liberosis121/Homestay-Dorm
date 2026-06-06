@@ -215,7 +215,7 @@ function DashboardLayout() {
           { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
           { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
           { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
-          { path: '/admin/rooms-catalog', label: 'Danh mục Phòng/Giường', icon: Layers },
+          { path: '/admin/rooms-catalog', label: 'Phòng & Giường', icon: Layers },
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
           { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
           { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
