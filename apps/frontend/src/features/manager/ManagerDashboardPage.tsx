@@ -167,12 +167,12 @@ export default function ManagerDashboardPage() {
         <div>
           <h4 style={{ color: '#A67B5B', fontSize: 13, fontWeight: 700 }}>Thông báo vận hành hôm nay</h4>
           <p style={{ color: T.textMuted, fontSize: 11.5, marginTop: 4, lineHeight: 1.5 }}>
-            Đề nghị Quản lý chi nhánh tập trung hoàn tất việc **duyệt đặt cọc (UC13)** đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi **kiểm duyệt hồ sơ lưu trú (UC22)** để tránh chậm trễ báo cáo cơ quan công an địa phương.
+            Đề nghị Quản lý chi nhánh tập trung hoàn tất việc **duyệt đặt cọc** đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi **kiểm duyệt hồ sơ lưu trú** để tránh chậm trễ báo cáo cơ quan công an địa phương.
           </p>
         </div>
       </div>
 
-      {/* Pending Requests Section (Stretched full-width with a grid layout) */}
+      {/* Pending Requests Section (Restored to original detail list layout) */}
       <div style={{ 
         background: T.surface, 
         border: `1px solid ${T.border}`, 
@@ -183,53 +183,52 @@ export default function ManagerDashboardPage() {
         <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 20 }}>
           Yêu cầu chờ xử lý
         </h2>
-        {recentActivity.length === 0 ? (
-          <p style={{ color: T.textFaint, textAlign: 'center', padding: 32, fontSize: 13 }}>Chưa có hoạt động nào gần đây.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recentActivity.map((act, i) => (
-              <Link key={i} to={act.link}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 12, 
-                  padding: '16px', 
-                  borderRadius: 16, 
-                  border: `1px solid ${T.border}`,
-                  background: '#FFF8F3',
-                  textDecoration: 'none', 
-                  transition: 'all 0.18s ease-in-out',
-                }}
-                className="hover:-translate-y-0.5 hover:border-[#8C7355]/25 hover:shadow-md hover:bg-white group active:scale-[0.98]">
-                <div style={{ 
-                  background: act.bg || T.primaryLight, 
-                  borderRadius: 12, 
-                  padding: 8, 
-                  flexShrink: 0,
-                }}>
-                  <span className="material-symbols-outlined" style={{ color: act.color, fontSize: 22 }}>{act.icon}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {act.title}
-                  </p>
-                  <p style={{ color: T.textMuted, fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {act.detail}
-                  </p>
-                  <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 3 }}>{act.time}</span>
-                </div>
-                <div style={{
-                  opacity: 0,
-                  transition: 'opacity 0.15s ease-in-out',
-                  display: 'flex',
-                  alignItems: 'center'
-                }} className="group-hover:opacity-100 shrink-0">
-                  <ArrowRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-0.5" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="space-y-3">
+          {recentActivity.length === 0 && (
+            <p style={{ color: T.textFaint, textAlign: 'center', padding: 32, fontSize: 13 }}>Chưa có hoạt động nào gần đây.</p>
+          )}
+          {recentActivity.map((act, i) => (
+            <Link key={i} to={act.link}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 16, 
+                padding: '16px', 
+                borderRadius: 16, 
+                border: `1px solid ${T.border}`,
+                background: '#FFF8F3',
+                textDecoration: 'none', 
+                transition: 'all 0.2s ease-in-out',
+              }}
+              className="hover:-translate-y-0.5 hover:border-[#8C7355]/40 hover:bg-white hover:shadow-md active:scale-[0.99] group">
+              <div style={{ 
+                background: act.bg || T.primaryLight, 
+                borderRadius: 12, 
+                padding: 8, 
+                flexShrink: 0,
+              }}>
+                <span className="material-symbols-outlined" style={{ color: act.color, fontSize: 20 }}>{act.icon}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {act.title}
+                </p>
+                <p style={{ color: T.textMuted, fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {act.detail}
+                </p>
+                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 3 }}>{act.time}</span>
+              </div>
+              <div style={{
+                opacity: 0,
+                transition: 'opacity 0.15s ease-in-out',
+                display: 'flex',
+                alignItems: 'center'
+              }} className="group-hover:opacity-100 shrink-0">
+                <ArrowRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-0.5" />
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
