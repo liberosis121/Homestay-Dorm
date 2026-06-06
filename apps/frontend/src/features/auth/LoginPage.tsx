@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import heroImage from '../../assets/hero.jpg';
 import googleIcon from '../../assets/google-icon.png';
@@ -177,6 +177,13 @@ export default function LoginPage() {
               />
               <span className="tracking-wide">Đăng nhập với Google account</span>
             </button>
+
+            <div className="mt-8 text-center font-body-md text-sm text-on-surface-variant">
+              Chưa có tài khoản?{' '}
+              <Link to="/register" className="font-label-md text-primary hover:underline hover:text-primary-dark transition-colors">
+                Đăng ký ngay
+              </Link>
+            </div>
 
             {/* Test credentials for demo */}
             <div className="mt-6 border-t border-surface-variant pt-6">

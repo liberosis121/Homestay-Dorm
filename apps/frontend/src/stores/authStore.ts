@@ -6,6 +6,7 @@ interface AuthState {
   loading: boolean;
   error: string | null;
   login: (email: string) => Promise<boolean>;
+  register: (email: string, fullName: string, phone: string) => Promise<boolean>;
   logout: () => void;
   initialize: () => void;
   isLogoutConfirmOpen: boolean;
@@ -21,6 +22,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email: string) => {
     set({ loading: true, error: null });
     const { user, error } = mockSupabase.auth.login(email);
+    if (user) {
+      set({ user, loading: false });
+      return true;
+    } else {
+      set({ error, loading: false });
+      return false;
+    }
+  },
+  register: async (email: string, fullName: string, phone: string) => {
+    set({ loading: true, error: null });
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const { user, error } = mockSupabase.auth.register(email, fullName, phone);
     if (user) {
       set({ user, loading: false });
       return true;
