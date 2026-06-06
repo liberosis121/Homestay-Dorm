@@ -116,6 +116,20 @@ export default function AdminRoomsPage() {
     setRooms(loadedRooms);
   };
 
+  const [editCapacity, setEditCapacity] = useState<number>(4);
+  const [editPrice, setEditPrice] = useState<number>(1500000);
+  const [editGenderType, setEditGenderType] = useState<'male' | 'female' | 'mixed'>('mixed');
+  const [editStatus, setEditStatus] = useState<'available' | 'occupied' | 'deposited' | 'maintenance' | 'partial'>('available');
+
+  useEffect(() => {
+    if (selected) {
+      setEditCapacity(selected.capacity);
+      setEditPrice(selected.price);
+      setEditGenderType(selected.gender_type);
+      setEditStatus(selected.status);
+    }
+  }, [selected]);
+
   useEffect(() => {
     refreshRoomsList();
     setIsLoading(true);
@@ -452,6 +466,44 @@ export default function AdminRoomsPage() {
     }
   };
 
+  const handleSaveEdit = () => {
+    if (!selected) return;
+    const updatedRoom: RoomCatalog = {
+      ...selected,
+      capacity: editCapacity,
+      price: editPrice,
+      gender_type: editGenderType,
+      status: editStatus as any,
+    };
+    
+    // Update React state
+    setRooms(prev => prev.map(r => r.id === selected.id ? updatedRoom : r));
+    
+    // Save to mock database
+    const currentDb = getMockDB();
+    if (currentDb && currentDb.rooms) {
+      currentDb.rooms = currentDb.rooms.map((r: any) =>
+        r.id === selected.id
+          ? {
+              ...r,
+              capacity: updatedRoom.capacity,
+              price: updatedRoom.price,
+              gender_type: updatedRoom.gender_type === 'mixed' ? 'unisex' : updatedRoom.gender_type,
+              status: updatedRoom.status,
+            }
+          : r
+      );
+      
+      // Auto sync room status with updated beds
+      syncRoomStatusWithBeds(selected.id, currentDb);
+      
+      saveMockDB(currentDb);
+    }
+    
+    setSelected(null);
+    refreshRoomsList();
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
       {/* Header */}
@@ -598,8 +650,7 @@ export default function AdminRoomsPage() {
                 const si = STATUS_ROOM[r.status] || STATUS_ROOM.available;
                 return (
                   <tr key={r.id}
-                    onClick={() => setSelected(r)}
-                    className="group cursor-pointer transition-colors"
+                    className="group transition-colors"
                     style={{ borderBottom: `1px solid ${A.border}`, background: i % 2 === 0 ? A.surface : A.bg }}
                     onMouseEnter={e => (e.currentTarget.style.background = A.bg)}
                     onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}>
@@ -617,8 +668,9 @@ export default function AdminRoomsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={e => { e.stopPropagation(); openEdit(r); }}
-                          className="p-1.5 rounded-full" style={{ color: A.accent }}>
+                        <button onClick={e => { e.stopPropagation(); setSelected(r); }}
+                          className="p-1.5 rounded-full" style={{ color: A.accent }}
+                          title="Xem chi tiết và chỉnh sửa">
                           <span className="material-symbols-outlined text-[18px]">edit</span>
                         </button>
                         <button onClick={e => { e.stopPropagation(); handleInitiateDeleteRoom(r); }}
@@ -650,12 +702,24 @@ export default function AdminRoomsPage() {
             style={{ background: A.surface }}>
             <div className="px-6 py-4 flex items-center justify-between"
               style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
-              <h2 className="text-lg font-bold" style={{ color: A.primary }}>Chi tiết phòng</h2>
-              <button onClick={() => setSelected(null)}>
-                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
-              </button>
+              <h2 className="text-lg font-bold" style={{ color: A.primary }}>Chi tiết & Chỉnh sửa</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { openEdit(selected); setSelected(null); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-95 flex items-center gap-1"
+                  style={{ background: A.accent }}
+                  title="Chỉnh sửa chi tiết phòng nâng cao"
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                  Nâng cao
+                </button>
+                <button onClick={() => setSelected(null)} className="p-1 rounded-full hover:bg-stone-200/50 flex items-center justify-center">
+                  <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+              {/* Room Header Info */}
               <div className="flex items-center gap-4">
                 <div className="p-4 rounded-xl" style={{ background: A.badgeBg }}>
                   <span className="material-symbols-outlined text-3xl" style={{ color: A.accent }}>meeting_room</span>
@@ -663,17 +727,15 @@ export default function AdminRoomsPage() {
                 <div>
                   <h3 className="text-xl font-bold" style={{ color: A.primary }}>{selected.name}</h3>
                   <p className="text-sm" style={{ color: A.textMuted }}>Chi nhánh {selected.branch} · Tầng {selected.floor}</p>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${(STATUS_ROOM[selected.status] || STATUS_ROOM.available).cls}`}>
-                    {(STATUS_ROOM[selected.status] || STATUS_ROOM.available).label}
-                  </span>
                 </div>
               </div>
+
+              {/* Static Details Grid */}
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { label: 'Mã phòng', val: selected.id },
-                  { label: 'Sức chứa', val: `${selected.capacity} giường` },
-                  { label: 'Giới tính', val: GENDER_LABEL[selected.gender_type] },
-                  { label: 'Đơn giá/tháng', val: `${selected.price.toLocaleString('vi-VN')}đ` },
+                  { label: 'Tầng', val: `Tầng ${selected.floor}` },
+                  { label: 'Chi nhánh', val: selected.branch },
                 ].map(({ label, val }) => (
                   <div key={label}>
                     <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>{label}</p>
@@ -681,13 +743,76 @@ export default function AdminRoomsPage() {
                   </div>
                 ))}
               </div>
-              <div>
-                <p className="text-xs font-semibold uppercase mb-2" style={{ color: A.textMuted }}>Tiện nghi</p>
-                <div className="flex flex-wrap gap-2">
-                  {selected.amenities.map(a => (
-                    <span key={a} className="px-2 py-1 rounded-full text-xs font-medium"
-                      style={{ background: A.badgeBg, color: A.accent }}>{a}</span>
-                  ))}
+
+              {/* Static Amenities */}
+              {selected.amenities && selected.amenities.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase mb-2" style={{ color: A.textMuted }}>Tiện nghi mặc định</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selected.amenities.map(a => (
+                      <span key={a} className="px-2 py-1 rounded-full text-xs font-medium"
+                        style={{ background: A.badgeBg, color: A.accent }}>{a}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <hr style={{ borderColor: A.border }} />
+
+              {/* Editable Fields Section */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold uppercase" style={{ color: A.accent }}>Chỉnh sửa thông tin</h4>
+                
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Sức chứa (giường)</label>
+                  <input
+                    type="number"
+                    value={editCapacity}
+                    onChange={e => setEditCapacity(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Đơn giá (đ/tháng)</label>
+                  <input
+                    type="number"
+                    value={editPrice}
+                    onChange={e => setEditPrice(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giới tính</label>
+                  <select
+                    value={editGenderType}
+                    onChange={e => setEditGenderType(e.target.value as any)}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  >
+                    <option value="male">Nam</option>
+                    <option value="female">Nữ</option>
+                    <option value="mixed">Hỗn hợp</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
+                  <select
+                    value={editStatus}
+                    onChange={e => setEditStatus(e.target.value as any)}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  >
+                    <option value="available">Phòng trống</option>
+                    <option value="occupied">Đang thuê</option>
+                    <option value="deposited">Đã đặt cọc</option>
+                    <option value="maintenance">Bảo trì</option>
+                    <option value="partial">Trống một phần</option>
+                  </select>
                 </div>
               </div>
 
@@ -723,16 +848,28 @@ export default function AdminRoomsPage() {
                 )}
               </div>
             </div>
+            {/* Drawer Footer Actions */}
             <div className="px-6 py-4 flex gap-3" style={{ background: A.sidebar, borderTop: `1px solid ${A.border}` }}>
-              <button onClick={() => openEdit(selected)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}>Sửa thông tin</button>
+              <button
+                onClick={() => setSelected(null)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50 text-center"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95"
+                style={{ background: A.primary }}
+              >
+                Lưu thay đổi
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Add Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in"
           style={{ background: `${A.primary}66` }}

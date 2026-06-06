@@ -15,7 +15,6 @@ import {
   CheckCircle, 
   Calendar, 
   FileText,
-  Search, 
   Bell,
   Compass,
   ClipboardList,
@@ -230,7 +229,6 @@ function DashboardLayout() {
           { path: '/manager/inspections', label: 'Kiểm kê trả phòng', icon: Activity },
           { path: '/manager/assets', label: 'Điều phối tài sản', icon: Settings },
           { path: '/manager/asset-reports', label: 'Báo cáo tài sản', icon: Database },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'sale':
@@ -238,7 +236,6 @@ function DashboardLayout() {
           { path: '/sale/dashboard', label: 'Tổng quan', icon: Home },
           { path: '/sale/schedules', label: 'Lịch hẹn xem phòng', icon: Calendar },
           { path: '/sale/contracts', label: 'Lập hợp đồng thuê', icon: FileText },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'accountant':
@@ -249,7 +246,6 @@ function DashboardLayout() {
           { path: '/accountant/invoices/monthly', label: 'Hóa đơn Định kỳ', icon: CreditCard },
           { path: '/accountant/refunds', label: 'Đối soát Hoàn cọc', icon: ArrowLeftRight },
           { path: '/accountant/payouts', label: 'Chi tiền Thanh lý', icon: CheckCircle },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
