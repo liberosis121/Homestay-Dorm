@@ -27,12 +27,7 @@ export default function ManagerDashboardPage() {
     });
   }, []);
 
-  const quickActions = [
-    { label: 'Duyệt đặt cọc', icon: 'payments', path: '/manager/deposits', color: T.amber, bg: T.amberBg },
-    { label: 'Hồ sơ lưu trú', icon: 'how_to_reg', path: '/manager/residency-checks', color: T.sage, bg: T.sageBg },
-    { label: 'Bàn giao tài sản', icon: 'assignment', path: '/manager/handovers', color: T.primary, bg: T.primaryLight },
-    { label: 'Sơ đồ phòng', icon: 'map', path: '/manager/rooms', color: T.red, bg: T.redBg },
-  ];
+
 
   useEffect(() => {
     const db = getMockDB();
@@ -158,118 +153,70 @@ export default function ManagerDashboardPage() {
         ))}
       </div>
 
-      {/* Dashboard Body Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Quick Actions & Operations Info (2/3 width) */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* Quick Actions Card */}
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 28, boxShadow: '0 2px 12px rgba(111,88,60,0.04)' }}>
-            <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 20 }}>
-              Hành động nhanh
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-              {quickActions.map((action, i) => (
-                <Link key={i} to={action.path}
-                  style={{ 
-                    background: action.bg, 
-                    border: `1px solid ${T.border}`, 
-                    borderRadius: 16, 
-                    padding: '20px 16px', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    gap: 10, 
-                    textDecoration: 'none', 
-                    transition: 'all 0.18s ease-in-out' 
-                  }}
-                  className="hover:-translate-y-1 hover:border-[#8C7355]/25 hover:bg-[#FAF9F7] hover:shadow-md active:scale-[0.97] active:translate-y-0 active:shadow-sm">
-                  <div style={{ 
-                    background: T.surface, 
-                    borderRadius: 12, 
-                    padding: 8, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    boxShadow: '0 2px 6px rgba(111,88,60,0.04)' 
-                  }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 24, color: action.color }}>{action.icon}</span>
-                  </div>
-                  <span style={{ color: T.text, fontSize: 12, fontWeight: 700, textAlign: 'center', lineHeight: 1.3 }}>{action.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Operations Alert Banner */}
-          <div style={{ 
-            background: '#FFF0E5', 
-            border: `1px solid ${T.border}`, 
-            borderRadius: 16, 
-            padding: 18, 
-            display: 'flex', 
-            gap: 12,
-            alignItems: 'flex-start'
-          }}>
-            <AlertCircle className="w-5 h-5 text-[#A67B5B] shrink-0 mt-0.5" />
-            <div>
-              <h4 style={{ color: '#A67B5B', fontSize: 13, fontWeight: 700 }}>Thông báo vận hành hôm nay</h4>
-              <p style={{ color: T.textMuted, fontSize: 11.5, marginTop: 4, lineHeight: 1.5 }}>
-                Đề nghị Quản lý chi nhánh tập trung hoàn tất việc **duyệt đặt cọc (UC13)** đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi **kiểm duyệt hồ sơ lưu trú (UC22)** để tránh chậm trễ báo cáo cơ quan công an địa phương.
-              </p>
-            </div>
-          </div>
-          
+      {/* Operations Alert Banner (Moved below KPI Cards) */}
+      <div style={{ 
+        background: '#FFF0E5', 
+        border: `1px solid ${T.border}`, 
+        borderRadius: 16, 
+        padding: 18, 
+        display: 'flex', 
+        gap: 12,
+        alignItems: 'flex-start'
+      }}>
+        <AlertCircle className="w-5 h-5 text-[#A67B5B] shrink-0 mt-0.5" />
+        <div>
+          <h4 style={{ color: '#A67B5B', fontSize: 13, fontWeight: 700 }}>Thông báo vận hành hôm nay</h4>
+          <p style={{ color: T.textMuted, fontSize: 11.5, marginTop: 4, lineHeight: 1.5 }}>
+            Đề nghị Quản lý chi nhánh tập trung hoàn tất việc **duyệt đặt cọc (UC13)** đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi **kiểm duyệt hồ sơ lưu trú (UC22)** để tránh chậm trễ báo cáo cơ quan công an địa phương.
+          </p>
         </div>
+      </div>
 
-        {/* Right Column: Recent Activity Timeline (1/3 width) */}
-        <div style={{ 
-          background: T.surface, 
-          border: `1px solid ${T.border}`, 
-          borderRadius: 20, 
-          padding: 28, 
-          boxShadow: '0 2px 12px rgba(111,88,60,0.04)',
-          alignSelf: 'start'
-        }}>
-          <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 20 }}>
-            Yêu cầu chờ xử lý
-          </h2>
-          <div className="space-y-4 relative before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border">
-            {recentActivity.length === 0 && (
-              <p style={{ color: T.textFaint, textAlign: 'center', padding: 32, fontSize: 13 }}>Chưa có hoạt động nào gần đây.</p>
-            )}
+      {/* Pending Requests Section (Stretched full-width with a grid layout) */}
+      <div style={{ 
+        background: T.surface, 
+        border: `1px solid ${T.border}`, 
+        borderRadius: 20, 
+        padding: 28, 
+        boxShadow: '0 2px 12px rgba(111,88,60,0.04)',
+      }}>
+        <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 20 }}>
+          Yêu cầu chờ xử lý
+        </h2>
+        {recentActivity.length === 0 ? (
+          <p style={{ color: T.textFaint, textAlign: 'center', padding: 32, fontSize: 13 }}>Chưa có hoạt động nào gần đây.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentActivity.map((act, i) => (
               <Link key={i} to={act.link}
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: 12, 
-                  padding: '10px', 
-                  borderRadius: 12, 
+                  padding: '16px', 
+                  borderRadius: 16, 
+                  border: `1px solid ${T.border}`,
+                  background: '#FFF8F3',
                   textDecoration: 'none', 
-                  transition: 'all 0.15s ease-in-out',
-                  position: 'relative'
+                  transition: 'all 0.18s ease-in-out',
                 }}
-                className="hover:bg-[#FAF2EC] hover:shadow-sm group">
+                className="hover:-translate-y-0.5 hover:border-[#8C7355]/25 hover:shadow-md hover:bg-white group active:scale-[0.98]">
                 <div style={{ 
                   background: act.bg || T.primaryLight, 
-                  borderRadius: 8, 
-                  padding: 6, 
+                  borderRadius: 12, 
+                  padding: 8, 
                   flexShrink: 0,
-                  zIndex: 10,
-                  boxShadow: '0 0 0 4px #FFF'
                 }}>
-                  <span className="material-symbols-outlined" style={{ color: act.color, fontSize: 18 }}>{act.icon}</span>
+                  <span className="material-symbols-outlined" style={{ color: act.color, fontSize: 22 }}>{act.icon}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p style={{ color: T.text, fontSize: 12.5, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {act.title}
                   </p>
-                  <p style={{ color: T.textMuted, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ color: T.textMuted, fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {act.detail}
                   </p>
-                  <span style={{ color: T.textFaint, fontSize: 10, display: 'block', marginTop: 3 }}>{act.time}</span>
+                  <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 3 }}>{act.time}</span>
                 </div>
                 <div style={{
                   opacity: 0,
@@ -282,8 +229,7 @@ export default function ManagerDashboardPage() {
               </Link>
             ))}
           </div>
-        </div>
-
+        )}
       </div>
     </div>
   );
