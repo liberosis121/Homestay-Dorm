@@ -3,10 +3,13 @@ import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
 import { 
   User, Shield, Camera, ChevronRight, Lock, Bell, Globe, 
-  Compass, Calendar, FileText, CreditCard, LogOut, Info,
+  Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
   X, Eye, EyeOff, Check, Zap
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
+import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import FormLabel from '../../components/ui/FormLabel';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
@@ -300,20 +303,40 @@ export default function ProfilePage() {
   const currentLang = LANGUAGES.find(l => l.code === language);
 
   // ── Shared InputField ─────────────────────────────────────────────────────
-  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => (
-    <div className="space-y-2">
-      <label className="block text-sm font-label-md text-on-surface-variant ml-2">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={handleProfileChange}
-        placeholder={placeholder}
-        disabled={disabled || !isEditing}
-        className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
-      />
-    </div>
-  );
+  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => {
+    const isDate = type === 'date';
+    if (isDate) {
+      return (
+        <CustomDatePicker
+          label={label}
+          value={value}
+          onChange={(val) => {
+            handleProfileChange({
+              target: { name, value: val }
+            } as any);
+          }}
+          disabled={disabled || !isEditing}
+          placeholder={placeholder || 'Chọn ngày'}
+          required={label.includes('*')}
+          variant="surface"
+        />
+      );
+    }
+    return (
+      <div className="space-y-2">
+        <FormLabel label={label} required={label.includes('*')} />
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={handleProfileChange}
+          placeholder={placeholder}
+          disabled={disabled || !isEditing}
+          className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
+        />
+      </div>
+    );
+  };
 
   // ── Toggle Switch ─────────────────────────────────────────────────────────
   const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
@@ -337,7 +360,7 @@ export default function ProfilePage() {
         />
       )}
 
-      <div className="max-w-container-max mx-auto w-full px-margin-mobile md:px-margin-desktop py-8 animate-fade-in-up">
+      <div className="max-w-container-max mx-auto w-full px-margin-mobile md:px-margin-desktop py-8 animate-fade-in-up theme-customer">
         <div className="flex flex-col xl:flex-row gap-8">
           
           {/* LEFT SIDEBAR */}
@@ -371,6 +394,9 @@ export default function ProfilePage() {
                     <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
                     </Link>
+                    <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
+                    </Link>
                   </>
                 ) : (
                   <>
@@ -395,17 +421,6 @@ export default function ProfilePage() {
                   <LogOut className="w-5 h-5" /> Đăng xuất
                 </button>
               </nav>
-            </div>
-            
-            {/* Eco-Score Card */}
-            <div className="bg-[#8ba888] rounded-32 p-6 text-white shadow-sm relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
-              <h4 className="font-bold text-lg mb-2 relative z-10">Eco-Score: {isNewCustomer ? 'A (Khởi đầu)' : 'A+'}</h4>
-              <p className="text-sm opacity-90 leading-relaxed relative z-10">
-                {isNewCustomer 
-                  ? 'Hãy bắt đầu thói quen tiết kiệm điện nước khi nhận phòng để tích lũy điểm Eco-Score nhé!'
-                  : 'Bạn đã tiết kiệm được 12kg CO2 trong tháng này thông qua việc sử dụng năng lượng thông minh.'}
-              </p>
             </div>
           </div>
 
@@ -465,9 +480,22 @@ export default function ProfilePage() {
                   
                   <div className="flex-1 text-center sm:text-left z-10">
                     <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
-                    <p className="text-sm text-on-surface-variant mt-1 font-medium">
-                      {isNewCustomer ? 'Khách hàng mới' : 'Sinh viên | Phòng 402-B'}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+                      {isNewCustomer ? (
+                        <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                          Khách hàng mới
+                        </span>
+                      ) : (
+                        <>
+                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                            Sinh viên
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
+                            Phòng 402-B
+                          </span>
+                        </>
+                      )}
+                    </div>
                     
                     <div className="mt-4 flex flex-col sm:flex-row gap-4 w-full">
                       <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
@@ -525,18 +553,20 @@ export default function ProfilePage() {
                     
                     <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
                     <div className="space-y-2">
-                      <label className="block text-sm font-label-md text-on-surface-variant ml-2">Giới tính *</label>
-                      <select
-                        name="gender"
+                      <FormLabel label="Giới tính" required />
+                      <CustomSelect
                         value={formData.gender}
-                        onChange={handleProfileChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
                         disabled={!isEditing}
-                        className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
-                      >
-                        <option value="male">Nam</option>
-                        <option value="female">Nữ</option>
-                        <option value="other">Khác</option>
-                      </select>
+                        pill
+                        options={[
+                          { value: 'male', label: 'Nam' },
+                          { value: 'female', label: 'Nữ' },
+                          { value: 'other', label: 'Khác' },
+                        ]}
+                        triggerClassName="w-full !bg-surface-container-low !border-surface-variant !py-3.5 !px-6 text-sm font-body-md text-on-surface focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20"
+                        dropdownClassName="border-outline-variant"
+                      />
                     </div>
                     
                     <InputField label="Số điện thoại *" name="phone" value={formData.phone} />

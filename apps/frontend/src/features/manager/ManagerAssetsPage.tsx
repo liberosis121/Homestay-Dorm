@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { getMockDB, saveMockDB, ManagedAsset } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const T = {
-  bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
-  border: '#D6CEC8', primary: '#8C7355', primaryLight: '#F5EFE6',
-  sage: '#5F745D', sageBg: '#E1E9DF', amber: '#A67B5B', amberBg: '#FFF0E5',
-  red: '#BA1A1A', redBg: '#FFDAD6', text: '#1E1B17', textMuted: '#4E453C', textFaint: '#7F756B'
+  bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
+  border: '#E7DED2', primary: '#5C4632', primaryLight: '#FAF2E8',
+  sage: '#5F7D4E', sageBg: '#EAF0E6', amber: '#B9792B', amberBg: '#FEF3E6',
+  red: '#A94F4F', redBg: '#FCECEB', blue: '#4A6984', blueBg: '#EAF1F8',
+  text: '#2C2520', textMuted: '#6E6259', textFaint: '#8A7563'
 };
 
 const STATUS_META: Record<ManagedAsset['status'], { label: string; bg: string; text: string }> = {
@@ -47,13 +49,19 @@ export default function ManagerAssetsPage() {
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   const doTransfer = () => {
     if (!selected || !transferTarget) return;
     const db = getMockDB();
-    const newHistory = [...(selected.transfer_history || []), { from: selected.current_location, to: transferTarget, date: new Date().toISOString().split('T')[0], reason: transferReason || 'Điều phối tài sản', by: transferBy }];
+    const newHistory = [...(selected.transfer_history || []), {
+      from: selected.current_location,
+      to: transferTarget,
+      date: new Date().toISOString().split('T')[0],
+      reason: transferReason || 'Điều phối tài sản',
+      by: transferBy
+    }];
     const updated = db.managed_assets.map((a: ManagedAsset) =>
       a.id === selected.id ? { ...a, current_location: transferTarget, transfer_history: newHistory } : a
     );
@@ -64,7 +72,7 @@ export default function ManagerAssetsPage() {
     setSelected(updatedAsset);
     setTransferTarget('');
     setTransferReason('');
-    showToast(`✓ Đã điều phối ${selected.name} → ${transferTarget}`);
+    showToast(`✓ Đã điều phối thành công ${selected.name} → ${transferTarget}`);
   };
 
   const filteredAssets = assets.filter(a =>
@@ -73,91 +81,162 @@ export default function ManagerAssetsPage() {
   );
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-6 animate-fade-in-up">
+    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="space-y-6 animate-fade-in-up">
       {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', top: 24, right: 24, zIndex: 9999, background: T.sageBg, border: `1px solid ${T.sage}`, color: T.sage, borderRadius: 14, padding: '12px 20px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 32px rgba(95,116,93,0.2)' }}>
-          {toast}
+        <div style={{
+          position: 'fixed', top: 96, right: 24, zIndex: 100,
+          background: T.sageBg,
+          color: T.sage,
+          border: '1.5px solid #A8C3A5',
+          padding: '14px 20px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: '0 8px 30px rgba(111,88,60,0.12)',
+          animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{toast}</span>
         </div>
       )}
 
+      {/* Styled slide animation */}
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(110%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
+
       {/* Header */}
       <div>
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.text, fontSize: 24, fontWeight: 700 }}>Phân bổ và điều phối tài sản</h1>
-        <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>UC22 — Quản lý và điều chuyển tài sản giữa các phòng và kho</p>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Phân bổ và điều phối tài sản</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-        {/* LEFT: Asset list (8/12) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* LEFT: Asset list (2/3 width) */}
         <div style={{ gridColumn: 'span 2 / span 2' }} className="space-y-4">
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2">
-            <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '7px 12px', fontSize: 12, color: T.text, background: T.surface, outline: 'none', cursor: 'pointer' }}>
-              <option value="all">Tất cả danh mục</option>
-              {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-              style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '7px 12px', fontSize: 12, color: T.text, background: T.surface, outline: 'none', cursor: 'pointer' }}>
-              <option value="all">Tất cả trạng thái</option>
-              {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: T.textMuted, alignSelf: 'center' }}>{filteredAssets.length} tài sản</span>
+          {/* Filters Bar */}
+          <div style={{
+            background: T.surface, border: `1px solid ${T.border}`,
+            borderRadius: 20, padding: '14px 18px',
+            boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3
+          }}>
+            <CustomSelect
+              value={filterCat}
+              onChange={setFilterCat}
+              options={[
+                { value: 'all', label: 'Tất cả danh mục' },
+                ...Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))
+              ]}
+              className="min-w-[160px]"
+              pill={true}
+              triggerClassName="h-9 !rounded-[24px] !border-[#E7DED2] !bg-white text-[#2C2520] py-1.5 text-xs font-semibold hover:!border-[#5C4632] hover:bg-[#FAF2E8]/40 transition-all duration-200"
+            />
+            <CustomSelect
+              value={filterStatus}
+              onChange={setFilterStatus}
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                ...Object.entries(STATUS_META).map(([k, v]) => ({ value: k, label: v.label }))
+              ]}
+              className="min-w-[160px]"
+              pill={true}
+              triggerClassName="h-9 !rounded-[24px] !border-[#E7DED2] !bg-white text-[#2C2520] py-1.5 text-xs font-semibold hover:!border-[#5C4632] hover:bg-[#FAF2E8]/40 transition-all duration-200"
+            />
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: T.textMuted, alignSelf: 'center', fontWeight: 600 }}>
+              {filteredAssets.length} tài sản
+            </span>
           </div>
 
-          {/* Table */}
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, overflow: 'hidden' }}>
+          {/* Table Container */}
+          <div style={{
+            background: T.surface, border: `1px solid ${T.border}`,
+            borderRadius: 20, overflow: 'hidden',
+            boxShadow: '0 4px 20px rgba(111,88,60,0.04)'
+          }}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '12%' }} /> {/* Mã */}
+                  <col style={{ width: '26%' }} /> {/* Tên tài sản */}
+                  <col style={{ width: '14%' }} /> {/* Danh mục */}
+                  <col style={{ width: '18%' }} /> {/* Vị trí */}
+                  <col style={{ width: '24%' }} /> {/* Trạng thái */}
+                  <col style={{ width: '6%' }} />  {/* Chevron Action */}
+                </colgroup>
                 <thead>
                   <tr style={{ background: T.bg }}>
-                    {['Mã', 'Tên tài sản', 'Danh mục', 'Vị trí hiện tại', 'Trạng thái', ''].map(h => (
-                      <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                    <th style={{
+                      padding: '14px 14px 14px 24px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                      color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                      borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                    }}>Mã</th>
+                    {['Tên tài sản', 'Danh mục', 'Vị trí hiện tại', 'Trạng thái'].map((h, idx) => (
+                      <th key={h} style={{
+                        padding: idx === 0 ? '14px 14px 14px 24px' : '14px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                        color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                        borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                      }}>{h}</th>
                     ))}
+                    <th style={{
+                      padding: '14px 24px 14px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700,
+                      color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                      borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                    }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }} className="animate-pulse">
-                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-8"></div></td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <div className="space-y-2">
-                            <div className="h-4 bg-gray-200 rounded w-24"></div>
-                            <div className="h-3 bg-gray-200 rounded w-16"></div>
-                          </div>
+                        <td style={{ padding: '15px 14px 15px 24px' }}><div className="h-4 bg-gray-200 rounded w-10"></div></td>
+                        <td style={{ padding: '15px 14px 15px 24px' }}>
+                          <div className="h-4 bg-gray-200 rounded w-36"></div>
                         </td>
-                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-                        <td style={{ padding: '11px 14px' }}><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
-                        <td style={{ padding: '11px 14px' }}><div className="h-4 bg-gray-200 rounded w-4"></div></td>
+                        <td style={{ padding: '15px 14px' }}><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                        <td style={{ padding: '15px 14px' }}><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                        <td style={{ padding: '15px 14px' }}><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
+                        <td style={{ padding: '15px 24px 15px 14px' }}><div className="h-4 bg-gray-200 rounded w-4"></div></td>
                       </tr>
                     ))
                   ) : filteredAssets.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: T.textFaint }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 8, color: T.textFaint }}>inventory_2</span>
-                        <p style={{ fontSize: 13, fontWeight: 500 }}>Không tìm thấy tài sản nào phù hợp bộ lọc.</p>
+                      <td colSpan={6} style={{ padding: '60px 40px', textAlign: 'center', color: T.textFaint }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 40, display: 'block', marginBottom: 10, color: T.textFaint }}>inventory_2</span>
+                        <p style={{ fontSize: 13, fontWeight: 600 }}>Không tìm thấy tài sản nào phù hợp bộ lọc.</p>
                       </td>
                     </tr>
                   ) : filteredAssets.map((asset) => {
                     const meta = STATUS_META[asset.status];
                     const isSelected = selected?.id === asset.id;
                     return (
-                      <tr key={asset.id} style={{ borderBottom: `1px solid ${T.border}`, background: isSelected ? T.primaryLight : 'transparent', transition: 'background 0.15s', cursor: 'pointer' }}
-                        onClick={() => setSelected(asset)} className="hover:bg-[#FAF2EC]">
-                        <td style={{ padding: '11px 14px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace' }}>{asset.id}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{asset.name}</p>
-                          {asset.serial_number && <p style={{ fontSize: 10, color: T.textFaint, fontFamily: 'monospace' }}>{asset.serial_number}</p>}
+                      <tr key={asset.id} style={{
+                        borderBottom: `1px solid ${T.border}`,
+                        background: isSelected ? T.primaryLight : 'transparent',
+                        cursor: 'pointer'
+                      }}
+                        onClick={() => setSelected(asset)}
+                        className="hover:bg-[#FAF2E8] transition-colors duration-150">
+                        <td style={{ padding: '13px 14px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{asset.id}</td>
+                        <td style={{ padding: '13px 14px 13px 24px' }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{asset.name}</p>
                         </td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: T.textMuted }}>{CAT_LABELS[asset.category]}</td>
-                        <td style={{ padding: '11px 14px', fontSize: 13, color: T.text, fontWeight: 500 }}>{asset.current_location}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <span style={{ background: meta.bg, color: meta.text, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>{meta.label}</span>
+                        <td style={{ padding: '13px 14px', fontSize: 12, color: T.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>{CAT_LABELS[asset.category]}</td>
+                        <td style={{ padding: '13px 14px', fontSize: 13, color: T.text, fontWeight: 700, whiteSpace: 'nowrap' }}>{asset.current_location}</td>
+                        <td style={{ padding: '13px 14px' }}>
+                          <span style={{
+                            background: meta.bg, color: meta.text,
+                            fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 20,
+                            border: `1px solid ${meta.text}1A`, whiteSpace: 'nowrap'
+                          }}>{meta.label}</span>
                         </td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: 18, color: isSelected ? T.primary : T.textFaint }}>{isSelected ? 'chevron_right' : 'chevron_right'}</span>
+                        <td style={{ padding: '13px 24px 13px 14px', textAlign: 'right' }}>
+                          <span className="material-symbols-outlined" style={{
+                            fontSize: 18,
+                            color: isSelected ? T.primary : T.textFaint,
+                            transform: isSelected ? 'translateX(2px)' : 'none',
+                            transition: 'transform 0.15s ease'
+                          }}>{isSelected ? 'arrow_forward' : 'chevron_right'}</span>
                         </td>
                       </tr>
                     );
@@ -168,62 +247,135 @@ export default function ManagerAssetsPage() {
           </div>
         </div>
 
-        {/* RIGHT: Transfer form (4/12) */}
-        <div className="space-y-4">
+        {/* RIGHT: Selected asset info & Transfer form (1/3 width) */}
+        <div className="space-y-6">
           {selected ? (
             <>
               {/* Selected asset info */}
-              <div style={{ background: T.surface, border: `2px solid ${T.primary}`, borderRadius: 20, padding: 20 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 10 }}>Tài sản đang chọn</p>
-                <p style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{selected.name}</p>
-                <p style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Vị trí: <strong>{selected.current_location}</strong></p>
-                <p style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>Ngày mua: {selected.purchase_date}</p>
-                <p style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>Giá mua: {selected.purchase_price.toLocaleString('vi-VN')}đ</p>
-                <div style={{ marginTop: 10 }}>
-                  <span style={{ background: STATUS_META[selected.status].bg, color: STATUS_META[selected.status].text, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>{STATUS_META[selected.status].label}</span>
+              <div style={{
+                background: T.surface, border: `1.5px solid ${T.primary}`,
+                borderRadius: 20, padding: 24,
+                boxShadow: '0 6px 20px rgba(92,70,50,0.06)'
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.8 }}>Tài sản đang chọn</p>
+                <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 18, fontWeight: 800, color: T.text, letterSpacing: -0.5 }}>{selected.name}</h2>
+                
+                <div className="grid grid-cols-2 gap-3" style={{ marginTop: 16 }}>
+                  <div style={{ background: T.bg, padding: '10px 14px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                    <span style={{ fontSize: 10, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Vị trí hiện tại</span>
+                    <span style={{ fontSize: 13, color: T.text, fontWeight: 700, marginTop: 2, display: 'block' }}>{selected.current_location}</span>
+                  </div>
+                  <div style={{ background: T.bg, padding: '10px 14px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                    <span style={{ fontSize: 10, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Trạng thái</span>
+                    <span style={{
+                      fontSize: 11, color: STATUS_META[selected.status].text, fontWeight: 800,
+                      background: STATUS_META[selected.status].bg, padding: '2px 8px', borderRadius: 9999,
+                      border: `1px solid ${STATUS_META[selected.status].text}1A`, display: 'inline-block', marginTop: 4
+                    }}>{STATUS_META[selected.status].label}</span>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 16, borderTop: `1px solid ${T.border}`, paddingTop: 16 }} className="space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span style={{ color: T.textMuted, fontWeight: 500 }}>Mã tài sản:</span>
+                    <span style={{ color: T.text, fontWeight: 700, fontFamily: 'monospace' }}>{selected.id}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <span style={{ color: T.textMuted, fontWeight: 500 }}>Ngày mua:</span>
+                    <span style={{ color: T.text, fontWeight: 600 }}>{selected.purchase_date}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span style={{ color: T.textMuted, fontWeight: 500 }}>Giá trị:</span>
+                    <span style={{ color: T.primary, fontWeight: 700 }}>{selected.purchase_price.toLocaleString('vi-VN')}đ</span>
+                  </div>
                 </div>
               </div>
 
               {/* Transfer form */}
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 20 }} className="space-y-4">
-                <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Điều phối tài sản</p>
+              <div style={{
+                background: T.surface, border: `1px solid ${T.border}`,
+                borderRadius: 20, padding: 24,
+                boxShadow: '0 4px 12px rgba(111,88,60,0.02)'
+              }} className="space-y-4">
+                <p style={{ fontFamily: "'Lexend', sans-serif", fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: -0.3 }}>Điều phối tài sản</p>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 6 }}>Vị trí đích *</label>
-                  <select value={transferTarget} onChange={e => setTransferTarget(e.target.value)}
-                    style={{ width: '100%', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 13, color: T.text, background: T.bg, outline: 'none', cursor: 'pointer', boxSizing: 'border-box' }}>
-                    <option value="">-- Chọn vị trí đích --</option>
-                    {LOCATIONS.filter(l => l !== selected.current_location).map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Vị trí đích *</label>
+                  <CustomSelect
+                    value={transferTarget}
+                    onChange={setTransferTarget}
+                    options={[
+                      { value: '', label: '-- Chọn vị trí đích --' },
+                      ...LOCATIONS.filter(l => l !== selected.current_location).map(l => ({ value: l, label: l }))
+                    ]}
+                    className="w-full"
+                    triggerClassName="h-10 !rounded-xl !border-[#E7DED2] !bg-[#FAF9F6] text-[#2C2520] py-2 text-sm font-medium focus:!border-[#5C4632]"
+                  />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 6 }}>Lý do điều phối</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Lý do điều phối</label>
                   <input value={transferReason} onChange={e => setTransferReason(e.target.value)}
                     placeholder="VD: Bàn giao phòng mới, sửa chữa..."
-                    style={{ width: '100%', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 13, color: T.text, background: T.bg, outline: 'none', boxSizing: 'border-box' }} />
+                    style={{
+                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
+                      padding: '10px 14px', fontSize: 13, color: T.text, background: '#FFFFFF',
+                      outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+                    }}
+                    className="focus:border-[#5C4632] focus:ring-2 focus:ring-[#5C4632]/10" />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 6 }}>Người phụ trách</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Người phụ trách</label>
                   <input value={transferBy} onChange={e => setTransferBy(e.target.value)}
-                    style={{ width: '100%', border: `1px solid ${T.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 13, color: T.text, background: T.bg, outline: 'none', boxSizing: 'border-box' }} />
+                    style={{
+                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
+                      padding: '10px 14px', fontSize: 13, color: T.text, background: '#FFFFFF',
+                      outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+                    }}
+                    className="focus:border-[#5C4632] focus:ring-2 focus:ring-[#5C4632]/10" />
                 </div>
                 <button onClick={doTransfer} disabled={!transferTarget}
-                  style={{ width: '100%', background: transferTarget ? T.primary : '#CCC', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: transferTarget ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>swap_horiz</span> Xác nhận điều phối
+                  style={{
+                    width: '100%',
+                    background: transferTarget ? T.primary : '#D6CED8',
+                    color: '#fff', border: 'none', borderRadius: 9999,
+                    padding: '14px', fontSize: 13, fontWeight: 700,
+                    cursor: transferTarget ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    boxShadow: transferTarget ? '0 4px 12px rgba(92,70,50,0.15)' : 'none',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                  className={transferTarget ? "hover:-translate-y-0.5 active:scale-[0.97] hover:shadow-lg" : ""}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>swap_horiz</span>
+                  Xác nhận điều phối
                 </button>
               </div>
 
-              {/* Transfer history */}
-              {selected.transfer_history.length > 0 && (
-                <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 20 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12 }}>Lịch sử điều chuyển</p>
-                  <div className="space-y-3">
+              {/* Transfer history timeline */}
+              {selected.transfer_history && selected.transfer_history.length > 0 && (
+                <div style={{
+                  background: T.surface, border: `1px solid ${T.border}`,
+                  borderRadius: 20, padding: 24,
+                  boxShadow: '0 4px 12px rgba(111,88,60,0.02)'
+                }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 18, letterSpacing: 0.8 }}>Lịch sử điều chuyển</p>
+                  <div className="relative pl-6 border-l-2 border-[#FAF2E8] space-y-5">
                     {[...selected.transfer_history].reverse().map((h, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 10, borderBottom: `1px solid ${T.border}` }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.primary, flexShrink: 0, marginTop: 2 }}>arrow_forward</span>
+                      <div key={i} className="relative">
+                        {/* Bullet point */}
+                        <div style={{
+                          position: 'absolute', left: -30, top: 2,
+                          width: 8, height: 8, borderRadius: '50%',
+                          background: i === 0 ? T.primary : T.border,
+                          border: `3px solid ${T.surface}`,
+                          boxShadow: i === 0 ? '0 0 0 3px rgba(92,70,50,0.2)' : 'none'
+                        }} />
                         <div>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{h.from} → {h.to}</p>
-                          <p style={{ fontSize: 11, color: T.textMuted }}>{h.reason} • {h.by}</p>
-                          <p style={{ fontSize: 10, color: T.textFaint }}>{h.date}</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{h.from} → {h.to}</p>
+                          <p style={{ fontSize: 12, color: T.textMuted, marginTop: 2, fontWeight: 500 }}>{h.reason}</p>
+                          <div className="flex justify-between items-center text-xs text-textFaint" style={{ marginTop: 4 }}>
+                            <span>Phụ trách: <strong style={{ color: T.textMuted }}>{h.by}</strong></span>
+                            <span style={{ fontFamily: 'monospace' }}>{h.date}</span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -232,9 +384,16 @@ export default function ManagerAssetsPage() {
               )}
             </>
           ) : (
-            <div style={{ background: T.surface, border: `2px dashed ${T.border}`, borderRadius: 20, padding: 40, textAlign: 'center' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 40, color: T.textFaint, display: 'block', marginBottom: 10 }}>touch_app</span>
-              <p style={{ color: T.textFaint, fontSize: 13 }}>Chọn một tài sản từ danh sách bên trái để điều phối</p>
+            <div style={{
+              background: T.surface, border: `2px dashed ${T.border}`,
+              borderRadius: 20, padding: '60px 24px', textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(111,88,60,0.02)'
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 44, color: T.textFaint, display: 'block', marginBottom: 14 }}>touch_app</span>
+              <p style={{ color: T.textMuted, fontSize: 14, fontWeight: 700 }}>Chọn một tài sản</p>
+              <p style={{ color: T.textFaint, fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+                Vui lòng nhấp vào một dòng tài sản ở danh sách bên trái để thực hiện điều chuyển hoặc xem lịch sử dịch chuyển.
+              </p>
             </div>
           )}
         </div>

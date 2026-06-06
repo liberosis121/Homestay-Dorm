@@ -80,7 +80,7 @@ export default function ContractListView({
         <div>
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-sm text-[#6f583c] hover:text-[#5c4830] font-medium transition mb-2"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-[#6f583c] hover:text-[#5c4830] bg-[#faf2ec]/50 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 font-medium transition-all duration-200 cursor-pointer active:scale-[0.98] active:bg-[#e8e1d3]/60 focus:outline-none focus:ring-2 focus:ring-[#6f583c]/20 mb-3"
           >
             <ArrowLeft className="w-4 h-4" />
             Quay lại danh sách phiếu cọc
@@ -94,7 +94,7 @@ export default function ContractListView({
         </div>
         <button
           onClick={onNewContract}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#6f583c] hover:bg-[#5c4830] text-white text-sm font-bold rounded-xl transition shadow-sm hover:shadow-md active:scale-95"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#6f583c] hover:bg-[#5c4830] text-white text-sm font-bold rounded-xl transition shadow-sm hover:shadow-md active:scale-95 cursor-pointer"
         >
           <FileSignature className="w-4 h-4" />
           Lập hợp đồng mới
@@ -121,7 +121,7 @@ export default function ContractListView({
         <div className="flex border-b border-[#eee7e1]">
           <button
             onClick={() => setTab('contracts')}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition border-b-2 -mb-px ${
+            className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition border-b-2 -mb-px cursor-pointer active:scale-[0.98] ${
               tab === 'contracts'
                 ? 'border-[#6f583c] text-[#6f583c] bg-[#fff8f3]'
                 : 'border-transparent text-[#9d8879] hover:text-[#4e453c] hover:bg-[#faf2ec]'
@@ -137,7 +137,7 @@ export default function ContractListView({
           </button>
           <button
             onClick={() => setTab('drafts')}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition border-b-2 -mb-px ${
+            className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition border-b-2 -mb-px cursor-pointer active:scale-[0.98] ${
               tab === 'drafts'
                 ? 'border-[#6f583c] text-[#6f583c] bg-[#fff8f3]'
                 : 'border-transparent text-[#9d8879] hover:text-[#4e453c] hover:bg-[#faf2ec]'
@@ -172,7 +172,7 @@ export default function ContractListView({
                 {!searchQuery && (
                   <button
                     onClick={onNewContract}
-                    className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-[#6f583c] text-white text-sm font-bold rounded-xl transition hover:bg-[#5c4830]"
+                    className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-[#6f583c] text-white text-sm font-bold rounded-xl transition hover:bg-[#5c4830] cursor-pointer active:scale-95"
                   >
                     <FileSignature className="w-4 h-4" />
                     Lập hợp đồng mới
@@ -317,14 +317,14 @@ export default function ContractListView({
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => onDeleteDraft(d.id)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#9d8879] hover:text-red-500 hover:bg-red-50 transition"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#9d8879] hover:text-red-500 hover:bg-red-50 transition cursor-pointer active:scale-95"
                           title="Xóa bản nháp"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => onResumeDraft(d.id)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#6f583c] text-white text-xs font-bold hover:bg-[#5c4830] transition shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#6f583c] text-white text-xs font-bold hover:bg-[#5c4830] transition shadow-sm cursor-pointer active:scale-95"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           Tiếp tục chỉnh sửa

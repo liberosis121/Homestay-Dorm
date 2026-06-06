@@ -20,14 +20,13 @@ export default function BedAvailability({
   beds,
   selectedBeds,
   onSelectionChange,
-  isFullRoomSelected,
-  currentOccupants
+  isFullRoomSelected
 }: Props) {
   const totalBeds = beds.length;
   const availableBeds = beds.filter(b => b.status === 'available');
   
-  // Can rent full room if there are no occupants already in the room and all beds are available
-  const canRentFullRoom = currentOccupants === 0 && availableBeds.length === totalBeds;
+  // Customer catalog only shows availability. Sale assigns actual beds after reviewing the registration form.
+  const canRentFullRoom = false;
 
   const handleBedToggle = (bedId: string) => {
     if (isFullRoomSelected) return; // Locked in full room mode
@@ -59,7 +58,7 @@ export default function BedAvailability({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Sơ đồ giường & Trạng thái</h2>
-          <p className="text-sm text-on-surface-variant">Chọn các giường bạn muốn đặt thuê</p>
+          <p className="text-sm text-on-surface-variant">Thông tin tham khảo. Nhân viên Sale sẽ xếp phòng/giường sau khi nhận phiếu đăng ký.</p>
         </div>
 
         {/* Full Room Option (Only if eligible) */}
@@ -91,7 +90,7 @@ export default function BedAvailability({
 
           switch (bed.status) {
             case 'available':
-              clickable = !isFullRoomSelected; // In full room mode, individual beds aren't clickable
+              clickable = false;
               badgeText = 'Đang trống';
               badgeStyle = 'bg-status-success/15 text-status-success';
               
@@ -155,16 +154,6 @@ export default function BedAvailability({
                 </div>
               </div>
 
-              {/* Selection Check Icon */}
-              {bed.status === 'available' && (
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
-                  isSelected || isFullRoomSelected
-                    ? 'bg-primary border-primary text-on-primary scale-110 shadow-md shadow-primary/15'
-                    : 'border-outline-variant bg-transparent'
-                }`}>
-                  {(isSelected || isFullRoomSelected) && <Check className="w-4 h-4" />}
-                </div>
-              )}
             </div>
           );
         })}

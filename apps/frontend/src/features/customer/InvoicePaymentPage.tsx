@@ -11,8 +11,7 @@ import {
   Clock, 
   Loader2, 
   CheckCircle2, 
-  AlertCircle,
-  ShieldCheck
+  AlertCircle
 } from 'lucide-react';
 
 type TabType = 'qr' | 'wallet' | 'card';
@@ -112,7 +111,7 @@ export default function InvoicePaymentPage() {
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-primary font-headline-lg">Thanh toán thành công!</h2>
             <p className="text-on-surface-variant font-body-md text-[15px]">
-              Giao dịch của bạn đã được đối soát tự động thành công. Hóa đơn **{invoice.id}** hiện đã cập nhật trạng thái là **Đã thanh toán**.
+              Giao dịch của bạn đã được đối soát tự động thành công. Hóa đơn <span className="font-bold text-primary">{invoice.id}</span> hiện đã cập nhật trạng thái là <span className="font-bold text-primary">Đã thanh toán</span>.
             </p>
           </div>
 
@@ -176,6 +175,7 @@ export default function InvoicePaymentPage() {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
+                    type="button"
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as TabType)}
                     className={`flex-1 py-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-4 transition-all cursor-pointer ${
@@ -244,7 +244,7 @@ export default function InvoicePaymentPage() {
                   <div className="flex items-start gap-2.5 p-3.5 bg-status-warning/10 text-status-warning border border-status-warning/20 rounded-xl">
                     <Clock className="w-4 h-4 shrink-0 mt-0.5 animate-pulse" />
                     <p className="text-xs font-semibold leading-relaxed">
-                      Lưu ý: Bạn phải chuyển khoản chính xác số tiền **{invoice.totalAmount.toLocaleString('vi-VN')}đ** và đúng nội dung chuyển khoản để hệ thống đối soát tự động.
+                      Lưu ý: Bạn phải chuyển khoản chính xác số tiền <span className="font-extrabold">{invoice.totalAmount.toLocaleString('vi-VN')}đ</span> và đúng nội dung chuyển khoản để hệ thống đối soát tự động.
                     </p>
                   </div>
 
@@ -267,6 +267,7 @@ export default function InvoicePaymentPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <button 
+                      type="button"
                       onClick={() => alert('Chức năng ví điện tử MoMo đang được phát triển. Vui lòng thanh toán bằng phương thức Chuyển khoản QR!')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
@@ -283,6 +284,7 @@ export default function InvoicePaymentPage() {
                       <span className="font-bold text-sm text-on-surface">Ví điện tử MoMo</span>
                     </button>
                     <button 
+                      type="button"
                       onClick={() => alert('Chức năng ví điện tử ZaloPay đang được phát triển. Vui lòng thanh toán bằng phương thức Chuyển khoản QR!')}
                       className="flex flex-col items-center gap-3 p-6 border-2 border-outline-variant/30 rounded-2xl hover:border-primary hover:bg-primary/5 active:scale-98 transition-all cursor-pointer group"
                     >
@@ -313,9 +315,11 @@ export default function InvoicePaymentPage() {
                     <input 
                       required
                       type="text" 
+                      inputMode="numeric"
+                      autoComplete="cc-number"
                       value={cardNumber}
                       onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').substring(0, 16))}
-                      className="w-full border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium bg-surface-container-low" 
+                      className="relative z-10 w-full border border-outline-variant/30 rounded-xl px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm font-medium bg-surface-container-low pointer-events-auto" 
                       placeholder="4123 4567 8901 2345" 
                     />
                   </div>
@@ -328,9 +332,11 @@ export default function InvoicePaymentPage() {
                       <input 
                         required
                         type="text" 
+                        inputMode="numeric"
+                        autoComplete="cc-exp"
                         value={cardExpiry}
                         onChange={handleExpiryChange}
-                        className="w-full border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium bg-surface-container-low text-center" 
+                        className="relative z-10 w-full border border-outline-variant/30 rounded-xl px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm font-medium bg-surface-container-low pointer-events-auto" 
                         placeholder="mm/dd" 
                       />
                     </div>
@@ -341,9 +347,11 @@ export default function InvoicePaymentPage() {
                       <input 
                         required
                         type="password" 
+                        inputMode="numeric"
+                        autoComplete="cc-csc"
                         value={cardCvv}
                         onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').substring(0, 3))}
-                        className="w-full border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium bg-surface-container-low text-center" 
+                        className="relative z-10 w-full border border-outline-variant/30 rounded-xl px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm font-medium bg-surface-container-low pointer-events-auto" 
                         placeholder="***" 
                       />
                     </div>
@@ -366,7 +374,7 @@ export default function InvoicePaymentPage() {
           {/* Right: Checkout Receipts Summary */}
           <div className="lg:col-span-5 bg-surface-container-lowest border border-outline-variant/30 rounded-3xl shadow-sm overflow-hidden sticky top-24">
             <div className="bg-primary p-6 text-on-primary">
-              <span className="text-[10px] font-bold uppercase tracking-widest bg-white/10 px-2.5 py-0.5 rounded-full">
+              <span className="inline-flex rounded-full border border-surface/40 bg-surface/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-primary shadow-sm">
                 Tóm tắt thanh toán
               </span>
               <h3 className="text-lg font-bold font-headline-md mt-2">Hóa đơn: {invoice.id}</h3>
@@ -409,11 +417,6 @@ export default function InvoicePaymentPage() {
                 <span className="text-xl font-bold text-primary">
                   {invoice.totalAmount.toLocaleString('vi-VN')} VNĐ
                 </span>
-              </div>
-
-              <div className="flex items-center gap-2 p-3 bg-status-success/10 border border-status-success/20 rounded-xl text-status-success text-xs font-semibold">
-                <ShieldCheck className="w-4.5 h-4.5 shrink-0" />
-                <span>Bảo mật giao dịch bởi SSL 256-bit mã hóa thụ hưởng.</span>
               </div>
             </div>
           </div>

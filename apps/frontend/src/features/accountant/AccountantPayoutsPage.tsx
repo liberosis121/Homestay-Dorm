@@ -17,6 +17,12 @@ export default function AccountantPayoutsPage() {
   const [copied, setCopied] = useState(false);
   const [voucherUploaded, setVoucherUploaded] = useState(false);
 
+  // Payment processing states (UC Xử lý hoàn cọc - Step 5)
+  const [payMethod, setPayMethod] = useState<'transfer' | 'cash'>('transfer');
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
+
   // Load Data
   useEffect(() => {
     const db = getMockDB();
@@ -26,6 +32,16 @@ export default function AccountantPayoutsPage() {
 
   const activePayout = payouts.find(p => p.id === selectedPayoutId);
   const matchedRefund = activePayout ? refunds.find(r => r.id === activePayout.refund_id) : null;
+
+  // Sync state with activePayout
+  useEffect(() => {
+    if (activePayout) {
+      setPayMethod(activePayout.payment_method || 'transfer');
+      setBankName(activePayout.bank_name || '');
+      setBankAccount(activePayout.bank_account || '');
+      setAccountHolder(activePayout.account_holder || '');
+    }
+  }, [selectedPayoutId, activePayout]);
 
   const handleCopyText = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -43,7 +59,11 @@ export default function AccountantPayoutsPage() {
       if (p.id === activePayout.id) {
         return {
           ...p,
-          status: 'completed',
+          payment_method: payMethod,
+          bank_name: payMethod === 'transfer' ? bankName : '',
+          bank_account: payMethod === 'transfer' ? bankAccount : '',
+          account_holder: payMethod === 'transfer' ? accountHolder : '',
+          status: 'completed' as const,
           paid_at: new Date().toISOString().split('T')[0]
         };
       }
@@ -56,17 +76,75 @@ export default function AccountantPayoutsPage() {
       if (r.id === activePayout.refund_id) {
         return {
           ...r,
-          status: 'paid'
+          status: 'paid' as const
         };
       }
       return r;
     });
     db.refund_records = updatedRefunds;
 
+    // Release room/bed to available
+    if (matchedRefund && matchedRefund.room_id) {
+      db.rooms = (db.rooms || []).map((rm: any) => {
+        if (rm.id === matchedRefund.room_id) {
+          const nextOccupants = Math.max(0, rm.current_occupants - 1);
+          return {
+            ...rm,
+            current_occupants: nextOccupants,
+            status: 'available' as const
+          };
+        }
+        return rm;
+      });
+    }
+
+    // Set active contracts to expired
+    if (db.customers) {
+      db.customers = db.customers.map((c: any) => {
+        const matchesCustomer = 
+          c.id === activePayout.customer_id || 
+          c.fullName === activePayout.customer_name ||
+          c.full_name === activePayout.customer_name;
+
+        if (matchesCustomer) {
+          const updatedContracts = (c.contracts || []).map((contract: any) => {
+            if (contract.status === 'active') {
+              return { ...contract, status: 'expired' as const };
+            }
+            return contract;
+          });
+          return {
+            ...c,
+            status: 'inactive' as const,
+            contracts: updatedContracts
+          };
+        }
+        return c;
+      });
+    }
+
+    // Clear renting room in profiles
+    if (db.profiles) {
+      db.profiles = db.profiles.map((p: any) => {
+        if (p.full_name === activePayout.customer_name || p.email === activePayout.customer_id) {
+          return {
+            ...p,
+            renting_room_name: undefined
+          };
+        }
+        return p;
+      });
+    }
+
     saveMockDB(db);
     setPayouts(updatedPayouts);
     setRefunds(updatedRefunds);
-    alert('Xác nhận đã chi tiền hoàn cọc thành công!');
+
+    if (activePayout.amount >= 0) {
+      alert('Xác nhận xử lý hoàn cọc thành công!');
+    } else {
+      alert('Xác nhận xử lý thu thêm tiền thành công!');
+    }
   };
 
   const handleLiquidation = () => {
@@ -268,53 +346,126 @@ export default function AccountantPayoutsPage() {
                     <span className="text-[#5e5f5d]">Tiền cọc ban đầu:</span>
                     <span className="font-mono font-medium text-[#1b1c1c]">{((matchedRefund ? matchedRefund.deposit_original : 2000000)).toLocaleString('vi-VN')} ₫</span>
                   </div>
-                  {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
+                  {matchedRefund && matchedRefund.type === 'cancellation' ? (
                     <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                      <span>Khấu trừ hư hại tài sản:</span>
-                      <span className="font-mono font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
+                      <span>Khấu trừ phạt hủy cọc / hợp đồng (20%):</span>
+                      <span className="font-mono font-medium">-{matchedRefund.total_deductions.toLocaleString('vi-VN')} ₫</span>
                     </div>
-                  )}
-                  {matchedRefund && matchedRefund.debt_deductions > 0 && (
-                    <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                      <span>Khấu trừ điện nước / nợ cũ:</span>
-                      <span className="font-mono font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
-                    </div>
+                  ) : (
+                    <>
+                      {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
+                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                          <span>Khấu trừ hư hại tài sản:</span>
+                          <span className="font-mono font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                      )}
+                      {matchedRefund && matchedRefund.debt_deductions > 0 && (
+                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                          <span>Khấu trừ điện nước / nợ cũ:</span>
+                          <span className="font-mono font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                      )}
+                    </>
                   )}
                   <div className="border-t border-[#d1c4b9] mt-2 pt-2 flex justify-between items-center text-sm font-bold">
-                    <span className="text-[#1b1c1c]">Tổng tiền thực hoàn:</span>
-                    <span className="font-mono text-base text-[#5a462d]">{activePayout.amount.toLocaleString('vi-VN')} ₫</span>
+                    <span className="text-[#1b1c1c]">
+                      {activePayout.amount >= 0 ? 'Tổng tiền thực hoàn:' : 'Tổng tiền khách đóng thêm:'}
+                    </span>
+                    <span className={`font-mono text-base ${activePayout.amount >= 0 ? 'text-[#2E7D32]' : 'text-[#ba1a1a]'}`}>
+                      {Math.abs(activePayout.amount).toLocaleString('vi-VN')} ₫
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Section 3: Target Account */}
-              {activePayout.payment_method === 'transfer' ? (
-                <div>
-                  <h4 className="font-label-caps text-[11px] text-[#5a462d] font-bold uppercase tracking-wider mb-2">Tài khoản nhận tiền</h4>
-                  <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded flex justify-between items-center">
-                    <div>
-                      <div className="font-bold text-xs text-[#1b1c1c]">{activePayout.bank_name}</div>
-                      <div className="font-mono text-xs text-[#5e5f5d] mt-1">
-                        {activePayout.bank_account} - {activePayout.account_holder}
+              {/* Section 3: Target Account (Editable) */}
+              <div>
+                <h4 className="font-label-caps text-[11px] text-[#5a462d] font-bold uppercase tracking-wider mb-2">
+                  Phương thức {activePayout.amount >= 0 ? 'hoàn trả' : 'thu thêm'} (Bước 4 & 5)
+                </h4>
+                <div className="space-y-3">
+                  {/* Select Payment Method */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#5e5f5d] mb-1">Phương thức thanh toán</label>
+                    {activePayout.status === 'completed' ? (
+                      <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-2.5 rounded text-xs font-semibold text-[#1b1c1c]">
+                        {payMethod === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Tiền mặt tại quầy'}
                       </div>
+                    ) : (
+                      <select
+                        value={payMethod}
+                        onChange={(e) => setPayMethod(e.target.value as 'transfer' | 'cash')}
+                        className="w-full bg-white border border-[#d1c4b9] rounded py-1.5 px-3 text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                      >
+                        <option value="transfer">Chuyển khoản ngân hàng</option>
+                        <option value="cash">Tiền mặt tại quầy</option>
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Bank Transfer Details */}
+                  {payMethod === 'transfer' && (
+                    activePayout.status === 'completed' ? (
+                      <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded flex justify-between items-center">
+                        <div>
+                          <div className="font-bold text-xs text-[#1b1c1c]">{bankName}</div>
+                          <div className="font-mono text-xs text-[#5e5f5d] mt-1">
+                            {bankAccount} - {accountHolder}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleCopyText(`${bankName} ${bankAccount} ${accountHolder}`)}
+                          className="text-[#5a462d] p-1.5 hover:bg-[#e4e2e1] rounded transition cursor-pointer"
+                          title="Sao chép thông tin"
+                        >
+                          {copied ? <Check className="w-4 h-4 text-[#2E7D32]" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded space-y-2.5">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Tên ngân hàng</label>
+                          <input
+                            type="text"
+                            value={bankName}
+                            onChange={(e) => setBankName(e.target.value)}
+                            placeholder="Ví dụ: Vietcombank, Techcombank..."
+                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Số tài khoản</label>
+                          <input
+                            type="text"
+                            value={bankAccount}
+                            onChange={(e) => setBankAccount(e.target.value)}
+                            placeholder="Nhập số tài khoản ngân hàng..."
+                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Tên chủ tài khoản</label>
+                          <input
+                            type="text"
+                            value={accountHolder}
+                            onChange={(e) => setAccountHolder(e.target.value)}
+                            placeholder="Nhập tên viết hoa không dấu..."
+                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
+                          />
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {payMethod === 'cash' && (
+                    <div className="bg-[#FFF3E0] border border-[#FFE0B2] p-3 rounded text-xs font-semibold text-[#E65100]">
+                      {activePayout.amount >= 0 
+                        ? 'CHI TRẢ TIỀN MẶT TRỰC TIẾP TẠI QUẦY' 
+                        : 'THU TIỀN MẶT TRỰC TIẾP TẠI QUẦY'}
                     </div>
-                    <button
-                      onClick={() => handleCopyText(`${activePayout.bank_name} ${activePayout.bank_account} ${activePayout.account_holder}`)}
-                      className="text-[#5a462d] p-1.5 hover:bg-[#e4e2e1] rounded transition"
-                      title="Sao chép thông tin"
-                    >
-                      {copied ? <Check className="w-4 h-4 text-[#2E7D32]" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <div>
-                  <h4 className="font-label-caps text-[11px] text-[#5a462d] font-bold uppercase tracking-wider mb-2">Phương thức chi trả</h4>
-                  <div className="bg-[#FFF3E0] border border-[#FFF3E0] p-3 rounded text-xs font-semibold text-[#E65100]">
-                    CHI TRẢ TIỀN MẶT TRỰC TIẾP TẠI QUẦY
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* Section 4: Document upload placeholder */}
               <div>
@@ -353,7 +504,9 @@ export default function AccountantPayoutsPage() {
                 }`}
               >
                 <Check className="w-4 h-4" />
-                Xác nhận đã chuyển tiền
+                {activePayout.status === 'completed'
+                  ? (activePayout.amount >= 0 ? 'Đã hoàn tất chi cọc' : 'Đã thu thêm tiền')
+                  : (activePayout.amount >= 0 ? 'Xác nhận xử lý hoàn cọc' : 'Xác nhận xử lý thu thêm')}
               </button>
 
               <div className="border-t border-[#d1c4b9] pt-3">

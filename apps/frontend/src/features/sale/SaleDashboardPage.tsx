@@ -22,7 +22,7 @@ function StatusBadge({ status }: { status: TodayAppointment['status'] }) {
   };
   const s = map[status];
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${s.cls}`}>
+    <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${s.cls}`}>
       {s.label}
     </span>
   );
@@ -212,7 +212,7 @@ export default function SaleDashboardPage() {
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Thời gian</th>
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Khách hàng</th>
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Loại phòng</th>
-                    <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-center">Trạng thái</th>
                     <th className="px-6 py-3"></th>
                   </tr>
                 </thead>
@@ -235,7 +235,7 @@ export default function SaleDashboardPage() {
                           <div>{appt.room_type}</div>
                           <div className="text-xs text-[#7f756b]">{appt.branch}</div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 text-center align-middle">
                           <StatusBadge status={appt.status} />
                         </td>
                         <td className="px-6 py-4 text-right relative">
@@ -248,27 +248,29 @@ export default function SaleDashboardPage() {
 
                           {/* Dropdown action menu */}
                           {openMenuId === appt.id && (
-                            <div className="absolute right-6 top-10 z-30 bg-white border border-[#d1c4b9] rounded-xl shadow-xl min-w-[180px] overflow-hidden">
+                            <div className="absolute right-6 top-10 z-30 w-max min-w-[230px] bg-white border border-[#d1c4b9] rounded-xl shadow-xl overflow-hidden">
                               {appt.status === 'pending' && (
                                 <button
                                   onClick={() => confirmAppointment(appt.id)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#1e1b17] hover:bg-[#d2e9cd]/50 transition-colors cursor-pointer text-left"
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm leading-none text-[#1e1b17] hover:bg-[#d2e9cd]/50 transition-colors cursor-pointer text-left whitespace-nowrap"
                                 >
-                                  <CheckCircle className="w-4 h-4 text-[#4d614b]" />
+                                  <CheckCircle className="w-4 h-4 shrink-0 text-[#4d614b]" />
                                   Xác nhận lịch hẹn
                                 </button>
                               )}
                               {appt.status !== 'cancelled' && (
                                 <button
                                   onClick={() => cancelAppointment(appt.id)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#ba1a1a] hover:bg-[#ffdad6]/50 transition-colors cursor-pointer text-left"
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm leading-none text-[#ba1a1a] hover:bg-[#ffdad6]/50 transition-colors cursor-pointer text-left whitespace-nowrap"
                                 >
-                                  <X className="w-4 h-4" />
+                                  <X className="w-4 h-4 shrink-0" />
                                   Hủy lịch hẹn
                                 </button>
                               )}
                               {appt.status === 'cancelled' && (
-                                <div className="px-4 py-3 text-xs text-[#7f756b]">Không có hành động khả dụng</div>
+                                <div className="px-4 py-3 text-xs leading-none text-[#7f756b] whitespace-nowrap text-center">
+                                  Không có hành động khả dụng
+                                </div>
                               )}
                             </div>
                           )}

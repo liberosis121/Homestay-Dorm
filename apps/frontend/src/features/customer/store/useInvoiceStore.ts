@@ -38,6 +38,7 @@ interface InvoiceState {
     month: string; // "Tất cả" or "1", "2"..."12"
     year: string; // "Tất cả" or "2024", "2023"
     status: string; // "Tất cả" or "paid", "unpaid", "overdue"
+    type: string; // "Tất cả" or "monthly", "service", "incidental"
   };
   selectedInvoiceId: string | null;
   setFilters: (filters: Partial<InvoiceState['filters']>) => void;
@@ -284,6 +285,7 @@ export const useInvoiceStore = create<InvoiceState>()(
         month: '10', // Default filtered to current mock month
         year: '2024',
         status: 'Tất cả',
+        type: 'Tất cả',
       },
       selectedInvoiceId: 'HD-2024-10-01', // Default selected
       setFilters: (newFilters) => 
@@ -325,6 +327,7 @@ export const useInvoiceStore = create<InvoiceState>()(
             month: '10',
             year: '2024',
             status: 'Tất cả',
+            type: 'Tất cả',
           },
           selectedInvoiceId: 'HD-2024-10-01',
         }),

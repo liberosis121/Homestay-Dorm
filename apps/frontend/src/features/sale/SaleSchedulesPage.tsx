@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, CheckCircle, Calendar, Clock,
-  RotateCcw, XCircle, User, Building2, FileText, Filter
+  RotateCcw, XCircle, Building2, FileText, Filter
 } from 'lucide-react';
-import { useSaleScheduleStore, ScheduleStatus, CreateSchedulePayload, ReschedulePayload } from './store/useSaleScheduleStore';
+import { useSaleScheduleStore, ScheduleStatus, ReschedulePayload } from './store/useSaleScheduleStore';
 import ScheduleStatusBadge from './components/ScheduleStatusBadge';
 import ScheduleCalendar from './components/ScheduleCalendar';
+import CreateFromRegistrationModal from './components/CreateFromRegistrationModal';
 import { useAuthStore } from '../../stores/authStore';
 import { getMockDB } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +75,7 @@ const SaleSchedulesPage: React.FC = () => {
   const [customers, setCustomers] = useState<MockProfile[]>([]);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [confirmCompleteId, setConfirmCompleteId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState('');
 
   const filteredSchedules = getFilteredSchedules();
   const upcoming24h = getUpcoming24h();
@@ -133,8 +136,13 @@ const SaleSchedulesPage: React.FC = () => {
     }
   };
 
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    window.setTimeout(() => setToastMessage(''), 3200);
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-6 animate-fade-in-up [&_button:not(:disabled)]:cursor-pointer [&_button:disabled]:cursor-not-allowed">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -198,14 +206,22 @@ const SaleSchedulesPage: React.FC = () => {
 
       {/* Modals */}
       {isCreateModalOpen && (
-        <CreateModal
+        <CreateFromRegistrationModal
           rooms={rooms}
           branches={branches}
           customers={customers}
           createdBy={user?.full_name || 'Nhân viên Sale'}
           onClose={closeCreateModal}
           onCreate={createSchedule}
+          onCreated={() => showToast('Đã tạo lịch hẹn và gửi thông báo cho khách.')}
         />
+      )}
+
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-[80] flex items-center gap-3 rounded-2xl border border-[#c6b8a5] bg-white px-5 py-3 shadow-xl shadow-[#6f583c]/15">
+          <CheckCircle className="h-5 w-5 text-[#4f6f4a]" />
+          <p className="text-sm font-semibold text-[#4e453c]">{toastMessage}</p>
+        </div>
       )}
 
       {isRescheduleModalOpen && reschedulingId && (
@@ -400,11 +416,24 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
         <table className="w-full text-left border-collapse">
           <thead className="bg-[#faf2ec] border-b border-[#d1c4b9]">
             <tr>
-              {['Mã lịch', 'Khách hàng', 'Phòng / Chi nhánh', 'Ngày xem', 'Giờ xem', 'Trạng thái', 'Thao tác'].map((h) => (
-                <th key={h} className="px-4 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[80px] min-w-[80px]">
+                Mã lịch
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[200px] min-w-[200px]">
+                Khách hàng
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap">
+                Phòng / Chi nhánh
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[120px] min-w-[120px]">
+                Thời gian hẹn
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[110px] min-w-[110px]">
+                Trạng thái
+              </th>
+              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[120px] min-w-[120px]">
+                Thao tác
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#d1c4b9]/60">
@@ -419,45 +448,46 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                   }`}
                 >
                   {/* Mã lịch */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap w-[80px] min-w-[80px]">
                     <span className="font-mono font-bold text-sm text-[#6f583c]">#{s.id}</span>
                   </td>
 
                   {/* Khách hàng */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 w-[200px] min-w-[200px] max-w-[200px]">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full ${avatarColors[idx % avatarColors.length]} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
                         {getInitials(s.customerName)}
                       </div>
-                      <span className="text-sm font-medium text-on-surface whitespace-nowrap">{s.customerName}</span>
+                      <span 
+                        className="text-sm font-medium text-on-surface truncate block" 
+                        title={s.customerName}
+                      >
+                        {s.customerName}
+                      </span>
                     </div>
                   </td>
 
                   {/* Phòng / Chi nhánh */}
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-bold text-on-surface">{s.roomName}</p>
-                    <p className="text-xs text-on-surface-variant">{s.branchName.replace('Chi nhánh ', '')}</p>
+                  <td className="px-3 py-3">
+                    <p className="text-sm font-bold text-on-surface truncate max-w-[160px]" title={s.roomName}>{s.roomName}</p>
+                    <p className="text-xs text-on-surface-variant truncate max-w-[160px]" title={s.branchName}>{s.branchName.replace('Chi nhánh ', '')}</p>
                   </td>
 
-                  {/* Ngày xem */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  {/* Thời gian hẹn */}
+                  <td className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[120px]">
                     <p className="text-sm font-bold text-on-surface">
                       {parseLocalDate(s.viewDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </p>
-                  </td>
-
-                  {/* Giờ xem */}
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-sm text-on-surface">{s.startTime} – {s.endTime}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{s.startTime} – {s.endTime}</p>
                   </td>
 
                   {/* Trạng thái */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 w-[110px] min-w-[110px]">
                     <ScheduleStatusBadge status={s.status} />
                   </td>
 
                   {/* Thao tác */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[120px]">
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       {canComplete(s.status) && (
                         <button
@@ -599,10 +629,14 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
 
   return (
     <div className="bg-white rounded-2xl border border-[#d1c4b9] p-5" style={{ boxShadow: '0 4px 12px rgba(45, 42, 38, 0.04)' }}>
-      <h3 className="text-xs font-bold text-[#7f756b] uppercase tracking-widest mb-1">
-        Tiến trình lịch hẹn
-      </h3>
-      <p className="text-sm font-bold text-[#6f583c] mb-4">#{schedule.id}</p>
+      <div className="flex items-center gap-2.5 flex-wrap mb-4">
+        <h3 className="text-xs font-bold text-[#7f756b] uppercase tracking-widest">
+          Tiến trình lịch hẹn
+        </h3>
+        <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#E8E1D3] text-[#5E503F] border border-[#D2C4AF] rounded-lg whitespace-nowrap">
+          #{schedule.id}
+        </span>
+      </div>
       <div className="text-xs text-on-surface-variant mb-4">
         <span className="font-medium">{schedule.customerName}</span>
         {' · '}
@@ -656,297 +690,6 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
 };
 
 // ─── Create Modal ─────────────────────────────────────────────────────────────
-
-interface CreateModalProps {
-  rooms: MockRoom[];
-  branches: MockBranch[];
-  customers: MockProfile[];
-  createdBy: string;
-  onClose: () => void;
-  onCreate: (payload: CreateSchedulePayload, createdBy: string) => void;
-}
-
-const CreateModal: React.FC<CreateModalProps> = ({
-  rooms, branches, customers, createdBy, onClose, onCreate,
-}) => {
-  const { user } = useAuthStore();
-  const isSale = user?.role === 'sale';
-
-  const [form, setForm] = useState({
-    customerSearch: '',
-    customerName: '',
-    customerId: '',
-    branchId: isSale ? 'b-1' : '',
-    roomId: '',
-    viewDate: '',
-    startTime: '',
-    endTime: '',
-    notes: '',
-  });
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const filteredRooms = rooms.filter((r) => !form.branchId || r.branch_id === form.branchId);
-  const filteredCustomers = customers.filter((c) =>
-    c.full_name.toLowerCase().includes(form.customerSearch.toLowerCase()) ||
-    c.email.toLowerCase().includes(form.customerSearch.toLowerCase())
-  );
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowCustomerDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const selectedRoom = rooms.find((r) => r.id === form.roomId);
-
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!form.customerName) errs.customerName = 'Vui lòng chọn hoặc nhập tên khách hàng';
-    if (!form.branchId) errs.branchId = 'Vui lòng chọn chi nhánh';
-    if (!form.roomId) errs.roomId = 'Vui lòng chọn phòng';
-    if (!form.viewDate) errs.viewDate = 'Vui lòng chọn ngày xem';
-    if (!form.startTime) errs.startTime = 'Vui lòng chọn giờ bắt đầu';
-    if (!form.endTime) errs.endTime = 'Vui lòng chọn giờ kết thúc';
-    if (form.startTime && form.endTime && form.startTime >= form.endTime) {
-      errs.endTime = 'Giờ kết thúc phải sau giờ bắt đầu';
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    const branch = branches.find((b) => b.id === form.branchId);
-    onCreate(
-      {
-        customerName: form.customerName,
-        customerId: form.customerId || undefined,
-        roomId: form.roomId,
-        roomName: selectedRoom?.name || '',
-        branchId: form.branchId,
-        branchName: branch?.name || '',
-        viewDate: form.viewDate,
-        startTime: form.startTime,
-        endTime: form.endTime,
-        notes: form.notes || undefined,
-      },
-      createdBy
-    );
-    onClose();
-  };
-
-  const inputClass = (field: string) =>
-    `w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-[#6f583c] transition-colors ${
-      errors[field] ? 'border-error bg-error/5' : 'border-[#d1c4b9] bg-white'
-    }`;
-
-  return (
-    <ModalOverlay onClose={onClose}>
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-[#d1c4b9] flex justify-between items-center bg-[#faf2ec]">
-          <h3 className="font-headline-md text-xl text-[#6f583c]">Tạo lịch hẹn mới</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-[#e8e1db] rounded-full transition-colors">
-            <X className="w-5 h-5 text-[#4e453c]" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto bg-white">
-          {/* Customer Search */}
-          <div ref={dropdownRef} className="relative">
-            <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-              Khách hàng <span className="text-error">*</span>
-            </label>
-            <div className="relative">
-              <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm tên hoặc email khách..."
-                value={form.customerSearch || form.customerName}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, customerSearch: e.target.value, customerName: e.target.value, customerId: '' }));
-                  setShowCustomerDropdown(true);
-                }}
-                onFocus={() => setShowCustomerDropdown(true)}
-                className={`${inputClass('customerName')} pl-9`}
-              />
-            </div>
-            {errors.customerName && <p className="text-xs text-error mt-1">{errors.customerName}</p>}
-
-            {showCustomerDropdown && (
-              <div className="absolute top-full mt-1 w-full bg-white border border-[#d1c4b9] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
-                {filteredCustomers.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-[#7f756b]">
-                    Không tìm thấy. Nhập tên để thêm mới.
-                  </div>
-                ) : (
-                  filteredCustomers.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setForm((f) => ({
-                          ...f,
-                          customerName: c.full_name,
-                          customerId: c.id,
-                          customerSearch: '',
-                        }));
-                        setShowCustomerDropdown(false);
-                      }}
-                      className="w-full px-4 py-2.5 text-left hover:bg-[#faf2ec] transition-colors"
-                    >
-                      <p className="text-sm font-medium text-on-surface">{c.full_name}</p>
-                      <p className="text-xs text-on-surface-variant">{c.email}</p>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Branch + Room */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Chi nhánh <span className="text-error">*</span>
-              </label>
-              <div className="relative">
-                {isSale ? (
-                  <div className="flex items-center gap-2 pl-3.5 pr-5 py-2.5 bg-[#f4ede6] border border-[#d1c4b9] rounded-xl text-sm font-bold text-[#6f583c] shadow-sm select-none cursor-not-allowed w-full">
-                    <Building2 className="w-4 h-4 text-[#8c7355] shrink-0" />
-                    <span className="truncate">Quận 1</span>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <Building2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7f756b] z-10 pointer-events-none" />
-                    <CustomSelect
-                      value={form.branchId}
-                      onChange={(val) => setForm((f) => ({ ...f, branchId: val, roomId: '' }))}
-                      options={[
-                        { value: '', label: 'Chọn chi nhánh' },
-                        ...branches.map((b) => ({ value: b.id, label: b.name.replace('Chi nhánh ', '') }))
-                      ]}
-                      className="w-full"
-                      triggerClassName={`pl-10 text-left ${errors.branchId ? 'border-error bg-error/5 rounded-xl' : 'border-[#d1c4b9] rounded-xl'}`}
-                      dropdownClassName="border-[#d1c4b9] rounded-2xl"
-                    />
-                  </div>
-                )}
-              </div>
-              {errors.branchId && <p className="text-xs text-error mt-1">{errors.branchId}</p>}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Phòng <span className="text-error">*</span>
-              </label>
-              <CustomSelect
-                value={form.roomId}
-                onChange={(val) => setForm((f) => ({ ...f, roomId: val }))}
-                options={[
-                  { value: '', label: 'Chọn phòng' },
-                  ...filteredRooms.map((r) => ({ value: r.id, label: r.name }))
-                ]}
-                className="w-full"
-                triggerClassName={`text-left ${errors.roomId ? 'border-error bg-error/5 rounded-xl' : 'border-[#d1c4b9] rounded-xl'}`}
-                dropdownClassName="border-[#d1c4b9] rounded-2xl"
-              />
-              {errors.roomId && <p className="text-xs text-error mt-1">{errors.roomId}</p>}
-            </div>
-          </div>
-
-          {/* Date */}
-          <div>
-            <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-              Ngày xem <span className="text-error">*</span>
-            </label>
-            <div className="relative">
-              <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-              <input
-                type="date"
-                value={form.viewDate}
-                min="2026-06-02"
-                onChange={(e) => setForm((f) => ({ ...f, viewDate: e.target.value }))}
-                className={`${inputClass('viewDate')} pl-9`}
-              />
-            </div>
-            {errors.viewDate && <p className="text-xs text-error mt-1">{errors.viewDate}</p>}
-          </div>
-
-          {/* Start + End Time */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Giờ bắt đầu <span className="text-error">*</span>
-              </label>
-              <div className="relative">
-                <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-                <input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
-                  className={`${inputClass('startTime')} pl-9`}
-                />
-              </div>
-              {errors.startTime && <p className="text-xs text-error mt-1">{errors.startTime}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
-                Giờ kết thúc <span className="text-error">*</span>
-              </label>
-              <div className="relative">
-                <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f756b]" />
-                <input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
-                  className={`${inputClass('endTime')} pl-9`}
-                />
-              </div>
-              {errors.endTime && <p className="text-xs text-error mt-1">{errors.endTime}</p>}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">Ghi chú (tùy chọn)</label>
-            <textarea
-              rows={3}
-              placeholder="Yêu cầu đặc biệt, thông tin bổ sung..."
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              className="w-full px-4 py-2.5 border border-[#d1c4b9] rounded-xl text-sm focus:outline-none focus:border-[#6f583c] transition-colors resize-none"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2 border-t border-[#d1c4b9]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 border border-[#d1c4b9] rounded-xl text-sm font-medium text-[#4e453c] hover:bg-[#faf2ec] transition-colors"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-2.5 bg-[#6f583c] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity shadow-md shadow-[#6f583c]/20 active:scale-95"
-            >
-              Xác nhận tạo
-            </button>
-          </div>
-        </form>
-      </div>
-    </ModalOverlay>
-  );
-};
 
 // ─── Reschedule Modal ─────────────────────────────────────────────────────────
 
@@ -1026,14 +769,13 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ scheduleId, schedule,
             <label className="block text-xs font-semibold text-[#4e453c] mb-1.5">
               Ngày mới <span className="text-error">*</span>
             </label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={form.newDate}
               min="2026-06-02"
-              onChange={(e) => setForm((f) => ({ ...f, newDate: e.target.value }))}
-              className={inputClass('newDate')}
+              onChange={(val) => setForm((f) => ({ ...f, newDate: val }))}
+              placeholder="Chọn ngày mới"
+              error={errors.newDate}
             />
-            {errors.newDate && <p className="text-xs text-error mt-1">{errors.newDate}</p>}
           </div>
 
           {/* New Times */}

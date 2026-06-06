@@ -1,0 +1,198 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, CalendarCheck, CheckCircle, Clock, CreditCard, Receipt, Search, XCircle } from 'lucide-react';
+import { CustomerDepositRequest, getMockDB } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../stores/authStore';
+
+const statusMap: Record<CustomerDepositRequest['status'], { label: string; cls: string; icon: any; desc: string }> = {
+  pending_sale_confirmation: {
+    label: 'Chờ Sale xác nhận',
+    cls: 'bg-primary-fixed/30 text-timber-accent border-timber-accent/20',
+    icon: Clock,
+    desc: 'Nhân viên Sale đang kiểm tra lại phòng/giường đã xem.',
+  },
+  confirmed: {
+    label: 'Đã xác nhận',
+    cls: 'bg-primary/10 text-primary border-primary/20',
+    icon: CalendarCheck,
+    desc: 'Yêu cầu đã được xác nhận và đang chuyển sang bước lập hóa đơn.',
+  },
+  invoice_created: {
+    label: 'Chờ thanh toán',
+    cls: 'bg-sage-light text-timber-accent border-outline-variant',
+    icon: Receipt,
+    desc: 'Hóa đơn đặt cọc đã được tạo.',
+  },
+  paid: {
+    label: 'Đã thanh toán',
+    cls: 'bg-status-success/10 text-status-success border-status-success/20',
+    icon: CheckCircle,
+    desc: 'Khoản cọc đã được ghi nhận thành công.',
+  },
+  cancelled: {
+    label: 'Đã hủy',
+    cls: 'bg-error-container text-error border-error/20',
+    icon: XCircle,
+    desc: 'Yêu cầu đặt cọc đã được hủy.',
+  },
+};
+
+const formatDate = (value: string) => new Date(value).toLocaleDateString('vi-VN');
+
+export default function DepositHistoryPage() {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const [requests, setRequests] = useState<CustomerDepositRequest[]>([]);
+  const [query, setQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setIsLoading(true);
+    setTimeout(() => {
+      const db = getMockDB();
+      const list = (db.customer_deposit_requests || [])
+        .filter((r: CustomerDepositRequest) => r.customer_id === user.id)
+        .sort((a: CustomerDepositRequest, b: CustomerDepositRequest) => b.created_at.localeCompare(a.created_at));
+      setRequests(list);
+      setIsLoading(false);
+    }, 500);
+  }, [user, navigate]);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return requests;
+    const q = query.toLowerCase();
+    return requests.filter((r) =>
+      r.id.toLowerCase().includes(q) ||
+      r.room_name.toLowerCase().includes(q) ||
+      r.branch_name.toLowerCase().includes(q)
+    );
+  }, [requests, query]);
+
+  const stats = useMemo(() => ({
+    total: requests.length,
+    pending: requests.filter(r => r.status === 'pending_sale_confirmation' || r.status === 'confirmed').length,
+    payable: requests.filter(r => r.status === 'invoice_created').length,
+    paid: requests.filter(r => r.status === 'paid').length,
+  }), [requests]);
+
+  return (
+    <div className="max-w-[1280px] mx-auto w-full px-margin-mobile md:px-margin-desktop">
+      <button
+        type="button"
+        onClick={() => navigate('/profile')}
+        className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Quay lại
+      </button>
+
+      <section className="bg-surface-container-lowest rounded-24 border border-outline-variant/40 shadow-sm p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
+          <div>
+            <h1 className="text-3xl font-bold text-primary mb-1">Lịch sử đặt cọc</h1>
+            <p className="text-on-surface-variant text-sm max-w-2xl">
+              Theo dõi các yêu cầu đặt cọc sau khi bạn đã hoàn tất buổi xem phòng với nhân viên Sale.
+            </p>
+          </div>
+          <Link to="/customer/viewing-schedules" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary text-on-primary rounded-full text-sm font-semibold shadow-sm hover:opacity-90 transition-all">
+            Xem lịch xem phòng
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Tổng yêu cầu', value: stats.total },
+          { label: 'Chờ xác nhận', value: stats.pending },
+          { label: 'Chờ thanh toán', value: stats.payable },
+          { label: 'Đã thanh toán', value: stats.paid },
+        ].map((s, index) => (
+          <div key={s.label} className={`rounded-24 p-5 text-center shadow-sm border ${index === 1 ? 'bg-primary-fixed/30 border-primary/20' : 'bg-surface-container-lowest border-outline-variant/40'}`}>
+            <p className="text-3xl font-bold text-primary mb-1">{String(s.value).padStart(2, '0')}</p>
+            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{s.label}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="bg-surface-container-lowest rounded-24 border border-outline-variant/40 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-outline-variant/40">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm theo mã yêu cầu, phòng, chi nhánh..."
+              className="w-full pl-11 pr-4 py-3 rounded-full border border-outline-variant text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-surface-container-low"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="p-6 space-y-4">
+            {[1, 2].map(i => <div key={i} className="h-32 bg-surface-container-low rounded-24 animate-pulse" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 px-6">
+            <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-5">
+              <CreditCard className="w-7 h-7" />
+            </div>
+            <h3 className="text-xl font-bold text-primary mb-2">Chưa có yêu cầu đặt cọc</h3>
+            <p className="text-on-surface-variant text-sm max-w-sm mx-auto">
+              Sau khi hoàn thành lịch xem phòng, bạn có thể gửi yêu cầu đặt cọc tại trang lịch xem phòng của tôi.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-outline-variant/40">
+            {filtered.map((request) => {
+              const status = statusMap[request.status];
+              const Icon = status.icon;
+              return (
+                <article key={request.id} className="p-5 md:p-6 flex flex-col lg:flex-row gap-5 hover:bg-surface-container-low/60 transition-colors">
+                  <div className="w-full lg:w-36 h-28 rounded-24 overflow-hidden bg-surface-container-low shrink-0">
+                    <img src={request.room_image_url} alt={request.room_name} className="w-full h-full object-cover" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">{request.id.toUpperCase()}</p>
+                        <h3 className="text-lg font-bold text-primary mt-1">{request.room_name}</h3>
+                        <p className="text-sm text-on-surface-variant mt-0.5">{request.branch_name}</p>
+                      </div>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start ${status.cls}`}>
+                        <Icon className="w-3.5 h-3.5" />
+                        {status.label}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                      <div className="p-3 bg-surface-container-low rounded-24">
+                        <p className="text-xs text-on-surface-variant mb-1">Số tiền cọc dự kiến</p>
+                        <p className="font-bold text-on-surface">{request.deposit_amount.toLocaleString('vi-VN')} VNĐ</p>
+                      </div>
+                      <div className="p-3 bg-surface-container-low rounded-24">
+                        <p className="text-xs text-on-surface-variant mb-1">Ngày dự kiến vào ở</p>
+                        <p className="font-bold text-on-surface">{formatDate(request.expected_move_in_date)}</p>
+                      </div>
+                      <div className="p-3 bg-surface-container-low rounded-24">
+                        <p className="text-xs text-on-surface-variant mb-1">Ngày gửi yêu cầu</p>
+                        <p className="font-bold text-on-surface">{formatDate(request.created_at)}</p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-on-surface-variant mt-3 leading-relaxed">{status.desc}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

@@ -15,20 +15,21 @@ import {
   CheckCircle, 
   Calendar, 
   FileText,
-  Search, 
-  Bell,
   Compass,
   ClipboardList,
   Activity,
   Zap,
   Receipt,
   ArrowLeftRight,
-  LogIn
+  LogIn,
+  Search,
+  Bell
 } from 'lucide-react';
 import { initializeMockDB } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
+import RegisterPage from './features/auth/RegisterPage';
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
@@ -40,6 +41,7 @@ import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
 import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
 import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
 import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
+import DepositHistoryPage from './features/customer/DepositHistoryPage';
 import CustomerContractsPage from './features/customer/CustomerContractsPage';
 import CustomerServicesPage from './features/customer/CustomerServicesPage';
 import InvoicesDashboardPage from './features/customer/InvoicesDashboardPage';
@@ -73,6 +75,7 @@ import ManagerHandoversPage from './features/manager/ManagerHandoversPage';
 import ManagerInspectionsPage from './features/manager/ManagerInspectionsPage';
 import ManagerAssetsPage from './features/manager/ManagerAssetsPage';
 import ManagerReportsPage from './features/manager/ManagerReportsPage';
+import ManagerContractsPage from './features/manager/ManagerContractsPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -112,6 +115,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
+        <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/" replace />} />
         <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
         <Route path="/reset-password" element={!user ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
@@ -160,6 +164,7 @@ function CustomerLayout() {
           <Route path="/customer/register-group" element={<GroupRegistrationPage />} />
           <Route path="/customer/deposit" element={<DepositRegistrationPage />} />
           <Route path="/customer/viewing-schedules" element={<ViewingSchedulePage />} />
+          <Route path="/customer/deposit-history" element={<DepositHistoryPage />} />
           <Route path="/customer/contracts" element={<CustomerContractsPage />} />
           <Route path="/customer/invoices" element={<InvoicesDashboardPage />} />
           <Route path="/customer/payment/:invoiceId" element={<InvoicePaymentPage />} />
@@ -210,11 +215,10 @@ function DashboardLayout() {
           { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
           { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
           { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
-          { path: '/admin/rooms-catalog', label: 'Danh mục Phòng/Giường', icon: Layers },
+          { path: '/admin/rooms-catalog', label: 'Phòng & Giường', icon: Layers },
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
           { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
           { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
           { path: '/admin/backup', label: 'Sao lưu & Khôi phục', icon: Database }
         ];
       case 'manager':
@@ -223,11 +227,12 @@ function DashboardLayout() {
           { path: '/manager/rooms', label: 'Sơ đồ phòng', icon: Layers },
           { path: '/manager/deposits', label: 'Kiểm duyệt đặt cọc', icon: ClipboardList },
           { path: '/manager/residency-checks', label: 'Kiểm tra lưu trú', icon: CheckCircle },
+          { path: '/manager/contracts', label: 'Quản lý hợp đồng', icon: FileText },
           { path: '/manager/handovers', label: 'Bàn giao tài sản', icon: FileText },
           { path: '/manager/inspections', label: 'Kiểm kê trả phòng', icon: Activity },
           { path: '/manager/assets', label: 'Điều phối tài sản', icon: Settings },
           { path: '/manager/asset-reports', label: 'Báo cáo tài sản', icon: Database },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
+          { path: '/sale/customers', label: 'Tra cứu khách hàng', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'sale':
@@ -235,7 +240,7 @@ function DashboardLayout() {
           { path: '/sale/dashboard', label: 'Tổng quan', icon: Home },
           { path: '/sale/schedules', label: 'Lịch hẹn xem phòng', icon: Calendar },
           { path: '/sale/contracts', label: 'Lập hợp đồng thuê', icon: FileText },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
+          { path: '/sale/customers', label: 'Tra cứu khách hàng', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'accountant':
@@ -246,7 +251,7 @@ function DashboardLayout() {
           { path: '/accountant/invoices/monthly', label: 'Hóa đơn Định kỳ', icon: CreditCard },
           { path: '/accountant/refunds', label: 'Đối soát Hoàn cọc', icon: ArrowLeftRight },
           { path: '/accountant/payouts', label: 'Chi tiền Thanh lý', icon: CheckCircle },
-          { path: '/sale/customers', label: 'Tra cứu hồ sơ khách', icon: Search },
+          { path: '/sale/customers', label: 'Tra cứu khách hàng', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
@@ -522,6 +527,7 @@ function DashboardLayout() {
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerRoomsPage />} />}
             {user.role === 'manager' && <Route path="/manager/deposits" element={<ManagerDepositsPage />} />}
             {user.role === 'manager' && <Route path="/manager/residency-checks" element={<ManagerResidencyPage />} />}
+            {user.role === 'manager' && <Route path="/manager/contracts" element={<ManagerContractsPage />} />}
             {user.role === 'manager' && <Route path="/manager/handovers" element={<ManagerHandoversPage />} />}
             {user.role === 'manager' && <Route path="/manager/inspections" element={<ManagerInspectionsPage />} />}
             {user.role === 'manager' && <Route path="/manager/assets" element={<ManagerAssetsPage />} />}
@@ -544,7 +550,7 @@ function DashboardLayout() {
             {user.role === 'admin' && <Route path="/admin/conditions" element={<AdminConditionsPage />} />}
             {user.role === 'admin' && <Route path="/admin/assets" element={<AdminAssetsPage />} />}
             {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupPage />} />}
-            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant' || user.role === 'admin') && (
+            {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
               <Route path="/sale/customers" element={<CustomerLookupPage />} />
             )}
             
