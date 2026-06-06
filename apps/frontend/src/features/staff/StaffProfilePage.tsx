@@ -221,15 +221,15 @@ function LanguageModal({ current, onSelect, onClose }: { current: string; onSele
 function getRoleDisplayInfo(role: string) {
   switch (role) {
     case 'sale':
-      return { label: 'Nhân viên Sale', dept: 'Phòng Kinh doanh', badge: '💼', color: '#8c7355' };
+      return { label: 'Nhân viên Sale', dept: 'Phòng Kinh doanh', color: '#8c7355' };
     case 'manager':
-      return { label: 'Quản lý Chi nhánh', dept: 'Ban Quản lý', badge: '🏢', color: '#5a7a58' };
+      return { label: 'Quản lý Chi nhánh', dept: 'Ban Quản lý', color: '#5a7a58' };
     case 'accountant':
-      return { label: 'Kế toán', dept: 'Phòng Tài chính', badge: '📊', color: '#3d6b8a' };
+      return { label: 'Kế toán', dept: 'Phòng Tài chính', color: '#3d6b8a' };
     case 'admin':
-      return { label: 'Quản trị viên', dept: 'Ban Điều hành', badge: '⚙️', color: '#6f583c' };
+      return { label: 'Quản trị viên', dept: 'Ban Điều hành', color: '#6f583c' };
     default:
-      return { label: 'Nhân viên', dept: 'Homestay Dorm', badge: '👤', color: '#6f583c' };
+      return { label: 'Nhân viên', dept: 'Homestay Dorm', color: '#6f583c' };
   }
 }
 
