@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { getMockDB, saveMockDB, ViewingSchedule, CustomerDepositRequest, Room, Bed } from '../../lib/supabaseClient';
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import CustomSelect from '../../components/ui/CustomSelect';
 import {
   ArrowLeft,
   Search, MapPin, Calendar, User, Phone, ChevronLeft, ChevronRight,
@@ -216,6 +217,13 @@ const Timeline = ({ step, status }: { step: 1 | 2 | 3; status: ViewingSchedule['
 
 // ─── CalendarWidget ────────────────────────────────────────────────────────────
 const MAINTENANCE_DATES = ['2026-06-24', '2026-06-10'];
+const RESCHEDULE_TIME_OPTIONS = [
+  { value: '', label: '-- Chọn giờ --' },
+  ...['08:00','09:00','09:30','10:00','10:30','11:00','14:00','14:30','15:00','15:30','16:00','17:00'].map((time) => ({
+    value: time,
+    label: time,
+  })),
+];
 
 const CalendarWidget = ({
   schedules,
@@ -489,16 +497,14 @@ const AppointmentCard = ({
               </div>
               <div>
                 <label className="text-xs text-on-surface-variant mb-1 block">Giờ mới</label>
-                <select
+                <CustomSelect
                   value={rescheduleTime}
-                  onChange={e => setRescheduleTime(e.target.value)}
-                  className="w-full px-3 py-2 rounded-[12px] border border-outline-variant text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
-                >
-                  <option value="">-- Chọn giờ --</option>
-                  {['08:00','09:00','09:30','10:00','10:30','11:00','14:00','14:30','15:00','15:30','16:00','17:00'].map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                  onChange={setRescheduleTime}
+                  options={RESCHEDULE_TIME_OPTIONS}
+                  placeholder="-- Chọn giờ --"
+                  triggerClassName="rounded-[12px] border-outline-variant py-2 px-3 text-sm text-on-surface hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary active:scale-[0.98]"
+                  dropdownClassName="border-outline-variant"
+                />
               </div>
             </div>
             <div className="flex gap-2">
