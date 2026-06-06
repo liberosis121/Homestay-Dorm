@@ -135,64 +135,6 @@ export default function ManagerDashboardPage() {
     setRecentActivity(activities);
   }, []);
 
-  const quickActions = [
-    {
-      label: "Sơ đồ phòng",
-      icon: "map",
-      path: "/manager/rooms",
-      color: T.sage,
-      bg: T.sageBg,
-    },
-    {
-      label: "Duyệt đặt cọc",
-      icon: "verified",
-      path: "/manager/deposits",
-      color: T.amber,
-      bg: T.amberBg,
-    },
-    {
-      label: "Kiểm tra lưu trú",
-      icon: "how_to_reg",
-      path: "/manager/residency-checks",
-      color: T.primary,
-      bg: T.primaryLight,
-    },
-    {
-      label: "Bàn giao tài sản",
-      icon: "assignment_turned_in",
-      path: "/manager/handovers",
-      color: T.sage,
-      bg: T.sageBg,
-    },
-    {
-      label: "Kiểm kê trả phòng",
-      icon: "inventory_2",
-      path: "/manager/inspections",
-      color: T.red,
-      bg: T.redBg,
-    },
-    {
-      label: "Điều phối tài sản",
-      icon: "swap_horiz",
-      path: "/manager/assets",
-      color: T.amber,
-      bg: T.amberBg,
-    },
-    {
-      label: "Báo cáo tài sản",
-      icon: "bar_chart",
-      path: "/manager/asset-reports",
-      color: T.primary,
-      bg: T.primaryLight,
-    },
-    {
-      label: "Tra cứu khách",
-      icon: "manage_search",
-      path: "/sale/customers",
-      color: T.textFaint,
-      bg: "#F5F0EB",
-    },
-  ];
 
   return (
     <div
@@ -278,68 +220,6 @@ export default function ManagerDashboardPage() {
             </p>
           </div>
         ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div
-        style={{
-          background: T.surface,
-          border: `1px solid ${T.border}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: "0 2px 12px rgba(111,88,60,0.06)",
-        }}
-      >
-        <h2
-          style={{
-            fontFamily: "'Lexend', sans-serif",
-            fontSize: 17,
-            fontWeight: 700,
-            color: T.text,
-            marginBottom: 20,
-          }}
-        >
-          Hành động nhanh
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {quickActions.map((action, i) => (
-            <Link
-              key={i}
-              to={action.path}
-              style={{
-                background: action.bg,
-                border: `1px solid ${T.border}`,
-                borderRadius: 16,
-                padding: 16,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 10,
-                textDecoration: "none",
-                transition: "all 0.2s",
-              }}
-              className="hover:scale-[1.03] hover:shadow-md"
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: 28, color: action.color }}
-              >
-                {action.icon}
-              </span>
-              <span
-                style={{
-                  color: T.text,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textAlign: "center",
-                  lineHeight: 1.3,
-                }}
-              >
-                {action.label}
-              </span>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* Recent Activity */}
