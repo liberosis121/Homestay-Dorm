@@ -5,10 +5,10 @@ import { useAuthStore } from '../../stores/authStore';
 import { Calendar, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
 
 const T = {
-  bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
-  border: '#E7DED2', primary: '#5C4632', primaryLight: '#FAF2E8',
-  sage: '#5F7D4E', sageBg: '#EAF0E6', amber: '#B9792B', amberBg: '#FAF2E8',
-  red: '#A94F4F', redBg: '#FCECEB', text: '#2C2520', textMuted: '#6E6259', textFaint: '#8A7563'
+  bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
+  border: '#D6CEC8', primary: '#8C7355', primaryLight: '#F5EFE6',
+  sage: '#5F745D', sageBg: '#E1E9DF', amber: '#A67B5B', amberBg: '#FFF0E5',
+  red: '#BA1A1A', redBg: '#FFDAD6', text: '#1E1B17', textMuted: '#4E453C', textFaint: '#7F756B'
 };
 
 interface KPI { label: string; value: string | number; sub: string; color: string; bg: string; icon: string; }
@@ -27,6 +27,13 @@ export default function ManagerDashboardPage() {
     });
   }, []);
 
+  const quickActions = [
+    { label: 'Duyệt đặt cọc', icon: 'payments', path: '/manager/deposits', color: T.amber, bg: T.amberBg },
+    { label: 'Hồ sơ lưu trú', icon: 'how_to_reg', path: '/manager/residency-checks', color: T.sage, bg: T.sageBg },
+    { label: 'Bàn giao tài sản', icon: 'assignment', path: '/manager/handovers', color: T.primary, bg: T.primaryLight },
+    { label: 'Sơ đồ phòng', icon: 'map', path: '/manager/rooms', color: T.red, bg: T.redBg },
+  ];
+
   useEffect(() => {
     const db = getMockDB();
     const rooms = db.rooms || [];
@@ -41,10 +48,38 @@ export default function ManagerDashboardPage() {
     const pendingResidency = residency.filter((r: any) => r.status === 'pending').length;
 
     setKpis([
-      { label: 'Tỷ lệ lấp đầy', value: total ? `${Math.round((occupied / total) * 100)}%` : '0%', sub: `${occupied}/${total} phòng đang có người ở`, color: T.sage, bg: T.sageBg, icon: 'apartment' },
-      { label: 'Phòng trống', value: available, sub: 'Sẵn sàng cho thuê ngay', color: T.primary, bg: T.primaryLight, icon: 'door_open' },
-      { label: 'Cọc chờ duyệt', value: pendingDeposits, sub: 'Yêu cầu kiểm duyệt đặt cọc', color: T.amber, bg: T.amberBg, icon: 'pending_actions' },
-      { label: 'Hồ sơ lưu trú', value: pendingResidency, sub: 'Chờ kiểm tra điều kiện', color: T.red, bg: T.redBg, icon: 'badge' },
+      {
+        label: 'Tỷ lệ lấp đầy',
+        value: total ? `${Math.round((occupied / total) * 100)}%` : '0%',
+        sub: `${occupied}/${total} phòng đang có người ở`,
+        color: T.sage,
+        bg: T.sageBg,
+        icon: 'apartment',
+      },
+      {
+        label: 'Phòng trống',
+        value: available,
+        sub: 'Sẵn sàng cho thuê ngay',
+        color: T.primary,
+        bg: T.primaryLight,
+        icon: 'door_open',
+      },
+      {
+        label: 'Cọc chờ duyệt',
+        value: pendingDeposits,
+        sub: 'Yêu cầu kiểm duyệt đặt cọc',
+        color: T.amber,
+        bg: T.amberBg,
+        icon: 'pending_actions',
+      },
+      {
+        label: 'Hồ sơ lưu trú',
+        value: pendingResidency,
+        sub: 'Chờ kiểm tra điều kiện',
+        color: T.red,
+        bg: T.redBg,
+        icon: 'badge',
+      },
     ]);
 
     const activities = [
@@ -61,26 +96,19 @@ export default function ManagerDashboardPage() {
     setRecentActivity(activities);
   }, []);
 
-  const quickActions = [
-    { label: 'Sơ đồ phòng', icon: 'map', path: '/manager/rooms', color: T.sage, bg: T.sageBg },
-    { label: 'Duyệt đặt cọc', icon: 'verified', path: '/manager/deposits', color: T.amber, bg: T.amberBg },
-    { label: 'Kiểm tra lưu trú', icon: 'how_to_reg', path: '/manager/residency-checks', color: T.primary, bg: T.primaryLight },
-    { label: 'Bàn giao tài sản', icon: 'assignment_turned_in', path: '/manager/handovers', color: T.sage, bg: T.sageBg },
-    { label: 'Kiểm kê trả phòng', icon: 'inventory_2', path: '/manager/inspections', color: T.red, bg: T.redBg },
-    { label: 'Điều phối tài sản', icon: 'swap_horiz', path: '/manager/assets', color: T.amber, bg: T.amberBg },
-    { label: 'Báo cáo tài sản', icon: 'bar_chart', path: '/manager/asset-reports', color: T.primary, bg: T.primaryLight },
-    { label: 'Tra cứu khách', icon: 'manage_search', path: '/sale/customers', color: T.textFaint, bg: '#F5F0EB' },
-  ];
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-8 animate-fade-in-up">
+    <div
+      style={{ fontFamily: "'Inter', sans-serif" }}
+      className="space-y-8 animate-fade-in-up"
+    >
       {/* Greeting Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ fontFamily: "'Lexend', sans-serif" }}>
         <div>
-          <h1 className="text-2xl font-bold text-[#5C4632]">Xin chào, {user?.full_name?.split(' (')[0] || 'Quản lý'}!</h1>
-          <p className="text-[13px] text-[#6E6259] mt-1 flex items-center gap-2 font-medium">
-            <Calendar className="w-4 h-4 text-[#5C4632]" />
-            {todayLabel} · <span className="text-[#8A7563]">Bàn vận hành chi nhánh — Quận 1</span>
+          <h1 className="text-2xl font-bold text-[#8C7355]">Xin chào, {user?.full_name?.split(' (')[0] || 'Quản lý'}!</h1>
+          <p className="text-[13px] text-[#4E453C] mt-1 flex items-center gap-2 font-medium">
+            <Calendar className="w-4 h-4 text-[#8C7355]" />
+            {todayLabel} · <span className="text-[#7F756B]">Bàn vận hành chi nhánh — Quận 1</span>
           </p>
         </div>
         <button
@@ -117,7 +145,7 @@ export default function ManagerDashboardPage() {
             boxShadow: '0 2px 12px rgba(111,88,60,0.04)', 
             transition: 'all 0.2s ease-in-out' 
           }}
-            className="hover:-translate-y-1 hover:border-[#5C4632]/25 hover:shadow-md active:scale-[0.99] active:translate-y-0">
+            className="hover:-translate-y-1 hover:border-[#8C7355]/25 hover:shadow-md active:scale-[0.99] active:translate-y-0">
             <div className="flex items-center justify-between mb-4">
               <span style={{ color: T.textFaint, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{kpi.label}</span>
               <div style={{ background: kpi.bg, borderRadius: 12, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -156,7 +184,7 @@ export default function ManagerDashboardPage() {
                     textDecoration: 'none', 
                     transition: 'all 0.18s ease-in-out' 
                   }}
-                  className="hover:-translate-y-1 hover:border-[#5C4632]/25 hover:bg-[#FAF9F7] hover:shadow-md active:scale-[0.97] active:translate-y-0 active:shadow-sm">
+                  className="hover:-translate-y-1 hover:border-[#8C7355]/25 hover:bg-[#FAF9F7] hover:shadow-md active:scale-[0.97] active:translate-y-0 active:shadow-sm">
                   <div style={{ 
                     background: T.surface, 
                     borderRadius: 12, 
@@ -176,7 +204,7 @@ export default function ManagerDashboardPage() {
 
           {/* Operations Alert Banner */}
           <div style={{ 
-            background: '#FAF2E8', 
+            background: '#FFF0E5', 
             border: `1px solid ${T.border}`, 
             borderRadius: 16, 
             padding: 18, 
@@ -184,9 +212,9 @@ export default function ManagerDashboardPage() {
             gap: 12,
             alignItems: 'flex-start'
           }}>
-            <AlertCircle className="w-5 h-5 text-[#B9792B] shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-[#A67B5B] shrink-0 mt-0.5" />
             <div>
-              <h4 style={{ color: '#B9792B', fontSize: 13, fontWeight: 700 }}>Thông báo vận hành hôm nay</h4>
+              <h4 style={{ color: '#A67B5B', fontSize: 13, fontWeight: 700 }}>Thông báo vận hành hôm nay</h4>
               <p style={{ color: T.textMuted, fontSize: 11.5, marginTop: 4, lineHeight: 1.5 }}>
                 Đề nghị Quản lý chi nhánh tập trung hoàn tất việc **duyệt đặt cọc (UC13)** đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi **kiểm duyệt hồ sơ lưu trú (UC22)** để tránh chậm trễ báo cáo cơ quan công an địa phương.
               </p>
@@ -223,7 +251,7 @@ export default function ManagerDashboardPage() {
                   transition: 'all 0.15s ease-in-out',
                   position: 'relative'
                 }}
-                className="hover:bg-[#FAF9F7] hover:shadow-sm group">
+                className="hover:bg-[#FAF2EC] hover:shadow-sm group">
                 <div style={{ 
                   background: act.bg || T.primaryLight, 
                   borderRadius: 8, 

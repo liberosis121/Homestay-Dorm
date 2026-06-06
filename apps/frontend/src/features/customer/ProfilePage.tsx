@@ -480,9 +480,22 @@ export default function ProfilePage() {
                   
                   <div className="flex-1 text-center sm:text-left z-10">
                     <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
-                    <p className="text-sm text-on-surface-variant mt-1 font-medium">
-                      {isNewCustomer ? 'Khách hàng mới' : 'Sinh viên | Phòng 402-B'}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+                      {isNewCustomer ? (
+                        <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                          Khách hàng mới
+                        </span>
+                      ) : (
+                        <>
+                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                            Sinh viên
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
+                            Phòng 402-B
+                          </span>
+                        </>
+                      )}
+                    </div>
                     
                     <div className="mt-4 flex flex-col sm:flex-row gap-4 w-full">
                       <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">

@@ -154,16 +154,6 @@ export default function BedAvailability({
                 </div>
               </div>
 
-              {/* Selection Check Icon */}
-              {bed.status === 'available' && (
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
-                  isSelected || isFullRoomSelected
-                    ? 'bg-primary border-primary text-on-primary scale-110 shadow-md shadow-primary/15'
-                    : 'border-outline-variant bg-transparent'
-                }`}>
-                  {(isSelected || isFullRoomSelected) && <Check className="w-4 h-4" />}
-                </div>
-              )}
             </div>
           );
         })}

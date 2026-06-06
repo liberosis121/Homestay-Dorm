@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
-  Info, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
+  Info, ArrowLeft, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
 } from 'lucide-react';
 import { Service, ServiceSubscription } from '../../lib/supabaseClient';
 
@@ -26,9 +26,8 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
           {question}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-outline flex-shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180 text-primary' : ''
-          }`}
+          className={`w-4 h-4 text-outline flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-primary' : ''
+            }`}
         />
       </button>
       {open && (
@@ -63,14 +62,14 @@ function ServiceRegistrationModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-outline-variant/30">
           <h2 className="text-lg font-bold text-on-surface font-lexend">Đăng ký dịch vụ</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container hover:text-on-surface transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20">
             <X className="w-5 h-5 text-on-surface-variant" />
           </button>
         </div>
 
         {/* Service info */}
         <div className="px-6 py-4">
-          <div className="bg-surface-container-low rounded-2xl p-4 flex gap-3 items-start border border-outline-variant/50">
+          <div className="bg-primary/5 rounded-2xl p-4 flex gap-3 items-start border border-primary/10">
             <div className="p-2 bg-primary/10 rounded-xl flex-shrink-0 text-primary">
               <Zap className="w-5 h-5" />
             </div>
@@ -97,26 +96,37 @@ function ServiceRegistrationModal({
                 return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               })()}
               placeholder="Chọn ngày"
+              variant="surface"
             />
           </div>
 
           {/* Notice */}
-          <div className="flex gap-2.5 p-3 bg-amber-50 rounded-[12px] border border-amber-100">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700 leading-relaxed font-medium">
-              Dịch vụ sẽ được kích hoạt và tính phí từ ngày bắt đầu bạn chọn. 
+          <div className="flex gap-2.5 p-3.5 bg-[#FAF6EC] rounded-xl border border-[#EBE6DA]">
+            <AlertCircle className="w-4 h-4 text-[#8C7355] flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[#5a4e3d] leading-relaxed font-medium">
+              Dịch vụ sẽ được kích hoạt và tính phí từ ngày bắt đầu bạn chọn.
               Chi phí sẽ được cộng vào hóa đơn thanh toán tiền phòng mỗi tháng.
             </p>
           </div>
 
-          <label className="flex items-start gap-2.5 cursor-pointer">
+          <label className="flex items-start gap-2.5 cursor-pointer group">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 accent-primary w-4 h-4 flex-shrink-0"
+              className="sr-only"
             />
-            <span className="text-xs text-on-surface-variant leading-relaxed select-none">
+            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${agreed
+                ? 'bg-primary border-primary text-white shadow-sm'
+                : 'bg-white border-outline-variant group-hover:border-primary'
+              }`}>
+              {agreed && (
+                <svg className="w-2.5 h-2.5 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </div>
+            <span className="text-xs text-on-surface-variant leading-relaxed select-none group-hover:text-on-surface transition-colors">
               Tôi đồng ý với các điều khoản sử dụng tiện ích của HomeStay Dorm và xác nhận đăng ký.
             </span>
           </label>
@@ -126,17 +136,17 @@ function ServiceRegistrationModal({
         <div className="flex gap-3 px-6 pb-6">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-full border border-outline-variant text-sm font-semibold text-on-surface-variant
-                       hover:bg-surface-container transition-all"
+            className="flex-1 py-2.5 rounded-xl border border-outline-variant bg-[#FAF8F5] text-sm font-bold text-on-surface-variant
+                       hover:bg-surface-container hover:text-on-surface cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
           >
             Huỷ
           </button>
           <button
             onClick={onConfirm}
             disabled={!agreed}
-            className="flex-1 py-2.5 rounded-full bg-primary text-white text-sm font-semibold
-                       hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed
-                       active:scale-95 transition-all"
+            className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-sm
+                       hover:bg-primary/95 disabled:bg-primary/40 disabled:text-white/60 disabled:cursor-not-allowed
+                       cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             Xác nhận đăng ký
           </button>
@@ -166,28 +176,33 @@ function ServiceDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-lg rounded-[28px] shadow-2xl border border-outline-variant animate-fade-in-up max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-outline-variant/30 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-bold text-on-surface font-lexend">Chi tiết dịch vụ</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
-            <X className="w-5 h-5 text-on-surface-variant" />
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-primary/10 animate-fade-in-up max-h-[90vh] overflow-y-auto">
+        {/* Header with clean theme alignment */}
+        <div className="border-b border-primary/10 sticky top-0 bg-[#FAF9F6]/95 backdrop-blur-md z-10 px-6 py-4 flex items-center justify-between">
+          <span className="inline-flex items-center rounded-full border border-[#EBE8E0] bg-[#FAF2EC] px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-[#8C7355]">
+            Chi tiết dịch vụ
+          </span>
+          <button 
+            onClick={onClose} 
+            className="p-1.5 rounded-full hover:bg-primary/10 text-on-surface-variant hover:text-primary transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="px-6 py-5 space-y-5">
           {/* Card Header */}
-          <div className="flex gap-4 items-start">
-            <div className="p-3.5 bg-primary/10 rounded-2xl text-primary flex-shrink-0">
-              <Zap className="w-6 h-6" />
+          <div className="flex gap-4 items-start pb-4 border-b border-outline-variant/10">
+            <div className="p-3 bg-primary/10 rounded-2xl text-primary flex-shrink-0">
+              <Zap className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-on-surface text-lg font-lexend">{service.name}</h3>
-              <span className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full mt-1.5 uppercase tracking-wide border ${
-                service.category === 'essential'   ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                service.category === 'utility'     ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                service.category === 'convenience' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                     'bg-purple-50 text-purple-700 border-purple-100'
+              <h3 className="font-bold text-on-surface text-lg font-lexend tracking-tight">{service.name}</h3>
+              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5 uppercase tracking-wider border ${
+                service.category === 'essential' ? 'bg-blue-50/80 text-blue-700 border-blue-200' :
+                service.category === 'utility' ? 'bg-primary/10 text-primary border-primary/20' :
+                service.category === 'convenience' ? 'bg-amber-50/80 text-amber-700 border-amber-200' :
+                'bg-purple-50/80 text-purple-700 border-purple-200'
               }`}>
                 {service.category === 'essential' ? 'Thiết yếu' : service.category === 'utility' ? 'Tiện ích' : service.category === 'convenience' ? 'Tiện nghi' : 'Cao cấp'}
               </span>
@@ -195,44 +210,44 @@ function ServiceDetailModal({
           </div>
 
           {/* Description */}
-          <div>
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Mô tả dịch vụ</p>
-            <p className="text-sm text-on-surface leading-relaxed">{service.description}</p>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-primary/70 uppercase tracking-widest">Mô tả dịch vụ</p>
+            <p className="text-sm text-on-surface leading-relaxed font-medium">{service.description}</p>
           </div>
 
           {/* Pricing */}
-          <div className="bg-surface-container-low border border-outline-variant/60 rounded-2xl p-4">
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Đơn giá áp dụng</p>
+          <div className="bg-primary/[0.03] border border-primary/10 rounded-2xl p-4.5">
+            <p className="text-[10px] font-bold text-primary/70 uppercase tracking-widest mb-1">Đơn giá áp dụng</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-primary font-lexend">
+              <span className="text-2xl font-bold text-primary font-lexend tracking-tight">
                 {service.unit_price === 0 ? 'Miễn phí' : `${service.unit_price.toLocaleString('vi-VN')} VNĐ`}
               </span>
-              <span className="text-sm text-on-surface-variant font-medium">
+              <span className="text-xs text-on-surface-variant font-semibold">
                 {service.billing_cycle === 'monthly' ? '/Tháng' : service.billing_cycle === 'per_use' ? '/Lần' : service.billing_cycle === 'per_kwh' ? '/kWh' : '/m³'}
               </span>
             </div>
-            <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed font-medium">
+            <p className="text-xs text-on-surface-variant/80 mt-1.5 leading-relaxed font-medium">
               {service.billing_cycle === 'monthly' ? '* Tính phí định kỳ hàng tháng vào hóa đơn tổng.' :
-               service.billing_cycle === 'per_use' ? '* Tính phí dựa trên mỗi lần khách hàng sử dụng dịch vụ.' :
-               '* Tính phí thực tế theo chỉ số công tơ ghi nhận cuối tháng.'}
+                service.billing_cycle === 'per_use' ? '* Tính phí dựa trên mỗi lần khách hàng sử dụng dịch vụ.' :
+                  '* Tính phí thực tế theo chỉ số công tơ ghi nhận cuối tháng.'}
             </p>
           </div>
 
           {/* User Status */}
           {isRenter && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/30">
-                <p className="text-xs font-medium text-on-surface-variant mb-1">Trạng thái hệ thống</p>
-                <span className={`text-sm font-semibold ${
-                  service.status === 'available' ? 'text-emerald-600' : 'text-amber-600'
+              <div className="bg-[#FAF9F6] rounded-2xl p-3 border border-[#EBE8E0] flex flex-col justify-between">
+                <p className="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-wider mb-1">Trạng thái hệ thống</p>
+                <span className={`text-xs font-bold flex items-center gap-1 ${
+                  service.status === 'available' ? 'text-[#4C7A4F]' : 'text-[#8C7355]'
                 }`}>
                   {service.status === 'available' ? '✓ Đang mở' : '⏳ Sắp ra mắt'}
                 </span>
               </div>
-              <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/30">
-                <p className="text-xs font-medium text-on-surface-variant mb-1">Đăng ký của bạn</p>
-                <span className={`text-sm font-semibold ${
-                  isActive ? 'text-primary' : isSuspended ? 'text-amber-600' : 'text-on-surface-variant'
+              <div className="bg-[#FAF9F6] rounded-2xl p-3 border border-[#EBE8E0] flex flex-col justify-between">
+                <p className="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-wider mb-1">Đăng ký của bạn</p>
+                <span className={`text-xs font-bold flex items-center gap-1 ${
+                  isActive ? 'text-[#4C7A4F]' : isSuspended ? 'text-[#8C7355]' : 'text-on-surface-variant'
                 }`}>
                   {isActive ? '✓ Đang sử dụng' : isSuspended ? '⏸ Tạm ngưng' : '— Chưa đăng ký'}
                 </span>
@@ -241,9 +256,9 @@ function ServiceDetailModal({
           )}
 
           {/* Policies */}
-          <div className="border border-outline-variant/80 rounded-2xl p-4 space-y-2">
-            <p className="text-xs font-bold text-on-surface uppercase tracking-wider mb-2">Chính sách sử dụng & huỷ dịch vụ</p>
-            <ul className="text-xs text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-4 font-medium">
+          <div className="bg-[#FAF9F6] border-l-4 border-primary/45 border-y border-r border-[#EBE8E0] rounded-2xl p-4 space-y-2">
+            <p className="text-xs font-bold text-on-surface uppercase tracking-wider">Chính sách sử dụng & huỷ dịch vụ</p>
+            <ul className="text-xs text-on-surface-variant leading-relaxed space-y-2 list-disc pl-4 font-medium">
               <li>Chi phí được chốt vào ngày 30 hàng tháng và cộng vào hoá đơn thanh toán phòng tổng hợp.</li>
               <li>Có thể đăng ký/huỷ dịch vụ bất cứ lúc nào qua Resident Portal. Hiệu lực tính phí/ngừng tính phí từ tháng tiếp theo.</li>
               <li>Đối với dịch vụ theo lần (vệ sinh phòng, giặt là): vui lòng hẹn trước tối thiểu 24 giờ. Huỷ hẹn muộn trong vòng 2 giờ tính 50% phí dịch vụ.</li>
@@ -258,20 +273,21 @@ function ServiceDetailModal({
               !isComingSoon && (
                 <button
                   onClick={() => { onClose(); onRegister?.(); }}
-                  className="px-6 py-2.5 bg-primary text-white rounded-full text-sm font-semibold hover:opacity-90 transition-all"
+                  className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow hover:bg-primary/95 cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   Đăng ký sử dụng
                 </button>
               )
             ) : (
-              <span className="text-sm font-semibold text-primary py-2.5 px-4 bg-primary/10 rounded-full flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Đang hoạt động
+              <span className="text-xs font-bold text-[#4C7A4F] py-2 px-4 bg-[#4C7A4F]/10 border border-[#4C7A4F]/25 rounded-full flex items-center gap-1.5 shadow-sm">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Đang hoạt động
               </span>
             )
           ) : (
             <button
               onClick={onClose}
-              className="px-6 py-2.5 border border-outline-variant rounded-full text-sm font-semibold hover:bg-surface-container transition-all"
+              className="px-6 py-2.5 border border-outline-variant bg-[#FAF8F5] text-sm font-bold text-on-surface-variant rounded-xl
+                         hover:bg-surface-container hover:text-on-surface cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
             >
               Đóng lại
             </button>
@@ -302,7 +318,7 @@ function CancelConfirmModal({
           <h3 className="font-bold text-on-surface font-lexend">Huỷ đăng ký dịch vụ?</h3>
         </div>
         <p className="text-sm text-on-surface-variant leading-relaxed mb-5 font-medium">
-          Bạn có chắc chắn muốn huỷ đăng ký <strong className="text-on-surface">"{subscriptionName}"</strong>? 
+          Bạn có chắc chắn muốn huỷ đăng ký <strong className="text-on-surface">"{subscriptionName}"</strong>?
           Dịch vụ sẽ tạm dừng tính phí và ngừng hoạt động từ kỳ thanh toán tháng tiếp theo.
         </p>
         <div className="flex gap-3">
@@ -343,11 +359,13 @@ function DropdownSelect({
 
   return (
     <div className="w-full md:w-48 relative">
-      <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wide">{label}</label>
+      {label && <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wide">{label}</label>}
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl
-                   focus:outline-none focus:border-primary transition-all text-sm font-medium text-on-surface"
+                   focus:outline-none focus:border-primary transition-all duration-150 text-sm font-medium text-on-surface cursor-pointer
+                   hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
       >
         <span>{currentLabel}</span>
         <span className="material-symbols-outlined text-[18px] text-outline transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'none' }}>
@@ -362,12 +380,13 @@ function DropdownSelect({
                           shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden max-h-60 overflow-y-auto animate-fade-in-up">
             {options.map((opt) => (
               <button
+                type="button"
                 key={opt.value}
                 onClick={() => { onChange(opt.value); setOpen(false); }}
-                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-all cursor-pointer active:scale-[0.99]
                   ${value === opt.value
                     ? 'bg-primary/8 text-primary font-bold'
-                    : 'text-on-surface hover:bg-surface-container'}`}
+                    : 'text-on-surface hover:bg-primary/5 hover:text-primary'}`}
               >
                 <span>{opt.label}</span>
               </button>
@@ -428,7 +447,7 @@ function GuestServicesView({
             Tra cứu danh mục dịch vụ, bảng giá và các tiện ích đi kèm trước khi đăng ký thuê phòng.
           </p>
         </div>
-        
+
         <div className="flex gap-4 w-full md:w-auto">
           <div className="flex-1 md:flex-none p-4 bg-surface-container-low rounded-2xl border border-outline-variant/60 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
@@ -439,7 +458,7 @@ function GuestServicesView({
               <p className="font-headline-md text-md font-bold text-primary font-lexend">{services.length} dịch vụ</p>
             </div>
           </div>
-          
+
           <div className="flex-1 md:flex-none p-4 bg-surface-container-low rounded-2xl border border-outline-variant/60 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
               <Wifi className="w-5 h-5" />
@@ -505,7 +524,7 @@ function GuestServicesView({
             onChange={setFeeType}
           />
 
-          <button 
+          <button
             onClick={() => { setSearch(''); setCategory('all'); setPriceRange('all'); setFeeType('all'); }}
             className="w-full md:w-auto bg-primary text-white px-6 py-2.5 rounded-xl font-label-md text-sm font-bold hover:opacity-90 transition-opacity whitespace-nowrap active:scale-95"
           >
@@ -588,7 +607,7 @@ function GuestServicesView({
             <Shield className="w-6 h-6 text-tertiary" />
             <h2 className="font-headline-lg text-lg font-bold text-on-background font-lexend">Chính sách dịch vụ</h2>
           </div>
-          
+
           <ul className="space-y-4 text-sm font-medium text-on-surface-variant">
             <li className="flex gap-3 items-start">
               <CheckCircle2 className="w-5 h-5 text-tertiary flex-shrink-0 mt-0.5" />
@@ -670,13 +689,13 @@ function ConsumptionChart({
     );
   }
 
-  const COLOR_ELEC       = '#3d6b35';
+  const COLOR_ELEC = '#3d6b35';
   const COLOR_ELEC_HOVER = '#2a4d25';
-  const COLOR_WATER       = '#b89a72';
+  const COLOR_WATER = '#b89a72';
   const COLOR_WATER_HOVER = '#9a7d59';
 
-  const BAR_H   = 200;  // usable bar height (px) — tallest bar fills exactly this
-  const BAR_W   = 10;   // width per individual bar (px)
+  const BAR_H = 200;  // usable bar height (px) — tallest bar fills exactly this
+  const BAR_W = 10;   // width per individual bar (px)
   const BAR_GAP = 1;    // gap between the two bars inside a pair
   const GRP_PAD = 9;    // left+right padding inside each month column (gap between groups)
   const LABEL_H = 28;   // height reserved for x-axis labels below the baseline
@@ -733,7 +752,7 @@ function ConsumptionChart({
           }}>
             {chartMonths.map((m, idx) => {
               // Each series scales against its own global max → tallest bar = BAR_H exactly
-              const hElec  = m.elec  > 0 ? Math.max(Math.round((m.elec  / maxValues.elec)  * BAR_H), 4) : 0;
+              const hElec = m.elec > 0 ? Math.max(Math.round((m.elec / maxValues.elec) * BAR_H), 4) : 0;
               const hWater = m.water > 0 ? Math.max(Math.round((m.water / maxValues.water) * BAR_H), 4) : 0;
               const isHovered = hoveredIdx === idx;
 
@@ -966,6 +985,14 @@ function RenterServicesView({
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại
+          </button>
           <h1 className="font-headline-lg text-3xl font-extrabold text-primary mb-1 font-lexend">Dịch vụ của tôi</h1>
           <p className="font-body-md text-sm text-on-surface-variant max-w-2xl leading-relaxed">
             Quản lý toàn bộ dịch vụ đang sử dụng tại HomeStay Dorm. Bạn có thể theo dõi chỉ số, thanh toán hoặc đăng ký thêm tiện ích.
@@ -973,15 +1000,17 @@ function RenterServicesView({
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <button
+            type="button"
             onClick={() => setActiveTab('catalog')}
-            className="flex-1 md:flex-none px-5 py-2.5 bg-primary text-white rounded-xl font-label-md text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+            className="flex-1 md:flex-none px-5 py-2.5 bg-primary text-white rounded-xl font-label-md text-xs font-bold hover:bg-primary/90 hover:shadow-md transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Đăng ký thêm
           </button>
           <button
+            type="button"
             onClick={() => navigate('/customer/invoices')}
-            className="flex-1 md:flex-none px-5 py-2.5 border border-outline text-on-surface-variant bg-white rounded-xl font-label-md text-xs font-bold hover:bg-surface-container transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 md:flex-none px-5 py-2.5 border border-outline text-on-surface-variant bg-white rounded-xl font-label-md text-xs font-bold hover:bg-primary/5 hover:border-primary/30 hover:text-primary hover:shadow-sm transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
           >
             <Clock className="w-4 h-4" />
             Lịch sử thanh toán
@@ -1015,42 +1044,42 @@ function RenterServicesView({
 
       {/* Main 2-column layout */}
       <div className="flex flex-col lg:flex-row gap-8">
-        
+
         {/* Left Column (Main Content) */}
         <div className="flex-1 min-w-0">
-          
+
           {/* Tabs Navigation */}
           <nav className="border-b border-outline-variant/60 mb-6">
             <div className="flex gap-6 overflow-x-auto pb-0.5">
               <button
+                type="button"
                 onClick={() => setActiveTab('active')}
-                className={`pb-4 font-label-md text-sm font-bold transition-all whitespace-nowrap px-1 relative ${
-                  activeTab === 'active'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-on-surface-variant hover:text-primary'
-                }`}
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${activeTab === 'active'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
+                  }`}
               >
                 Dịch vụ đang dùng
               </button>
-              
+
               <button
+                type="button"
                 onClick={() => setActiveTab('catalog')}
-                className={`pb-4 font-label-md text-sm font-bold transition-all whitespace-nowrap px-1 relative ${
-                  activeTab === 'catalog'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-on-surface-variant hover:text-primary'
-                }`}
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${activeTab === 'catalog'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
+                  }`}
               >
                 Danh mục &amp; Đăng ký
               </button>
-              
+
               <button
+                type="button"
                 onClick={() => setActiveTab('consumption')}
-                className={`pb-4 font-label-md text-sm font-bold transition-all whitespace-nowrap px-1 relative ${
-                  activeTab === 'consumption'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-on-surface-variant hover:text-primary'
-                }`}
+                className={`rounded-t-xl px-3 pb-4 pt-2 font-label-md text-sm font-bold transition-all duration-150 whitespace-nowrap relative cursor-pointer active:scale-[0.98] ${activeTab === 'consumption'
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
+                  }`}
               >
                 Chỉ số Điện &amp; Nước
               </button>
@@ -1064,7 +1093,7 @@ function RenterServicesView({
                 <div className="flex flex-col items-center justify-center py-16 bg-white border border-outline-variant rounded-2xl gap-3">
                   <Info className="w-10 h-10 text-outline" />
                   <p className="text-on-surface-variant font-bold text-sm">Bạn chưa kích hoạt dịch vụ nào.</p>
-                  <button onClick={() => setActiveTab('catalog')} className="text-primary font-bold hover:underline text-sm">Xem danh mục & đăng ký ngay</button>
+                  <button type="button" onClick={() => setActiveTab('catalog')} className="text-primary font-bold hover:bg-primary/10 px-3 py-2 rounded-xl transition-all cursor-pointer active:scale-[0.98] text-sm">Xem danh mục & đăng ký ngay</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1102,25 +1131,26 @@ function RenterServicesView({
                     className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl focus:outline-none focus:border-primary transition-all text-xs font-semibold text-on-surface"
                   />
                 </div>
-                
-                <select
+
+                <DropdownSelect
+                  label=""
                   value={renterCategory}
-                  onChange={(e) => setRenterCategory(e.target.value)}
-                  className="px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl focus:outline-none focus:border-primary text-xs font-semibold text-on-surface"
-                >
-                  <option value="all">Tất cả phân loại</option>
-                  <option value="essential">Thiết yếu</option>
-                  <option value="utility">Tiện ích</option>
-                  <option value="convenience">Tiện nghi</option>
-                  <option value="premium">Cao cấp</option>
-                </select>
+                  onChange={setRenterCategory}
+                  options={[
+                    { value: 'all', label: 'Tất cả phân loại' },
+                    { value: 'essential', label: 'Thiết yếu' },
+                    { value: 'utility', label: 'Tiện ích' },
+                    { value: 'convenience', label: 'Tiện nghi' },
+                    { value: 'premium', label: 'Cao cấp' },
+                  ]}
+                />
               </div>
 
               {catalogServices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 bg-white border border-outline-variant rounded-2xl gap-3">
                   <Info className="w-10 h-10 text-outline" />
                   <p className="text-on-surface-variant font-bold text-sm">Không tìm thấy dịch vụ phù hợp.</p>
-                  <button onClick={() => { setRenterSearch(''); setRenterCategory('all'); }} className="text-primary font-bold hover:underline text-xs">Đặt lại bộ lọc</button>
+                  <button type="button" onClick={() => { setRenterSearch(''); setRenterCategory('all'); }} className="text-primary font-bold hover:bg-primary/10 px-3 py-2 rounded-xl transition-all cursor-pointer active:scale-[0.98] text-xs">Đặt lại bộ lọc</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1155,24 +1185,31 @@ function RenterServicesView({
                   <h3 className="font-bold text-on-surface text-sm">Lịch sử chi tiết (12 kỳ gần nhất)</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse">
+                  <table className="w-full min-w-[720px] table-fixed text-left text-sm border-collapse">
+                    <colgroup>
+                      <col className="w-[24%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[19%]" />
+                    </colgroup>
                     <thead>
                       <tr className="bg-surface-container border-b border-outline-variant/60 font-bold text-xs uppercase tracking-wider text-on-surface-variant">
-                        <th className="px-5 py-3.5">Kỳ</th>
-                        <th className="px-5 py-3.5 text-right">Chỉ số Điện (kWh)</th>
-                        <th className="px-5 py-3.5 text-right">Chi phí điện</th>
-                        <th className="px-5 py-3.5 text-right">Chỉ số Nước (m³)</th>
-                        <th className="px-5 py-3.5 text-right">Chi phí nước</th>
+                        <th className="px-5 py-3.5 text-center">Kỳ</th>
+                        <th className="px-5 py-3.5 text-center">Chỉ số Điện (kWh)</th>
+                        <th className="px-5 py-3.5 text-center">Chi phí điện</th>
+                        <th className="px-5 py-3.5 text-center">Chỉ số Nước (m³)</th>
+                        <th className="px-5 py-3.5 text-center">Chi phí nước</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/40 font-medium">
                       {consumptionRecords.map((r, index) => (
                         <tr key={index} className="hover:bg-surface-container/20 transition-colors">
-                          <td className="px-5 py-3.5 font-bold">Tháng {r.period.split('-')[1]}/{r.period.split('-')[0]}</td>
-                          <td className="px-5 py-3.5 text-right">{r.electricity_kwh}</td>
-                          <td className="px-5 py-3.5 text-right text-amber-700 font-bold">{r.electricity_cost.toLocaleString('vi-VN')} đ</td>
-                          <td className="px-5 py-3.5 text-right">{r.water_m3}</td>
-                          <td className="px-5 py-3.5 text-right text-sky-700 font-bold">{r.water_cost.toLocaleString('vi-VN')} đ</td>
+                          <td className="px-5 py-3.5 text-center font-bold">Tháng {r.period.split('-')[1]}/{r.period.split('-')[0]}</td>
+                          <td className="px-5 py-3.5 text-center">{r.electricity_kwh}</td>
+                          <td className="px-5 py-3.5 text-center text-amber-700 font-bold">{r.electricity_cost.toLocaleString('vi-VN')} đ</td>
+                          <td className="px-5 py-3.5 text-center">{r.water_m3}</td>
+                          <td className="px-5 py-3.5 text-center text-sky-700 font-bold">{r.water_cost.toLocaleString('vi-VN')} đ</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1216,7 +1253,7 @@ function RenterServicesView({
                   <p className="text-xs text-on-surface-variant leading-relaxed mt-1 font-medium">
                     Đăng ký sử dụng gói "Giặt sấy trọn gói" kèm "Dọn phòng định kỳ" để nhận ngay ưu đãi giảm 10% tổng chi phí dịch vụ mỗi tháng.
                   </p>
-                  <button className="mt-3 text-primary font-bold text-xs border-b border-primary/30 pb-0.5 hover:border-primary transition-colors">
+                  <button type="button" className="mt-3 rounded-lg px-2 py-1 text-primary font-bold text-xs border-b border-primary/30 hover:border-primary hover:bg-primary/10 transition-all cursor-pointer active:scale-[0.98]">
                     Xem chi tiết ưu đãi
                   </button>
                 </div>
@@ -1228,7 +1265,7 @@ function RenterServicesView({
 
         {/* Right Column (Sidebar) */}
         <aside className="w-full lg:w-[320px] space-y-6 flex-shrink-0">
-          
+
           {/* Stay Info Card */}
           <div className="bg-white border border-outline-variant rounded-2xl p-6">
             <div className="flex items-center gap-4 mb-4 pb-4 border-b border-outline-variant/30">
@@ -1240,7 +1277,7 @@ function RenterServicesView({
                 <p className="font-headline-md text-lg font-bold text-primary font-lexend mt-0.5">{userRoomName}</p>
               </div>
             </div>
-            
+
             <div className="space-y-2.5 text-xs font-medium">
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Hợp đồng:</span>
@@ -1259,7 +1296,9 @@ function RenterServicesView({
 
           {/* Monthly Cost Summary */}
           <div className="bg-primary text-on-primary rounded-2xl p-6 shadow-xl border border-primary/20">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-on-primary/70 mb-5">Tóm tắt phí tháng 10</h4>
+            <h4 className="inline-flex items-center rounded-full border border-on-tertiary-fixed/25 bg-tertiary-fixed/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-on-tertiary-fixed mb-5">
+              Tóm tắt phí tháng 10
+            </h4>
             <div className="space-y-3.5 mb-6 text-sm">
               <div className="flex justify-between items-center font-medium">
                 <span className="text-on-primary/80">Tiền phòng</span>
@@ -1273,7 +1312,7 @@ function RenterServicesView({
                 <span className="text-on-primary/80">Dịch vụ (4)</span>
                 <span className="font-bold">435.000đ</span>
               </div>
-              
+
               <div className="pt-4 border-t border-on-primary/20 flex justify-between items-end">
                 <span className="font-bold text-xs uppercase tracking-wide">Tổng cộng</span>
                 <div className="text-right">
@@ -1282,10 +1321,11 @@ function RenterServicesView({
                 </div>
               </div>
             </div>
-            
+
             <button
+              type="button"
               onClick={() => navigate('/customer/invoices')}
-              className="w-full bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-surface-container transition-colors active:scale-95 shadow-md"
+              className="w-full bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-surface-container hover:shadow-lg transition-all cursor-pointer active:scale-[0.97] shadow-md"
             >
               Thanh toán ngay
             </button>

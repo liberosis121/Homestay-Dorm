@@ -33,15 +33,15 @@ interface CustomerRow {
 }
 
 const STATUS_MAP = {
-  renting:     { label: 'Đang thuê',    cls: 'bg-[#e8ede7] text-[#5f745d]' },
-  not_renting: { label: 'Chưa thuê',   cls: 'bg-[#faf2ec] text-[#4e453c] border border-[#d1c4b9]' },
-  pending:     { label: 'Chờ duyệt',   cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  renting: { label: 'Đang thuê', cls: 'bg-[#e8ede7] text-[#5f745d]' },
+  not_renting: { label: 'Chưa thuê', cls: 'bg-[#faf2ec] text-[#4e453c] border border-[#d1c4b9]' },
+  pending: { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
   checked_out: { label: 'Đã trả phòng', cls: 'bg-gray-100 text-gray-600' },
 };
 
 const ACCT_MAP = {
   active: { label: 'Hoạt động', dot: 'bg-emerald-500', text: 'text-emerald-600' },
-  locked: { label: 'Bị khóa',   dot: 'bg-red-500',     text: 'text-red-600' },
+  locked: { label: 'Bị khóa', dot: 'bg-red-500', text: 'text-red-600' },
 };
 
 export default function AdminUsersPage() {
@@ -54,18 +54,8 @@ export default function AdminUsersPage() {
   const [drawerTab, setDrawerTab] = useState<'info' | 'history' | 'invoice'>('info');
   const [isEditing, setIsEditing] = useState(false);
   const [editCust, setEditCust] = useState<CustomerRow | null>(null);
-
-  useEffect(() => {
-    if (selectedCustomer) {
-      setEditCust({ ...selectedCustomer });
-      setIsEditing(false);
-    } else {
-      setEditCust(null);
-      setIsEditing(false);
-    }
-  }, [selectedCustomer]);
-
   const [showAddModal, setShowAddModal] = useState(false);
+  const [confirmLockCustomer, setConfirmLockCustomer] = useState<CustomerRow | null>(null);
 
   const [newCust, setNewCust] = useState({
     fullName: '',
@@ -159,6 +149,16 @@ export default function AdminUsersPage() {
     setShowAddModal(false);
   };
 
+  useEffect(() => {
+    if (selectedCustomer) {
+      setEditCust({ ...selectedCustomer });
+      setIsEditing(false);
+    } else {
+      setEditCust(null);
+      setIsEditing(false);
+    }
+  }, [selectedCustomer]);
+
   // Load from mock DB
   useEffect(() => {
     setIsLoading(true);
@@ -190,19 +190,19 @@ export default function AdminUsersPage() {
 
   const kpis = useMemo(() => {
     const total = customers.length;
-    const renting = customers.filter(c => c.status === 'renting').length;
-    const notRenting = customers.filter(c => c.status === 'not_renting').length;
-    const locked = customers.filter(c => c.accountStatus === 'locked').length;
+    const renting = customers.filter((c) => c.status === 'renting').length;
+    const notRenting = customers.filter((c) => c.status === 'not_renting').length;
+    const locked = customers.filter((c) => c.accountStatus === 'locked').length;
     return [
-      { icon: 'groups',       label: 'Tổng khách hàng',     val: total,      badge: '+2%', badgeColor: 'text-emerald-600 bg-emerald-50' },
-      { icon: 'bed',          label: 'Đang thuê',            val: renting,    badge: '',    badgeColor: '' },
-      { icon: 'event_busy',   label: 'Chưa thuê',            val: notRenting, badge: '',    badgeColor: '' },
-      { icon: 'lock_person',  label: 'Tài khoản bị khóa',   val: locked,     badge: '',    badgeColor: '', iconCls: 'bg-red-50 text-red-600' },
+      { icon: 'groups', label: 'Tổng khách hàng', val: total, badge: '+2%', badgeColor: 'text-emerald-600 bg-emerald-50' },
+      { icon: 'bed', label: 'Đang thuê', val: renting, badge: '', badgeColor: '' },
+      { icon: 'event_busy', label: 'Chưa thuê', val: notRenting, badge: '', badgeColor: '' },
+      { icon: 'lock_person', label: 'Tài khoản bị khóa', val: locked, badge: '', badgeColor: '', iconCls: 'bg-red-50 text-red-600' },
     ];
   }, [customers]);
 
   const filtered = useMemo(() => {
-    return customers.filter(c => {
+    return customers.filter((c) => {
       const q = search.toLowerCase();
       const matchQ = !q || c.full_name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q);
       const matchRent = !filterRent || c.status === filterRent;
@@ -211,13 +211,55 @@ export default function AdminUsersPage() {
     });
   }, [customers, search, filterRent, filterAcct]);
 
-  const toggleLock = (id: string) => {
-    setCustomers(prev => prev.map(c =>
-      c.id === id ? { ...c, accountStatus: c.accountStatus === 'active' ? 'locked' : 'active' } : c
-    ));
-    if (selectedCustomer?.id === id) {
-      setSelectedCustomer(prev => prev ? { ...prev, accountStatus: prev.accountStatus === 'active' ? 'locked' : 'active' } : null);
+  const confirmToggleLock = () => {
+    if (!confirmLockCustomer) return;
+    const nextStatus = confirmLockCustomer.accountStatus === 'active' ? 'locked' : 'active';
+    setCustomers((prev) =>
+      prev.map((c) => c.id === confirmLockCustomer.id ? { ...c, accountStatus: nextStatus } : c),
+    );
+    if (selectedCustomer?.id === confirmLockCustomer.id) {
+      setSelectedCustomer((prev) => prev ? { ...prev, accountStatus: nextStatus } : null);
     }
+    setConfirmLockCustomer(null);
+  };
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('vi-VN').format(amount) + ' VND';
+
+  const invoiceItems = useMemo(() => {
+    if (!selectedCustomer) return [];
+    const db = getMockDB() as any;
+    const normalize = (value: string | undefined) => (value || '').toLowerCase().trim();
+    const matchByName = (value: string | undefined) => normalize(value) === normalize(selectedCustomer.full_name);
+    const toDateValue = (value?: string) => value ? new Date(value.replace(' ', 'T')).getTime() : 0;
+
+    const depositItems = (db.deposit_invoices || [])
+      .filter((inv: any) => matchByName(inv.customer_name))
+      .map((inv: any) => ({
+        id: inv.id, type: 'Đặt cọc', room: inv.room_name, amount: inv.amount,
+        status: inv.status, dateLabel: inv.created_at, sortValue: toDateValue(inv.created_at),
+      }));
+    const checkinItems = (db.checkin_invoices || [])
+      .filter((inv: any) => matchByName(inv.customer_name))
+      .map((inv: any) => ({
+        id: inv.id, type: 'Nhận phòng', room: inv.room_name, amount: inv.total,
+        status: inv.status, dateLabel: inv.created_at, sortValue: toDateValue(inv.created_at),
+      }));
+    const monthlyItems = (db.monthly_invoices || [])
+      .filter((inv: any) => matchByName(inv.customer_name))
+      .map((inv: any) => ({
+        id: inv.id, type: 'Định kỳ', room: inv.room_name, amount: inv.total,
+        status: inv.status, dateLabel: `Kỳ ${inv.period}`, sortValue: toDateValue(inv.created_at),
+      }));
+    return [...depositItems, ...checkinItems, ...monthlyItems].sort((a, b) => b.sortValue - a.sortValue);
+  }, [selectedCustomer]);
+
+  const invoiceStatusMap: Record<string, { label: string; cls: string }> = {
+    paid: { label: 'Đã thanh toán', cls: 'bg-emerald-50 text-emerald-700' },
+    pending: { label: 'Chờ thanh toán', cls: 'bg-amber-50 text-amber-700' },
+    overdue: { label: 'Quá hạn', cls: 'bg-red-50 text-red-700' },
+    cancelled: { label: 'Đã hủy', cls: 'bg-gray-100 text-gray-600' },
+    draft: { label: 'Nháp', cls: 'bg-gray-100 text-gray-600' },
   };
 
   return (
@@ -260,14 +302,14 @@ export default function AdminUsersPage() {
             style={{ background: A.surface, border: `1px solid ${A.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <div className="flex justify-between items-start">
-              <div className={`p-2 rounded-lg ${kpi.iconCls || ''}`}
-                style={!kpi.iconCls ? { background: A.badgeBg, color: A.accent } : {}}>
+              <div
+                className={`p-2 rounded-lg ${(kpi as any).iconCls || ''}`}
+                style={!(kpi as any).iconCls ? { background: A.badgeBg, color: A.accent } : {}}
+              >
                 <span className="material-symbols-outlined text-xl">{kpi.icon}</span>
               </div>
               {kpi.badge && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded ${kpi.badgeColor}`}>
-                  {kpi.badge}
-                </span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded ${kpi.badgeColor}`}>{kpi.badge}</span>
               )}
             </div>
             <div>
@@ -284,21 +326,16 @@ export default function AdminUsersPage() {
         style={{ background: A.surface, border: `1px solid ${A.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
       >
         <div className="flex-1 min-w-[240px] relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px]"
-            style={{ color: A.textMuted }}>search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px]" style={{ color: A.textMuted }}>search</span>
           <input
             type="text"
             placeholder="Tìm theo tên, SĐT hoặc email..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none transition-all"
-            style={{
-              border: `1px solid ${A.border}`,
-              background: A.bg,
-              color: A.textPrimary,
-            }}
-            onFocus={e => (e.currentTarget.style.borderColor = A.primary)}
-            onBlur={e => (e.currentTarget.style.borderColor = A.border)}
+            style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = A.primary)}
+            onBlur={(e) => (e.currentTarget.style.borderColor = A.border)}
           />
         </div>
         <CustomSelect
@@ -344,10 +381,8 @@ export default function AdminUsersPage() {
           <table className="w-full text-left border-collapse">
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
-                {['Mã KH', 'Khách hàng', 'Liên hệ', 'Phòng thuê', 'Trạng thái thuê', 'Tài khoản', 'Thao tác'].map(h => (
-                  <th key={h}
-                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider"
-                    style={{ color: A.textMuted }}>
+                {['Mã KH', 'Khách hàng', 'Liên hệ', 'Phòng thuê', 'Trạng thái thuê', 'Tài khoản', 'Thao tác'].map((h) => (
+                  <th key={h} className="px-5 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: A.textMuted }}>
                     {h}
                   </th>
                 ))}
@@ -367,12 +402,7 @@ export default function AdminUsersPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-24"></div>
-                        <div className="h-3 bg-gray-200 rounded w-32"></div>
-                      </div>
-                    </td>
+                    <td className="px-5 py-4"><div className="space-y-2"><div className="h-4 bg-gray-200 rounded w-24"></div><div className="h-3 bg-gray-200 rounded w-32"></div></div></td>
                     <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
                     <td className="px-5 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
                     <td className="px-5 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
@@ -382,91 +412,89 @@ export default function AdminUsersPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center">
-                    <span className="material-symbols-outlined text-5xl block mb-3"
-                      style={{ color: A.border }}>manage_search</span>
+                    <span className="material-symbols-outlined text-5xl block mb-3" style={{ color: A.border }}>manage_search</span>
                     <p className="text-sm" style={{ color: A.textMuted }}>Không tìm thấy khách hàng phù hợp.</p>
                   </td>
                 </tr>
-              ) : filtered.map((c, i) => {
-                const rentInfo = STATUS_MAP[c.status];
-                const acctInfo = ACCT_MAP[c.accountStatus];
-                return (
-                  <tr
-                    key={c.id}
-                    onClick={() => { setSelectedCustomer(c); setDrawerTab('info'); }}
-                    className="group cursor-pointer transition-colors"
-                    style={{
-                      borderBottom: `1px solid ${A.border}`,
-                      background: i % 2 === 0 ? A.surface : A.bg,
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = A.bg)}
-                    onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}
-                  >
-                    <td className="px-5 py-3 text-sm font-medium" style={{ color: A.textMuted }}>{c.id}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-white"
-                          style={{ background: A.primary }}
-                        >
-                          {c.full_name.charAt(0).toUpperCase()}
+              ) : (
+                filtered.map((c, i) => {
+                  const rentInfo = STATUS_MAP[c.status];
+                  const acctInfo = ACCT_MAP[c.accountStatus];
+                  return (
+                    <tr
+                      key={c.id}
+                      onClick={() => { setSelectedCustomer(c); setDrawerTab('info'); }}
+                      className="group cursor-pointer transition-colors"
+                      style={{ borderBottom: `1px solid ${A.border}`, background: i % 2 === 0 ? A.surface : A.bg }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = A.bg)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}
+                    >
+                      <td className="px-5 py-3 text-sm font-medium" style={{ color: A.textMuted }}>{c.id}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-white"
+                            style={{ background: A.primary }}
+                          >
+                            {c.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>{c.full_name}</p>
+                            <p className="text-xs" style={{ color: A.textMuted }}>Khách hàng</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>{c.full_name}</p>
-                          <p className="text-xs" style={{ color: A.textMuted }}>Khách hàng</p>
+                      </td>
+                      <td className="px-5 py-3">
+                        <p className="text-sm" style={{ color: A.textPrimary }}>{c.phone}</p>
+                        <p className="text-xs opacity-70" style={{ color: A.textMuted }}>{c.email}</p>
+                      </td>
+                      <td className="px-5 py-3 text-sm" style={{ color: A.textPrimary }}>
+                        {c.renting_room_name || (<span style={{ color: A.textMuted }}>Chưa có</span>)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${rentInfo.cls}`}>
+                          {rentInfo.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`flex items-center gap-1.5 text-xs font-medium ${acctInfo.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${acctInfo.dot}`} />
+                          {acctInfo.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedCustomer(c); setDrawerTab('info'); }}
+                            className="p-1.5 rounded-full transition-colors hover:opacity-70"
+                            style={{ color: A.textMuted }}
+                            title="Xem chi tiết"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">visibility</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedCustomer(c); setDrawerTab('info'); setIsEditing(true); }}
+                            className="p-1.5 rounded-full transition-colors hover:opacity-70"
+                            style={{ color: A.accent }}
+                            title="Chỉnh sửa"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmLockCustomer(c); }}
+                            className="p-1.5 rounded-full transition-colors hover:opacity-70 text-red-600"
+                            title={c.accountStatus === 'active' ? 'Tạm khóa' : 'Mở khóa'}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              {c.accountStatus === 'active' ? 'block' : 'lock_open'}
+                            </span>
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <p className="text-sm" style={{ color: A.textPrimary }}>{c.phone}</p>
-                      <p className="text-xs opacity-70" style={{ color: A.textMuted }}>{c.email}</p>
-                    </td>
-                    <td className="px-5 py-3 text-sm" style={{ color: A.textPrimary }}>
-                      {c.renting_room_name || <span style={{ color: A.textMuted }}>Chưa có</span>}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${rentInfo.cls}`}>
-                        {rentInfo.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`flex items-center gap-1.5 text-xs font-medium ${acctInfo.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${acctInfo.dot}`} />
-                        {acctInfo.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={e => { e.stopPropagation(); setSelectedCustomer(c); setDrawerTab('info'); }}
-                          className="p-1.5 rounded-full transition-colors hover:opacity-70"
-                          style={{ color: A.textMuted }}
-                          title="Xem chi tiết"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">visibility</span>
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); setSelectedCustomer(c); setDrawerTab('info'); setIsEditing(true); }}
-                          className="p-1.5 rounded-full transition-colors hover:opacity-70"
-                          style={{ color: A.accent }}
-                          title="Chỉnh sửa"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); toggleLock(c.id); }}
-                          className="p-1.5 rounded-full transition-colors hover:opacity-70 text-red-600"
-                          title={c.accountStatus === 'active' ? 'Tạm khóa' : 'Mở khóa'}
-                        >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {c.accountStatus === 'active' ? 'block' : 'lock_open'}
-                          </span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -480,13 +508,11 @@ export default function AdminUsersPage() {
             Hiển thị {filtered.length} trong số {customers.length} khách hàng
           </p>
           <div className="flex items-center gap-1">
-            {[1, 2, 3].map(n => (
+            {[1, 2, 3].map((n) => (
               <button
                 key={n}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors"
-                style={n === 1
-                  ? { background: A.primary, color: '#fff' }
-                  : { color: A.textPrimary }}
+                style={n === 1 ? { background: A.primary, color: '#fff' } : { color: A.textPrimary }}
               >
                 {n}
               </button>
@@ -500,7 +526,7 @@ export default function AdminUsersPage() {
         <div
           className="fixed inset-0 z-50 flex justify-end transition-opacity duration-300"
           style={{ background: `${A.primary}66` }}
-          onClick={e => { if (e.target === e.currentTarget) setSelectedCustomer(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedCustomer(null); }}
         >
           <div
             className="w-full max-w-[480px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
@@ -532,7 +558,9 @@ export default function AdminUsersPage() {
                   {(editCust?.full_name || selectedCustomer.full_name).charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>{editCust?.full_name || selectedCustomer.full_name}</h3>
+                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>
+                    {editCust?.full_name || selectedCustomer.full_name}
+                  </h3>
                   <p className="text-sm" style={{ color: A.textMuted }}>
                     Mã: {selectedCustomer.id} •{' '}
                     <span className={ACCT_MAP[editCust?.accountStatus || selectedCustomer.accountStatus].text}>
@@ -544,14 +572,16 @@ export default function AdminUsersPage() {
 
               {/* Tabs */}
               <div className="flex" style={{ borderBottom: `1px solid ${A.border}` }}>
-                {(['info', 'history', 'invoice'] as const).map(tab => (
+                {(['info', 'history', 'invoice'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setDrawerTab(tab)}
                     className="flex-1 py-2 text-sm font-medium transition-colors"
-                    style={drawerTab === tab
-                      ? { color: A.primary, borderBottom: `2px solid ${A.primary}` }
-                      : { color: A.textMuted }}
+                    style={
+                      drawerTab === tab
+                        ? { color: A.primary, borderBottom: `2px solid ${A.primary}` }
+                        : { color: A.textMuted }
+                    }
                   >
                     {tab === 'info' ? 'Thông tin' : tab === 'history' ? 'Lịch sử thuê' : 'Hóa đơn'}
                   </button>
@@ -561,62 +591,62 @@ export default function AdminUsersPage() {
               {/* Tab Content */}
               {drawerTab === 'info' && (
                 <div className="flex flex-col gap-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Email</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.email || 'Chưa cập nhật'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Điện thoại</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.phone}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Số CCCD</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.cccd || 'Chưa cập nhật'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Ngày sinh</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.birthDate || 'Chưa cập nhật'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Giới tính</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.gender || 'Chưa cập nhật'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Quốc tịch</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.nationality || 'Chưa cập nhật'}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Địa chỉ</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.address || 'Chưa cập nhật'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Ngày tạo tài khoản</p>
-                          <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.joinDate}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Trạng thái</p>
-                          <div>
-                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-0.5 ${STATUS_MAP[selectedCustomer.status].cls}`}>
-                              {STATUS_MAP[selectedCustomer.status].label}
-                            </span>
-                          </div>
-                        </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Email</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.email || 'Chưa cập nhật'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Điện thoại</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Số CCCD</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.cccd || 'Chưa cập nhật'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Ngày sinh</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.birthDate || 'Chưa cập nhật'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Giới tính</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.gender || 'Chưa cập nhật'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Quốc tịch</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.nationality || 'Chưa cập nhật'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Địa chỉ</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.address || 'Chưa cập nhật'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Ngày tạo tài khoản</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{selectedCustomer.joinDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>Trạng thái</p>
+                      <div>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-0.5 ${STATUS_MAP[selectedCustomer.status].cls}`}>
+                          {STATUS_MAP[selectedCustomer.status].label}
+                        </span>
                       </div>
+                    </div>
+                  </div>
 
-                      {selectedCustomer.renting_room_name && (
-                        <div
-                          className="p-4 rounded-lg"
-                          style={{ background: A.bg, border: `1px solid ${A.border}` }}
-                        >
-                          <h4 className="text-sm font-semibold mb-2" style={{ color: A.accent }}>Thông tin phòng hiện tại</h4>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm" style={{ color: A.textPrimary }}>
-                              Mã phòng: <strong style={{ color: A.primary }}>{selectedCustomer.renting_room_name}</strong>
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                  {selectedCustomer.renting_room_name && (
+                    <div
+                      className="p-4 rounded-lg"
+                      style={{ background: A.bg, border: `1px solid ${A.border}` }}
+                    >
+                      <h4 className="text-sm font-semibold mb-2" style={{ color: A.accent }}>Thông tin phòng hiện tại</h4>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm" style={{ color: A.textPrimary }}>
+                          Mã phòng: <strong style={{ color: A.primary }}>{selectedCustomer.renting_room_name}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -641,10 +671,32 @@ export default function AdminUsersPage() {
               )}
 
               {drawerTab === 'invoice' && (
-                <div>
-                  <p className="text-sm text-center py-6" style={{ color: A.textMuted }}>
-                    Xem tại module Kế toán để tra cứu hóa đơn chi tiết.
-                  </p>
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm" style={{ color: A.textMuted }}>Danh sách hóa đơn của khách hàng.</p>
+                  {invoiceItems.length === 0 ? (
+                    <p className="text-sm text-center py-6" style={{ color: A.textMuted }}>Chưa có hóa đơn cho khách hàng này.</p>
+                  ) : (
+                    invoiceItems.map((inv) => {
+                      const status = invoiceStatusMap[inv.status] || { label: 'Không xác định', cls: 'bg-gray-100 text-gray-600' };
+                      return (
+                        <div
+                          key={inv.id}
+                          className="p-4 rounded-lg flex items-start justify-between gap-3"
+                          style={{ background: A.bg, border: `1px solid ${A.border}` }}
+                        >
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>{inv.type}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.cls}`}>{status.label}</span>
+                            </div>
+                            <p className="text-sm font-semibold" style={{ color: A.primary }}>{inv.id}</p>
+                            <p className="text-xs" style={{ color: A.textMuted }}>{inv.room || 'Chưa có phòng'} • {inv.dateLabel}</p>
+                          </div>
+                          <div className="text-sm font-semibold" style={{ color: A.textPrimary }}>{formatCurrency(inv.amount)}</div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               )}
             </div>
@@ -662,7 +714,7 @@ export default function AdminUsersPage() {
                 Sửa thông tin
               </button>
               <button
-                onClick={() => toggleLock(selectedCustomer.id)}
+                onClick={() => setConfirmLockCustomer(selectedCustomer)}
                 className="px-4 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-red-50 active:scale-95 text-red-600 border-red-300"
               >
                 {selectedCustomer.accountStatus === 'active' ? 'Tạm khóa' : 'Mở khóa'}
@@ -672,12 +724,12 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-       {/* ── ADD MODAL (minimal) ── */}
+      {/* ── ADD MODAL ── */}
       {showAddModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: `${A.primary}66` }}
-          onClick={e => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
         >
           <div
             className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
@@ -685,9 +737,11 @@ export default function AdminUsersPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>Thêm khách hàng mới</h2>
-              <button onClick={() => setShowAddModal(false)}><span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span></button>
+              <button onClick={() => setShowAddModal(false)}>
+                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+              </button>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-1">
               <div className="col-span-2">
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Họ và tên *</label>
@@ -826,133 +880,80 @@ export default function AdminUsersPage() {
                 <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
               </button>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Họ và tên *</label>
-                <input
-                  type="text"
-                  value={editCust.full_name || ''}
-                  onChange={e => setEditCust({ ...editCust, full_name: e.target.value })}
-                  placeholder="Nhập họ và tên..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
+                <input type="text" value={editCust.full_name || ''} onChange={e => setEditCust({ ...editCust, full_name: e.target.value })}
+                  placeholder="Nhập họ và tên..." className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Email *</label>
-                <input
-                  type="email"
-                  value={editCust.email || ''}
-                  onChange={e => setEditCust({ ...editCust, email: e.target.value })}
-                  placeholder="Nhập email..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
+                <input type="email" value={editCust.email || ''} onChange={e => setEditCust({ ...editCust, email: e.target.value })}
+                  placeholder="Nhập email..." className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Số điện thoại *</label>
-                <input
-                  type="text"
-                  value={editCust.phone || ''}
-                  onChange={e => setEditCust({ ...editCust, phone: e.target.value })}
-                  placeholder="Nhập số điện thoại..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
+                <input type="text" value={editCust.phone || ''} onChange={e => setEditCust({ ...editCust, phone: e.target.value })}
+                  placeholder="Nhập số điện thoại..." className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Số CCCD / Hộ chiếu</label>
-                <input
-                  type="text"
-                  value={editCust.cccd || ''}
-                  onChange={e => setEditCust({ ...editCust, cccd: e.target.value })}
-                  placeholder="Nhập số CCCD..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
+                <input type="text" value={editCust.cccd || ''} onChange={e => setEditCust({ ...editCust, cccd: e.target.value })}
+                  placeholder="Nhập số CCCD..." className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Ngày sinh</label>
-                <input
-                  type="text"
-                  value={editCust.birthDate || ''}
-                  onChange={e => setEditCust({ ...editCust, birthDate: e.target.value })}
-                  placeholder="DD/MM/YYYY"
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
+                <input type="text" value={editCust.birthDate || ''} onChange={e => setEditCust({ ...editCust, birthDate: e.target.value })}
+                  placeholder="DD/MM/YYYY" className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Giới tính</label>
-                <CustomSelect
-                  value={editCust.gender || 'Nam'}
-                  onChange={val => setEditCust({ ...editCust, gender: val })}
-                  options={['Nam', 'Nữ', 'Khác']}
-                  className="w-full"
-                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5"
-                />
+                <CustomSelect value={editCust.gender || 'Nam'} onChange={val => setEditCust({ ...editCust, gender: val })}
+                  options={['Nam', 'Nữ', 'Khác']} className="w-full"
+                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5" />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Quốc tịch</label>
-                <input
-                  type="text"
-                  value={editCust.nationality || ''}
-                  onChange={e => setEditCust({ ...editCust, nationality: e.target.value })}
-                  placeholder="Nhập quốc tịch..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
+                <input type="text" value={editCust.nationality || ''} onChange={e => setEditCust({ ...editCust, nationality: e.target.value })}
+                  placeholder="Nhập quốc tịch..." className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Địa chỉ</label>
-                <input
-                  type="text"
-                  value={editCust.address || ''}
-                  onChange={e => setEditCust({ ...editCust, address: e.target.value })}
-                  placeholder="Nhập địa chỉ..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
+                <input type="text" value={editCust.address || ''} onChange={e => setEditCust({ ...editCust, address: e.target.value })}
+                  placeholder="Nhập địa chỉ..." className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Thuê phòng</label>
-                <CustomSelect
-                  value={editCust.status || 'not_renting'}
-                  onChange={val => setEditCust({ ...editCust, status: val as any })}
+                <CustomSelect value={editCust.status || 'not_renting'} onChange={val => setEditCust({ ...editCust, status: val as any })}
                   options={[
                     { value: 'renting', label: 'Đang thuê' },
                     { value: 'not_renting', label: 'Chưa thuê' },
                     { value: 'pending', label: 'Chờ duyệt' },
                     { value: 'checked_out', label: 'Đã trả phòng' }
-                  ]}
-                  className="w-full"
-                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5"
-                />
+                  ]} className="w-full" triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5" />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5 uppercase" style={{ color: A.textMuted }}>Tài khoản</label>
-                <CustomSelect
-                  value={editCust.accountStatus || 'active'}
-                  onChange={val => setEditCust({ ...editCust, accountStatus: val as any })}
+                <CustomSelect value={editCust.accountStatus || 'active'} onChange={val => setEditCust({ ...editCust, accountStatus: val as any })}
                   options={[
                     { value: 'active', label: 'Hoạt động' },
                     { value: 'locked', label: 'Bị khóa' }
-                  ]}
-                  className="w-full"
-                  triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5"
-                />
+                  ]} className="w-full" triggerClassName="h-9.5 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-1.5" />
               </div>
             </div>
-            
+
             <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setIsEditing(false)}
+              <button onClick={() => setIsEditing(false)}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
-                style={{ borderColor: A.border, color: A.textMuted }}
-              >
-                Hủy
-              </button>
+                style={{ borderColor: A.border, color: A.textMuted }}>Hủy</button>
               <button
                 onClick={() => {
                   if (!editCust.full_name || !editCust.email || !editCust.phone) {
@@ -1020,9 +1021,80 @@ export default function AdminUsersPage() {
                   }
                 }}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}
+                style={{ background: A.primary }}>Lưu thay đổi</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Lock/Unlock Modal (from nhatanh) */}
+      {confirmLockCustomer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+          style={{
+            background: confirmLockCustomer.accountStatus === 'active'
+              ? 'rgba(185, 28, 28, 0.4)'
+              : 'rgba(30, 27, 23, 0.4)',
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmLockCustomer(null); }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4 transform transition-all border animate-fade-in-up"
+            style={{
+              background: A.surface,
+              borderColor: confirmLockCustomer.accountStatus === 'active' ? '#fca5a5' : A.border,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="p-2.5 rounded-full flex items-center justify-center"
+                style={{
+                  background: confirmLockCustomer.accountStatus === 'active' ? '#fee2e2' : '#d1fae5',
+                  color: confirmLockCustomer.accountStatus === 'active' ? '#dc2626' : '#059669',
+                }}
               >
-                Lưu thay đổi
+                <span className="material-symbols-outlined text-2xl">
+                  {confirmLockCustomer.accountStatus === 'active' ? 'block' : 'lock_open'}
+                </span>
+              </div>
+              <h3
+                className="text-lg font-bold"
+                style={{ color: confirmLockCustomer.accountStatus === 'active' ? '#dc2626' : '#059669' }}
+              >
+                {confirmLockCustomer.accountStatus === 'active' ? 'Khóa tài khoản khách hàng' : 'Mở khóa tài khoản khách hàng'}
+              </h3>
+            </div>
+
+            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
+              {confirmLockCustomer.accountStatus === 'active' ? (
+                <>
+                  Bạn có chắc muốn <strong>khóa tài khoản</strong> của khách hàng{' '}
+                  <span className="font-semibold text-gray-900">{confirmLockCustomer.full_name}</span>{' '}
+                  (Mã: {confirmLockCustomer.id}) không? Khách hàng này sẽ không thể đăng nhập vào hệ thống.
+                </>
+              ) : (
+                <>
+                  Bạn có chắc muốn <strong>mở khóa tài khoản</strong> của khách hàng{' '}
+                  <span className="font-semibold text-gray-900">{confirmLockCustomer.full_name}</span>{' '}
+                  (Mã: {confirmLockCustomer.id}) không?
+                </>
+              )}
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setConfirmLockCustomer(null)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmToggleLock}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                style={{ background: confirmLockCustomer.accountStatus === 'active' ? '#dc2626' : '#10b981' }}
+              >
+                {confirmLockCustomer.accountStatus === 'active' ? 'Khóa tài khoản' : 'Mở khóa'}
               </button>
             </div>
           </div>

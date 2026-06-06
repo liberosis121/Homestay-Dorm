@@ -29,17 +29,17 @@ interface Asset {
 }
 
 const STATUS_ASSET: Record<AssetStatus, { label: string; cls: string }> = {
-  in_use:      { label: 'Đang sử dụng', cls: 'bg-[#e8ede7] text-[#5f745d]' },
-  available:   { label: 'Sẵn sàng',     cls: 'bg-emerald-50 text-emerald-700' },
+  in_use: { label: 'Đang sử dụng', cls: 'bg-[#e8ede7] text-[#5f745d]' },
+  available: { label: 'Sẵn sàng', cls: 'bg-emerald-50 text-emerald-700' },
   maintenance: { label: 'Đang bảo trì', cls: 'bg-amber-50 text-amber-700' },
-  damaged:     { label: 'Hư hỏng',      cls: 'bg-red-50 text-red-700' },
+  damaged: { label: 'Hư hỏng', cls: 'bg-red-50 text-red-700' },
 };
 
 const CAT_LABEL: Record<AssetCategory, { label: string; icon: string }> = {
-  furniture:   { label: 'Nội thất',    icon: 'chair' },
-  electronics: { label: 'Điện tử',     icon: 'devices' },
-  appliance:   { label: 'Thiết bị',    icon: 'dishwasher' },
-  facility:    { label: 'Cơ sở hạ tầng', icon: 'construction' },
+  furniture: { label: 'Nội thất', icon: 'chair' },
+  electronics: { label: 'Điện tử', icon: 'devices' },
+  appliance: { label: 'Thiết bị', icon: 'dishwasher' },
+  facility: { label: 'Cơ sở hạ tầng', icon: 'construction' },
 };
 
 const MOCK_ASSETS: Asset[] = [
@@ -57,7 +57,6 @@ export default function AdminAssetsPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [selected, setSelected] = useState<Asset | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
@@ -104,12 +103,29 @@ export default function AdminAssetsPage() {
   };
 
   const saveForm = () => {
+    if (!form.name?.trim()) {
+      alert("Tên tài sản không được để trống!");
+      return;
+    }
+    if (!form.location?.trim()) {
+      alert("Vị trí không được để trống!");
+      return;
+    }
     if (modalMode === 'add') {
-      const na: Asset = { ...(form as Asset), id: `TS${String(assets.length + 1).padStart(3, '0')}` };
+      const na: Asset = {
+        name: form.name,
+        category: form.category || 'furniture',
+        location: form.location,
+        brand: form.brand || '',
+        value: form.value || 0,
+        status: form.status || 'available',
+        purchaseDate: form.purchaseDate || new Date().toLocaleDateString('vi-VN'),
+        serialNumber: form.serialNumber || `SN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        id: `TS${String(assets.length + 1).padStart(3, '0')}`
+      };
       setAssets(prev => [...prev, na]);
     } else {
       setAssets(prev => prev.map(a => a.id === form.id ? { ...a, ...form } as Asset : a));
-      if (selected?.id === form.id) setSelected(prev => prev ? { ...prev, ...form } as Asset : null);
     }
     setShowModal(false);
   };
@@ -234,8 +250,7 @@ export default function AdminAssetsPage() {
                 const cat = CAT_LABEL[a.category];
                 return (
                   <tr key={a.id}
-                    onClick={() => setSelected(a)}
-                    className="group cursor-pointer transition-colors"
+                    className="group transition-colors"
                     style={{ borderBottom: `1px solid ${A.border}`, background: i % 2 === 0 ? A.surface : A.bg }}
                     onMouseEnter={e => (e.currentTarget.style.background = A.bg)}
                     onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}>
@@ -258,12 +273,9 @@ export default function AdminAssetsPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={e => { e.stopPropagation(); openEdit(a); }}
-                          className="p-1.5 rounded-full" style={{ color: A.accent }}>
+                          className="p-1.5 rounded-full hover:bg-gray-100 transition-colors" style={{ color: A.accent }}
+                          title="Chỉnh sửa tài sản">
                           <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        <button onClick={e => { e.stopPropagation(); setAssets(prev => prev.filter(x => x.id !== a.id)); if (selected?.id === a.id) setSelected(null); }}
-                          className="p-1.5 rounded-full text-red-600">
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
                         </button>
                       </div>
                     </td>
@@ -281,89 +293,87 @@ export default function AdminAssetsPage() {
         </div>
       </section>
 
-      {/* Drawer */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end"
-          style={{ background: `${A.primary}66` }}
-          onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-          <div className="w-full max-w-[440px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
-            style={{ background: A.surface }}>
-            <div className="px-6 py-4 flex items-center justify-between"
-              style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
-              <h2 className="text-lg font-bold" style={{ color: A.primary }}>Chi tiết tài sản</h2>
-              <button onClick={() => setSelected(null)}>
-                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
-              </button>
-            </div>
-            <div className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto">
-              <div className="flex items-center gap-4">
-                <div className="p-4 rounded-xl" style={{ background: A.badgeBg }}>
-                  <span className="material-symbols-outlined text-3xl" style={{ color: A.accent }}>
-                    {CAT_LABEL[selected.category].icon}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>{selected.name}</h3>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${STATUS_ASSET[selected.status].cls}`}>
-                    {STATUS_ASSET[selected.status].label}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: 'Mã tài sản', val: selected.id },
-                  { label: 'Loại', val: CAT_LABEL[selected.category].label },
-                  { label: 'Thương hiệu', val: selected.brand },
-                  { label: 'Giá trị', val: `${selected.value.toLocaleString('vi-VN')}đ` },
-                  { label: 'Ngày mua', val: selected.purchaseDate },
-                  { label: 'Serial Number', val: selected.serialNumber },
-                ].map(({ label, val }) => (
-                  <div key={label}>
-                    <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>{label}</p>
-                    <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{val}</p>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase mb-1" style={{ color: A.textMuted }}>Vị trí hiện tại</p>
-                <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: A.bg, border: `1px solid ${A.border}` }}>
-                  <span className="material-symbols-outlined text-[18px]" style={{ color: A.accent }}>location_on</span>
-                  <span className="text-sm" style={{ color: A.textPrimary }}>{selected.location}</span>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4 flex gap-3" style={{ background: A.sidebar, borderTop: `1px solid ${A.border}` }}>
-              <button onClick={() => openEdit(selected)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}>Sửa tài sản</button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Add/Edit Modal */}
+
+      {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{ background: `${A.primary}66` }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
-            style={{ background: A.surface }}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold" style={{ color: A.primary }}>
-                {modalMode === 'add' ? 'Thêm tài sản mới' : 'Sửa tài sản'}
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto transform transition-all border animate-fade-in-up"
+            style={{ background: A.surface, borderColor: A.border }}>
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: A.border }}>
+              <h2 className="text-xl font-bold" style={{ color: A.primary }}>
+                {modalMode === 'add' ? 'Thêm tài sản mới' : 'Chỉnh sửa tài sản'}
               </h2>
-              <button onClick={() => setShowModal(false)}>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center">
                 <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
               </button>
             </div>
+
+            {/* Modal Body */}
             <div className="grid grid-cols-2 gap-4">
+
+              {/* Mã tài sản, Ngày mua, Số Serial (Only in Edit Mode) */}
+              {modalMode === 'edit' && (
+                <div className="col-span-2 grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mã tài sản</label>
+                    <input
+                      value={form.id || ''}
+                      readOnly
+                      disabled
+                      tabIndex={-1}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
+                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Ngày mua</label>
+                    <input
+                      value={form.purchaseDate || ''}
+                      readOnly
+                      disabled
+                      tabIndex={-1}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
+                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Số Serial</label>
+                    <input
+                      value={form.serialNumber || ''}
+                      readOnly
+                      disabled
+                      tabIndex={-1}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
+                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tên tài sản */}
               <div className="col-span-2">
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tên tài sản</label>
-                <input value={form.name || ''} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
+                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tên tài sản <span className="text-red-500">*</span></label>
+                <input
+                  value={form.name || ''}
+                  onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
+                  readOnly={modalMode === 'edit'}
+                  disabled={modalMode === 'edit'}
+                  tabIndex={modalMode === 'edit' ? -1 : undefined}
                   placeholder="Tên tài sản..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60'
+                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                    }`}
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
               </div>
+
+              {/* Loại tài sản */}
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại</label>
                 <CustomSelect
@@ -379,6 +389,8 @@ export default function AdminAssetsPage() {
                   triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
                 />
               </div>
+
+              {/* Trạng thái - EDITABLE in both modes */}
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
                 <CustomSelect
@@ -394,32 +406,62 @@ export default function AdminAssetsPage() {
                   triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
                 />
               </div>
+
+              {/* Thương hiệu */}
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Thương hiệu</label>
-                <input value={form.brand || ''} onChange={e => setForm(prev => ({ ...prev, brand: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                <input
+                  value={form.brand || ''}
+                  onChange={e => setForm(prev => ({ ...prev, brand: e.target.value }))}
+                  readOnly={modalMode === 'edit'}
+                  disabled={modalMode === 'edit'}
+                  tabIndex={modalMode === 'edit' ? -1 : undefined}
+                  placeholder="Thương hiệu..."
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60'
+                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                    }`}
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
               </div>
+
+              {/* Giá trị - EDITABLE in both modes */}
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giá trị (đ)</label>
-                <input type="number" value={form.value || 0} onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                <input
+                  type="number"
+                  value={form.value || 0}
+                  onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value) }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
               </div>
+
+              {/* Vị trí - EDITABLE in both modes */}
               <div className="col-span-2">
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Vị trí</label>
-                <input value={form.location || ''} onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="Phòng 101 - Quận 1..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Vị trí <span className="text-red-500">*</span></label>
+                <input
+                  value={form.location || ''}
+                  onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="Vị trí tài sản..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                />
               </div>
+
+
+
             </div>
-            <div className="flex gap-3 pt-1">
+
+            {/* Modal Actions */}
+            <div className="flex gap-3 pt-3 border-t mt-2" style={{ borderColor: A.border }}>
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
-                style={{ borderColor: A.border, color: A.textMuted }}>Hủy</button>
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border hover:bg-gray-50 transition-colors"
+                style={{ borderColor: A.border, color: A.textMuted }}>
+                Hủy
+              </button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95 shadow"
                 style={{ background: A.primary }}>
                 {modalMode === 'add' ? 'Thêm tài sản' : 'Lưu thay đổi'}
               </button>

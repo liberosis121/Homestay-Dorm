@@ -1,6 +1,6 @@
 import {
   CheckCircle2, FileText, Printer, Eye, ArrowLeft, X,
-  Building2, CalendarDays, Download, Sparkles, ChevronRight
+  Building2, CalendarDays, Download, ChevronRight
 } from 'lucide-react';
 
 interface Props {
@@ -37,84 +37,47 @@ export default function ContractSuccessModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       {/* Modal */}
       <div
-        className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
-        style={{ animation: 'modalSlideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}
+        className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-[#d1c4b9]/50"
+        style={{ animation: 'modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <style>{`
           @keyframes modalSlideUp {
-            from { opacity: 0; transform: translateY(40px) scale(0.97); }
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
             to { opacity: 1; transform: translateY(0) scale(1); }
-          }
-          @keyframes pulseRing {
-            0%, 100% { transform: scale(1); opacity: 0.6; }
-            50% { transform: scale(1.15); opacity: 0.2; }
-          }
-          @keyframes checkPop {
-            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
-            60% { transform: scale(1.15) rotate(3deg); opacity: 1; }
-            100% { transform: scale(1) rotate(0); opacity: 1; }
           }
         `}</style>
 
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition z-20"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-[#9d8879] hover:bg-[#e8e1d3]/40 hover:text-[#6f583c] transition z-20 cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* ── Success Header ── */}
-        <div className="relative bg-gradient-to-br from-[#1b4332] via-[#2d6a4f] to-[#40916c] px-8 pt-10 pb-14 text-center overflow-hidden">
-          {/* Decorative circles */}
-          <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-white/5 translate-y-1/2 -translate-x-1/2" />
-
-          {/* Sparkles */}
-          <div className="absolute top-6 left-10 text-yellow-300 opacity-70">
-            <Sparkles className="w-5 h-5" style={{ animation: 'pulseRing 2s ease-in-out infinite' }} />
+        <div className="relative bg-[#faf2ec] border-b border-[#d1c4b9]/50 px-8 pt-4 pb-8 text-center">
+          <div className="mx-auto inline-flex max-w-full rounded-2xl border border-[#d1c4b9]/70 bg-[#fffdf9] px-5 py-2.5 shadow-sm">
+            <h2 className="text-[#1e1b17] text-base font-bold leading-tight">
+              Lập hợp đồng thuê thành công
+            </h2>
           </div>
-          <div className="absolute top-8 right-16 text-yellow-200 opacity-50">
-            <Sparkles className="w-3.5 h-3.5" style={{ animation: 'pulseRing 2.4s ease-in-out infinite 0.5s' }} />
-          </div>
-
-          {/* Animated check icon */}
-          <div className="relative mx-auto w-20 h-20 mb-4">
-            <div
-              className="absolute inset-0 rounded-full bg-white/15"
-              style={{ animation: 'pulseRing 2s ease-in-out infinite' }}
-            />
-            <div
-              className="relative w-20 h-20 rounded-full bg-white/20 ring-4 ring-white/30 flex items-center justify-center"
-              style={{ animation: 'checkPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both' }}
-            >
-              <CheckCircle2 className="w-10 h-10 text-white" />
-            </div>
-          </div>
-
-          <h2 className="text-white text-2xl font-extrabold leading-tight">
-            Lập hợp đồng thuê
-            <br />thành công!
-          </h2>
-          <p className="text-white/75 text-sm mt-2 leading-relaxed">
-            Hợp đồng đã ghi nhận và chuyển sang<br />trạng thái <strong className="text-white/95">chờ thanh toán nhận phòng</strong>.
-          </p>
         </div>
 
         {/* ── Contract Code Card (floating) ── */}
-        <div className="mx-6 -mt-8 relative z-10">
-          <div className="bg-white rounded-2xl shadow-xl border border-[#d1c4b9] overflow-hidden">
-            <div className="bg-gradient-to-r from-[#6f583c] to-[#8C7355] px-5 py-3 flex items-center justify-between">
+        <div className="mx-6 -mt-3 relative z-10">
+          <div className="bg-white rounded-2xl shadow-md border border-[#d1c4b9] overflow-hidden">
+            <div className="bg-[#6f583c] px-5 py-3.5 flex items-center justify-between">
               <div>
-                <p className="text-white/70 text-[10px] uppercase tracking-widest font-bold">Mã hợp đồng</p>
-                <p className="text-white text-xl font-extrabold font-mono mt-0.5">{contractCode}</p>
+                <p className="text-white/70 text-[9px] uppercase tracking-widest font-bold">Mã hợp đồng</p>
+                <p className="text-white text-lg font-extrabold font-mono mt-0.5">{contractCode}</p>
               </div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#fef3c7] text-[#92400e] text-xs font-bold border border-[#fcd34d]">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#fef3c7] text-[#92400e] text-[10px] font-bold border border-[#fcd34d]">
                 Chờ thanh toán
               </span>
             </div>
@@ -138,27 +101,27 @@ export default function ContractSuccessModal({
         {/* ── Body ── */}
         <div className="px-6 pt-5 pb-4 space-y-4">
           {/* Progress steps */}
-          <div className="flex items-center gap-0">
+          <div className="flex items-center justify-between bg-[#faf2ec]/30 border border-[#d1c4b9]/20 rounded-xl py-2.5 px-4">
             {STEPS.map((step, i) => (
-              <div key={i} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+              <div key={i} className="flex items-center flex-1 last:flex-none">
+                <div className="flex items-center gap-2">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                     step.done
-                      ? 'bg-[#2d6a4f] text-white ring-2 ring-[#2d6a4f]/30'
+                      ? 'bg-[#4a6549] text-white'
                       : step.active
-                        ? 'bg-[#fef3c7] text-[#92400e] ring-2 ring-[#fcd34d]/50'
-                        : 'bg-[#eee7e1] text-[#9d8879]'
+                        ? 'bg-[#fef3c7] text-[#92400e] border border-[#fcd34d]'
+                        : 'bg-[#eee7e1] text-[#9d8879] border border-[#d1c4b9]/30'
                   }`}>
-                    {step.done ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+                    {step.done ? '✓' : i + 1}
                   </div>
-                  <p className={`text-[10px] font-semibold mt-1 text-center leading-tight ${
-                    step.done ? 'text-[#2d6a4f]' : step.active ? 'text-[#92400e]' : 'text-[#9d8879]'
+                  <span className={`text-[11px] font-bold whitespace-nowrap ${
+                    step.done ? 'text-[#4a6549]' : step.active ? 'text-[#92400e]' : 'text-[#9d8879]'
                   }`}>
                     {step.label}
-                  </p>
+                  </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`h-0.5 flex-1 mx-1 mb-4 ${step.done ? 'bg-[#2d6a4f]' : 'bg-[#eee7e1]'}`} />
+                  <div className={`h-px flex-1 mx-3 ${step.done ? 'bg-[#4a6549]' : 'bg-[#d1c4b9]/30'}`} />
                 )}
               </div>
             ))}
@@ -166,14 +129,14 @@ export default function ContractSuccessModal({
 
           {/* Auto-generated documents */}
           <div>
-            <p className="text-[11px] font-bold text-[#4e453c] uppercase tracking-widest mb-2.5">
+            <p className="text-[11px] font-bold text-[#4e453c] uppercase tracking-widest mb-2">
               Tài liệu tự động khởi tạo
             </p>
             <div className="space-y-2">
               {[
                 {
-                  color: 'text-[#2d6a4f] bg-[#d8f3dc]',
-                  borderColor: 'border-[#b7e4c7]',
+                  color: 'text-[#4a6549] bg-[#eff3ef]',
+                  borderColor: 'border-[#a8c3a5]/40',
                   label: 'Kết quả kiểm tra lưu trú',
                   value: 'Đạt – Đủ điều kiện thuê phòng',
                   icon: CheckCircle2,
@@ -181,15 +144,15 @@ export default function ContractSuccessModal({
                 },
                 {
                   color: 'text-[#6f583c] bg-[#faf2ec]',
-                  borderColor: 'border-[#d1c4b9]',
+                  borderColor: 'border-[#d1c4b9]/40',
                   label: 'Hóa đơn nhận phòng',
                   value: invoiceCode,
                   icon: FileText,
                   action: 'Tải xuống',
                 },
                 {
-                  color: 'text-[#1565c0] bg-[#e3f2fd]',
-                  borderColor: 'border-[#bbdefb]',
+                  color: 'text-[#5e503f] bg-[#faf2ec]/60',
+                  borderColor: 'border-[#d1c4b9]/30',
                   label: 'Biên bản bàn giao tài sản',
                   value: `${handoverCode} – Chờ ký`,
                   icon: FileText,
@@ -200,17 +163,17 @@ export default function ContractSuccessModal({
                 return (
                   <div
                     key={i}
-                    className={`flex items-center gap-3 rounded-xl bg-white border ${item.borderColor} px-3.5 py-2.5 hover:shadow-sm transition`}
+                    className={`flex items-center gap-2.5 rounded-xl bg-white border ${item.borderColor} px-3 py-2 hover:shadow-sm transition`}
                   >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
-                      <Icon className="w-4.5 h-4.5" />
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}>
+                      <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-[#9d8879] uppercase tracking-wider font-semibold">{item.label}</p>
-                      <p className="text-sm font-bold text-[#1e1b17] truncate mt-0.5">{item.value}</p>
+                      <p className="text-[9px] text-[#9d8879] uppercase tracking-wider font-semibold">{item.label}</p>
+                      <p className="text-xs font-bold text-[#1e1b17] truncate mt-0.5">{item.value}</p>
                     </div>
                     {item.action && (
-                      <button className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-[#6f583c] border border-[#d1c4b9] hover:bg-[#faf2ec] transition">
+                      <button className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold text-[#6f583c] border border-[#d1c4b9]/85 hover:bg-[#faf2ec] hover:text-[#5c4830] transition cursor-pointer">
                         {item.action === 'Tải xuống' ? <Download className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                         {item.action}
                       </button>
@@ -221,7 +184,7 @@ export default function ContractSuccessModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-[#9d8879] bg-[#faf2ec] rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2 text-[11px] text-[#9d8879] bg-[#faf2ec]/60 border border-[#d1c4b9]/20 rounded-xl px-4 py-2.5">
             <CalendarDays className="w-3.5 h-3.5 shrink-0" />
             Ngày bắt đầu thuê: <strong className="text-[#1e1b17]">{startDate}</strong>
           </div>
@@ -231,14 +194,14 @@ export default function ContractSuccessModal({
         <div className="px-6 pb-6 grid grid-cols-3 gap-2.5">
           <button
             onClick={onClose}
-            className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-xs font-bold hover:bg-[#faf2ec] transition"
+            className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-xs font-bold hover:bg-[#faf2ec] transition cursor-pointer active:scale-95"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Danh sách
           </button>
           <button
             onClick={onViewContracts}
-            className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl border-2 border-[#6f583c] text-[#6f583c] text-xs font-bold hover:bg-[#fff8f3] transition"
+            className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl border border-[#6f583c] text-[#6f583c] text-xs font-bold hover:bg-[#faf2ec] transition cursor-pointer active:scale-95"
           >
             <Eye className="w-3.5 h-3.5" />
             Xem HĐ
@@ -246,7 +209,7 @@ export default function ContractSuccessModal({
           </button>
           <button
             onClick={onPrint}
-            className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl bg-[#6f583c] text-white text-xs font-bold hover:bg-[#5c4830] transition shadow-md hover:shadow-lg active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl bg-[#6f583c] text-white text-xs font-bold hover:bg-[#5c4830] transition shadow-sm hover:shadow active:scale-95 cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" />
             In HĐ

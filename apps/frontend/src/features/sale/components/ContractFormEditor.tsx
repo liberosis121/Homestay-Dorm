@@ -155,6 +155,15 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
     }
   };
 
+  const toggleAllChecklist = () => {
+    const nextVal = !allChecklistDone;
+    const next = checklistChecked.map(() => nextVal);
+    setChecklistChecked(next);
+    if (submitted && nextVal) {
+      setErrors((e) => { const c = { ...e }; delete c.checklist; return c; });
+    }
+  };
+
   const allChecklistDone = checklistChecked.every(Boolean);
 
   const checklistLabels = [
@@ -163,6 +172,12 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
     'Đã giải thích đầy đủ điều khoản hợp đồng',
     'Khách hàng đồng ý và sẵn sàng ký hợp đồng',
   ];
+
+  const roomAmenities = (
+    (deposit as DepositRecord & { amenities?: string[]; roomAmenities?: string[] }).roomAmenities ||
+    (deposit as DepositRecord & { amenities?: string[]; roomAmenities?: string[] }).amenities ||
+    []
+  ).filter(Boolean);
 
   return (
     <div className="animate-fade-in-up theme-sale">
@@ -351,17 +366,29 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-[#1e1b17] text-base">{deposit.roomCode}</p>
-                  <p className="text-sm text-[#4e453c]">{deposit.roomType}</p>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div className="flex items-center gap-1.5 text-sm text-[#4e453c]">
-                      <MapPin className="w-3.5 h-3.5 text-[#9d8879]" />
-                      Chi nhánh {deposit.branch}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm font-bold text-[#2d6a4f]">
-                      <Banknote className="w-3.5 h-3.5" />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-[#e2d8ca] bg-[#fffdf9] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-[#9d8879]" />
+                      <span className="truncate">Chi nhánh {deposit.branch}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#e2d8ca] bg-[#fffdf9] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">
+                      <Home className="h-3.5 w-3.5 shrink-0 text-[#9d8879]" />
+                      {deposit.roomType}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#c8d9c0] bg-[#eef6ea] px-2.5 py-1 text-[11px] font-bold text-[#2d6a4f]">
+                      <Banknote className="h-3.5 w-3.5 shrink-0" />
                       {deposit.roomMonthlyRent.toLocaleString('vi-VN')} đ/tháng
-                    </div>
+                    </span>
                   </div>
+                  {roomAmenities.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {roomAmenities.map((amenity) => (
+                        <span key={amenity} className="inline-flex items-center rounded-full bg-[#f4f1ec] px-2 py-0.5 text-[10.5px] font-medium text-[#7a6b5b]">
+                          {amenity}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -524,9 +551,18 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
           <div className="bg-white rounded-2xl border border-[#d1c4b9] shadow-sm p-6 lg:hidden">
             <div className="flex items-center justify-between mb-4">
               <SectionHeader icon={CheckCircle2} title="Checklist xác nhận bắt buộc" />
-              <span className={`text-xs font-bold px-2 py-1 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
-                {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleAllChecklist}
+                  className="px-2 py-0.5 text-[10px] font-bold text-[#6f583c] bg-[#faf2ec]/60 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 rounded-md transition cursor-pointer active:scale-95 flex items-center"
+                >
+                  {allChecklistDone ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                </button>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+                  {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
+                </span>
+              </div>
             </div>
             <div className="space-y-3">
               {checklistLabels.map((label, i) => (
@@ -563,9 +599,18 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
                   <CheckCircle2 className="w-4 h-4 text-[#6f583c]" />
                   Checklist xác nhận
                 </h4>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
-                  {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleAllChecklist}
+                    className="px-2 py-0.5 text-[10px] font-bold text-[#6f583c] bg-[#faf2ec]/60 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 rounded-md transition cursor-pointer active:scale-95 flex items-center"
+                  >
+                    {allChecklistDone ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${allChecklistDone ? 'bg-[#d8f3dc] text-[#1b5e20]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+                    {checklistChecked.filter(Boolean).length}/{checklistLabels.length}
+                  </span>
+                </div>
               </div>
               <div className="space-y-2.5">
                 {checklistLabels.map((label, i) => (
@@ -619,7 +664,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
               }`}
             >
               <FileSignature className="w-4 h-4" />
-              Lập hợp đồng & Kích hoạt
+              Lập hợp đồng
             </button>
           </div>
         </div>

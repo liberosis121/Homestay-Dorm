@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Users, RefreshCw, HelpCircle, AlertTriangle 
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import CustomerProfileCard from './components/CustomerProfileCard';
 import CustomerTabs from './components/CustomerTabs';
 import CustomerTimeline from './components/CustomerTimeline';
@@ -10,7 +9,6 @@ import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
 import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
 
 export default function CustomerLookupPage() {
-  const navigate = useNavigate();
 
   // Trạng thái Form Tìm kiếm
   const [searchName, setSearchName] = useState('');
@@ -299,7 +297,6 @@ export default function CustomerLookupPage() {
               <CustomerProfileCard 
                 customer={activeCustomer} 
                 onActionEmail={() => alert(`Đã gửi email liên hệ thành công tới: ${activeCustomer.personalInfo.email}`)}
-                onActionAppointment={() => navigate('/sale/schedules')}
               />
 
               {/* Bottom Contents Grid Layout */}

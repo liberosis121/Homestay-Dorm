@@ -187,7 +187,7 @@ export default function CustomSelect({
                   key={opt.value}
                   type="button"
                   onClick={() => handleSelect(opt.value)}
-                  className={`w-full text-left px-4 py-2 text-sm font-body-md transition-colors flex items-center justify-between ${
+                  className={`w-full cursor-pointer text-left px-4 py-2 text-sm font-body-md transition-colors flex items-center justify-between ${
                     isSelected ? itemActiveStyle : itemHoverStyle
                   }`}
                 >
