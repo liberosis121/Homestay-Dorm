@@ -15,7 +15,6 @@ import {
   CheckCircle, 
   Calendar, 
   FileText,
-  Bell,
   Compass,
   ClipboardList,
   Activity,
@@ -186,9 +185,7 @@ function DashboardLayout() {
   const { user, setLogoutConfirmOpen } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
   if (!user) return <Navigate to="/login" replace />;
@@ -197,9 +194,6 @@ function DashboardLayout() {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
         setProfileDropdownOpen(false);
-      }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
-        setNotificationsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -426,44 +420,6 @@ function DashboardLayout() {
             </div>
           </div>
           <div className="flex items-center gap-5">
-            {/* Notifications Dropdown */}
-            <div className="relative" ref={notificationsRef}>
-              <button 
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative p-2 text-[#4e453c] hover:text-[#6f583c] transition-colors bg-[#faf2ec] rounded-full hover:bg-[#f4ede6] cursor-pointer flex items-center justify-center"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface"></span>
-              </button>
-
-              {notificationsOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white border border-[#d1c4b9] rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 animate-fade-in-up">
-                  <div className="p-4 border-b border-[#d1c4b9] bg-[#faf2ec] flex justify-between items-center">
-                    <h4 className="text-xs font-bold text-[#1e1b17] uppercase tracking-wider">Thông báo hoạt động</h4>
-                    <span className="bg-error text-white text-[10px] font-bold px-2 py-0.5 rounded-full">3 mới</span>
-                  </div>
-                  
-                  <div className="p-2 max-h-64 overflow-y-auto divide-y divide-[#eee7e1] bg-white">
-                    <div className="p-3 hover:bg-[#faf2ec] rounded-xl cursor-pointer transition-colors text-left" onClick={() => setNotificationsOpen(false)}>
-                      <p className="text-sm font-semibold text-[#1e1b17]">Lịch hẹn mới chờ duyệt</p>
-                      <p className="text-xs text-[#4e453c] mt-0.5">Khách hàng Nguyễn Văn A vừa đặt lịch xem phòng vào 09:30 hôm nay.</p>
-                      <p className="text-[10px] text-[#6f583c] mt-1">5 phút trước</p>
-                    </div>
-                    <div className="p-3 hover:bg-[#faf2ec] rounded-xl cursor-pointer transition-colors text-left" onClick={() => setNotificationsOpen(false)}>
-                      <p className="text-sm font-semibold text-[#1e1b17]">Hợp đồng đã kích hoạt</p>
-                      <p className="text-xs text-[#4e453c] mt-0.5">Hợp đồng thuê phòng Studio A của Trần Minh Tuấn đã ký số thành công.</p>
-                      <p className="text-[10px] text-[#6f583c] mt-1">1 giờ trước</p>
-                    </div>
-                    <div className="p-3 hover:bg-[#faf2ec] rounded-xl cursor-pointer transition-colors text-left" onClick={() => setNotificationsOpen(false)}>
-                      <p className="text-sm font-semibold text-[#1e1b17]">Hệ thống bảo trì</p>
-                      <p className="text-xs text-[#4e453c] mt-0.5">Sao lưu dữ liệu định kỳ tuần 23 hoàn tất tự động vào hệ thống.</p>
-                      <p className="text-[10px] text-[#6f583c] mt-1">08:00 AM</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Profile Dropdown for Header Avatar */}
             <div className="relative" ref={profileDropdownRef}>
               <button 
