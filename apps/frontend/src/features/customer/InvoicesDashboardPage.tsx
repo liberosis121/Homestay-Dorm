@@ -4,7 +4,7 @@ import { useInvoiceStore } from './store/useInvoiceStore';
 import InvoiceTable from './components/InvoiceTable';
 import InvoiceDetail from './components/InvoiceDetail';
 import CustomSelect from '../../components/ui/CustomSelect';
-import { FileClock, DollarSign, CalendarDays, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileClock, DollarSign, CalendarDays, CheckCircle } from 'lucide-react';
 
 const MONTH_OPTIONS = [
   { value: 'Tất cả', label: 'Tất cả các tháng' },
@@ -21,13 +21,17 @@ const YEAR_OPTIONS = [
   { value: '2024', label: 'Năm 2024' },
 ];
 
+const INVOICE_TYPE_OPTIONS = [
+  { value: 'Tất cả', label: 'Tất cả loại' },
+  { value: 'service', label: 'Dịch vụ' },
+  { value: 'incidental', label: 'Phát sinh' },
+  { value: 'monthly', label: 'Định kỳ' },
+];
+
 export default function InvoicesDashboardPage() {
   const navigate = useNavigate();
   const { invoices, filters, setFilters, selectedInvoiceId, setSelectedInvoiceId } = useInvoiceStore();
 
-  // Local state for filter inputs until "Tìm kiếm" is pressed
-  const [selectedMonth, setSelectedMonth] = useState(filters.month);
-  const [selectedYear, setSelectedYear] = useState(filters.year);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const handleSelectInvoice = (id: string) => {
@@ -68,6 +72,8 @@ export default function InvoicesDashboardPage() {
       if (filters.month !== 'Tất cả' && inv.month !== parseInt(filters.month)) return false;
       // Year
       if (filters.year !== 'Tất cả' && inv.year !== parseInt(filters.year)) return false;
+      // Invoice type
+      if ((filters.type || 'Tất cả') !== 'Tất cả' && inv.type !== filters.type) return false;
       // Status
       if (filters.status !== 'Tất cả') {
         if (filters.status === 'paid' && inv.status !== 'paid') return false;
@@ -83,10 +89,6 @@ export default function InvoicesDashboardPage() {
     return invoices.find((inv) => inv.id === selectedInvoiceId) || null;
   }, [invoices, selectedInvoiceId]);
 
-  const handleSearch = () => {
-    setFilters({ month: selectedMonth, year: selectedYear });
-  };
-
   const handleStatusFilterChange = (status: string) => {
     setFilters({ status });
   };
@@ -99,6 +101,14 @@ export default function InvoicesDashboardPage() {
     <div className="max-w-[1440px] mx-auto px-4 md:px-8">
       {/* Header Section */}
       <header className="mb-8">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </button>
         <h1 className="text-3xl font-bold font-headline-lg text-primary mb-2">Hóa đơn của tôi</h1>
         <p className="text-on-surface-variant font-body-md text-[15px]">
           Tra cứu thông tin chi phí định kỳ và thực hiện thanh toán trực tuyến nhanh chóng.
@@ -154,23 +164,35 @@ export default function InvoicesDashboardPage() {
 
       {/* Filter Bar */}
       <section className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/30 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full">
           {/* Month selector */}
           <CustomSelect
-            value={selectedMonth}
-            onChange={setSelectedMonth}
+            value={filters.month}
+            onChange={(month) => setFilters({ month })}
             options={MONTH_OPTIONS}
             pill
             className="w-full sm:w-[180px]"
+            triggerClassName="hover:bg-primary/5 active:scale-[0.99]"
           />
 
           {/* Year selector */}
           <CustomSelect
-            value={selectedYear}
-            onChange={setSelectedYear}
+            value={filters.year}
+            onChange={(year) => setFilters({ year })}
             options={YEAR_OPTIONS}
             pill
             className="w-full sm:w-[140px]"
+            triggerClassName="hover:bg-primary/5 active:scale-[0.99]"
+          />
+
+          {/* Invoice type selector */}
+          <CustomSelect
+            value={filters.type || 'Tất cả'}
+            onChange={(type) => setFilters({ type })}
+            options={INVOICE_TYPE_OPTIONS}
+            pill
+            className="w-full sm:w-[160px]"
+            triggerClassName="hover:bg-primary/5 active:scale-[0.99]"
           />
 
           {/* Vertical divider */}
@@ -189,10 +211,10 @@ export default function InvoicesDashboardPage() {
                 <button
                   key={btn.id}
                   onClick={() => handleStatusFilterChange(btn.id)}
-                  className={`px-4 py-2 text-xs sm:text-sm rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`px-4 py-2 text-xs sm:text-sm rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap active:scale-[0.97] ${
                     isStatusActive 
                       ? 'bg-primary text-white shadow-sm' 
-                      : 'hover:bg-surface-container text-on-surface-variant'
+                      : 'hover:bg-surface-container hover:text-primary text-on-surface-variant'
                   }`}
                 >
                   {btn.label}
@@ -201,15 +223,6 @@ export default function InvoicesDashboardPage() {
             })}
           </div>
         </div>
-
-        {/* Search button */}
-        <button 
-          onClick={handleSearch}
-          className="w-full md:w-auto bg-primary hover:bg-[#253228] text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
-        >
-          <span className="material-symbols-outlined text-[18px]">search</span>
-          <span>Tìm kiếm</span>
-        </button>
       </section>
 
       {/* Main Table Layout (Full Width) */}
@@ -229,13 +242,13 @@ export default function InvoicesDashboardPage() {
           onClick={() => setIsDetailModalOpen(false)}
         >
           <div 
-            className="bg-surface w-full max-w-md rounded-32 shadow-2xl border border-surface-variant overflow-hidden animate-fade-in-up relative"
+            className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-surface-variant bg-surface-container-lowest shadow-2xl animate-fade-in-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button 
               onClick={() => setIsDetailModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/25 hover:bg-black/40 text-white transition-colors cursor-pointer z-50 flex items-center justify-center animate-fade-in"
+              className="absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-surface/30 bg-surface/95 text-primary shadow-sm transition-all hover:bg-surface hover:text-primary/80 active:scale-90 cursor-pointer"
               title="Đóng"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>

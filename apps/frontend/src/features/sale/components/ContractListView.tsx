@@ -80,7 +80,7 @@ export default function ContractListView({
         <div>
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-sm text-[#6f583c] hover:text-[#5c4830] font-medium transition mb-2"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-[#6f583c] hover:text-[#5c4830] bg-[#faf2ec]/50 border border-[#d1c4b9]/30 hover:bg-[#e8e1d3]/40 hover:border-[#d1c4b9]/80 font-medium transition-all duration-200 cursor-pointer active:scale-[0.98] active:bg-[#e8e1d3]/60 focus:outline-none focus:ring-2 focus:ring-[#6f583c]/20 mb-3"
           >
             <ArrowLeft className="w-4 h-4" />
             Quay lại danh sách phiếu cọc

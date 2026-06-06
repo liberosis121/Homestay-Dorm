@@ -14,6 +14,7 @@ interface CustomDatePickerProps {
   error?: string | boolean;
   className?: string;
   variant?: 'brown' | 'surface';
+  triggerClassName?: string;
 }
 
 export default function CustomDatePicker({
@@ -28,6 +29,7 @@ export default function CustomDatePicker({
   error,
   className = '',
   variant = 'brown',
+  triggerClassName = '',
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -192,22 +194,45 @@ export default function CustomDatePicker({
   const hasError = !!error;
   const isSurface = variant === 'surface';
 
-  const buttonStateClass = hasError
-    ? 'border-red-400 bg-red-50/50 focus:ring-2 focus:ring-red-400/20'
-    : isSurface
-      ? isOpen
-        ? 'border-primary bg-surface-container-low ring-2 ring-primary/20'
-        : 'border-surface-variant bg-surface-container-low hover:border-primary/50'
-      : isOpen
-        ? 'border-[#6f583c] ring-2 ring-[#6f583c]/20 bg-[#faf2ec]'
-        : 'border-[#d1c4b9] bg-[#faf2ec] hover:border-[#6f583c]';
+  // Check custom class overrides
+  const hasBgOverride = triggerClassName && /\bbg-/.test(triggerClassName);
+  const hasBorderOverride = triggerClassName && /\bborder-/.test(triggerClassName);
+  const hasRoundedOverride = triggerClassName && /\brounded-/.test(triggerClassName);
+  const hasPaddingOverride = triggerClassName && /\bp[xy]?-/.test(triggerClassName);
+
+  const defaultBg = hasError
+    ? 'bg-red-50/50'
+    : isOpen
+      ? isSurface
+        ? 'bg-white'
+        : 'bg-[#faf2ec]'
+      : hasBgOverride
+        ? ''
+        : isSurface
+          ? 'bg-surface-container-low'
+          : 'bg-[#faf2ec]';
+
+  const defaultBorder = hasError
+    ? 'border-red-400 focus:ring-2 focus:ring-red-400/20'
+    : isOpen
+      ? isSurface
+        ? 'border-primary ring-2 ring-primary/20'
+        : 'border-[#6f583c] ring-2 ring-[#6f583c]/20'
+      : hasBorderOverride
+        ? ''
+        : isSurface
+          ? 'border-surface-variant hover:border-primary/50'
+          : 'border-[#d1c4b9] hover:border-[#6f583c]';
+
+  const defaultRounded = hasRoundedOverride ? '' : 'rounded-full';
+  const defaultPadding = hasPaddingOverride ? '' : `py-3.5 pl-5 ${value && !disabled ? 'pr-10' : 'pr-5'}`;
 
   const iconClass = isSurface ? 'text-on-surface-variant' : 'text-[#9d8879]';
   const valueClass = isSurface ? 'text-on-surface font-body-md' : 'text-[#1e1b17] font-medium';
   const placeholderClass = isSurface ? 'text-on-surface-variant' : 'text-[#b5a89c]';
 
   return (
-    <div className={`space-y-1.5 ${className}`} ref={containerRef}>
+    <div className={`relative space-y-1.5 ${className}`} ref={containerRef}>
       {/* Label and Required Indicator */}
       <FormLabel label={label || ''} required={required} />
 
@@ -217,11 +242,11 @@ export default function CustomDatePicker({
           type="button"
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between text-left py-3.5 pl-6 pr-10 rounded-full border text-sm transition-all focus:outline-none select-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${buttonStateClass}`}
+          className={`w-full flex items-center justify-between text-left border text-sm transition-all focus:outline-none select-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${defaultBg} ${defaultBorder} ${defaultRounded} ${defaultPadding} ${triggerClassName}`}
         >
-          <div className="flex items-center gap-2 truncate">
+          <div className="flex min-w-0 items-center gap-2">
             <CalendarDays className={`w-4 h-4 shrink-0 ${iconClass}`} />
-            <span className={value ? valueClass : placeholderClass}>
+            <span className={`min-w-0 whitespace-nowrap ${value ? valueClass : placeholderClass}`}>
               {formatDateDisplay(value) || placeholder}
             </span>
           </div>
@@ -231,7 +256,7 @@ export default function CustomDatePicker({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#9d8879] hover:text-[#1e1b17] hover:bg-[#faf2ec] cursor-pointer"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#9d8879] hover:text-[#1e1b17] hover:bg-[#faf2ec] cursor-pointer transition-all active:scale-90"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -253,7 +278,7 @@ export default function CustomDatePicker({
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] cursor-pointer"
+              className="p-1.5 rounded-lg border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] cursor-pointer transition-all duration-150 active:scale-90"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -263,7 +288,7 @@ export default function CustomDatePicker({
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-1.5 rounded-lg border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] cursor-pointer"
+              className="p-1.5 rounded-lg border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] cursor-pointer transition-all duration-150 active:scale-90"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -285,7 +310,7 @@ export default function CustomDatePicker({
               const isToday = dateStr === todayStr;
               const isDisabled = isDateDisabled(dateStr);
 
-              let btnClass = "w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center mx-auto transition-colors cursor-pointer ";
+              let btnClass = "w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center mx-auto transition-all duration-150 cursor-pointer active:scale-90 ";
               
               if (isDisabled) {
                 btnClass += "text-gray-300 cursor-not-allowed ";
@@ -319,14 +344,14 @@ export default function CustomDatePicker({
               type="button"
               onClick={handleSelectToday}
               disabled={isDateDisabled(todayStr)}
-              className="text-xs font-bold text-[#6f583c] hover:underline disabled:opacity-40 disabled:no-underline cursor-pointer"
+              className="text-xs font-bold text-[#6f583c] hover:underline disabled:opacity-40 disabled:no-underline cursor-pointer transition-all active:scale-95"
             >
               Hôm nay
             </button>
             <button
               type="button"
               onClick={handleClear}
-              className="text-xs font-semibold text-[#9d8879] hover:text-[#1e1b17] cursor-pointer"
+              className="text-xs font-semibold text-[#9d8879] hover:text-[#1e1b17] cursor-pointer transition-all active:scale-95"
             >
               Xóa chọn
             </button>

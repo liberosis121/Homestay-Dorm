@@ -1035,7 +1035,7 @@ let isInitializedThisSession = false;
 
 // Initialize Mock Database in LocalStorage
 export const initializeMockDB = (force = false) => {
-  if (isInitializedThisSession && !force) {
+  if (isInitializedThisSession && !force && localStorage.getItem(STORAGE_KEY)) {
     return;
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));

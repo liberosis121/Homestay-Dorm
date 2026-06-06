@@ -230,9 +230,21 @@ body {
 .theme-customer {
   --form-required-color: #8BA888; /* Soft primary sage green */
   --form-label-color: #434841; /* Muted olive matching on-surface-variant */
+  --date-picker-selected-bg: #4a6549; /* Sage green primary */
+  --date-picker-selected-text: #FFFFFF;
+  --date-picker-hover-bg: #e8ede7; /* Soft light sage */
+  --date-picker-hover-text: #243d24;
+  --date-picker-today-border: #4a6549;
+  --date-picker-today-bg: #eff3ef;
 }
 
 .theme-sale {
   --form-required-color: #6f583c; /* Theme-consistent warm brown/be */
   --form-label-color: #4e453c; /* Warm brown matching staff palette */
+  --date-picker-selected-bg: #6B5A3E;
+  --date-picker-selected-text: #FFFFFF;
+  --date-picker-hover-bg: #E8E1D3;
+  --date-picker-hover-text: #3F3528;
+  --date-picker-today-border: #6B5A3E;
+  --date-picker-today-bg: #faf2ec;
 }

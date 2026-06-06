@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarCheck, CheckCircle, Clock, CreditCard, Receipt, Search, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarCheck, CheckCircle, Clock, CreditCard, Receipt, Search, XCircle } from 'lucide-react';
 import { CustomerDepositRequest, getMockDB } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -81,6 +81,15 @@ export default function DepositHistoryPage() {
 
   return (
     <div className="max-w-[1280px] mx-auto w-full px-margin-mobile md:px-margin-desktop">
+      <button
+        type="button"
+        onClick={() => navigate('/profile')}
+        className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Quay lại
+      </button>
+
       <section className="bg-surface-container-lowest rounded-24 border border-outline-variant/40 shadow-sm p-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
           <div>
