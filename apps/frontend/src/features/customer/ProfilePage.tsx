@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
 import { 
-  User, Shield, Camera, ChevronRight, Lock, Bell, Globe, 
+  User, Shield, Camera, ChevronRight, Lock, Globe, 
   Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
   X, Eye, EyeOff, Check, Zap
 } from 'lucide-react';
@@ -292,11 +292,6 @@ export default function ProfilePage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
-  // Notification toggles
-  const [notifInvoice, setNotifInvoice] = useState(true);
-  const [notifContract, setNotifContract] = useState(true);
-  const [notifPromo, setNotifPromo] = useState(false);
-  const [notifSystem, setNotifSystem] = useState(true);
 
   // Language
   const [language, setLanguage] = useState('vi');
@@ -338,15 +333,7 @@ export default function ProfilePage() {
     );
   };
 
-  // ── Toggle Switch ─────────────────────────────────────────────────────────
-  const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
-    <button
-      onClick={onChange}
-      className={`w-12 h-6 rounded-full relative transition-colors duration-200 cursor-pointer flex-shrink-0 ${value ? 'bg-[#4a6549]' : 'bg-surface-variant'}`}
-    >
-      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${value ? 'right-1' : 'left-1'}`} />
-    </button>
-  );
+
 
   return (
     <>
@@ -637,53 +624,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Section: Thông báo */}
-                <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm">
-                  <h3 className="font-headline-md text-base text-on-surface-variant font-bold flex items-center gap-2 mb-5 uppercase tracking-wider">
-                    <Bell className="w-4 h-4" /> Thông báo
-                  </h3>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        label: 'Thông báo hóa đơn',
-                        desc: 'Nhận thông báo khi hóa đơn mới được phát hành hoặc đến hạn.',
-                        value: notifInvoice,
-                        toggle: () => setNotifInvoice(v => !v),
-                      },
-                      {
-                        label: 'Thông báo hợp đồng',
-                        desc: 'Nhận thông báo khi hợp đồng sắp hết hạn hoặc có cập nhật.',
-                        value: notifContract,
-                        toggle: () => setNotifContract(v => !v),
-                      },
-                      {
-                        label: 'Thông báo khuyến mãi',
-                        desc: 'Nhận ưu đãi, chương trình khuyến mãi từ HomeStay Dorm.',
-                        value: notifPromo,
-                        toggle: () => setNotifPromo(v => !v),
-                      },
-                      {
-                        label: 'Thông báo hệ thống',
-                        desc: 'Cập nhật bảo trì, lịch kiểm tra phòng và sự kiện của ký túc xá.',
-                        value: notifSystem,
-                        toggle: () => setNotifSystem(v => !v),
-                      },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center justify-between p-5 bg-surface-container-low border border-surface-variant rounded-24 hover:bg-surface-container transition-colors">
-                        <div className="flex items-center gap-5">
-                          <div className={`p-3 rounded-full shadow-sm border transition-colors ${item.value ? 'bg-[#4a6549]/10 text-[#4a6549] border-[#4a6549]/20' : 'bg-surface text-on-surface-variant border-surface-variant/50'}`}>
-                            <Bell className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-on-surface text-base">{item.label}</h4>
-                            <p className="text-sm text-on-surface-variant mt-0.5">{item.desc}</p>
-                          </div>
-                        </div>
-                        <Toggle value={item.value} onChange={item.toggle} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Section: Ngôn ngữ & Giao diện */}
                 <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm">
