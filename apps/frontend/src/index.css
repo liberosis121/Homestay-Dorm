@@ -248,3 +248,18 @@ body {
   --date-picker-today-border: #6B5A3E;
   --date-picker-today-bg: #faf2ec;
 }
+
+/* Ensure all interactive/clickable elements display hand cursor */
+button,
+a,
+select,
+option,
+summary,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="file"],
+[role="button"],
+.cursor-pointer {
+  cursor: pointer !important;
+}
