@@ -383,7 +383,7 @@ export default function AccountantMonthlyPage() {
                   <div className="bg-[#FAF9F6] border border-[#d1c4b9] p-4 rounded-xl space-y-3">
                     <div className="flex items-center gap-2 text-[#5a462d] mb-1">
                       <FileText className="w-4 h-4" />
-                      <span className="font-bold text-sm uppercase tracking-wide font-label-caps">Chi tiết hợp đồng selected</span>
+                      <span className="font-bold text-sm uppercase tracking-wide font-label-caps">Chi tiết hợp đồng</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                       <div>
