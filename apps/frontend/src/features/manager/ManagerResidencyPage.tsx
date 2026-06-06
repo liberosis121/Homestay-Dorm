@@ -2,11 +2,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { getMockDB, saveMockDB, ResidencyCheck } from '../../lib/supabaseClient';
 
 const T = {
-  bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
-  border: '#D6CEC8', primary: '#8C7355', primaryLight: '#F5EFE6',
-  sage: '#5F745D', sageBg: '#E1E9DF', amber: '#A67B5B', amberBg: '#FFF0E5',
-  red: '#BA1A1A', redBg: '#FFDAD6', blue: '#1565C0', blueBg: '#E3F2FD',
-  text: '#1E1B17', textMuted: '#4E453C', textFaint: '#7F756B'
+  bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
+  border: '#E7DED2', primary: '#5C4632', primaryLight: '#FAF2E8',
+  sage: '#5F7D4E', sageBg: '#EAF0E6', amber: '#B9792B', amberBg: '#FEF3E6',
+  red: '#A94F4F', redBg: '#FCECEB', blue: '#4A6984', blueBg: '#EAF1F8',
+  text: '#2C2520', textMuted: '#6E6259', textFaint: '#8A7563'
 };
 
 const STATUS_CFG: Record<ResidencyCheck['status'], { label: string; bg: string; text: string; icon: string }> = {
@@ -240,43 +240,63 @@ export default function ManagerResidencyPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="animate-fade-in-up">
+    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="animate-fade-in-up">
 
       {/* ── Header ── */}
       <div className="mb-6">
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: T.text }}>Kiểm tra điều kiện lưu trú</h1>
-        <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>
-          UC19 — Thẩm định hồ sơ cư trú theo quy định của ký túc xá (giấy tờ, giới tính, quốc tịch, khu vực phù hợp)
-        </p>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 24, fontWeight: 700, color: T.primary }}>Kiểm tra điều kiện lưu trú</h1>
       </div>
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {kpis.map((k, i) => (
-          <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '18px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{ background: k.bg, borderRadius: 10, padding: 8 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 20, color: k.color }}>{k.icon}</span>
+          <div key={i} style={{ 
+            background: T.surface, 
+            border: `1.5px solid ${T.border}`, 
+            borderRadius: 16, 
+            padding: '16px 20px',
+            boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
+            transition: 'all 0.15s ease-in-out'
+          }}
+          className="hover:-translate-y-0.5 hover:shadow-sm">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ background: k.bg, borderRadius: 10, padding: '6px 8px', display: 'flex', alignItems: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: k.color }}>{k.icon}</span>
               </div>
-              <p style={{ fontSize: 12, color: T.textFaint, fontWeight: 600 }}>{k.label}</p>
+              <p style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{k.label}</p>
             </div>
-            <p style={{ fontSize: 30, fontWeight: 800, color: k.color }}>{k.val}</p>
+            <p style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: k.color }}>{k.val}</p>
           </div>
         ))}
       </div>
 
       {/* ── Filters ── */}
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '16px 20px', marginBottom: 16 }}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: '14px 18px', marginBottom: 16, boxShadow: '0 2px 8px rgba(111,88,60,0.02)' }}
         className="flex flex-wrap items-center gap-3">
         {/* Search */}
-        <div className="flex-1 min-w-[220px] relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px]"
-            style={{ color: T.textFaint }}>search</span>
+        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 220 }}>
+          <span className="material-symbols-outlined"
+            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: T.textFaint, pointerEvents: 'none' }}>
+            search
+          </span>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm theo phòng, khách hàng, mã phiếu..."
-            style={{ width: '100%', paddingLeft: 38, paddingRight: 14, paddingTop: 9, paddingBottom: 9, borderRadius: 12, border: `1px solid ${T.border}`, background: T.bg, color: T.text, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            style={{ 
+              width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 9999,
+              padding: '10px 16px 10px 42px', fontSize: 13, color: T.text,
+              background: T.bg, outline: 'none', boxSizing: 'border-box',
+              transition: 'border-color 0.15s ease-in-out'
+            }}
+            className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
           />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="material-symbols-outlined"
+              style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 17, color: T.textFaint, background: 'none', border: 'none', cursor: 'pointer' }}>
+              close
+            </button>
+          )}
         </div>
         {/* Status Tabs */}
         <div className="flex flex-wrap gap-2">
@@ -285,45 +305,80 @@ export default function ManagerResidencyPage() {
             { key: 'pending', label: 'Chờ kiểm tra', count: counts.pending, color: T.amber, bg: T.amberBg },
             { key: 'partial', label: 'Đang thẩm định', count: counts.partial, color: T.blue, bg: T.blueBg },
             { key: 'completed', label: 'Hoàn tất', count: counts.completed, color: T.sage, bg: T.sageBg },
-          ].map(item => (
-            <button key={item.key} onClick={() => setFilterStatus(item.key)}
-              style={{
-                background: filterStatus === item.key ? item.bg : T.surface,
-                border: `2px solid ${filterStatus === item.key ? item.color : T.border}`,
-                borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700,
-                color: filterStatus === item.key ? item.color : T.textMuted, cursor: 'pointer', transition: 'all 0.2s'
-              }}>
-              {item.label} ({item.count})
-            </button>
-          ))}
+          ].map(item => {
+            const isActive = filterStatus === item.key;
+            return (
+              <button key={item.key} onClick={() => setFilterStatus(item.key)}
+                style={{
+                  background: isActive ? item.bg : T.surface,
+                  border: `1.5px solid ${isActive ? item.color : T.border}`,
+                  borderRadius: 9999, padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                  color: isActive ? item.color : T.textMuted, cursor: 'pointer', transition: 'all 0.15s ease-in-out'
+                }}
+                className="hover:-translate-y-0.5 active:scale-[0.96]">
+                {item.label} ({item.count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ── Group Table ── */}
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 2px 16px rgba(111,88,60,0.07)' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 20px rgba(111,88,60,0.04)' }}>
+        <div className="overflow-x-auto">
+          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '14%' }} /> {/* Phiếu đặt cọc */}
+              <col style={{ width: '16%' }} /> {/* Phòng */}
+              <col style={{ width: '13%' }} /> {/* Số thành viên */}
+              <col style={{ width: '22%' }} /> {/* Đạt / Chờ / Không đạt */}
+              <col style={{ width: '12%' }} /> {/* Tiến độ */}
+              <col style={{ width: '13%' }} /> {/* Trạng thái */}
+              <col style={{ width: '10%' }} /> {/* Action */}
+            </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
-                {['Phiếu đặt cọc', 'Phòng', 'Số thành viên', 'Đạt / Chờ / Không đạt', 'Tiến độ', 'Trạng thái', ''].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                <th style={{
+                  padding: '14px 16px 14px 24px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                  color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                  borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                }}>Phiếu cọc</th>
+                {['Phòng', 'Thành viên', 'Kết quả thẩm định', 'Tiến độ', 'Trạng thái'].map(h => (
+                  <th key={h} style={{
+                    padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                    color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                    borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                  }}>{h}</th>
                 ))}
+                <th style={{
+                  padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
+                  color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
+                  borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
+                }}></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }}>
-                    {Array.from({ length: 7 }).map((_, j) => (
-                      <td key={j} style={{ padding: '14px 16px' }}><div style={{ height: 14, background: '#eee', borderRadius: 6, width: j === 0 ? 80 : 60 }} className="animate-pulse" /></td>
+                    <td style={{ padding: '14px 16px 14px 24px' }}>
+                      <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 80 }} className="animate-pulse" />
+                    </td>
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <td key={j} style={{ padding: '14px 16px' }}>
+                        <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 60 }} className="animate-pulse" />
+                      </td>
                     ))}
+                    <td style={{ padding: '14px 24px 14px 16px' }}>
+                      <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 50 }} className="animate-pulse" />
+                    </td>
                   </tr>
                 ))
               ) : filteredGroups.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ padding: 56, textAlign: 'center' }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 40, color: T.border, display: 'block', marginBottom: 8 }}>how_to_reg</span>
-                    <p style={{ fontSize: 13, color: T.textFaint }}>Không có nhóm nào phù hợp bộ lọc.</p>
+                    <p style={{ fontSize: 13, color: T.textFaint, fontWeight: 600 }}>Không có nhóm nào phù hợp bộ lọc.</p>
                   </td>
                 </tr>
               ) : filteredGroups.map(g => {
@@ -340,32 +395,37 @@ export default function ManagerResidencyPage() {
 
                 return (
                   <tr key={g.room_id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
-                    className="hover:bg-[#FAF2EC]"
+                    className="hover:bg-[#FAF2E8] transition-colors duration-150"
                     onClick={() => openGroup(g)}>
-                    <td style={{ padding: '13px 16px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace' }}>{g.deposit_ref}</td>
-                    <td style={{ padding: '13px 16px' }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{g.room_name}</p>
+                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{g.deposit_ref}</td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.room_name}</p>
                     </td>
-                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 600, color: T.textMuted }}>{total} thành viên</td>
-                    <td style={{ padding: '13px 16px' }}>
-                      <div className="flex items-center gap-2">
-                        <span style={{ fontSize: 11, fontWeight: 700, color: T.sage, background: T.sageBg, padding: '2px 7px', borderRadius: 20 }}>{approved} đạt</span>
-                        {pending > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.amber, background: T.amberBg, padding: '2px 7px', borderRadius: 20 }}>{pending} chờ</span>}
-                        {rejected > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.red, background: T.redBg, padding: '2px 7px', borderRadius: 20 }}>{rejected} không đạt</span>}
+                    <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 600, color: T.textMuted, whiteSpace: 'nowrap' }}>{total} thành viên</td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span style={{ fontSize: 11, fontWeight: 700, color: T.sage, background: T.sageBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.sage}1A` }}>{approved} đạt</span>
+                        {pending > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.amber, background: T.amberBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.amber}1A` }}>{pending} chờ</span>}
+                        {rejected > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.red, background: T.redBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.red}1A` }}>{rejected} không đạt</span>}
                       </div>
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td style={{ padding: '14px 16px' }}>
                       <div style={{ width: 90, height: 6, background: T.border, borderRadius: 10, overflow: 'hidden' }}>
                         <div style={{ width: `${pct}%`, height: '100%', background: T.sage, borderRadius: 10, transition: 'width 0.5s' }} />
                       </div>
-                      <p style={{ fontSize: 11, color: T.textFaint, marginTop: 3 }}>{pct}%</p>
+                      <p style={{ fontSize: 11, color: T.textFaint, marginTop: 3, fontWeight: 600 }}>{pct}%</p>
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
-                      <span style={{ background: gStatusCfg.bg, color: gStatusCfg.color, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>{gStatusCfg.label}</span>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{ background: gStatusCfg.bg, color: gStatusCfg.color, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${gStatusCfg.color}1A`, whiteSpace: 'nowrap' }}>{gStatusCfg.label}</span>
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
-                      <button style={{ background: T.primaryLight, border: `1px solid ${T.border}`, borderRadius: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: T.primary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        Kiểm tra →
+                    <td style={{ padding: '14px 24px 14px 16px', textAlign: 'right' }} onClick={e => { e.stopPropagation(); openGroup(g); }}>
+                      <button style={{ 
+                        background: T.primaryLight, border: `1px solid ${T.border}`, 
+                        borderRadius: 9999, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: T.primary, cursor: 'pointer', 
+                        whiteSpace: 'nowrap', transition: 'all 0.15s ease-in-out' 
+                      }}
+                      className="hover:bg-primary hover:text-white active:scale-[0.95]">
+                        Xem
                       </button>
                     </td>
                   </tr>
@@ -374,7 +434,7 @@ export default function ManagerResidencyPage() {
             </tbody>
           </table>
           {!isLoading && (
-            <div style={{ padding: '12px 20px', borderTop: `1px solid ${T.border}`, fontSize: 12, color: T.textFaint }}>
+            <div style={{ padding: '12px 24px', borderTop: `1px solid ${T.border}`, fontSize: 12, color: T.textFaint, fontWeight: 600 }}>
               Hiển thị {filteredGroups.length} / {groups.length} nhóm
             </div>
           )}
@@ -386,41 +446,48 @@ export default function ManagerResidencyPage() {
           ══════════════════════════════════════════════════════ */}
       {selectedGroup && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => { setSelectedGroup(null); setSelectedMember(null); }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.42)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.45)', backdropFilter: 'blur(8px)' }} />
 
           {/* Main Group Drawer */}
           <div
-            style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: selectedMember ? 460 : 580, maxWidth: '95vw', background: T.surface, borderLeft: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 48px rgba(111,88,60,0.18)', transition: 'width 0.3s ease' }}
+            style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: selectedMember ? 460 : 580, maxWidth: '95vw',
+              background: T.surface, borderLeft: 'none', display: 'flex', flexDirection: 'column',
+              boxShadow: '-8px 0 48px rgba(111,88,60,0.18)', transition: 'width 0.3s ease, border-radius 0.3s ease',
+              borderTopLeftRadius: 28, borderBottomLeftRadius: 28, overflow: 'hidden',
+              animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            }}
             onClick={e => e.stopPropagation()}>
 
             {/* Drawer Header */}
-            <div style={{ padding: '22px 24px 18px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
+            <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.primary }}>how_to_reg</span>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase' }}>Kiểm tra điều kiện lưu trú</p>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.primary }}>how_to_reg</span>
+                    <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Kiểm tra điều kiện lưu trú</p>
                   </div>
-                  <h3 style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{selectedGroup.room_name}</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 2 }}>Phiếu cọc: {selectedGroup.deposit_ref} • {selectedGroup.members.length} thành viên</p>
+                  <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 22, fontWeight: 800, color: T.text }}>{selectedGroup.room_name}</h3>
+                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {selectedGroup.deposit_ref} • {selectedGroup.members.length} thành viên</p>
                 </div>
                 <button onClick={() => { setSelectedGroup(null); setSelectedMember(null); }}
-                  style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: 8, cursor: 'pointer' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.textMuted }}>close</span>
+                  style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                  className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                 </button>
               </div>
 
               {/* Progress */}
-              <div style={{ marginTop: 16, background: T.bg, borderRadius: 12, padding: '10px 14px' }}>
+              <div style={{ marginTop: 16, background: T.bg, borderRadius: 16, padding: '12px 14px', border: `1px solid ${T.border}` }}>
                 <div className="flex items-center justify-between mb-2">
-                  <p style={{ fontSize: 12, fontWeight: 600, color: T.textFaint }}>Tiến độ kiểm tra</p>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: T.sage }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted }}>Tiến độ kiểm tra</p>
+                  <p style={{ fontSize: 12, fontWeight: 800, color: T.sage }}>
                     {selectedGroup.members.filter(m => m.status === 'approved' || m.status === 'rejected').length} / {selectedGroup.members.length} đã xử lý
                   </p>
                 </div>
-                <div style={{ height: 8, background: T.border, borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ height: 8, background: T.border, borderRadius: 9999, overflow: 'hidden' }}>
                   <div style={{
-                    height: '100%', borderRadius: 8, transition: 'width 0.4s',
+                    height: '100%', borderRadius: 9999, transition: 'width 0.4s',
                     width: `${(selectedGroup.members.filter(m => m.status === 'approved' || m.status === 'rejected').length / selectedGroup.members.length) * 100}%`,
                     background: `linear-gradient(90deg, ${T.sage}, #8BAB88)`
                   }} />
@@ -430,7 +497,7 @@ export default function ManagerResidencyPage() {
 
             {/* Member List */}
             <div style={{ flex: 1, overflowY: 'auto', padding: 20 }} className="space-y-3">
-              <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
                 Danh sách thành viên trong nhóm
               </p>
 
@@ -443,11 +510,12 @@ export default function ManagerResidencyPage() {
                   <div key={member.id}
                     onClick={() => openMember(member)}
                     style={{
-                      borderRadius: 14, border: `2px solid ${isSelected ? T.primary : T.border}`,
+                      borderRadius: 16, border: `2px solid ${isSelected ? T.primary : T.border}`,
                       background: isSelected ? T.primaryLight : T.surface,
-                      padding: '14px 16px', cursor: 'pointer', transition: 'all 0.2s',
-                      boxShadow: isSelected ? '0 2px 12px rgba(140,115,85,0.18)' : 'none'
-                    }}>
+                      padding: '14px 16px', cursor: 'pointer', transition: 'all 0.18s ease-in-out',
+                      boxShadow: isSelected ? '0 4px 12px rgba(92,70,50,0.06)' : 'none'
+                    }}
+                    className="hover:-translate-y-0.5 active:scale-[0.98]">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 flex-1">
                         {/* Avatar */}
@@ -455,26 +523,26 @@ export default function ManagerResidencyPage() {
                           {member.customer_name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 2 }}>{member.customer_name}</p>
+                          <p style={{ fontFamily: "'Lexend', sans-serif", fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 2 }}>{member.customer_name}</p>
                           <div className="flex flex-wrap gap-x-3 gap-y-1">
-                            <span style={{ fontSize: 11, color: T.textFaint }}>{member.customer_phone}</span>
+                            <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>{member.customer_phone}</span>
                             <span style={{ fontSize: 11, color: T.textFaint }}>• {age} tuổi</span>
-                            <span style={{ fontSize: 11, color: member.nationality === 'foreign' ? T.amber : T.sage }}>
+                            <span style={{ fontSize: 11, color: member.nationality === 'foreign' ? T.amber : T.sage, fontWeight: 600 }}>
                               • {member.nationality === 'foreign' ? '🌐 Nước ngoài' : '🇻🇳 Việt Nam'}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <span style={{ fontSize: 11, background: T.bg, border: `1px solid ${T.border}`, color: T.textMuted, padding: '2px 7px', borderRadius: 20 }}>
+                            <span style={{ fontSize: 11, background: T.bg, border: `1px solid ${T.border}`, color: T.textMuted, padding: '2.5px 8px', borderRadius: 20, fontWeight: 600 }}>
                               {member.id_type === 'passport' ? 'Hộ chiếu' : 'CCCD'}: {member.id_number}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <span style={{ background: s.bg, color: s.text, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                        <span style={{ background: s.bg, color: s.text, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, border: `1px solid ${s.text}1A`, whiteSpace: 'nowrap' }}>
                           {s.label}
                         </span>
-                        <span style={{ fontSize: 11, color: T.textFaint }}>#{idx + 1}</span>
+                        <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>#{idx + 1}</span>
                       </div>
                     </div>
                   </div>
@@ -485,9 +553,9 @@ export default function ManagerResidencyPage() {
             {/* Confirm Group Footer */}
             {allChecked && !confirmingGroup && !isGroupConfirmed && (
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
-                <div style={{ background: eligibleMembers.length > 0 ? T.sageBg : T.redBg, borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: eligibleMembers.length > 0 ? T.sage : T.red }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>
+                <div style={{ background: eligibleMembers.length > 0 ? T.sageBg : T.redBg, borderRadius: 16, padding: '12px 14px', marginBottom: 12, border: `1px solid ${eligibleMembers.length > 0 ? T.sage : T.red}1A` }}>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: eligibleMembers.length > 0 ? T.sage : T.red, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                       {eligibleMembers.length > 0 ? 'check_circle' : 'error'}
                     </span>
                     {eligibleMembers.length > 0
@@ -495,13 +563,14 @@ export default function ManagerResidencyPage() {
                       : 'Không có thành viên nào đủ điều kiện'}
                   </p>
                   {eligibleMembers.length > 0 && (
-                    <p style={{ fontSize: 11, color: T.sage, marginTop: 4 }}>
-                      {eligibleMembers.map(m => m.customer_name).join(', ')}
+                    <p style={{ fontSize: 11, color: T.textMuted, marginTop: 6, fontWeight: 500 }}>
+                      Danh sách đạt: {eligibleMembers.map(m => m.customer_name).join(', ')}
                     </p>
                   )}
                 </div>
                 <button onClick={handleConfirmGroupClick}
-                  style={{ width: '100%', background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: 13, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  style={{ width: '100%', background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: 13, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s ease-in-out' }}
+                  className="hover:opacity-90 active:scale-[0.98]">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>send</span>
                   Xác nhận kết quả kiểm tra cho nhóm
                 </button>
@@ -510,7 +579,7 @@ export default function ManagerResidencyPage() {
 
             {isGroupConfirmed && (
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
-                <div style={{ background: T.sageBg, borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ background: T.sageBg, borderRadius: 16, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${T.sage}1A` }}>
                   <span className="material-symbols-outlined" style={{ color: T.sage }}>verified</span>
                   <p style={{ fontSize: 13, fontWeight: 700, color: T.sage }}>Đã xác nhận kết quả kiểm tra cho nhóm</p>
                 </div>
@@ -520,19 +589,21 @@ export default function ManagerResidencyPage() {
             {/* Confirm Modal inline */}
             {confirmingGroup && (
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Xác nhận ghi nhận kết quả kiểm tra</p>
-                <div style={{ background: T.bg, borderRadius: 12, padding: '10px 14px', marginBottom: 12, fontSize: 12, color: T.textMuted, lineHeight: 1.7 }}>
+                <p style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 10 }}>Xác nhận ghi nhận kết quả kiểm tra</p>
+                <div style={{ background: T.bg, borderRadius: 16, padding: '12px 14px', marginBottom: 12, fontSize: 12, color: T.textMuted, lineHeight: 1.7, border: `1px solid ${T.border}` }}>
                   <p>• <strong>{eligibleMembers.length}</strong> thành viên đủ điều kiện sẽ được xác định trong danh sách ký hợp đồng.</p>
                   <p>• <strong>{selectedGroup.members.length - eligibleMembers.length}</strong> thành viên không đạt sẽ bị loại khỏi danh sách.</p>
                   <p>• Kết quả sẽ được ghi vào CSDL và thông báo cho nhân viên Sale.</p>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirmingGroup(false)}
-                    style={{ flex: 1, background: T.bg, color: T.textMuted, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ flex: 1, background: T.bg, color: T.textMuted, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
+                    className="hover:bg-gray-200 active:scale-[0.98]">
                     Hủy
                   </button>
                   <button onClick={handleConfirmGroup}
-                    style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease-in-out' }}
+                    className="hover:opacity-90 active:scale-[0.98]">
                     Xác nhận & Ghi kết quả
                   </button>
                 </div>
@@ -543,86 +614,92 @@ export default function ManagerResidencyPage() {
           {/* ══ Member Detail Sub-drawer ══ */}
           {selectedMember && (
             <div
-              style={{ position: 'absolute', right: selectedMember ? 460 : 580, top: 0, bottom: 0, width: 520, maxWidth: '95vw', background: T.surface, borderLeft: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 32px rgba(111,88,60,0.12)' }}
+              style={{
+                position: 'absolute', right: selectedMember ? 460 : 580, top: 0, bottom: 0, width: 520, maxWidth: '95vw',
+                background: T.surface, borderLeft: 'none', display: 'flex', flexDirection: 'column',
+                boxShadow: '-4px 0 32px rgba(111,88,60,0.12)', borderTopLeftRadius: 28, borderBottomLeftRadius: 28,
+                overflow: 'hidden', animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+              }}
               onClick={e => e.stopPropagation()}>
 
               {/* Sub-drawer Header */}
-              <div style={{ padding: '22px 24px 18px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
+              <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 4 }}>Thẩm định thành viên</p>
-                    <h3 style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{selectedMember.customer_name}</h3>
-                    <p style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>{selectedMember.id} · {selectedMember.room_name}</p>
+                    <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Thẩm định thành viên</p>
+                    <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 19, fontWeight: 800, color: T.text }}>{selectedMember.customer_name}</h3>
+                    <p style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedMember.id} • {selectedMember.room_name}</p>
                   </div>
                   <button onClick={() => setSelectedMember(null)}
-                    style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: 8, cursor: 'pointer' }}>
+                    style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
                     <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                   </button>
                 </div>
 
                 {/* Current status */}
                 <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ background: STATUS_CFG[selectedMember.status].bg, color: STATUS_CFG[selectedMember.status].text, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>
+                  <span style={{ background: STATUS_CFG[selectedMember.status].bg, color: STATUS_CFG[selectedMember.status].text, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${STATUS_CFG[selectedMember.status].text}1A` }}>
                     {STATUS_CFG[selectedMember.status].label}
                   </span>
                   {memberResult && (
-                    <span style={{ background: memberResult === 'approved' ? T.sageBg : T.redBg, color: memberResult === 'approved' ? T.sage : T.red, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>
+                    <span style={{ background: memberResult === 'approved' ? T.sageBg : T.redBg, color: memberResult === 'approved' ? T.sage : T.red, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${memberResult === 'approved' ? T.sage : T.red}1A` }}>
                       ✓ Vừa cập nhật
                     </span>
                   )}
                 </div>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: 20 }} className="space-y-5">
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
 
                 {/* ID Images */}
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 10 }}>Ảnh giấy tờ tùy thân</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p style={{ fontSize: 11, color: T.textMuted, marginBottom: 6 }}>Mặt trước</p>
-                      <img src={selectedMember.front_image_url} alt="Front" style={{ width: '100%', borderRadius: 12, border: `1px solid ${T.border}`, objectFit: 'cover', height: 100 }} />
+                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Ảnh giấy tờ tùy thân</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div style={{ background: T.bg, borderRadius: 16, padding: 8, border: `1px solid ${T.border}` }}>
+                      <p style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', textAlign: 'center' }}>Mặt trước</p>
+                      <img src={selectedMember.front_image_url} alt="Front" style={{ width: '100%', borderRadius: 12, objectFit: 'cover', height: 110 }} />
                     </div>
                     {selectedMember.back_image_url && (
-                      <div>
-                        <p style={{ fontSize: 11, color: T.textMuted, marginBottom: 6 }}>Mặt sau</p>
-                        <img src={selectedMember.back_image_url} alt="Back" style={{ width: '100%', borderRadius: 12, border: `1px solid ${T.border}`, objectFit: 'cover', height: 100 }} />
+                      <div style={{ background: T.bg, borderRadius: 16, padding: 8, border: `1px solid ${T.border}` }}>
+                        <p style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', textAlign: 'center' }}>Mặt sau</p>
+                        <img src={selectedMember.back_image_url} alt="Back" style={{ width: '100%', borderRadius: 12, objectFit: 'cover', height: 110 }} />
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Info Panel */}
-                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 14, padding: 14 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 10 }}>Thông tin cư trú</p>
-                  <div className="space-y-2">
+                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>Thông tin cư trú</p>
+                  <div className="space-y-3">
                     {[
                       { label: 'Họ tên', val: selectedMember.customer_name },
                       { label: 'SĐT', val: selectedMember.customer_phone },
                       { label: 'Ngày sinh', val: `${selectedMember.dob} (${getAgeFromDob(selectedMember.dob)} tuổi)` },
                       { label: 'Loại giấy tờ', val: selectedMember.id_type === 'cccd' ? 'CCCD/CMND' : selectedMember.id_type === 'passport' ? 'Hộ chiếu' : 'Khác' },
                       { label: 'Số giấy tờ', val: selectedMember.id_number },
-                      { label: 'Quốc tịch', val: selectedMember.nationality === 'foreign' ? '🌐 Nước ngoài (cần TT đăng ký tạm trú)' : '🇻🇳 Việt Nam' },
+                      { label: 'Quốc tịch', val: selectedMember.nationality === 'foreign' ? '🌐 Nước ngoài (cần TT tạm trú)' : '🇻🇳 Việt Nam' },
                       { label: 'Phòng đăng ký', val: selectedMember.room_name },
                     ].map((row, i) => (
                       <div key={i} className="flex justify-between items-start gap-2">
-                        <span style={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }}>{row.label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: T.text, textAlign: 'right' }}>{row.val}</span>
+                        <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: T.text, textAlign: 'right' }}>{row.val}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Compliance Rules */}
-                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 14, padding: 14 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 10 }}>Quy định ký túc xá cần đối chiếu</p>
-                  <div className="space-y-2">
+                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>Quy định ký túc xá cần đối chiếu</p>
+                  <div className="space-y-3">
                     {COMPLIANCE_RULES.map((rule, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', borderRadius: 10, background: T.surface, border: `1px solid ${T.border}` }}>
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 12, background: T.surface, border: `1px solid ${T.border}` }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.amber, marginTop: 1 }}>{rule.icon}</span>
                         <div>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{rule.label}</p>
-                          <p style={{ fontSize: 11, color: T.textFaint }}>{rule.description}</p>
+                          <p style={{ fontSize: 12.5, fontWeight: 700, color: T.text }}>{rule.label}</p>
+                          <p style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{rule.description}</p>
                         </div>
                       </div>
                     ))}
@@ -631,23 +708,24 @@ export default function ManagerResidencyPage() {
 
                 {/* Checklist */}
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12 }}>Checklist thẩm định điều kiện lưu trú</p>
-                  <div className="space-y-2">
+                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Checklist thẩm định lưu trú</p>
+                  <div className="space-y-2.5">
                     {CHECKLIST_META.map(item => (
                       <label key={item.key} style={{
-                        display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 13px', borderRadius: 12,
+                        display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 12,
                         background: checklist[item.key] ? T.sageBg : T.bg,
-                        border: `1px solid ${checklist[item.key] ? '#A8C3A5' : T.border}`,
-                        cursor: isReadOnly ? 'default' : 'pointer', transition: 'all 0.2s',
+                        border: `1.5px solid ${checklist[item.key] ? '#A8C3A5' : T.border}`,
+                        cursor: isReadOnly ? 'default' : 'pointer', transition: 'all 0.18s ease-in-out',
                         pointerEvents: isReadOnly ? 'none' : 'auto',
                         opacity: isReadOnly ? 0.85 : 1
-                      }}>
+                      }}
+                      className={!isReadOnly ? "hover:-translate-y-0.5" : ""}>
                         <input type="checkbox" checked={checklist[item.key]}
                           disabled={isReadOnly}
                           onChange={e => setChecklist(prev => ({ ...prev, [item.key]: e.target.checked }))}
                           style={{ width: 17, height: 17, accentColor: T.sage, cursor: isReadOnly ? 'default' : 'pointer', flexShrink: 0, marginTop: 1 }} />
                         <span className="material-symbols-outlined" style={{ fontSize: 17, color: checklist[item.key] ? T.sage : T.textFaint, marginTop: 1 }}>{item.icon}</span>
-                        <span style={{ fontSize: 12, fontWeight: 500, color: T.text, lineHeight: 1.5 }}>{item.label}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.5 }}>{item.label}</span>
                       </label>
                     ))}
                   </div>
@@ -656,8 +734,8 @@ export default function ManagerResidencyPage() {
                 {/* Violation/Rejection Note */}
                 {(hasUnticked || violationNote) && (
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.red, textTransform: 'uppercase', marginBottom: 8 }}>
-                      ⚠ Lý do không đạt / Chi tiết vi phạm {!isReadOnly && '(bắt buộc nhập)'}
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.red, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+                      ⚠ Lý do không đạt / Chi tiết vi phạm {!isReadOnly && '(bắt buộc)'}
                     </label>
                     <textarea
                       value={violationNote}
@@ -667,20 +745,22 @@ export default function ManagerResidencyPage() {
                       rows={3}
                       style={{
                         width: '100%',
-                        border: `2px solid ${T.red}`,
+                        border: `1.5px solid ${T.red}`,
                         borderRadius: 12,
-                        padding: 10,
-                        fontSize: 12,
+                        padding: 12,
+                        fontSize: 13,
                         color: T.text,
                         resize: 'none',
                         background: T.redBg,
                         outline: 'none',
                         boxSizing: 'border-box',
-                        opacity: isReadOnly ? 0.85 : 1
+                        opacity: isReadOnly ? 0.85 : 1,
+                        transition: 'all 0.15s'
                       }}
+                      className="focus:ring-1 focus:ring-red-400"
                     />
                     {hasUnticked && !violationNote.trim() && !isReadOnly && (
-                      <p style={{ color: T.red, fontSize: 11, marginTop: 4 }}>
+                      <p style={{ color: T.red, fontSize: 11.5, marginTop: 6, fontWeight: 600 }}>
                         * Vui lòng điền lý do không đạt để tiếp tục ghi nhận kết quả.
                       </p>
                     )}
@@ -689,15 +769,15 @@ export default function ManagerResidencyPage() {
 
                 {/* Rejection Reason */}
                 {memberResult === 'rejected' && (
-                  <div style={{ background: T.redBg, border: `1px solid ${T.red}`, borderRadius: 12, padding: 12 }}>
-                    <p style={{ fontSize: 12, color: T.red, fontWeight: 700 }}>✗ Đã ghi nhận kết quả: Không đạt</p>
-                    <p style={{ fontSize: 11, color: T.red, marginTop: 4 }}>Hệ thống đã lưu kết quả kiểm tra không đạt cho thành viên này.</p>
+                  <div style={{ background: T.redBg, border: `1px solid ${T.red}`, borderRadius: 16, padding: 14 }}>
+                    <p style={{ fontSize: 13, color: T.red, fontWeight: 800 }}>✗ Đã ghi nhận kết quả: Không đạt</p>
+                    <p style={{ fontSize: 12, color: T.red, marginTop: 4, fontWeight: 500 }}>Hệ thống đã lưu kết quả kiểm tra không đạt cho thành viên này.</p>
                   </div>
                 )}
                 {memberResult === 'approved' && (
-                  <div style={{ background: T.sageBg, border: `1px solid ${T.sage}`, borderRadius: 12, padding: 12 }}>
-                    <p style={{ fontSize: 12, color: T.sage, fontWeight: 700 }}>✓ Đã ghi nhận kết quả: Đạt điều kiện lưu trú</p>
-                    <p style={{ fontSize: 11, color: T.sage, marginTop: 4 }}>Thành viên này sẽ được đưa vào danh sách ký hợp đồng.</p>
+                  <div style={{ background: T.sageBg, border: `1px solid ${T.sage}`, borderRadius: 16, padding: 14 }}>
+                    <p style={{ fontSize: 13, color: T.sage, fontWeight: 800 }}>✓ Đã ghi nhận kết quả: Đạt điều kiện</p>
+                    <p style={{ fontSize: 12, color: T.sage, marginTop: 4, fontWeight: 500 }}>Thành viên này sẽ được đưa vào danh sách ký hợp đồng.</p>
                   </div>
                 )}
               </div>
@@ -705,17 +785,18 @@ export default function ManagerResidencyPage() {
               {/* Action Buttons */}
               {selectedMember.status === 'pending' && !memberResult && (() => {
                 return (
-                  <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
+                  <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
                     <button
                       onClick={() => saveMemberResult('approved')}
                       disabled={!isChecklistComplete}
                       style={{
                         flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12,
                         fontSize: 13, fontWeight: 700, cursor: isChecklistComplete ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        opacity: isChecklistComplete ? 1 : 0.5
-                      }}>
+                        opacity: isChecklistComplete ? 1 : 0.5, transition: 'all 0.15s ease-in-out'
+                      }}
+                      className={isChecklistComplete ? "hover:opacity-90 active:scale-[0.98]" : ""}>
                       <span className="material-symbols-outlined" style={{ fontSize: 18 }}>verified</span>
-                      Đạt — Ghi nhận kết quả
+                      Đạt — Lưu kết quả
                     </button>
                     <button
                       onClick={() => saveMemberResult('rejected')}
@@ -730,17 +811,20 @@ export default function ManagerResidencyPage() {
                         fontSize: 13,
                         fontWeight: 700,
                         cursor: isRejectionDisabled ? 'not-allowed' : 'pointer',
-                        opacity: isRejectionDisabled ? 0.6 : 1
-                      }}>
+                        opacity: isRejectionDisabled ? 0.6 : 1,
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      className={!isRejectionDisabled ? "hover:bg-red-100 active:scale-[0.98]" : ""}>
                       Không đạt
                     </button>
                   </div>
                 );
               })()}
               {(selectedMember.status !== 'pending' || memberResult) && (
-                <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
+                <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                   <button onClick={() => setSelectedMember(null)}
-                    style={{ width: '100%', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 600, color: T.textMuted, cursor: 'pointer' }}>
+                    style={{ width: '100%', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, color: T.textMuted, cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
+                    className="hover:bg-gray-200 active:scale-[0.98]">
                     ← Quay lại danh sách nhóm
                   </button>
                 </div>
@@ -754,34 +838,35 @@ export default function ManagerResidencyPage() {
       {showRejectedWarningModal && selectedGroup && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           {/* Backdrop */}
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.6)', backdropFilter: 'blur(6px)' }} 
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.6)', backdropFilter: 'blur(8px)' }} 
                onClick={() => setShowRejectedWarningModal(false)} />
           
           {/* Modal Content */}
-          <div style={{ position: 'relative', background: '#FFFFFF', borderRadius: 24, border: `1px solid ${T.border}`, width: 500, maxWidth: '100%', padding: '28px 30px', boxShadow: '0 12px 40px rgba(111,88,60,0.22)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ position: 'relative', background: '#FFFFFF', borderRadius: 28, border: `1px solid ${T.border}`, width: 500, maxWidth: '100%', padding: '28px 30px', boxShadow: '0 12px 40px rgba(111,88,60,0.22)', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Close Button X */}
             <button 
               onClick={() => setShowRejectedWarningModal(false)}
-              style={{ position: 'absolute', right: 20, top: 20, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ position: 'absolute', right: 20, top: 20, background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+              className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
               <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
             </button>
 
-            <div className="flex items-center gap-3 text-[#BA1A1A]" style={{ paddingRight: 40 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800 }}>Phát hiện thành viên không đạt điều kiện</h3>
+            <div className="flex items-center gap-3 text-[#A94F4F]" style={{ paddingRight: 40 }}>
+              <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 19, fontWeight: 800 }}>Phát hiện thành viên không đạt</h3>
             </div>
             
             <p style={{ fontSize: 13, color: T.textMuted, lineHeight: 1.6 }}>
               Trong nhóm phòng <strong>{selectedGroup.room_name}</strong> (Phiếu cọc <strong>{selectedGroup.deposit_ref}</strong>), có thành viên không đạt yêu cầu thẩm định lưu trú.
             </p>
 
-            <div style={{ background: T.bg, borderRadius: 16, padding: 14 }} className="space-y-3">
+            <div style={{ background: T.bg, borderRadius: 16, padding: 14, border: `1px solid ${T.border}` }} className="space-y-3.5">
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: T.sage, textTransform: 'uppercase', marginBottom: 6 }}>🇻🇳 Thành viên Đạt ({eligibleMembers.length})</p>
+                <p style={{ fontSize: 11, fontWeight: 800, color: T.sage, textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 }}>Thành viên Đạt ({eligibleMembers.length})</p>
                 {eligibleMembers.length > 0 ? (
-                  <div style={{ fontSize: 12, fontWeight: 600, color: T.text }} className="space-y-1">
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text }} className="space-y-1">
                     {eligibleMembers.map(m => (
                       <div key={m.id} className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-[#5F745D]">check_circle</span>
+                        <span className="material-symbols-outlined text-[15px] text-[#5F7D4E]">check_circle</span>
                         {m.customer_name} ({m.customer_phone})
                       </div>
                     ))}
@@ -792,11 +877,11 @@ export default function ManagerResidencyPage() {
               </div>
               
               <div style={{ borderTop: `1px dashed ${T.border}`, paddingTop: 10 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: T.red, textTransform: 'uppercase', marginBottom: 6 }}>✗ Thành viên Không Đạt ({selectedGroup.members.length - eligibleMembers.length})</p>
-                <div style={{ fontSize: 12, fontWeight: 600, color: T.text }} className="space-y-1">
+                <p style={{ fontSize: 11, fontWeight: 800, color: T.red, textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 }}>Thành viên Không Đạt ({selectedGroup.members.length - eligibleMembers.length})</p>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text }} className="space-y-1">
                   {selectedGroup.members.filter(m => m.status === 'rejected').map(m => (
                     <div key={m.id} className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[16px] text-[#BA1A1A]">cancel</span>
+                      <span className="material-symbols-outlined text-[15px] text-[#A94F4F]">cancel</span>
                       {m.customer_name} ({m.customer_phone})
                     </div>
                   ))}
@@ -811,8 +896,9 @@ export default function ManagerResidencyPage() {
             <div className="flex gap-3 mt-2">
               <button 
                 onClick={handleCancelDeposit}
-                style={{ flex: 1, background: T.redBg, color: T.red, border: `1px solid ${T.red}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                Hủy phiếu đặt cọc
+                style={{ flex: 1, background: T.redBg, color: T.red, border: `1px solid ${T.red}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
+                className="hover:bg-red-100 active:scale-[0.98]">
+                Hủy phiếu cọc
               </button>
               <button 
                 onClick={handleConfirmGroup}

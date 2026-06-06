@@ -74,6 +74,7 @@ import ManagerHandoversPage from './features/manager/ManagerHandoversPage';
 import ManagerInspectionsPage from './features/manager/ManagerInspectionsPage';
 import ManagerAssetsPage from './features/manager/ManagerAssetsPage';
 import ManagerReportsPage from './features/manager/ManagerReportsPage';
+import ManagerContractsPage from './features/manager/ManagerContractsPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -225,6 +226,7 @@ function DashboardLayout() {
           { path: '/manager/rooms', label: 'Sơ đồ phòng', icon: Layers },
           { path: '/manager/deposits', label: 'Kiểm duyệt đặt cọc', icon: ClipboardList },
           { path: '/manager/residency-checks', label: 'Kiểm tra lưu trú', icon: CheckCircle },
+          { path: '/manager/contracts', label: 'Quản lý hợp đồng', icon: FileText },
           { path: '/manager/handovers', label: 'Bàn giao tài sản', icon: FileText },
           { path: '/manager/inspections', label: 'Kiểm kê trả phòng', icon: Activity },
           { path: '/manager/assets', label: 'Điều phối tài sản', icon: Settings },
@@ -521,6 +523,7 @@ function DashboardLayout() {
             {user.role === 'manager' && <Route path="/manager/rooms" element={<ManagerRoomsPage />} />}
             {user.role === 'manager' && <Route path="/manager/deposits" element={<ManagerDepositsPage />} />}
             {user.role === 'manager' && <Route path="/manager/residency-checks" element={<ManagerResidencyPage />} />}
+            {user.role === 'manager' && <Route path="/manager/contracts" element={<ManagerContractsPage />} />}
             {user.role === 'manager' && <Route path="/manager/handovers" element={<ManagerHandoversPage />} />}
             {user.role === 'manager' && <Route path="/manager/inspections" element={<ManagerInspectionsPage />} />}
             {user.role === 'manager' && <Route path="/manager/assets" element={<ManagerAssetsPage />} />}
