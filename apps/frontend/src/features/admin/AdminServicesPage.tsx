@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -55,10 +56,10 @@ export default function AdminServicesPage() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterActive, setFilterActive] = useState('');
-  const [selected, setSelected] = useState<ServiceItem | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<ServiceItem>>({});
+  const [confirmStatusService, setConfirmStatusService] = useState<ServiceItem | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -109,14 +110,18 @@ export default function AdminServicesPage() {
       setServices(prev => [...prev, ns]);
     } else {
       setServices(prev => prev.map(s => s.id === form.id ? { ...s, ...form } as ServiceItem : s));
-      if (selected?.id === form.id) setSelected(prev => prev ? { ...prev, ...form } as ServiceItem : null);
     }
     setShowModal(false);
   };
 
-  const toggleActive = (id: string) => {
-    setServices(prev => prev.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s));
-    if (selected?.id === id) setSelected(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
+  const confirmToggleStatus = () => {
+    if (!confirmStatusService) return;
+    setServices(prev =>
+      prev.map(s =>
+        s.id === confirmStatusService.id ? { ...s, isActive: !s.isActive } : s
+      )
+    );
+    setConfirmStatusService(null);
   };
 
   const SERVICE_ICONS: Record<string, string> = {
@@ -171,21 +176,29 @@ export default function AdminServicesPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả loại</option>
-          <option value="utility">Tiện ích</option>
-          <option value="amenity">Tiện nghi</option>
-          <option value="extra">Bổ sung</option>
-        </select>
-        <select value={filterActive} onChange={e => setFilterActive(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="active">Đang kích hoạt</option>
-          <option value="inactive">Đã tắt</option>
-        </select>
+        <CustomSelect
+          value={filterType}
+          onChange={setFilterType}
+          options={[
+            { value: '', label: 'Tất cả loại' },
+            { value: 'utility', label: 'Tiện ích' },
+            { value: 'amenity', label: 'Tiện nghi' },
+            { value: 'extra', label: 'Bổ sung' }
+          ]}
+          className="min-w-[150px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
+        <CustomSelect
+          value={filterActive}
+          onChange={setFilterActive}
+          options={[
+            { value: '', label: 'Tất cả trạng thái' },
+            { value: 'active', label: 'Đang kích hoạt' },
+            { value: 'inactive', label: 'Đã tắt' }
+          ]}
+          className="min-w-[150px]"
+          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+        />
         <button onClick={() => { setSearch(''); setFilterType(''); setFilterActive(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -227,8 +240,7 @@ export default function AdminServicesPage() {
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(s => (
             <div key={s.id}
-              onClick={() => setSelected(s)}
-              className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
+              className="rounded-xl p-5 transition-all group hover:shadow-md"
               style={{
                 background: A.surface,
                 border: `1px solid ${s.isActive ? A.border : '#e5e7eb'}`,
@@ -248,16 +260,11 @@ export default function AdminServicesPage() {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={e => { e.stopPropagation(); toggleActive(s.id); }}
-                  className={`w-10 h-5 rounded-full transition-all relative ${s.isActive ? '' : 'opacity-50'}`}
-                  style={{ background: s.isActive ? A.accent : A.border }}
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
                 >
-                  <span
-                    className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
-                    style={{ left: s.isActive ? '22px' : '2px' }}
-                  />
-                </button>
+                  {s.isActive ? 'Đang kích hoạt' : 'Đã tắt'}
+                </span>
               </div>
               <p className="text-xs mb-3" style={{ color: A.textMuted }}>{s.description}</p>
               <div className="flex items-center justify-between">
@@ -274,74 +281,26 @@ export default function AdminServicesPage() {
               </div>
               <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                 <button onClick={e => { e.stopPropagation(); openEdit(s); }}
-                  className="p-1.5 rounded-full" style={{ color: A.accent }}>
+                  className="p-1.5 rounded-full hover:opacity-85" style={{ color: A.accent }}
+                  title="Sửa dịch vụ">
                   <span className="material-symbols-outlined text-[18px]">edit</span>
                 </button>
-                <button onClick={e => { e.stopPropagation(); setServices(prev => prev.filter(x => x.id !== s.id)); if (selected?.id === s.id) setSelected(null); }}
-                  className="p-1.5 rounded-full text-red-600">
-                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    setConfirmStatusService(s);
+                  }}
+                  className={`p-1.5 rounded-full hover:opacity-85 ${s.isActive ? 'text-red-600' : 'text-emerald-600'}`}
+                  title={s.isActive ? 'Tắt dịch vụ' : 'Kích hoạt dịch vụ'}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {s.isActive ? 'toggle_off' : 'toggle_on'}
+                  </span>
                 </button>
               </div>
             </div>
           ))}
         </section>
-      )}
-
-      {/* Detail Drawer */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end"
-          style={{ background: `${A.primary}66` }}
-          onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-          <div className="w-full max-w-[420px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
-            style={{ background: A.surface }}>
-            <div className="px-6 py-4 flex items-center justify-between"
-              style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
-              <h2 className="text-lg font-bold" style={{ color: A.primary }}>Chi tiết dịch vụ</h2>
-              <button onClick={() => setSelected(null)}>
-                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
-              </button>
-            </div>
-            <div className="flex-1 p-6 flex flex-col gap-5">
-              <div className="flex items-center gap-4">
-                <div className="p-4 rounded-xl" style={{ background: A.badgeBg }}>
-                  <span className="material-symbols-outlined text-3xl" style={{ color: A.accent }}>
-                    {SERVICE_ICONS[selected.name] || 'miscellaneous_services'}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>{selected.name}</h3>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${TYPE_LABEL[selected.type].cls}`}>
-                    {TYPE_LABEL[selected.type].label}
-                  </span>
-                </div>
-              </div>
-              <p className="text-sm" style={{ color: A.textMuted }}>{selected.description}</p>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: 'Đơn giá', val: `${selected.price.toLocaleString('vi-VN')}đ/${selected.unit}` },
-                  { label: 'Chu kỳ tính phí', val: CYCLE_LABEL[selected.billingCycle] },
-                  { label: 'Mã dịch vụ', val: selected.id },
-                  { label: 'Trạng thái', val: selected.isActive ? 'Đang kích hoạt' : 'Đã tắt' },
-                ].map(({ label, val }) => (
-                  <div key={label}>
-                    <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>{label}</p>
-                    <p className="text-sm font-medium mt-0.5" style={{ color: A.textPrimary }}>{val}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="px-6 py-4 flex gap-3" style={{ background: A.sidebar, borderTop: `1px solid ${A.border}` }}>
-              <button onClick={() => openEdit(selected)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}>Sửa dịch vụ</button>
-              <button onClick={() => toggleActive(selected.id)}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium border"
-                style={{ borderColor: A.border, color: A.textMuted }}>
-                {selected.isActive ? 'Tắt dịch vụ' : 'Bật dịch vụ'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Add/Edit Modal */}
@@ -377,23 +336,31 @@ export default function AdminServicesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại dịch vụ</label>
-                <select value={form.type || 'utility'} onChange={e => setForm(prev => ({ ...prev, type: e.target.value as ServiceType }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="utility">Tiện ích</option>
-                  <option value="amenity">Tiện nghi</option>
-                  <option value="extra">Bổ sung</option>
-                </select>
+                <CustomSelect
+                  value={form.type || 'utility'}
+                  onChange={val => setForm(prev => ({ ...prev, type: val as ServiceType }))}
+                  options={[
+                    { value: 'utility', label: 'Tiện ích' },
+                    { value: 'amenity', label: 'Tiện nghi' },
+                    { value: 'extra', label: 'Bổ sung' }
+                  ]}
+                  className="w-full"
+                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Chu kỳ</label>
-                <select value={form.billingCycle || 'monthly'} onChange={e => setForm(prev => ({ ...prev, billingCycle: e.target.value as BillingCycle }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="monthly">Hàng tháng</option>
-                  <option value="per_usage">Theo số lượng</option>
-                  <option value="one_time">Một lần</option>
-                </select>
+                <CustomSelect
+                  value={form.billingCycle || 'monthly'}
+                  onChange={val => setForm(prev => ({ ...prev, billingCycle: val as BillingCycle }))}
+                  options={[
+                    { value: 'monthly', label: 'Hàng tháng' },
+                    { value: 'per_usage', label: 'Theo số lượng' },
+                    { value: 'one_time', label: 'Một lần' }
+                  ]}
+                  className="w-full"
+                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Đơn giá (đ)</label>
@@ -416,7 +383,110 @@ export default function AdminServicesPage() {
               <button onClick={saveForm}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
                 style={{ background: A.primary }}>
-                {modalMode === 'add' ? 'Thêm dịch vụ' : 'Lưu thay đổi'}
+                Thêm dịch vụ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmStatusService && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+          style={{
+            background:
+              confirmStatusService.isActive
+                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for turning off
+                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for turning on
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmStatusService(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4 transform transition-all border animate-fade-in-up"
+            style={{
+              background: A.surface,
+              borderColor:
+                confirmStatusService.isActive ? "#fca5a5" : A.border,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="p-2.5 rounded-full flex items-center justify-center"
+                style={{
+                  background:
+                    confirmStatusService.isActive
+                      ? "#fee2e2"
+                      : "#d1fae5",
+                  color:
+                    confirmStatusService.isActive
+                      ? "#dc2626"
+                      : "#059669",
+                }}
+              >
+                <span className="material-symbols-outlined text-2xl">
+                  {confirmStatusService.isActive
+                    ? "warning"
+                    : "check_circle"}
+                </span>
+              </div>
+              <h3
+                className="text-lg font-bold"
+                style={{
+                  color:
+                    confirmStatusService.isActive
+                      ? "#dc2626"
+                      : "#059669",
+                }}
+              >
+                {confirmStatusService.isActive
+                  ? "Ngưng hoạt động dịch vụ"
+                  : "Kích hoạt lại dịch vụ"}
+              </h3>
+            </div>
+            
+            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
+              {confirmStatusService.isActive ? (
+                <>
+                  Bạn có chắc muốn <strong>ngưng hoạt động</strong> dịch vụ{" "}
+                  <span className="font-semibold text-gray-900">
+                    {confirmStatusService.name}
+                  </span>{" "}
+                  không? Dịch vụ này sẽ không khả dụng để tính phí hoặc đăng ký cho khách hàng nữa.
+                </>
+              ) : (
+                <>
+                  Bạn có chắc muốn <strong>kích hoạt lại</strong> dịch vụ{" "}
+                  <span className="font-semibold text-gray-900">
+                    {confirmStatusService.name}
+                  </span>{" "}
+                  không?
+                </>
+              )}
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setConfirmStatusService(null)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmToggleStatus}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                style={{
+                  background:
+                    confirmStatusService.isActive
+                      ? "#dc2626"
+                      : "#10b981",
+                }}
+              >
+                {confirmStatusService.isActive
+                  ? "Ngưng hoạt động"
+                  : "Kích hoạt lại"}
               </button>
             </div>
           </div>

@@ -33,7 +33,7 @@ export default function Navbar() {
     <header className="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-sm transition-shadow duration-300">
       <nav className="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full">
         {/* LEFT SIDE: Logo + Text */}
-        <Link to="/" className="flex items-center gap-2 hover:-translate-y-[0.5px] hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 cursor-pointer">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
           <Logo size="md" />
         </Link>
 
@@ -62,16 +62,21 @@ export default function Navbar() {
         {/* RIGHT SIDE: Auth & Profile */}
         <div className="flex items-center gap-4">
           {!user ? (
-            <Link to="/login" className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md hover:bg-primary/95 hover:-translate-y-[0.5px] hover:shadow-md active:scale-95 active:translate-y-[0.5px] transition-all duration-200 text-sm shadow-sm cursor-pointer">
-              Đăng nhập
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link to="/register" className="border border-primary text-primary px-5 py-2.5 rounded-full font-label-md hover:bg-primary/5 transition-all text-sm shadow-sm hover:shadow cursor-pointer">
+                Đăng ký
+              </Link>
+              <Link to="/login" className="bg-primary text-on-primary px-5 py-2.5 rounded-full font-label-md hover:opacity-90 transition-all text-sm shadow-sm hover:shadow cursor-pointer">
+                Đăng nhập
+              </Link>
+            </div>
           ) : (
             <>
               {/* Notifications Dropdown */}
               <div className="relative animate-fade-in" ref={notificationsRef}>
                 <button 
                   onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                  className="relative p-2 text-on-surface-variant hover:text-primary transition-all duration-200 bg-surface-container-low dark:bg-surface-container-high rounded-full hover:bg-primary/8 active:scale-95 cursor-pointer flex items-center justify-center hover:-translate-y-[0.5px]"
+                  className="relative p-2 text-on-surface-variant hover:text-primary transition-colors bg-surface-container-low dark:bg-surface-container-high rounded-full hover:bg-surface-container cursor-pointer flex items-center justify-center"
                 >
                   <span className="material-symbols-outlined text-[24px]">notifications</span>
                   <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface"></span>
@@ -104,7 +109,7 @@ export default function Navbar() {
               <div className="relative" ref={dropdownRef}>
                 <button 
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-on-surface-variant hover:text-primary hover:bg-primary/5 hover:border-primary/10 border border-transparent transition-all duration-200 cursor-pointer bg-transparent active:scale-[0.97] outline-none"
+                  className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
                 >
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold overflow-hidden border border-surface-variant/20">
                     {user.avatar_url ? (

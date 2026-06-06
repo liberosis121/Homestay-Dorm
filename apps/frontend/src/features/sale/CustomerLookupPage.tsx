@@ -2,15 +2,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Users, RefreshCw, HelpCircle, AlertTriangle 
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import CustomerProfileCard from './components/CustomerProfileCard';
 import CustomerTabs from './components/CustomerTabs';
 import CustomerTimeline from './components/CustomerTimeline';
 import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
 
 export default function CustomerLookupPage() {
-  const navigate = useNavigate();
 
   // Trạng thái Form Tìm kiếm
   const [searchName, setSearchName] = useState('');
@@ -105,6 +103,21 @@ export default function CustomerLookupPage() {
     setSearchPhone('');
     setSearchEmail('');
   };
+
+
+
+  // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
+  const handleUpdateCustomer = (updatedCust: Customer) => {
+    const db = getMockDB();
+    const updatedList = customers.map(c => 
+      c.id === updatedCust.id ? updatedCust : c
+    );
+    setCustomers(updatedList);
+    db.customers = updatedList;
+    saveMockDB(db);
+    setActiveCustomer(updatedCust);
+  };
+
 
   return (
     <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
@@ -284,7 +297,6 @@ export default function CustomerLookupPage() {
               <CustomerProfileCard 
                 customer={activeCustomer} 
                 onActionEmail={() => alert(`Đã gửi email liên hệ thành công tới: ${activeCustomer.personalInfo.email}`)}
-                onActionAppointment={() => navigate('/sale/schedules')}
               />
 
               {/* Bottom Contents Grid Layout */}
@@ -292,7 +304,7 @@ export default function CustomerLookupPage() {
                 
                 {/* Left & Middle Column: Detailed Tabs */}
                 <div className="xl:col-span-2 space-y-6">
-                  <CustomerTabs customer={activeCustomer} />
+                  <CustomerTabs customer={activeCustomer} onUpdateCustomer={handleUpdateCustomer} />
                 </div>
 
                 {/* Right Column: Activities Timeline */}

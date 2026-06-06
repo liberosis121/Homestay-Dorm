@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AuthBackground from '../../components/ui/AuthBackground';
 import Logo from '../../components/ui/Logo';
 
 export default function OTPVerificationPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { email?: string; message?: string } | null;
+  const email = state?.email || '';
+  const initialMessage = state?.message || '';
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [status, setStatus] = useState<'normal' | 'invalid' | 'expired' | 'verifying' | 'success'>('normal');
   const [timeLeft, setTimeLeft] = useState(60);
-  const navigate = useNavigate();
+  const [successMessage, setSuccessMessage] = useState(initialMessage);
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -33,6 +39,7 @@ export default function OTPVerificationPage() {
     }
     
     if (status !== 'normal') setStatus('normal');
+    if (successMessage) setSuccessMessage('');
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -46,6 +53,7 @@ export default function OTPVerificationPage() {
     setOtp(['', '', '', '', '', '']);
     setStatus('normal');
     setTimeLeft(60);
+    setSuccessMessage('Mã xác thực mới đã được gửi lại thành công!');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,7 +77,7 @@ export default function OTPVerificationPage() {
       // For demo, anything is success as long as it's 6 digits, or we can hardcode 123456
       // We will just let anything pass for the prototype
       if (otpValue.length === 6) {
-        setStatus('success');
+        navigate('/reset-password', { state: { message: 'Xác thực mã OTP thành công! Vui lòng tiến hành tạo mật khẩu mới.' } });
       } else {
         setStatus('invalid');
       }
@@ -87,7 +95,7 @@ export default function OTPVerificationPage() {
         {/* OTP Card */}
         <div className="w-full bg-white/80 dark:bg-surface-container-highest/80 backdrop-blur-xl border border-glass-stroke shadow-2xl shadow-primary/5 rounded-[32px] p-8 md:p-10 relative overflow-hidden">
           
-          <div className={`transition-all duration-500 transform ${status === 'success' ? '-translate-x-full absolute opacity-0' : 'translate-x-0 opacity-100 relative'}`}>
+          <div>
             <div className="flex justify-center mb-6">
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
                 <span className="material-symbols-outlined text-4xl text-primary">security</span>
@@ -95,8 +103,16 @@ export default function OTPVerificationPage() {
             </div>
             <h2 className="font-headline-lg text-2xl font-bold text-on-surface mb-2 text-center">Xác thực OTP</h2>
             <p className="font-body-md text-on-surface-variant mb-8 text-center">
-              Nhập mã 6 số vừa được gửi tới email của bạn.
+              Nhập mã 6 số vừa được gửi tới email <br/>
+              <span className="font-semibold text-primary">{email || 'của bạn'}</span>.
             </p>
+
+            {successMessage && status === 'normal' && (
+              <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3 animate-fade-in">
+                <span className="material-symbols-outlined text-emerald-500">check_circle</span>
+                <p className="font-body-md text-emerald-500 text-sm">{successMessage}</p>
+              </div>
+            )}
 
             {status === 'invalid' && (
               <div className="mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-start gap-3 animate-fade-in">
@@ -164,29 +180,6 @@ export default function OTPVerificationPage() {
                 </button>
               </div>
             </form>
-          </div>
-
-          {/* Success State */}
-          <div className={`transition-all duration-500 transform ${status === 'success' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full absolute opacity-0 top-0 left-0 p-8 md:p-10 w-full h-full pointer-events-none'}`}>
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2">
-                <span className="material-symbols-outlined text-4xl text-emerald-500">verified</span>
-              </div>
-              <h2 className="font-headline-lg text-2xl font-bold text-on-surface">Xác thực thành công!</h2>
-              <p className="font-body-md text-on-surface-variant">
-                Mã OTP đã được xác thực thành công. Bạn có thể tạo mật khẩu mới ngay bây giờ.
-              </p>
-              
-              <div className="w-full pt-8">
-                <button 
-                  onClick={() => navigate('/reset-password')}
-                  className="w-full h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2.5 hover:bg-primary-container hover:text-on-primary-container hover:shadow-lg hover:shadow-primary/25 active:scale-[0.98] transition-all duration-300 shadow-md group cursor-pointer"
-                >
-                  <span>Tạo mật khẩu mới</span>
-                  <span className="material-symbols-outlined text-lg transition-transform duration-300 group-hover:translate-x-1">arrow_forward</span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
