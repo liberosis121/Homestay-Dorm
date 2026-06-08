@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import {
-  User, Shield, Lock, Globe, ChevronRight,
-  X, Eye, EyeOff, Check, Camera, Briefcase, MapPin, Phone
+  User, Shield, Lock, ChevronRight,
+  X, Eye, EyeOff, Check, Camera, Briefcase, MapPin
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
@@ -171,51 +171,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Language Modal ────────────────────────────────────────────────────────────
-const LANGUAGES = [
-  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'zh', label: '中文 (Chinese)', flag: '🇨🇳' },
-  { code: 'ko', label: '한국어 (Korean)', flag: '🇰🇷' },
-  { code: 'ja', label: '日本語 (Japanese)', flag: '🇯🇵' },
-];
 
-function LanguageModal({ current, onSelect, onClose }: { current: string; onSelect: (code: string) => void; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-sm rounded-[28px] shadow-2xl border border-[#d1c4b9] overflow-hidden animate-fade-in-up">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-[#d1c4b9] bg-[#faf2ec]">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#6f583c]/10 rounded-full">
-              <Globe className="w-5 h-5 text-[#6f583c]" />
-            </div>
-            <h2 className="font-bold text-lg text-[#1e1b17]">Chọn ngôn ngữ</h2>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-[#f4ede6] transition-colors cursor-pointer text-[#4e453c]">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-4 space-y-1 bg-white">
-          {LANGUAGES.map(lang => (
-            <button
-              key={lang.code}
-              onClick={() => { onSelect(lang.code); onClose(); }}
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all cursor-pointer text-left ${
-                current === lang.code
-                  ? 'bg-[#6f583c]/10 text-[#6f583c] font-bold'
-                  : 'hover:bg-[#faf2ec] text-[#1e1b17]'
-              }`}
-            >
-              <span className="text-2xl">{lang.flag}</span>
-              <span className="text-sm font-medium">{lang.label}</span>
-              {current === lang.code && <Check className="w-4 h-4 ml-auto" />}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Role display helper ───────────────────────────────────────────────────────
 function getRoleDisplayInfo(role: string) {
@@ -314,9 +270,6 @@ export default function StaffProfilePage() {
 
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [language, setLanguage] = useState('vi');
-  const currentLang = LANGUAGES.find(l => l.code === language);
 
   // ── Shared InputField ─────────────────────────────────────────────────────
   const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: {
@@ -387,13 +340,6 @@ export default function StaffProfilePage() {
     <>
       {/* Modals */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
-      {showLanguageModal && (
-        <LanguageModal
-          current={language}
-          onSelect={setLanguage}
-          onClose={() => setShowLanguageModal(false)}
-        />
-      )}
 
       <div className="animate-fade-in-up space-y-6 theme-sale">
         {/* ── Page Header ────────────────────────────────────────────────── */}
@@ -633,48 +579,8 @@ export default function StaffProfilePage() {
                   </div>
                   <ChevronRight className="w-5 h-5 text-[#4e453c] group-hover:text-[#6f583c] transition-colors" />
                 </button>
-              </div>
-            </div>
 
 
-            {/* Section: Ngôn ngữ */}
-            <div className="bg-white rounded-[28px] border border-[#d1c4b9] shadow-sm p-8 md:p-10">
-              <h3 className="text-base font-bold text-[#4e453c] flex items-center gap-2 mb-6 uppercase tracking-wider">
-                <Globe className="w-4 h-4 text-[#6f583c]" /> Ngôn ngữ & Giao diện
-              </h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => setShowLanguageModal(true)}
-                  className="w-full flex items-center justify-between p-5 bg-[#faf2ec] border border-[#d1c4b9] rounded-2xl hover:bg-[#f4ede6] transition-colors cursor-pointer group text-left"
-                >
-                  <div className="flex items-center gap-5">
-                    <div className="p-3 bg-white rounded-full text-[#4e453c] shadow-sm border border-[#d1c4b9] group-hover:bg-[#6f583c]/10 group-hover:text-[#6f583c] transition-colors">
-                      <Globe className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-[#1e1b17] text-base">Ngôn ngữ hiển thị</h4>
-                      <p className="text-sm text-[#4e453c] mt-0.5">
-                        {currentLang?.flag} {currentLang?.label}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-[#4e453c] group-hover:text-[#6f583c] transition-colors" />
-                </button>
-
-                {/* Liên lạc nội bộ */}
-                <div className="p-5 bg-[#6f583c]/8 border border-[#6f583c]/20 rounded-2xl">
-                  <div className="flex items-start gap-4">
-                    <div className="p-2.5 bg-[#6f583c]/10 rounded-full shrink-0">
-                      <Phone className="w-4 h-4 text-[#6f583c]" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-[#1e1b17] text-sm mb-0.5">Hỗ trợ kỹ thuật nội bộ</p>
-                      <p className="text-xs text-[#4e453c] leading-relaxed">
-                        Liên hệ bộ phận IT tại <span className="font-semibold text-[#6f583c]">it-support@homestay.com</span> hoặc ext: <span className="font-semibold text-[#6f583c]">1001</span> nếu gặp sự cố hệ thống.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 

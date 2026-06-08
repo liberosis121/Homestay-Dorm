@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
 import { 
-  User, Shield, Camera, ChevronRight, Lock, Globe, 
+  User, Shield, Camera, ChevronRight, Lock, 
   Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
   X, Eye, EyeOff, Check, Zap
 } from 'lucide-react';
@@ -172,51 +172,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Language Modal ────────────────────────────────────────────────────────────
-const LANGUAGES = [
-  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'zh', label: '中文 (Chinese)', flag: '🇨🇳' },
-  { code: 'ko', label: '한국어 (Korean)', flag: '🇰🇷' },
-  { code: 'ja', label: '日本語 (Japanese)', flag: '🇯🇵' },
-];
 
-function LanguageModal({ current, onSelect, onClose }: { current: string; onSelect: (code: string) => void; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-surface w-full max-w-sm rounded-32 shadow-2xl border border-surface-variant overflow-hidden animate-fade-in-up">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-surface-variant">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-full">
-              <Globe className="w-5 h-5 text-primary" />
-            </div>
-            <h2 className="font-headline-md text-lg font-bold text-on-surface">Chọn ngôn ngữ</h2>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer text-on-surface-variant">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-4 space-y-1">
-          {LANGUAGES.map(lang => (
-            <button
-              key={lang.code}
-              onClick={() => { onSelect(lang.code); onClose(); }}
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-24 transition-all cursor-pointer text-left ${
-                current === lang.code
-                  ? 'bg-primary-container text-on-primary-container font-bold'
-                  : 'hover:bg-surface-container-low text-on-surface'
-              }`}
-            >
-              <span className="text-2xl">{lang.flag}</span>
-              <span className="font-label-md text-sm">{lang.label}</span>
-              {current === lang.code && <Check className="w-4 h-4 ml-auto" />}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
@@ -290,12 +246,6 @@ export default function ProfilePage() {
 
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-
-
-  // Language
-  const [language, setLanguage] = useState('vi');
-  const currentLang = LANGUAGES.find(l => l.code === language);
 
   // ── Shared InputField ─────────────────────────────────────────────────────
   const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => {
@@ -339,13 +289,6 @@ export default function ProfilePage() {
     <>
       {/* Modals */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
-      {showLanguageModal && (
-        <LanguageModal
-          current={language}
-          onSelect={setLanguage}
-          onClose={() => setShowLanguageModal(false)}
-        />
-      )}
 
       <div className="max-w-container-max mx-auto w-full px-margin-mobile md:px-margin-desktop py-8 animate-fade-in-up theme-customer">
         <div className="flex flex-col xl:flex-row gap-8">
@@ -625,32 +568,7 @@ export default function ProfilePage() {
                 </div>
 
 
-                {/* Section: Ngôn ngữ & Giao diện */}
-                <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm">
-                  <h3 className="font-headline-md text-base text-on-surface-variant font-bold flex items-center gap-2 mb-5 uppercase tracking-wider">
-                    <Globe className="w-4 h-4" /> Ngôn ngữ &amp; Giao diện
-                  </h3>
-                  <div className="space-y-3">
-                    {/* Ngôn ngữ */}
-                    <button
-                      onClick={() => setShowLanguageModal(true)}
-                      className="w-full flex items-center justify-between p-5 bg-surface-container-low border border-surface-variant rounded-24 hover:bg-surface-container transition-colors cursor-pointer group text-left"
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className="p-3 bg-surface rounded-full text-on-surface-variant shadow-sm border border-surface-variant/50 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                          <Globe className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-on-surface text-base">Ngôn ngữ hiển thị</h4>
-                          <p className="text-sm text-on-surface-variant mt-0.5">
-                            {currentLang?.flag} {currentLang?.label}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-                    </button>
-                  </div>
-                </div>
+
 
               </div>
             )}
