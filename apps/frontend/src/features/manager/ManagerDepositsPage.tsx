@@ -81,12 +81,40 @@ export default function ManagerDepositsPage() {
   const updateStatus = (newStatus: ManagerDeposit['status']) => {
     if (!selected) return;
     const db = getMockDB();
+    
+    // 1. Update the ManagerDeposit status
     const updated = db.manager_deposits.map((d: ManagerDeposit) =>
       d.id === selected.id
         ? { ...d, status: newStatus, reviewer_note: reviewerNote, reviewed_at: new Date().toISOString() }
         : d
     );
     db.manager_deposits = updated;
+
+    // 2. Sync with CustomerDepositRequest and DepositInvoice
+    if (newStatus === 'approved') {
+      db.customer_deposit_requests = (db.customer_deposit_requests || []).map((r: any) =>
+        r.customer_id === selected.customer_id && r.room_id === selected.room_id
+          ? { ...r, status: 'paid', note: reviewerNote || r.note }
+          : r
+      );
+      db.deposit_invoices = (db.deposit_invoices || []).map((i: any) =>
+        i.customer_id === selected.customer_id && i.room_id === selected.room_id
+          ? { ...i, status: 'paid' }
+          : i
+      );
+    } else if (newStatus === 'rejected' || newStatus === 'need_more') {
+      db.customer_deposit_requests = (db.customer_deposit_requests || []).map((r: any) =>
+        r.customer_id === selected.customer_id && r.room_id === selected.room_id
+          ? { ...r, status: 'invoice_created', note: reviewerNote || r.note }
+          : r
+      );
+      db.deposit_invoices = (db.deposit_invoices || []).map((i: any) =>
+        i.customer_id === selected.customer_id && i.room_id === selected.room_id
+          ? { ...i, status: 'pending' }
+          : i
+      );
+    }
+
     saveMockDB(db);
     setDeposits(updated);
     setSelected(prev => prev ? { ...prev, status: newStatus, reviewer_note: reviewerNote } : null);

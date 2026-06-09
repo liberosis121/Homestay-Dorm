@@ -438,6 +438,50 @@ const generateDepositInvoices = (): DepositInvoice[] => {
       note: i % 4 === 0 ? 'Khách hàng đặt cọc online giữ chỗ' : undefined
     });
   }
+  
+  // Append test cases for u-6
+  list.push(
+    {
+      id: 'DEP-TEST-01',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      room_id: 'r-3',
+      room_name: 'Phòng 201 (Nam)',
+      amount: 1500000,
+      deadline: '2026-06-12 12:00',
+      payment_method: 'transfer',
+      status: 'pending',
+      created_at: '2026-06-05 10:00',
+      deposit_request_id: 'cdr-test-invoice'
+    },
+    {
+      id: 'DEP-TEST-02',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      amount: 1200000,
+      deadline: '2026-06-11 12:00',
+      payment_method: 'transfer',
+      status: 'pending',
+      created_at: '2026-06-04 09:00',
+      deposit_request_id: 'cdr-test-pending-mgr'
+    },
+    {
+      id: 'DEP-TEST-03',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      room_id: 'r-5',
+      room_name: 'Phòng 103 (Nam)',
+      amount: 1000000,
+      deadline: '2026-05-17 12:00',
+      payment_method: 'transfer',
+      status: 'paid',
+      created_at: '2026-05-15 09:00',
+      deposit_request_id: 'cdr-test-paid'
+    }
+  );
+
   return list;
 };
 
@@ -815,6 +859,54 @@ const INITIAL_DB = {
       status: 'pending_sale_confirmation',
       note: 'Yêu cầu giữ chỗ giường Dorm tầng dưới.',
       created_at: '2026-06-05T09:00:00Z'
+    },
+    {
+      id: 'cdr-test-invoice',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-3',
+      room_name: 'Phòng 201 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      viewing_schedule_id: 'vs-6',
+      deposit_amount: 1500000,
+      expected_move_in_date: '2026-06-15',
+      status: 'invoice_created',
+      note: 'Hóa đơn cọc đã được lập và đang chờ khách thanh toán.',
+      created_at: '2026-06-05T10:00:00Z'
+    },
+    {
+      id: 'cdr-test-pending-mgr',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      viewing_schedule_id: 'vs-9',
+      deposit_amount: 1200000,
+      expected_move_in_date: '2026-06-20',
+      status: 'invoice_created',
+      note: 'Khách đã thanh toán cọc và chờ duyệt minh chứng.',
+      created_at: '2026-06-04T09:00:00Z'
+    },
+    {
+      id: 'cdr-test-paid',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-5',
+      room_name: 'Phòng 103 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1',
+      viewing_schedule_id: 'vs-5',
+      deposit_amount: 1000000,
+      expected_move_in_date: '2026-06-01',
+      status: 'paid',
+      note: 'Đã hoàn tất thanh toán cọc và được Quản lý duyệt.',
+      created_at: '2026-05-15T09:00:00Z'
     }
   ] as CustomerDepositRequest[],
   rental_registrations: [
@@ -1004,6 +1096,43 @@ function generateManagerDeposits(): ManagerDeposit[] {
       created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
     });
   }
+
+  // Append test cases for u-6
+  list.push(
+    {
+      id: 'MGR-DEP-TEST-01',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      deposit_type: 'room',
+      amount: 1200000,
+      deposit_date: '2026-06-05',
+      bill_image_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
+      bank_name: 'MB Bank',
+      account_number: '999988887777',
+      status: 'pending',
+      created_at: '2026-06-05T11:00:00Z'
+    },
+    {
+      id: 'MGR-DEP-TEST-02',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-5',
+      room_name: 'Phòng 103 (Nam)',
+      deposit_type: 'room',
+      amount: 1000000,
+      deposit_date: '2026-05-16',
+      bill_image_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
+      bank_name: 'Vietcombank',
+      account_number: '1012345678',
+      status: 'approved',
+      created_at: '2026-05-16T10:00:00Z'
+    }
+  );
+
   return list;
 }
 
