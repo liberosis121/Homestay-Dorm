@@ -415,17 +415,41 @@ const AppointmentCard = ({
 
         {schedule.status === 'completed' && (
           <div className="mt-4">
-            {depositRequest ? (
-              <div className="p-4 rounded-[16px] bg-primary/8 border border-primary/15 flex items-start gap-3">
-                <CreditCard className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-primary">Yêu cầu đặt cọc đang chờ xác nhận</p>
-                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                    Nhân viên Sale sẽ kiểm tra phòng/giường sau buổi xem và liên hệ bạn để xác nhận khoản đặt cọc.
-                  </p>
+            {depositRequest ? (() => {
+              const depStatus = depositRequest.status;
+              let title = 'Yêu cầu đặt cọc đang chờ xác nhận';
+              let desc = 'Nhân viên Sale sẽ kiểm tra phòng/giường sau buổi xem và liên hệ bạn để xác nhận khoản đặt cọc.';
+              let isSuccess = false;
+
+              if (depStatus === 'confirmed') {
+                title = 'Yêu cầu đã được xác nhận';
+                desc = 'Yêu cầu đặt cọc đã được xác nhận và hệ thống đang chuyển sang bước lập hóa đơn cọc.';
+              } else if (depStatus === 'invoice_created') {
+                title = 'Hóa đơn cọc đã được tạo';
+                desc = 'Hóa đơn cọc đã được tạo. Vui lòng truy cập Lịch sử đặt cọc để thanh toán cọc giữ chỗ.';
+              } else if (depStatus === 'paid') {
+                title = 'Đã đặt cọc thành công';
+                desc = 'Khoản cọc đã được Quản lý phê duyệt thành công. Vui lòng chuẩn bị thủ tục nhận phòng.';
+                isSuccess = true;
+              } else if (depStatus === 'cancelled') {
+                title = 'Yêu cầu đặt cọc đã hủy';
+                desc = 'Yêu cầu đặt cọc liên kết với lịch hẹn này đã bị hủy.';
+              }
+
+              return (
+                <div className={`p-4 rounded-[16px] border flex items-start gap-3 ${
+                  isSuccess 
+                    ? 'bg-status-success/10 border-status-success/20' 
+                    : 'bg-primary/8 border-primary/15'
+                }`}>
+                  <CreditCard className={`w-5 h-5 shrink-0 mt-0.5 ${isSuccess ? 'text-status-success' : 'text-primary'}`} />
+                  <div>
+                    <p className={`text-sm font-semibold ${isSuccess ? 'text-status-success' : 'text-primary'}`}>{title}</p>
+                    <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">{desc}</p>
+                  </div>
                 </div>
-              </div>
-            ) : confirmingDeposit ? (
+              );
+            })() : confirmingDeposit ? (
               <div className="p-4 rounded-[16px] bg-[#f7f4ef] border border-[#d8c8b4]">
                 <p className="text-sm font-semibold text-primary">Bạn muốn gửi yêu cầu đặt cọc phòng này?</p>
                 <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
@@ -493,6 +517,7 @@ export default function ViewingSchedulePage() {
 
   const [allSchedules, setAllSchedules] = useState<ViewingSchedule[]>([]);
   const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
+  const [initialDepositScheduleIds, setInitialDepositScheduleIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -508,6 +533,7 @@ export default function ViewingSchedulePage() {
       );
       setAllSchedules(list);
       setDepositRequests(requests);
+      setInitialDepositScheduleIds(new Set(requests.map(r => r.viewing_schedule_id)));
       setIsLoading(false);
     }, 800);
   }, [user, navigate]);
@@ -531,8 +557,8 @@ export default function ViewingSchedulePage() {
     // Sort past schedules to push completed & deposit-request-less ones to the top
     if (activeTab === 'past') {
       tabFiltered.sort((a, b) => {
-        const aHasDep = depositRequests.some(r => r.viewing_schedule_id === a.id);
-        const bHasDep = depositRequests.some(r => r.viewing_schedule_id === b.id);
+        const aHasDep = initialDepositScheduleIds.has(a.id);
+        const bHasDep = initialDepositScheduleIds.has(b.id);
         
         // Prioritize completed over cancelled
         if (a.status === 'completed' && b.status !== 'completed') return -1;
@@ -559,7 +585,7 @@ export default function ViewingSchedulePage() {
       s.room_name.toLowerCase().includes(q) ||
       s.branch_name.toLowerCase().includes(q)
     );
-  }, [allSchedules, activeTab, searchQuery, depositRequests]);
+  }, [allSchedules, activeTab, searchQuery, initialDepositScheduleIds]);
 
   const handleCancel = (id: string) => {
     const db = getMockDB();

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, FileText, Printer, Download, CreditCard,
-  Building2, Phone, ShieldCheck, AlertCircle,
+  Building2, ShieldCheck, AlertCircle,
   FileSignature, CheckCircle2
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -676,43 +676,6 @@ export default function CustomerContractsPage() {
                 In bản hợp đồng
               </button>
             </div>
-          </div>
-
-          {/* Support Manager Card */}
-          <div className="bg-[#F6F2EC] text-[#5F5A52] border border-[#D8CEC0] rounded-3xl p-6 shadow-sm hover:shadow-md transition space-y-4 relative overflow-hidden">
-            {/* Subtle light accent overlay for depth */}
-            <div className="absolute -right-12 -bottom-12 w-28 h-28 bg-[#4F6B4E]/5 rounded-full blur-2xl pointer-events-none"></div>
-            
-            <div className="space-y-1">
-              <h3 className="text-base font-extrabold leading-tight text-[#4F6B4E]">Hỗ trợ hợp đồng</h3>
-              <p className="text-xs text-[#5F5A52] opacity-90 leading-relaxed">
-                Nếu bạn có bất kỳ thắc mắc nào về các điều khoản hoặc cần thực hiện gia hạn hợp đồng thuê phòng, vui lòng liên hệ trực tiếp:
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 bg-[#ECE6DE] rounded-2xl p-3 border border-[#D8CEC0]/60">
-              <div className="w-11 h-11 rounded-full bg-[#4F6B4E]/15 text-[#4F6B4E] flex items-center justify-center text-sm font-extrabold shrink-0 border border-[#4F6B4E]/25">
-                {(() => {
-                  const name = contract.managerName;
-                  const cleanName = name.replace(/^(mr|ms|mrs)\.?\s+/i, '');
-                  const parts = cleanName.trim().split(/\s+/);
-                  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-                  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                })()}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[#4e453c] truncate">{contract.managerName}</p>
-                <p className="text-[10px] text-[#5f5a52] opacity-85 truncate">{contract.branch}</p>
-              </div>
-            </div>
-
-            <a
-              href={`tel:${contract.managerPhone}`}
-              className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-[#D8CEC0] text-[#4F6B4E] text-xs font-bold rounded-xl hover:bg-[#4F6B4E] hover:text-white hover:border-[#4F6B4E] transition-all cursor-pointer active:scale-95 shadow-sm"
-            >
-              <Phone className="w-4 h-4" />
-              {contract.managerPhone.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')}
-            </a>
           </div>
 
         </div>

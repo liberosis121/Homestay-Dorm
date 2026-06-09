@@ -687,7 +687,8 @@ const INITIAL_DB = {
     { id: 'r-3', branch_id: 'b-2', name: 'Phòng 201 (Nam)', capacity: 8, current_occupants: 8, floor: 2, room_type: 'Dorm', gender_type: 'male', has_ac: false, has_private_wc: false, price: 900000, amenities: ['Wifi', 'Washing Machine'], image_url: roomDorm, status: 'occupied' },
     { id: 'r-4', branch_id: 'b-2', name: 'Phòng 202 (Nữ)', capacity: 6, current_occupants: 2, floor: 2, room_type: 'Twin', gender_type: 'female', has_ac: true, has_private_wc: true, price: 1200000, amenities: ['AC', 'Wifi', 'Washing Machine'], image_url: roomTwin, status: 'available' },
     { id: 'r-5', branch_id: 'b-1', name: 'Phòng 103 (Nam)', capacity: 6, current_occupants: 2, floor: 1, room_type: 'Dorm', gender_type: 'male', has_ac: true, has_private_wc: true, price: 1600000, amenities: ['AC', 'Wifi', 'Private WC', 'Washing Machine'], image_url: roomDorm, status: 'available' },
-    { id: 'r-6', branch_id: 'b-2', name: 'Phòng 203 (Nữ)', capacity: 2, current_occupants: 1, floor: 2, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2500000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV'], image_url: roomSingle, status: 'partial' }
+    { id: 'r-6', branch_id: 'b-2', name: 'Phòng 203 (Nữ)', capacity: 2, current_occupants: 1, floor: 2, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2500000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV'], image_url: roomSingle, status: 'partial' },
+    { id: 'r-7', branch_id: 'b-1', name: 'Phòng 104 (Nữ)', capacity: 4, current_occupants: 0, floor: 1, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2200000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen'], image_url: roomStudio, status: 'available' }
   ] as Room[],
   beds: [
     { id: 'bed-1-1', room_id: 'r-1', name: 'Giường A1', price: 1500000, status: 'available' },
@@ -751,8 +752,8 @@ const INITIAL_DB = {
       branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
       scheduled_date: '2026-06-03', scheduled_time: '10:00',
       staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
-      status: 'confirmed', timeline_step: 2,
-      note: 'Lịch hẹn ngày mai. Nhắc khách mang theo CCCD khi đến xem phòng.',
+      status: 'completed', timeline_step: 3,
+      note: 'Lịch hẹn xem phòng thành công. Khách rất ưng ý và muốn làm thủ tục đặt cọc.',
       created_at: '2026-05-30T10:00:00Z'
     },
     {
@@ -762,8 +763,8 @@ const INITIAL_DB = {
       branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
       scheduled_date: '2026-06-04', scheduled_time: '15:30',
       staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
-      status: 'pending', timeline_step: 1,
-      note: 'Khách muốn xem thử chất lượng wifi và khu vực giặt giũ công cộng.',
+      status: 'completed', timeline_step: 3,
+      note: 'Khách muốn xem thử chất lượng wifi và khu vực giặt giũ công cộng. Xem xong đã gửi yêu cầu cọc.',
       created_at: '2026-06-01T11:00:00Z'
     },
     {
@@ -778,14 +779,14 @@ const INITIAL_DB = {
       created_at: '2026-06-01T15:00:00Z'
     },
     {
-      id: 'vs-8', customer_id: 'u-6', room_id: 'r-2',
-      room_name: 'Phòng 102 (Nữ)',
+      id: 'vs-8', customer_id: 'u-6', room_id: 'r-7',
+      room_name: 'Phòng 104 (Nữ)',
       room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
       branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
       scheduled_date: '2026-05-28', scheduled_time: '14:30',
       staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
       status: 'completed', timeline_step: 3,
-      note: 'Khách rất ưng ý với thiết kế tủ đồ âm tường và bàn trang điểm có sẵn. Đang thảo luận thêm với gia đình về giá.',
+      note: 'Khách rất ưng ý với thiết kế và muốn làm thủ tục đặt cọc.',
       created_at: '2026-05-25T09:30:00Z'
     },
     {
@@ -795,8 +796,8 @@ const INITIAL_DB = {
       branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
       scheduled_date: '2026-05-31', scheduled_time: '16:00',
       staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
-      status: 'cancelled', timeline_step: 1,
-      note: 'Không liên lạc được với khách hàng sau 3 cuộc gọi xác nhận trước giờ hẹn.',
+      status: 'completed', timeline_step: 3,
+      note: 'Xem phòng hoàn tất và tiến hành cọc.',
       created_at: '2026-05-30T14:00:00Z'
     },
     {
