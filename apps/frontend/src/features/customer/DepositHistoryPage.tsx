@@ -156,7 +156,7 @@ export default function DepositHistoryPage() {
     };
   }, [selectedRequest]);
 
-  const handlePaymentSuccess = (method: 'qr' | 'wallet' | 'card') => {
+  const handlePaymentSuccess = (method: 'qr' | 'wallet' | 'card', proofImgUrl?: string) => {
     if (!selectedRequest || !user) return;
     const db = getMockDB();
     
@@ -171,7 +171,7 @@ export default function DepositHistoryPage() {
       deposit_type: 'room',
       amount: selectedRequest.deposit_amount,
       deposit_date: new Date().toISOString().split('T')[0],
-      bill_image_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
+      bill_image_url: proofImgUrl || 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
       bank_name: method === 'card' ? 'Thẻ Ngân hàng' : method === 'wallet' ? 'Ví điện tử' : 'Vietcombank',
       account_number: method === 'card' ? '1234567812345678' : '1012345678',
       status: 'pending',
