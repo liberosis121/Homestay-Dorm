@@ -73,7 +73,6 @@ import ManagerResidencyPage from './features/manager/ManagerResidencyPage';
 import ManagerHandoversPage from './features/manager/ManagerHandoversPage';
 import ManagerInspectionsPage from './features/manager/ManagerInspectionsPage';
 import ManagerAssetsPage from './features/manager/ManagerAssetsPage';
-import ManagerReportsPage from './features/manager/ManagerReportsPage';
 import ManagerContractsPage from './features/manager/ManagerContractsPage';
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
@@ -225,7 +224,6 @@ function DashboardLayout() {
           { path: '/manager/handovers', label: 'Bàn giao tài sản', icon: FileText },
           { path: '/manager/inspections', label: 'Kiểm kê trả phòng', icon: Activity },
           { path: '/manager/assets', label: 'Điều phối tài sản', icon: Settings },
-          { path: '/manager/asset-reports', label: 'Báo cáo tài sản', icon: Database },
           { path: '/sale/customers', label: 'Tra cứu khách hàng', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
@@ -487,7 +485,6 @@ function DashboardLayout() {
             {user.role === 'manager' && <Route path="/manager/handovers" element={<ManagerHandoversPage />} />}
             {user.role === 'manager' && <Route path="/manager/inspections" element={<ManagerInspectionsPage />} />}
             {user.role === 'manager' && <Route path="/manager/assets" element={<ManagerAssetsPage />} />}
-            {user.role === 'manager' && <Route path="/manager/asset-reports" element={<ManagerReportsPage />} />}
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
             {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
             {user.role === 'sale' && <Route path="/sale/contracts" element={<SaleContractsPage />} />}

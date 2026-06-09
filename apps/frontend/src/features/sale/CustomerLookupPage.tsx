@@ -296,7 +296,6 @@ export default function CustomerLookupPage() {
               {/* Profile Summary Header Card */}
               <CustomerProfileCard 
                 customer={activeCustomer} 
-                onActionEmail={() => alert(`Đã gửi email liên hệ thành công tới: ${activeCustomer.personalInfo.email}`)}
               />
 
               {/* Bottom Contents Grid Layout */}

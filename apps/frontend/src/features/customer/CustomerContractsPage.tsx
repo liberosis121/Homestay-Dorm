@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, FileText, Printer, Download, CreditCard,
   Building2, ShieldCheck, AlertCircle,
-  FileSignature, CheckCircle2
+  FileSignature, CheckCircle2, ClipboardList
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 
-interface ContractData {
+export interface ContractData {
   id: string;
   contractCode: string;
   signDate: string;
@@ -40,7 +40,7 @@ interface ContractData {
   managerImage: string;
 }
 
-const MOCK_CONTRACTS: ContractData[] = [
+export const MOCK_CONTRACTS: ContractData[] = [
   {
     id: 'c1',
     contractCode: 'HD-2023-089',
@@ -675,6 +675,15 @@ export default function CustomerContractsPage() {
                 <Printer className="w-4 h-4" />
                 In bản hợp đồng
               </button>
+              {(contract.status === 'active' || contract.status === 'expired') && (
+                <button
+                  onClick={() => navigate('/customer/checkout-request', { state: { contractId: contract.id } })}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#b87d4b] hover:bg-[#9c663b] text-white font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer shadow-sm"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Đăng ký trả phòng
+                </button>
+              )}
             </div>
           </div>
 

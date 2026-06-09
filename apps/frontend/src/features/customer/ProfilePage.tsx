@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { 
   User, Shield, Camera, ChevronRight, Lock, 
   Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
-  X, Eye, EyeOff, Check, Zap
+  X, Eye, EyeOff, Check, Zap, ClipboardList
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -338,6 +338,9 @@ export default function ProfilePage() {
                     </Link>
                     <Link to="/customer/services" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Zap className="w-5 h-5" /> Dịch vụ của tôi
+                    </Link>
+                    <Link to="/customer/checkout-request" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <ClipboardList className="w-5 h-5" /> Đăng ký trả phòng
                     </Link>
                     <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
                       <Compass className="w-5 h-5" /> Tìm phòng khác

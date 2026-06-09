@@ -315,36 +315,7 @@ export default function ManagerRoomsPage() {
                 </div>
               </div>
 
-              {/* Quick actions */}
-              <div>
-                <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Hành động nhanh</h4>
-                <div className="space-y-2">
-                  {[
-                    { label: 'Xem hóa đơn phòng', icon: 'receipt_long' },
-                    { label: 'Báo dọn dẹp phòng', icon: 'cleaning_services' },
-                    { label: 'Lập biên bản bàn giao', icon: 'assignment' },
-                  ].map((action, i) => (
-                    <button key={i} style={{ 
-                      width: '100%', 
-                      padding: '12px 14px', 
-                      borderRadius: 12, 
-                      border: `1px solid ${T.border}`, 
-                      background: T.surface, 
-                      cursor: 'pointer', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 10, 
-                      fontSize: 13, 
-                      color: T.text, 
-                      fontWeight: 600, 
-                      transition: 'all 0.15s ease-in-out' 
-                    }} className="hover:bg-[#FAF9F7] hover:border-primary/25 hover:text-primary active:scale-[0.98]">
-                      <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.primary }}>{action.icon}</span>
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
