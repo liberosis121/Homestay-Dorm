@@ -316,13 +316,14 @@ export interface AssetHandover {
   room_id: string;
   room_name: string;
   handover_date: string;
-  checklist: { item: string; condition: string; note?: string; checked: boolean }[];
+  checklist: { item: string; condition: string; note?: string; checked: boolean; quantity?: number }[];
   customer_signed: boolean;
   manager_signed: boolean;
   signature_ip?: string;
   signature_timestamp?: string;
   status: 'pending' | 'signed' | 'partial';
   created_at: string;
+  note?: string;
 }
 
 export interface AssetInspection {
@@ -1202,9 +1203,10 @@ function generateAssetHandovers(): AssetHandover[] {
     { item: 'Kệ sách / Kệ đa năng', condition: 'Tốt', checked: true },
     { item: 'Ổ cắm điện + USB', condition: '4 ổ, hoạt động tốt', checked: true }
   ];
-  const statuses: AssetHandover['status'][] = ['signed', 'signed', 'signed', 'pending', 'partial'];
+  const statuses: AssetHandover['status'][] = ['signed', 'signed', 'signed', 'partial', 'partial'];
   const list: AssetHandover[] = [];
   for (let i = 1; i <= 22; i++) {
+    const isSigned = statuses[i % statuses.length] === 'signed';
     list.push({
       id: `AHO-${4000 + i}`,
       customer_id: `u-mock-${400 + i}`,
@@ -1213,12 +1215,13 @@ function generateAssetHandovers(): AssetHandover[] {
       room_name: rooms[i % rooms.length],
       handover_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
       checklist: defaultChecklist.map(item => ({ ...item })),
-      customer_signed: i % 5 !== 4,
-      manager_signed: i % 5 !== 4,
-      signature_ip: i % 5 !== 4 ? `192.168.1.${10 + i}` : undefined,
-      signature_timestamp: i % 5 !== 4 ? new Date(2026, 4, 1 + (i % 28), 10, 30).toISOString() : undefined,
+      customer_signed: isSigned,
+      manager_signed: true,
+      signature_ip: '192.168.1.1',
+      signature_timestamp: new Date(2026, 4, 1 + (i % 28), 10, 30).toISOString(),
       status: statuses[i % statuses.length],
-      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
+      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString(),
+      note: 'Bàn giao đầy đủ trang thiết bị phòng, khách hàng đã kiểm tra và đồng ý nhận phòng.'
     });
   }
   return list;
