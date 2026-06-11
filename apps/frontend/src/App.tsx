@@ -71,7 +71,6 @@ import ManagerRoomsPage from './features/manager/ManagerRoomsPage';
 import ManagerDepositsPage from './features/manager/ManagerDepositsPage';
 import ManagerResidencyPage from './features/manager/ManagerResidencyPage';
 import ManagerHandoversPage from './features/manager/ManagerHandoversPage';
-import ManagerInspectionsPage from './features/manager/ManagerInspectionsPage';
 import ManagerAssetsPage from './features/manager/ManagerAssetsPage';
 import ManagerContractsPage from './features/manager/ManagerContractsPage';
 import Navbar from './components/ui/Navbar';
@@ -222,7 +221,6 @@ function DashboardLayout() {
           { path: '/manager/residency-checks', label: 'Kiểm tra lưu trú', icon: CheckCircle },
           { path: '/manager/contracts', label: 'Quản lý hợp đồng', icon: FileText },
           { path: '/manager/handovers', label: 'Bàn giao tài sản', icon: FileText },
-          { path: '/manager/inspections', label: 'Kiểm kê trả phòng', icon: Activity },
           { path: '/manager/assets', label: 'Điều phối tài sản', icon: Settings },
           { path: '/sale/customers', label: 'Tra cứu khách hàng', icon: Search },
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
@@ -483,7 +481,6 @@ function DashboardLayout() {
             {user.role === 'manager' && <Route path="/manager/residency-checks" element={<ManagerResidencyPage />} />}
             {user.role === 'manager' && <Route path="/manager/contracts" element={<ManagerContractsPage />} />}
             {user.role === 'manager' && <Route path="/manager/handovers" element={<ManagerHandoversPage />} />}
-            {user.role === 'manager' && <Route path="/manager/inspections" element={<ManagerInspectionsPage />} />}
             {user.role === 'manager' && <Route path="/manager/assets" element={<ManagerAssetsPage />} />}
             {user.role === 'sale' && <Route path="/sale/dashboard" element={<SaleDashboardPage />} />}
             {user.role === 'sale' && <Route path="/sale/schedules" element={<SaleSchedulesPage />} />}
