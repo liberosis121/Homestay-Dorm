@@ -326,25 +326,6 @@ export interface AssetHandover {
   note?: string;
 }
 
-export interface AssetInspection {
-  id: string;             // "INS-XXXX"
-  customer_id: string;
-  customer_name: string;
-  room_id: string;
-  room_name: string;
-  checkout_date: string;
-  items: {
-    name: string;
-    original_condition: string;
-    current_condition: 'good' | 'minor_damage' | 'major_damage' | 'missing';
-    compensation: number;
-  }[];
-  total_compensation: number;
-  evidence_urls: string[];
-  status: 'pending' | 'in_progress' | 'completed' | 'sent_to_accountant';
-  created_at: string;
-}
-
 export interface ManagedAsset {
   id: string;             // "AST-XXXX"
   name: string;
@@ -1061,7 +1042,6 @@ const INITIAL_DB = {
   manager_deposits: generateManagerDeposits(),
   residency_checks: generateResidencyChecks(),
   asset_handovers: generateAssetHandovers(),
-  asset_inspections: generateAssetInspections(),
   managed_assets: generateManagedAssets(),
   contracts: generateContracts()
 };
@@ -1222,36 +1202,6 @@ function generateAssetHandovers(): AssetHandover[] {
       status: statuses[i % statuses.length],
       created_at: new Date(2026, 4, 1 + (i % 28)).toISOString(),
       note: 'Bàn giao đầy đủ trang thiết bị phòng, khách hàng đã kiểm tra và đồng ý nhận phòng.'
-    });
-  }
-  return list;
-}
-
-function generateAssetInspections(): AssetInspection[] {
-  const names = ['Nguyễn Văn An', 'Trần Thị Bích', 'Lê Văn Cường', 'Phạm Thị Dung', 'Hoàng Anh Tuấn', 'Đỗ Mỹ Linh', 'Nguyễn Thị Sâm', 'Bùi Văn Hải', 'Phan Thanh Tùng', 'Ngô Quốc Bảo'];
-  const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)'];
-  const statuses: AssetInspection['status'][] = ['pending', 'in_progress', 'completed', 'sent_to_accountant'];
-  const list: AssetInspection[] = [];
-  for (let i = 1; i <= 21; i++) {
-    const hasIssues = i % 3 !== 0;
-    list.push({
-      id: `INS-${5000 + i}`,
-      customer_id: `u-mock-${500 + i}`,
-      customer_name: names[i % names.length],
-      room_id: `r-${(i % 5) + 1}`,
-      room_name: rooms[i % rooms.length],
-      checkout_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
-      items: [
-        { name: 'Giường đơn + nệm', original_condition: 'Tốt', current_condition: hasIssues && i % 7 === 0 ? 'minor_damage' : 'good', compensation: hasIssues && i % 7 === 0 ? 200000 : 0 },
-        { name: 'Tủ quần áo', original_condition: 'Tốt', current_condition: hasIssues && i % 5 === 0 ? 'major_damage' : 'good', compensation: hasIssues && i % 5 === 0 ? 500000 : 0 },
-        { name: 'Bàn học + ghế', original_condition: 'Tốt', current_condition: hasIssues && i % 4 === 0 ? 'minor_damage' : 'good', compensation: hasIssues && i % 4 === 0 ? 150000 : 0 },
-        { name: 'Máy lạnh (1.5HP)', original_condition: 'Tốt', current_condition: 'good', compensation: 0 },
-        { name: 'Khóa cửa điện tử', original_condition: 'Hoạt động tốt', current_condition: hasIssues && i % 6 === 0 ? 'missing' : 'good', compensation: hasIssues && i % 6 === 0 ? 800000 : 0 }
-      ],
-      total_compensation: hasIssues ? [0, 200000, 500000, 150000, 800000, 650000][i % 6] : 0,
-      evidence_urls: hasIssues ? ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=300&q=80'] : [],
-      status: statuses[i % statuses.length],
-      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
     });
   }
   return list;
