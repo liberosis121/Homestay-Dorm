@@ -288,7 +288,7 @@ export default function AccountantMonthlyPage() {
             onChange={setSelectedPeriod}
             options={periodOptions}
             theme="accountant"
-            className="w-40"
+            className="w-48"
           />
           <CustomSelect
             value={selectedBranch}
