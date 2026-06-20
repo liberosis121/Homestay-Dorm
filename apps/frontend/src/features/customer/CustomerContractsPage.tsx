@@ -76,7 +76,7 @@ export default function CustomerContractsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-32 flex flex-col items-center justify-center space-y-4">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-32 flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
         <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin hợp đồng...</p>
       </div>
@@ -85,7 +85,7 @@ export default function CustomerContractsPage() {
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-16 space-y-6">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 space-y-6">
         <button
           type="button"
           onClick={() => navigate('/profile')}
@@ -111,7 +111,7 @@ export default function CustomerContractsPage() {
 
   if (contractsList.length === 0) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-16 space-y-6">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 space-y-6">
         <button
           type="button"
           onClick={() => navigate('/profile')}
@@ -165,7 +165,7 @@ export default function CustomerContractsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 animate-fade-in-up">
+    <div className="max-w-[1440px] mx-auto px-4 md:px-8 pt-0 pb-8 space-y-6 animate-fade-in-up">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-24 right-6 z-50 bg-[#334537] text-white border border-[#4a5d4e] px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-2.5 animate-slide-in-right">
