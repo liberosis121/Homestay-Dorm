@@ -62,6 +62,8 @@ export default function AdminUsersPage() {
   );
   const [showAddModal, setShowAddModal] = useState(false);
   const [confirmLockCustomer, setConfirmLockCustomer] = useState<CustomerRow | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   // Load from database
   useEffect(() => {
@@ -140,6 +142,20 @@ export default function AdminUsersPage() {
       return matchQ && matchRent && matchAcct;
     });
   }, [customers, search, filterRent, filterAcct]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterRent, filterAcct]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  }, [filtered]);
+
+  const displayedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
 
   const confirmToggleLock = async () => {
     if (!confirmLockCustomer) return;
@@ -427,7 +443,7 @@ export default function AdminUsersPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((c, i) => {
+                displayedCustomers.map((c, i) => {
                   const rentInfo = STATUS_MAP[c.status];
                   const acctInfo = ACCT_MAP[c.accountStatus];
                   return (
@@ -566,23 +582,28 @@ export default function AdminUsersPage() {
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}
         >
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {customers.length} khách hàng
+            Hiển thị {filtered.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} -{" "}
+            {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} trong số{" "}
+            {filtered.length} khách hàng
           </p>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3].map((n) => (
-              <button
-                key={n}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors"
-                style={
-                  n === 1
-                    ? { background: A.primary, color: "#fff" }
-                    : { color: A.textPrimary }
-                }
-              >
-                {n}
-              </button>
-            ))}
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCurrentPage(n)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors"
+                  style={
+                    n === currentPage
+                      ? { background: A.primary, color: "#fff" }
+                      : { color: A.textPrimary }
+                  }
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
