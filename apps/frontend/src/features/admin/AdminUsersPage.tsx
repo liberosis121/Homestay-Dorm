@@ -517,7 +517,7 @@ export default function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
