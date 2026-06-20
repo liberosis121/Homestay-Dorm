@@ -330,7 +330,7 @@ export default function ProfilePage() {
                   </>
                 ) : (
                   <>
-                    <Link to="/customer/invoices" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                    <Link to="/customer/invoices" state={{ from: '/profile' }} className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <CreditCard className="w-5 h-5" /> Hóa đơn &amp; Thanh toán
                     </Link>
                     <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">

@@ -47,7 +47,7 @@ export const useCustomerServicesStore = create<CustomerServicesState>((set, get)
   subscriptions: [],
   consumptionRecords: [],
   filters: DEFAULT_FILTERS,
-  activeTab: 'catalog',
+  activeTab: 'active',
   registrationModal: { open: false, service: null },
   detailModal: { open: false, service: null },
   cancelConfirm: { open: false, subscriptionId: null },
