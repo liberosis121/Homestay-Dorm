@@ -438,7 +438,7 @@ function GuestServicesView({
   }, [services, search, category, priceRange, feeType]);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8">
+    <div className="max-w-[1440px] mx-auto px-4 md:px-8 pt-0 pb-8">
       {/* Header Summary */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div className="max-w-2xl">
@@ -981,7 +981,7 @@ function RenterServicesView({
   }, [chartMonths]);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8">
+    <div className="max-w-[1440px] mx-auto px-4 md:px-8 pt-0 pb-8">
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
