@@ -4,6 +4,7 @@ import contractRoutes from './contract.routes';
 import invoiceRoutes from './invoice.routes';
 import serviceRegistrationRoutes from './service-registration.routes';
 import checkoutRoutes from './checkout.routes';
+import adminCustomersRoutes from './admin-customers.routes';
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use('/contracts', contractRoutes);
 router.use('/invoices', invoiceRoutes);
 router.use('/service-registrations', serviceRegistrationRoutes);
 router.use('/checkouts', checkoutRoutes);
+router.use('/admin', adminCustomersRoutes);
 
 export default router;

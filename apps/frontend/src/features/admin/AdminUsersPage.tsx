@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { getMockDB } from "../../lib/supabaseClient";
+import { fetchAdminCustomers, toggleCustomerLockApi } from "./services/admin.service";
 
 // ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
 const A = {
@@ -63,32 +63,28 @@ export default function AdminUsersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [confirmLockCustomer, setConfirmLockCustomer] = useState<CustomerRow | null>(null);
 
-  // Load from mock DB
+  // Load from database
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      const db = getMockDB();
-      const rows: CustomerRow[] = (db.customers || []).map(
-        (c: any, idx: number) => ({
-          id: `KH-${String(idx + 1).padStart(3, "0")}`,
-          full_name: c.full_name || "Khách hàng",
-          email: c.email || "",
-          phone: c.phone || "09x xxx xxxx",
-          renting_room_name: c.renting_room_name,
-          status: c.renting_room_name ? "renting" : "not_renting",
-          accountStatus: "active",
-          joinDate: c.created_at
-            ? new Date(c.created_at).toLocaleDateString("vi-VN")
-            : "01/01/2024",
-          note: "",
-        }),
-      );
-      // Add mock locked account for demo
-      if (rows.length > 2) rows[2].accountStatus = "locked";
-      setCustomers(rows);
-      setIsLoading(false);
-    }, 450);
-    return () => clearTimeout(timer);
+    let active = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const rows = await fetchAdminCustomers();
+        if (active) {
+          setCustomers(rows);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải khách hàng:", err);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const kpis = useMemo(() => {
@@ -145,23 +141,29 @@ export default function AdminUsersPage() {
     });
   }, [customers, search, filterRent, filterAcct]);
 
-  const confirmToggleLock = () => {
+  const confirmToggleLock = async () => {
     if (!confirmLockCustomer) return;
-    const nextStatus =
-      confirmLockCustomer.accountStatus === "active" ? "locked" : "active";
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.id === confirmLockCustomer.id
-          ? { ...c, accountStatus: nextStatus }
-          : c,
-      ),
-    );
-    if (selectedCustomer?.id === confirmLockCustomer.id) {
-      setSelectedCustomer((prev) =>
-        prev ? { ...prev, accountStatus: nextStatus } : null,
+    try {
+      const res = await toggleCustomerLockApi(confirmLockCustomer.id);
+      const nextStatus = res.accountStatus;
+      setCustomers((prev) =>
+        prev.map((c) =>
+          c.id === confirmLockCustomer.id
+            ? { ...c, accountStatus: nextStatus }
+            : c
+        )
       );
+      if (selectedCustomer?.id === confirmLockCustomer.id) {
+        setSelectedCustomer((prev) =>
+          prev ? { ...prev, accountStatus: nextStatus } : null
+        );
+      }
+    } catch (err) {
+      console.error("Lỗi khi thay đổi khóa:", err);
+      alert("Không thể thay đổi trạng thái khóa tài khoản!");
+    } finally {
+      setConfirmLockCustomer(null);
     }
-    setConfirmLockCustomer(null);
   };
 
   const formatCurrency = (amount: number) =>
@@ -169,54 +171,7 @@ export default function AdminUsersPage() {
 
   const invoiceItems = useMemo(() => {
     if (!selectedCustomer) return [];
-
-    const db = getMockDB() as any;
-    const normalize = (value: string | undefined) =>
-      (value || "").toLowerCase().trim();
-    const matchByName = (value: string | undefined) =>
-      normalize(value) === normalize(selectedCustomer.full_name);
-    const toDateValue = (value?: string) =>
-      value ? new Date(value.replace(" ", "T")).getTime() : 0;
-
-    const depositItems = (db.deposit_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Đặt cọc",
-        room: inv.room_name,
-        amount: inv.amount,
-        status: inv.status,
-        dateLabel: inv.created_at,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    const checkinItems = (db.checkin_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Nhận phòng",
-        room: inv.room_name,
-        amount: inv.total,
-        status: inv.status,
-        dateLabel: inv.created_at,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    const monthlyItems = (db.monthly_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Định kỳ",
-        room: inv.room_name,
-        amount: inv.total,
-        status: inv.status,
-        dateLabel: `Kỳ ${inv.period}`,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    return [...depositItems, ...checkinItems, ...monthlyItems].sort(
-      (a, b) => b.sortValue - a.sortValue,
-    );
+    return (selectedCustomer as any).invoices || [];
   }, [selectedCustomer]);
 
   const invoiceStatusMap: Record<string, { label: string; cls: string }> = {
@@ -869,7 +824,7 @@ export default function AdminUsersPage() {
                       Chưa có hóa đơn cho khách hàng này.
                     </p>
                   ) : (
-                    invoiceItems.map((inv) => {
+                    invoiceItems.map((inv: any) => {
                       const status = invoiceStatusMap[inv.status] || {
                         label: "Không xác định",
                         cls: "bg-gray-100 text-gray-600",
