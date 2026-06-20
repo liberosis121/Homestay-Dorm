@@ -72,24 +72,54 @@ flowchart TB
 
 ---
 
-## 🚀 Hướng dẫn cài đặt và chạy thử (Local Development)
+## 🚀 Hướng dẫn cài đặt và cấu hình (Local Development)
 
-Đảm bảo máy đã cài đặt **Node.js** (Khuyên dùng v18 hoặc v20) và **pnpm** (`npm i -g pnpm`).
+Để chuẩn bị môi trường lập trình local, hãy đảm bảo máy bạn đã cài đặt **Node.js** (v18 hoặc v20) và công cụ quản lý thư viện **pnpm** (`npm i -g pnpm`).
 
+### 1. Tải dự án và cài đặt thư viện
+Mở Terminal ở thư mục làm việc của bạn và chạy:
 ```bash
-# 1. Clone repository về máy
-git clone <repository_url>
-cd ProjectPTTK
+# Clone repository về máy
+git clone https://github.com/liberosis121/Homestay-Dorm.git
+cd Homestay-Dorm
 
-# 2. Cài đặt các package phụ thuộc cho toàn bộ workspace
+# Cài đặt toàn bộ thư viện cho cả Frontend và Backend (Monorepo)
 pnpm install
-
-# 3. Khởi chạy dự án ở chế độ phát triển (chạy Frontend Demo)
-pnpm --filter frontend dev
 ```
 
-Ứng dụng sẽ chạy tại địa chỉ: `http://localhost:5173`. 
-Bạn có thể đăng nhập bằng các tài khoản test có sẵn hiển thị trên màn hình `/login` hoặc dùng thanh chuyển đổi vai trò nhanh (Demo Switcher) ở thanh công cụ phía trên cùng.
+### 2. Cấu hình biến môi trường (.env)
+Bạn cần tạo các file cấu hình môi trường sau ở máy local:
+
+*   **Tại Backend (`apps/backend/.env`)**: Tạo file `.env` và nhập cấu hình:
+    ```env
+    PORT=3001
+    SUPABASE_URL=https://mtbhyikorukkxjkrabgt.supabase.co
+    SUPABASE_SERVICE_ROLE_KEY=[Liên hệ Yến để lấy Service Role Key bảo mật]
+    ```
+
+*   **Tại Frontend (`apps/frontend/.env.local`)**: Tạo file `.env.local` và nhập cấu hình:
+    ```env
+    VITE_SUPABASE_URL=https://mtbhyikorukkxjkrabgt.supabase.co
+    VITE_SUPABASE_ANON_KEY=[Liên hệ Yến để lấy Anon Key bảo mật]
+    VITE_API_URL=http://localhost:3001
+    ```
+
+### 3. Chạy dự án dưới local
+Từ thư mục gốc của dự án, bạn có thể chạy đồng thời cả Frontend và Backend bằng lệnh song song:
+```bash
+pnpm dev
+```
+*   **Giao diện Frontend (Vite)** sẽ chạy tại: `http://localhost:5173`
+*   **Server Backend (Express)** sẽ chạy tại: `http://localhost:3001`
+
+*(Nếu bạn muốn chạy riêng lẻ từng ứng dụng, sử dụng lệnh: `pnpm --filter frontend dev` hoặc `pnpm --filter backend dev`).*
+
+### 4. Tài khoản kiểm thử (Password mặc định: `123456`)
+Dữ liệu mẫu đã được nạp sẵn vào CSDL Supabase, bạn có thể đăng nhập trực tiếp:
+*   **Quản lý (Manager):** `manager@homestay.vn`
+*   **Kế toán (Accountant):** `accountant@homestay.vn`
+*   **Nhân viên Sale:** `sale@homestay.vn`
+*   **Khách hàng (Customer):** `customer1@gmail.com`
 
 ---
 
@@ -180,53 +210,52 @@ Dự án ưu tiên hoàn thiện lớp giao diện và trải nghiệm tương t
 
 ---
 
-## 🔁 Git Workflow
+## 🔁 Git Workflow (Quy trình làm việc nhóm)
 
-Quy trình làm việc với Git cho các thành viên trong dự án nhằm đảm bảo quản lý mã nguồn an toàn và tránh xung đột:
+Để tránh tình trạng xung đột mã nguồn (Merge Conflict) và giữ cho lịch sử commit gọn gàng, nhóm chúng ta sẽ áp dụng quy trình làm việc theo **Tính năng (Feature-based Branching)** thay vì gộp chung code theo tên thành viên:
 
-### 1. Phân loại nhánh (Branch Strategy)
-*   **`main`**: Nhánh stable chỉ dùng cho sản phẩm cuối cùng (báo cáo, triển khai thực tế). **Tuyệt đối không commit hay phát triển trực tiếp trên nhánh này**.
-*   **`dev`**: Nhánh tích hợp (integration) của cả nhóm. Mọi tính năng hoàn thành sẽ được merge vào đây trước để kiểm thử. **Không commit trực tiếp lên dev**.
-*   **Các nhánh tính năng (`feature branches`)**: Nhánh làm việc riêng của từng thành viên, được tạo ra từ `dev`.
-    *   *Quy tắc đặt tên nhánh tính năng:* `<tên-thành-viên>-<tên-chức-năng>`. Ví dụ: `kyen-fe`, `member-login`, `member-booking`, `member-backend`.
+### 1. Các nhánh chính
+*   **`main`**: Nhánh chạy bản Product chính thức (Dùng để demo, báo cáo cuối môn). Cấm commit trực tiếp lên nhánh này.
+*   **`dev`**: Nhánh phát triển chung của cả nhóm. Code của tất cả thành viên sau khi hoàn thành sẽ được gộp vào đây. Cấm commit trực tiếp lên nhánh này.
 
-### 2. Sơ đồ nhánh
-```
-main
-└── dev
-    ├── kyen-fe
-    ├── member-login
-    ├── member-backend
-    └── member-admin
-```
+### 2. Nhánh tính năng (`feature/[tên-tính-năng]`)
+Mỗi khi làm một task/chức năng mới, thành viên tự tạo một nhánh riêng từ `dev`.
+*   *Cú pháp:* `feature/tên-chức-năng`
+*   *Ví dụ:* `feature/quan-ly-phong`, `feature/auth-backend`, `feature/lap-hoa-don`.
+*   **Lợi ích:** Tránh xung đột code; nếu một tính năng của bạn bị lỗi hoặc chưa hoàn thành, nó sẽ không ảnh hưởng đến những tính năng khác đã hoàn thành và chuẩn bị merge vào `dev`.
 
-### 3. Quy trình phát triển (Workflow các bước)
+### 3. Quy trình làm việc 4 bước chi tiết
 
-#### Bước 1: Chuẩn bị nhánh làm việc
-Trước khi code bất kỳ chức năng nào, hãy chuyển sang nhánh cá nhân của bạn và kéo code mới nhất từ nhánh `dev` về để tránh xung đột:
+#### 📌 Bước 1: Đồng bộ code mới nhất
+Trước khi bắt đầu code tính năng mới, chuyển về nhánh `dev` và kéo code mới nhất của nhóm về máy:
 ```bash
-# Chuyển sang nhánh cá nhân (ví dụ kyen-fe)
-git checkout kyen-fe
-
-# Cập nhật code mới nhất từ dev
+git checkout dev
 git pull origin dev
 ```
 
-#### Bước 2: Commit và Push thay đổi
-Chỉ làm việc trên nhánh cá nhân của bạn, sau đó commit kèm theo commit message có ý nghĩa:
+#### 📌 Bước 2: Tạo nhánh tính năng mới
+Tạo nhánh mới từ `dev` để bắt đầu code:
 ```bash
-# Add file thay đổi
-git add .
-
-# Commit thay đổi
-git commit -m "feat: thêm giao diện đăng nhập và đổi mật khẩu"
-
-# Push nhánh lên remote repository
-git push origin kyen-fe
+git checkout -b feature/ten-chức-năng-cua-ban
 ```
 
-#### Bước 3: Tạo Pull Request (PR)
-Khi tính năng hoàn thành và đã kiểm thử chạy tốt ở local:
-1. Tạo một Pull Request trên GitHub từ nhánh tính năng của bạn vào nhánh `dev` (ví dụ: `kyen-fe` -> `dev`).
-2. Nhóm sẽ review code, giải quyết xung đột (conflict nếu có) và duyệt PR để tích hợp.
-3. Sau khi tích hợp và chạy thử ổn định trên nhánh `dev`, code từ `dev` mới được merge vào nhánh `main` để release (`dev` -> `main`).
+#### 📌 Bước 3: Commit và Push code lên GitHub
+Trong quá trình code, hãy thường xuyên commit kèm thông điệp có ý nghĩa:
+```bash
+git add .
+git commit -m "feat: thêm giao diện lập hóa đơn điện nước"
+git push origin feature/ten-chức-năng-cua-ban
+```
+
+#### 📌 Bước 4: Tạo Pull Request (PR) và Duyệt code
+1.  Truy cập vào repository GitHub của dự án, bạn sẽ thấy gợi ý tạo **Pull Request (PR)** từ nhánh bạn vừa push vào nhánh `dev`.
+2.  Tạo PR và báo Trưởng nhóm (Yến) review duyệt code.
+3.  Sau khi PR được duyệt và merge thành công vào `dev`, bạn có thể xóa nhánh tính năng đó đi cho gọn repository.
+
+---
+
+## 🌐 Đường link chạy thử Online (Production)
+
+Hệ thống được deploy tự động (CI/CD) mỗi khi có code mới được gộp vào nhánh `main`:
+*   **Giao diện ứng dụng (Frontend - Vercel)**: [https://homestay-dorm-frontend.vercel.app](https://homestay-dorm-frontend.vercel.app)
+*   **Địa chỉ API Server (Backend - Render)**: [https://homestay-dorm.onrender.com](https://homestay-dorm.onrender.com)
