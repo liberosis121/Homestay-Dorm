@@ -659,7 +659,7 @@ const INITIAL_DB = {
     { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556', renting_room_name: 'Phòng 101 (Nam)', avatar_url: avatarCustomer },
     { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900', avatar_url: avatarNewCustomer },
     // Sync with real DB profiles
-    { id: 'c001c001-c001-c001-c001-c001c001c001', email: 'customer1@gmail.com', role: 'customer', full_name: 'Phạm Thị Khách Hàng 1', phone: '0944445566', avatar_url: avatarCustomer },
+    { id: 'c001c001-c001-c001-c001-c001c001c001', email: 'customer1@gmail.com', role: 'customer', full_name: 'Phạm Thị Khách Hàng 1', phone: '0944445566', renting_room_name: 'P-101', avatar_url: avatarCustomer },
     { id: 'c002c002-c002-c002-c002-c002c002c002', email: 'customer2@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Khách Hàng 2', phone: '0955556677', avatar_url: avatarCustomer },
     { id: 'c003c003-c003-c003-c003-c003c003c003', email: 'customer3@gmail.com', role: 'customer', full_name: 'Lê Thị Khách Hàng 3', phone: '0966667788', avatar_url: avatarCustomer },
     { id: 'e001e001-e001-e001-e001-e001e001e001', email: 'sale@homestay.vn', role: 'sale', full_name: 'Nguyễn Văn Sale', phone: '0901234567', avatar_url: avatarSale },

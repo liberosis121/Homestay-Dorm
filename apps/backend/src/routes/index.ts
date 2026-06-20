@@ -2,11 +2,13 @@ import { Router } from 'express';
 import authRoutes from './auth.routes';
 import contractRoutes from './contract.routes';
 import invoiceRoutes from './invoice.routes';
+import serviceRegistrationRoutes from './service-registration.routes';
 
 const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/contracts', contractRoutes);
 router.use('/invoices', invoiceRoutes);
+router.use('/service-registrations', serviceRegistrationRoutes);
 
 export default router;
