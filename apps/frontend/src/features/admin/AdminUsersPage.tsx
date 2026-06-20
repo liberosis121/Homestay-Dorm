@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchAdminCustomers, toggleCustomerLockApi } from "./services/admin.service";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 // ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
 const A = {
@@ -64,6 +65,20 @@ export default function AdminUsersPage() {
   const [confirmLockCustomer, setConfirmLockCustomer] = useState<CustomerRow | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
+
+  const rentOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "renting", label: "Đang thuê" },
+    { value: "not_renting", label: "Chưa thuê" },
+    { value: "pending", label: "Chờ duyệt" },
+    { value: "checked_out", label: "Đã trả phòng" }
+  ];
+
+  const acctOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "active", label: "Hoạt động" },
+    { value: "locked", label: "Bị khóa" }
+  ];
 
   // Load from database
   useEffect(() => {
@@ -308,36 +323,22 @@ export default function AdminUsersPage() {
             onBlur={(e) => (e.currentTarget.style.borderColor = A.border)}
           />
         </div>
-        <select
+        <CustomSelect
           value={filterRent}
-          onChange={(e) => setFilterRent(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Trạng thái thuê</option>
-          <option value="renting">Đang thuê</option>
-          <option value="not_renting">Chưa thuê</option>
-          <option value="pending">Chờ duyệt</option>
-          <option value="checked_out">Đã trả phòng</option>
-        </select>
-        <select
+          onChange={setFilterRent}
+          options={rentOptions}
+          placeholder="Trạng thái thuê"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[180px]"
+        />
+        <CustomSelect
           value={filterAcct}
-          onChange={(e) => setFilterAcct(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Trạng thái tài khoản</option>
-          <option value="active">Hoạt động</option>
-          <option value="locked">Bị khóa</option>
-        </select>
+          onChange={setFilterAcct}
+          options={acctOptions}
+          placeholder="Trạng thái tài khoản"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[190px]"
+        />
         <button
           onClick={() => {
             setSearch("");
@@ -381,7 +382,7 @@ export default function AdminUsersPage() {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
                     style={{ color: A.textMuted }}
                   >
                     {h}
@@ -657,14 +658,20 @@ export default function AdminUsersPage() {
                   >
                     {selectedCustomer.full_name}
                   </h3>
-                  <p className="text-sm" style={{ color: A.textMuted }}>
-                    Mã: {selectedCustomer.id} •{" "}
+                  <p className="text-xs break-all mt-1" style={{ color: A.textMuted }}>
+                    Mã: {selectedCustomer.id}
+                  </p>
+                  <div className="mt-2 flex justify-center">
                     <span
-                      className={ACCT_MAP[selectedCustomer.accountStatus].text}
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        selectedCustomer.accountStatus === "active"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-red-50 text-red-700 border border-red-200"
+                      }`}
                     >
                       {ACCT_MAP[selectedCustomer.accountStatus].label}
                     </span>
-                  </p>
+                  </div>
                 </div>
               </div>
 
@@ -699,58 +706,64 @@ export default function AdminUsersPage() {
               {/* Tab Content */}
               {drawerTab === "info" && (
                 <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                  <div
+                    className="rounded-xl p-4 space-y-4"
+                    style={{
+                      background: A.sidebar,
+                      border: `1px solid ${A.border}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Email
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.email || "Chưa cập nhật"}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Điện thoại
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.phone}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Ngày tạo tài khoản
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.joinDate}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Trạng thái
-                      </p>
+                      </span>
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-0.5 ${STATUS_MAP[selectedCustomer.status].cls}`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_MAP[selectedCustomer.status].cls}`}
                       >
                         {STATUS_MAP[selectedCustomer.status].label}
                       </span>
@@ -790,7 +803,7 @@ export default function AdminUsersPage() {
               {drawerTab === "history" && (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm" style={{ color: A.textMuted }}>
-                    Lịch sử các hợp đồng thuê phòng của khách hàng.
+                    Lịch sử các hợp đồng thuê phòng của khách hàng
                   </p>
                   {selectedCustomer.renting_room_name ? (
                     <div
@@ -835,7 +848,7 @@ export default function AdminUsersPage() {
               {drawerTab === "invoice" && (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm" style={{ color: A.textMuted }}>
-                    Danh sách hóa đơn của khách hàng.
+                    Danh sách hóa đơn của khách hàng
                   </p>
                   {invoiceItems.length === 0 ? (
                     <p
@@ -879,12 +892,10 @@ export default function AdminUsersPage() {
                             >
                               {inv.id}
                             </p>
-                            <p
-                              className="text-xs"
-                              style={{ color: A.textMuted }}
-                            >
-                              {inv.room || "Chưa có phòng"} • {inv.dateLabel}
-                            </p>
+                            <div className="flex flex-col gap-0.5 mt-1 text-xs" style={{ color: A.textMuted }}>
+                              <p>Phòng: <span className="font-medium" style={{ color: A.textPrimary }}>{inv.room || "Chưa có phòng"}</span></p>
+                              <p>Thanh toán: <span className="font-medium" style={{ color: A.textPrimary }}>{inv.dateLabel}</span></p>
+                            </div>
                           </div>
                           <div
                             className="text-sm font-semibold"
@@ -920,7 +931,10 @@ export default function AdminUsersPage() {
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
                 Thêm khách hàng mới
               </h2>
-              <button onClick={() => setShowAddModal(false)}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-full hover:bg-[#d1c4b9]/30 transition-all active:scale-95 flex items-center justify-center"
+              >
                 <span
                   className="material-symbols-outlined"
                   style={{ color: A.textMuted }}
@@ -940,26 +954,21 @@ export default function AdminUsersPage() {
                 <input
                   type={label === "Mật khẩu" ? "password" : "text"}
                   placeholder={`Nhập ${label.toLowerCase()}...`}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.bg,
-                    color: A.textPrimary,
-                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
             ))}
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-black/5 active:scale-95 cursor-pointer"
                 style={{ borderColor: A.border, color: A.textMuted }}
               >
                 Hủy
               </button>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:bg-[#5e4b33] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
                 style={{ background: A.primary }}
               >
                 Tạo tài khoản
