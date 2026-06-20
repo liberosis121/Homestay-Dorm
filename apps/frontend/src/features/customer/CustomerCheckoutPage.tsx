@@ -57,7 +57,7 @@ export const CustomerCheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const stateContractId = location.state?.contractId;
-  const { requests, submitRequest, cancelRequest } = useCheckoutStore();
+  const { requests, submitRequest, cancelRequest, loadRequests } = useCheckoutStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -69,14 +69,17 @@ export const CustomerCheckoutPage: React.FC = () => {
   useEffect(() => {
     if (user?.email) {
       setLoading(true);
-      fetchMyContracts(user.email)
-        .then((data) => {
-          setContractsList(data || []);
-          setError(null);
+      setError(null);
+      Promise.all([
+        fetchMyContracts(user.email),
+        loadRequests(user.email)
+      ])
+        .then(([contractsData]) => {
+          setContractsList(contractsData || []);
         })
-        .catch((err) => {
-          console.error('Error fetching contracts for checkout:', err);
-          setError(err.message || 'Không thể tải thông tin hợp đồng');
+        .catch((err: any) => {
+          console.error('Error loading checkout page data:', err);
+          setError(err.message || 'Không thể tải thông tin trang trả phòng');
         })
         .finally(() => {
           setLoading(false);
@@ -84,7 +87,7 @@ export const CustomerCheckoutPage: React.FC = () => {
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, loadRequests]);
 
   if (loading) {
     return (
@@ -134,7 +137,6 @@ export const CustomerCheckoutPage: React.FC = () => {
     : { branchName: 'Chưa chọn', roomName: 'Chưa chọn', bedName: 'Chưa chọn', contractId: 'Chưa chọn', depositAmount: 0, dueDate: '' };
 
   const currentUserId = user?.id || 'u-5';
-  const currentUserName = user?.full_name || 'Lê Lâm Trí Đức';
 
   const userRequests = requests.filter(r => r.customerId === currentUserId);
 
@@ -156,21 +158,20 @@ export const CustomerCheckoutPage: React.FC = () => {
     ? { branchName: activeRequest.branchName, roomName: activeRequest.roomName, bedName: activeRequest.bedName, contractId: activeRequest.contractId, depositAmount: activeRequest.depositAmount }
     : currentRentInfo;
 
-  const handleFormSubmit = (formData: any) => {
+  const handleFormSubmit = async (formData: any) => {
+    if (!user?.email) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      submitRequest({
-        customerId: currentUserId,
-        customerName: currentUserName,
-        branchName: currentRentInfo.branchName,
-        roomName: currentRentInfo.roomName,
-        bedName: currentRentInfo.bedName,
+    try {
+      await submitRequest(user.email, {
         contractId: currentRentInfo.contractId,
-        depositAmount: currentRentInfo.depositAmount,
         ...formData,
       });
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Có lỗi xảy ra khi gửi yêu cầu trả phòng.');
+    } finally {
       setIsSubmitting(false);
-    }, 1200);
+    }
   };
 
   const activeStatusCfg = activeRequest ? getStatusConfig(activeRequest.status) : null;
@@ -323,7 +324,15 @@ export const CustomerCheckoutPage: React.FC = () => {
               {activeRequest.status === 'rejected' && (
                 <div className="pt-4 border-t border-outline-variant/40 flex justify-end">
                   <button
-                    onClick={() => cancelRequest(activeRequest.id)}
+                    onClick={async () => {
+                      if (user?.email && activeRequest) {
+                        try {
+                          await cancelRequest(user.email, activeRequest.id);
+                        } catch (err: any) {
+                          alert(err.message || 'Có lỗi xảy ra khi xóa yêu cầu.');
+                        }
+                      }
+                    }}
                     className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary font-semibold text-sm px-5 py-2.5 rounded-full transition cursor-pointer"
                   >
                     <ClipboardList className="w-4 h-4" />
@@ -487,8 +496,14 @@ export const CustomerCheckoutPage: React.FC = () => {
                 Giữ lại
               </button>
               <button
-                onClick={() => {
-                  cancelRequest(activeRequest.id);
+                onClick={async () => {
+                  if (user?.email && activeRequest) {
+                    try {
+                      await cancelRequest(user.email, activeRequest.id);
+                    } catch (err: any) {
+                      alert(err.message || 'Có lỗi xảy ra khi hủy yêu cầu.');
+                    }
+                  }
                   setShowCancelConfirm(false);
                 }}
                 className="px-5 py-2.5 rounded-full bg-error hover:bg-error/90 text-white text-sm font-semibold transition cursor-pointer"
