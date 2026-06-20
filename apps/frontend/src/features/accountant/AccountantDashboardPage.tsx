@@ -292,17 +292,17 @@ export default function AccountantDashboardPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Cọc giữ chỗ (UC13)</span>
+                  <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Cọc giữ chỗ</span>
                   <span className="font-mono text-sm font-bold text-[#5C4632]">{stats.depositRev.toLocaleString('vi-VN')} ₫</span>
                   <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt 100%</span>
                 </div>
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Nhận phòng (UC14)</span>
+                  <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Nhận phòng</span>
                   <span className="font-mono text-sm font-bold text-[#5C4632]">{stats.checkinRev.toLocaleString('vi-VN')} ₫</span>
                   <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt 92%</span>
                 </div>
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Định kỳ dịch vụ (UC15)</span>
+                  <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Định kỳ dịch vụ</span>
                   <span className="font-mono text-sm font-bold text-[#5C4632]">{stats.monthlyRev.toLocaleString('vi-VN')} ₫</span>
                   <span className="text-[10px] text-[#B9792B] block mt-1 font-semibold">Thu đạt 76%</span>
                 </div>

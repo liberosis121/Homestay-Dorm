@@ -81,9 +81,12 @@ export default function InvoiceDetailDrawer({
     }
   };
 
-  const formattedAmount = (amount: number) => {
-    return <span className="whitespace-nowrap font-mono">{(amount || 0).toLocaleString('vi-VN')}\u00A0đ</span>;
-  };
+  const formattedAmount = (amount: number) => (
+    <span className="whitespace-nowrap font-mono">
+      {(amount || 0).toLocaleString('vi-VN')}
+      {'\u00A0\u0111'}
+    </span>
+  );
 
   return (
     <>
@@ -95,25 +98,25 @@ export default function InvoiceDetailDrawer({
       
       {/* Drawer Panel */}
       <div 
-        className="fixed inset-y-0 right-0 w-full sm:w-[440px] bg-white border-l border-[#DCCFC0] shadow-2xl z-[1000] flex flex-col justify-between animate-in slide-in-from-right duration-200"
+        className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white border-l border-[#d1c4b9] shadow-2xl z-[1000] flex flex-col justify-between animate-in slide-in-from-right duration-200"
       >
         {/* Header */}
-        <div className="p-6 border-b border-[#DCCFC0] flex justify-between items-center bg-[#FAF9F6]">
+        <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8]">
           <div>
-            <h3 className="font-headline-sm text-base text-[#5C4632] font-bold uppercase tracking-wide">
+            <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">
               {invoiceType === 'deposit' && 'Chi tiết Hóa đơn cọc'}
               {invoiceType === 'checkin' && 'Chi tiết Hóa đơn nhận phòng'}
               {invoiceType === 'monthly' && 'Chi tiết Hóa đơn định kỳ'}
               {invoiceType === 'service' && 'Chi tiết Hóa đơn dịch vụ'}
               {invoiceType === 'liquidation' && 'Chi tiết Hóa đơn thanh lý'}
             </h3>
-            <p className="font-mono text-xs text-[#8A7563] mt-1">
+            <p className="font-mono text-xs text-[#5e5f5d] mt-1">
               Mã: {invoiceData.id || invoiceData.code || '---'}
             </p>
           </div>
           <button 
             onClick={onClose} 
-            className="p-1.5 text-[#8A7563] hover:bg-[#E7DED2] rounded-full transition-all cursor-pointer"
+            className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full transition-all cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -122,8 +125,8 @@ export default function InvoiceDetailDrawer({
         {/* Scrollable Content */}
         <div className="p-6 flex-1 overflow-y-auto space-y-6 text-sm">
           {/* Status block */}
-          <div className="flex justify-between items-center bg-[#FAF9F6] p-3 rounded-xl border border-[#DCCFC0]/60">
-            <span className="font-label-caps text-[11px] text-[#8A7563] font-bold uppercase tracking-wider">Trạng thái thanh toán</span>
+          <div className="flex justify-between items-center">
+            <span className="font-label-caps text-[11px] text-[#5a462d] font-bold uppercase tracking-wider">Trạng thái thanh toán</span>
             {getStatusBadge(invoiceData.status)}
           </div>
 
@@ -131,9 +134,9 @@ export default function InvoiceDetailDrawer({
           {/* 1. DEPOSIT TYPE */}
           {invoiceType === 'deposit' && (
             <>
-              <div className="space-y-4">
-                <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin đặt cọc</h4>
-                <div className="grid grid-cols-2 gap-y-2">
+              <div className="border-t border-[#d1c4b9] pt-4">
+                <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin đặt cọc</h4>
+                <div className="grid grid-cols-2 gap-y-2 text-xs">
                   <div className="text-[#8A7563]">Khách hàng:</div>
                   <div className="text-right font-semibold text-[#1b1c1c]">{invoiceData.customer_name || '---'}</div>
                   
@@ -153,11 +156,11 @@ export default function InvoiceDetailDrawer({
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Chi tiết thanh toán</h4>
-                <div className="flex justify-between items-center py-2 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10">
-                  <span className="font-medium text-[#5C4632]">Tổng tiền đặt cọc:</span>
-                  <span className="font-mono text-base font-bold text-[#5C4632]">{formattedAmount(invoiceData.amount)}</span>
+              <div className="border-t border-[#d1c4b9] pt-4">
+                <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Chi tiết thanh toán</h4>
+                <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
+                  <span className="font-bold text-[#1b1c1c]">Tổng tiền đặt cọc:</span>
+                  <span className="text-xl font-bold text-[#5a462d] font-mono">{formattedAmount(invoiceData.amount)}</span>
                 </div>
                 {invoiceData.note && (
                   <div className="mt-2 text-xs bg-[#FAF9F6] p-3 rounded-lg border border-[#DCCFC0]/40 text-[#8A7563]">
@@ -181,8 +184,8 @@ export default function InvoiceDetailDrawer({
             return (
               <>
                 {/* Section 1: Thông tin hóa đơn */}
-                <div className="space-y-3">
-                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin hóa đơn</h4>
+                <div className="border-t border-[#d1c4b9] pt-4">
+                  <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin hóa đơn</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã hóa đơn nhận phòng:</div>
                     <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.id || '---'}</div>
@@ -203,8 +206,8 @@ export default function InvoiceDetailDrawer({
                 </div>
 
                 {/* Section 2: Thông tin hợp đồng */}
-                <div className="space-y-3">
-                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin hợp đồng</h4>
+                <div className="border-t border-[#d1c4b9] pt-4">
+                  <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin hợp đồng</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã hợp đồng:</div>
                     <div className="text-right font-mono font-semibold text-[#5C4632]">
@@ -222,8 +225,8 @@ export default function InvoiceDetailDrawer({
                 </div>
 
                 {/* Section 3: Thông tin khách thuê */}
-                <div className="space-y-3">
-                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin khách thuê</h4>
+                <div className="border-t border-[#d1c4b9] pt-4">
+                  <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin khách thuê</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Tên khách thuê:</div>
                     <div className="text-right font-semibold text-[#5C4632]">{invoiceData.customer_name || '---'}</div>
@@ -231,8 +234,8 @@ export default function InvoiceDetailDrawer({
                 </div>
 
                 {/* Section 4: Thông tin phòng/giường */}
-                <div className="space-y-3">
-                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thông tin phòng / giường</h4>
+                <div className="border-t border-[#d1c4b9] pt-4">
+                  <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin phòng / giường</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã phòng / giường:</div>
                     <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.room_id || '---'}</div>
@@ -248,8 +251,8 @@ export default function InvoiceDetailDrawer({
                 </div>
 
                 {/* Section 5: Chi tiết khoản thu ban đầu */}
-                <div className="space-y-3">
-                  <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Chi tiết khoản thu ban đầu</h4>
+                <div className="border-t border-[#d1c4b9] pt-4">
+                  <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Chi tiết khoản thu ban đầu</h4>
                   <div className="divide-y divide-[#E7DED2]/65 text-xs">
                     <div className="flex justify-between py-2 items-center">
                       <span className="text-[#8A7563]">Tiền thuê phòng (Tháng đầu):</span>
@@ -282,12 +285,10 @@ export default function InvoiceDetailDrawer({
                 </div>
 
                 {/* Section 6: Tổng cộng */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center py-3 bg-[#5C4632]/5 px-4 rounded-xl border border-[#5C4632]/15 shadow-xs">
-                    <span className="font-bold text-[#5C4632] text-sm">Tổng cộng cần thanh toán:</span>
-                    <span className="font-bold text-lg text-[#5C4632]">{formattedAmount(invoiceData.total)}</span>
+                <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
+                    <span className="font-bold text-[#1b1c1c]">Tổng cộng cần thanh toán:</span>
+                    <span className="text-xl font-bold text-[#5a462d] font-mono">{formattedAmount(invoiceData.total)}</span>
                   </div>
-                </div>
               </>
             );
           })()}
@@ -422,10 +423,10 @@ export default function InvoiceDetailDrawer({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-[#DCCFC0] flex gap-3 bg-[#FAF9F6]">
+        <div className="p-6 border-t border-[#d1c4b9] flex gap-3 bg-[#fbf9f8]">
           <button 
             onClick={handlePrint}
-            className="flex-1 border border-[#DCCFC0] text-[#5C4632] py-2.5 rounded-lg text-sm font-semibold bg-[#FAF9F6] hover:bg-[#E7DED2] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            className="flex-1 border border-[#5a462d] text-[#5a462d] py-2 rounded text-sm font-semibold bg-transparent hover:bg-[#e4e2e1] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             In PDF

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
-  Info, ArrowLeft, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone
+  Info, ArrowLeft, ArrowRight, Layers, Wifi, Shield, Clock, Plus, ChevronDown, Phone, Loader2
 } from 'lucide-react';
 import { Service, ServiceSubscription } from '../../lib/supabaseClient';
 
@@ -1368,14 +1368,15 @@ export default function CustomerServicesPage() {
     openRegistration, closeRegistration, confirmRegistration,
     openDetail, closeDetail,
     openCancelConfirm, closeCancelConfirm, confirmCancel,
+    isLoading, error
   } = useCustomerServicesStore();
 
   const isRenting = !!user?.renting_room_name;
   const userRoomName = user?.renting_room_name ?? '';
 
   useEffect(() => {
-    loadData(user?.id ?? '');
-  }, [user?.id]);
+    loadData(user?.email ?? '');
+  }, [user?.email, loadData]);
 
   // Toast state
   const [toast, setToast] = useState<string | null>(null);
@@ -1384,21 +1385,44 @@ export default function CustomerServicesPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleConfirmRegistration = () => {
-    if (!user?.id || !registrationModal.service) return;
-    confirmRegistration(registrationModal.service.id, user.id);
-    showToast(`Đăng ký thành công dịch vụ "${registrationModal.service.name}"!`);
+  const handleConfirmRegistration = async () => {
+    if (!user?.email || !registrationModal.service) return;
+    try {
+      await confirmRegistration(registrationModal.service.id, user.email);
+      showToast(`Đăng ký thành công dịch vụ "${registrationModal.service.name}"!`);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi đăng ký dịch vụ');
+    }
   };
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     const sub = subscriptions.find((s) => s.id === cancelConfirm.subscriptionId);
-    if (!user?.id) return;
-    confirmCancel(user.id);
-    showToast(`Đã huỷ đăng ký dịch vụ "${sub?.service_name}" thành công.`);
+    if (!user?.email) return;
+    try {
+      await confirmCancel(user.email);
+      showToast(`Đã huỷ đăng ký dịch vụ "${sub?.service_name}" thành công.`);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi hủy đăng ký dịch vụ');
+    }
   };
+
+  if (isLoading && services.length === 0) {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        <p className="text-on-surface-variant font-medium text-sm">Đang tải thông tin dịch vụ...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
+      {error && (
+        <div className="max-w-[1440px] mx-auto px-4 md:px-8 mb-6 flex items-center gap-3 p-4 bg-status-error/10 border border-status-error/20 rounded-2xl text-status-error text-sm font-semibold">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
       {isRenting ? (
         <RenterServicesView
           services={services}

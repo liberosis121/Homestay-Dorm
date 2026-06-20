@@ -1,0 +1,233 @@
+import { contractRepo } from '../repositories/contract.repo';
+import { invoiceRepo, DbInvoice } from '../repositories/invoice.repo';
+import { supabase } from '../utils/supabase';
+
+// Utility helpers
+function getMonthYearFromPeriod(periodStr: string | null): { month: number; year: number } {
+  if (!periodStr) {
+    const d = new Date();
+    return { month: d.getMonth() + 1, year: d.getFullYear() };
+  }
+  const parts = periodStr.split('/');
+  if (parts.length === 2) {
+    return { month: parseInt(parts[0]), year: parseInt(parts[1]) };
+  }
+  return { month: 6, year: 2026 }; // fallback
+}
+
+export const invoiceService = {
+  getMyInvoices: async (userId: string) => {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // 1. Get user contracts
+    const contracts = await contractRepo.findByUserId(userId);
+    if (!contracts || contracts.length === 0) {
+      return [];
+    }
+
+    const contractIds = contracts.map((c: any) => c.id);
+    const depositIds = contracts.map((c: any) => c.deposit_id).filter(Boolean);
+
+    // 2. Query checkouts associated with contracts
+    const { data: checkouts } = await supabase
+      .from('checkouts')
+      .select('id')
+      .in('contract_id', contractIds);
+    const checkoutIds = checkouts ? checkouts.map((ch: any) => ch.id) : [];
+
+    // 3. Query refund reconciliations associated with checkouts
+    let reconciliationIds: string[] = [];
+    if (checkoutIds.length > 0) {
+      const { data: reconciliations } = await supabase
+        .from('refund_reconciliations')
+        .select('id')
+        .in('checkout_id', checkoutIds);
+      if (reconciliations) {
+        reconciliationIds = reconciliations.map((r: any) => r.id);
+      }
+    }
+
+    // 4. Seed test invoices for HD-001 if they don't exist
+    if (contractIds.includes('HD-001')) {
+      await invoiceService.ensureSeededInvoices();
+    }
+
+    // 5. Fetch raw invoices
+    const rawInvoices = await invoiceRepo.findByContractsAndDeposits(contractIds, depositIds, reconciliationIds);
+
+    // 6. Fetch service registrations to calculate services
+    const { data: serviceRegs } = await supabase
+      .from('service_registrations')
+      .select('*, services(*)')
+      .in('contract_id', contractIds);
+
+    // 7. Map database records to frontend Invoice structures
+    return rawInvoices.map((inv: DbInvoice) => {
+      const isDeposit = inv.invoice_type === 'deposit';
+      const isRefund = inv.invoice_type === 'refund';
+      const isMonthly = inv.invoice_type === 'monthly' || inv.invoice_type === 'checkin';
+      const isService = inv.invoice_type === 'service';
+
+      // Billing Period
+      let billingPeriod = '';
+      if (inv.electricity_water_records) {
+        billingPeriod = `Tháng ${inv.electricity_water_records.billing_period}`;
+      } else {
+        const d = inv.payment_time ? new Date(inv.payment_time) : new Date();
+        const m = d.getMonth() + 1;
+        const y = d.getFullYear();
+        billingPeriod = `Tháng ${m < 10 ? '0' + m : m}/${y}`;
+      }
+
+      const { month, year } = getMonthYearFromPeriod(
+        inv.electricity_water_records ? inv.electricity_water_records.billing_period : billingPeriod.replace('Tháng ', '')
+      );
+
+      // Invoice Type mapping
+      let type: 'monthly' | 'service' | 'incidental' = 'incidental';
+      let typeName = 'Hóa đơn phát sinh';
+
+      if (isMonthly) {
+        type = 'monthly';
+        typeName = 'Hóa đơn định kỳ';
+      } else if (isService) {
+        type = 'service';
+        typeName = 'Hóa đơn dịch vụ';
+      }
+
+      // Room rent calculation
+      const roomPrice = isMonthly && inv.contracts ? inv.contracts.rent_price : 0;
+
+      // Electricity details
+      let electricityPrice = 0;
+      let electricityUsage = '';
+      if (inv.electricity_water_records) {
+        const usage = inv.electricity_water_records.end_electricity - inv.electricity_water_records.start_electricity;
+        electricityPrice = usage * 3500;
+        electricityUsage = `Chỉ số: ${inv.electricity_water_records.start_electricity} - ${inv.electricity_water_records.end_electricity} (${usage} kWh)`;
+      }
+
+      // Water details
+      let waterPrice = 0;
+      let waterUsage = '';
+      if (inv.electricity_water_records) {
+        const usage = inv.electricity_water_records.end_water - inv.electricity_water_records.start_water;
+        waterPrice = usage * 15000;
+        waterUsage = `Khối lượng: ${usage} m³`;
+      }
+
+      // Service Details
+      let servicePrice = 0;
+      let serviceDetails = '';
+      if (isMonthly && serviceRegs && serviceRegs.length > 0) {
+        // Sum all registered services for this contract
+        const matchingRegs = serviceRegs.filter((r: any) => r.contract_id === inv.contract_id);
+        if (matchingRegs.length > 0) {
+          servicePrice = matchingRegs.reduce((sum: number, r: any) => sum + (r.amount || r.services?.price || 0), 0);
+          serviceDetails = matchingRegs.map((r: any) => r.services?.name || 'Dịch vụ').join(', ');
+        } else {
+          servicePrice = 150000;
+          serviceDetails = 'Phí dịch vụ chung';
+        }
+      } else if (isService) {
+        servicePrice = inv.amount;
+        serviceDetails = 'Phí đăng ký dịch vụ phát sinh';
+      }
+
+      // Due date logic (e.g. 5 days after recorded date / created date, or 5th of the month)
+      let dueDate = `${year}-${month < 10 ? '0' + month : month}-05`;
+      if (isRefund && inv.refund_reconciliations) {
+        dueDate = inv.refund_reconciliations.reconciliation_date;
+      } else if (isDeposit && inv.deposit_requests) {
+        dueDate = inv.deposit_requests.payment_deadline.split('T')[0];
+      }
+
+      // Status mapping: 'paid' | 'unpaid' | 'overdue'
+      let status: 'paid' | 'unpaid' | 'overdue' = 'unpaid';
+      if (inv.status === 'paid') {
+        status = 'paid';
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        if (today > dueDate) {
+          status = 'overdue';
+        } else {
+          status = 'unpaid';
+        }
+      }
+
+      return {
+        id: inv.id,
+        billingPeriod,
+        month,
+        year,
+        type,
+        typeName,
+        roomPrice,
+        electricityPrice,
+        electricityUsage,
+        waterPrice,
+        waterUsage,
+        servicePrice,
+        serviceDetails: serviceDetails || (isDeposit ? 'Phí cọc giữ chỗ' : isRefund ? 'Hoàn trả cọc đối soát' : 'Chi tiết khác'),
+        totalAmount: inv.amount,
+        dueDate,
+        status,
+        paidAt: inv.payment_time || undefined
+      };
+    });
+  },
+
+  payInvoice: async (invoiceId: string, paymentMethod: string) => {
+    if (!invoiceId) {
+      throw new Error('Invoice ID is required');
+    }
+    const paymentTime = new Date().toISOString();
+    await invoiceRepo.updateStatus(invoiceId, 'paid', paymentMethod, paymentTime);
+    return { success: true, paidAt: paymentTime };
+  },
+
+  // Seed method to insert test monthly and service invoices for contract HD-001 (customer1@gmail.com)
+  ensureSeededInvoices: async () => {
+    // Check if HDTT-M01 already exists
+    const { data: existingMonthly } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('id', 'HDTT-M01')
+      .maybeSingle();
+
+    if (!existingMonthly) {
+      console.log('[Invoice Seed]: Seeding HDTT-M01 & HDTT-S01 for HD-001...');
+      
+      // We will calculate a nice amount:
+      // Rent: 1,800,000
+      // Electricity: 180 kWh * 3500 = 630,000
+      // Water: 25 m3 * 15000 = 375,000
+      // Services (Wifi): 50,000
+      // Total: 2,855,000
+      const monthlyAmount = 1800000 + 630000 + 375000 + 50000;
+
+      // Insert monthly invoice
+      await supabase.from('invoices').insert({
+        id: 'HDTT-M01',
+        amount: monthlyAmount,
+        status: 'pending',
+        invoice_type: 'monthly',
+        contract_id: 'HD-001',
+        water_record_id: 1, // links to room P-101 billing period 05/2026
+        staff_id: 'e003e003-e003-e003-e003-e003e003e003'
+      });
+
+      // Insert service invoice
+      await supabase.from('invoices').insert({
+        id: 'HDTT-S01',
+        amount: 100000,
+        status: 'pending',
+        invoice_type: 'service',
+        contract_id: 'HD-001',
+        staff_id: 'e003e003-e003-e003-e003-e003e003e003'
+      });
+    }
+  }
+};

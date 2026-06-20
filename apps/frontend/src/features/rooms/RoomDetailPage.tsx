@@ -14,7 +14,6 @@ import {
   ShieldAlert, 
   CheckCircle2, 
   XCircle, 
-  Star,
   Layers,
   Maximize,
   CheckCircle,
@@ -477,33 +476,7 @@ export default function RoomDetailPage() {
               />
             </section>
 
-            {/* Map Location Section */}
-            <section className="space-y-4">
-              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Vị trí thực tế</h2>
-              <div className="relative w-full h-80 rounded-3xl overflow-hidden grayscale hover:grayscale-0 transition-all duration-700 border border-outline-variant/50 shadow-md">
-                {/* Styled Iframe representation/mock for high accessibility */}
-                <div className="absolute inset-0 bg-slate-100 flex items-center justify-center">
-                  <div className="text-center p-6 space-y-3 z-10 max-w-sm">
-                    <MapPin className="w-10 h-10 text-primary mx-auto animate-bounce" />
-                    <p className="font-bold text-on-surface">{branchName}</p>
-                    <p className="text-xs text-on-surface-variant leading-relaxed">
-                      {branchAddress}
-                    </p>
-                  </div>
-                  {/* Real map aesthetic image background from Unsplash */}
-                  <img 
-                    src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80" 
-                    alt="Map illustration background" 
-                    className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
-                  />
-                </div>
-              </div>
-              <p className="flex items-start gap-2.5 text-on-surface-variant text-sm mt-3">
-                <span className="material-symbols-outlined text-[20px] text-primary shrink-0">pin_drop</span>
-                <span>{branchAddress} (Tọa lạc tại khu dân cư an ninh cao, cách trạm xe buýt 100m, cách các trường đại học lân cận chỉ 5-10 phút đi bộ).</span>
-              </p>
-            </section>
-
+           
             {/* Room Rules Section */}
             <section className="p-8 bg-surface-container-high border border-outline-variant/40 rounded-32 space-y-5">
               <h2 className="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">
@@ -534,53 +507,7 @@ export default function RoomDetailPage() {
               </div>
             </section>
 
-            {/* Customer Reviews Section */}
-            <section className="space-y-6">
-              <div className="flex justify-between items-center border-b border-outline-variant/40 pb-4">
-                <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Đánh giá từ khách thuê</h2>
-                <div className="flex items-center gap-2">
-                  <Star className="w-5 h-5 text-status-warning fill-status-warning" />
-                  <span className="font-bold text-headline-md text-on-surface">4.8</span>
-                  <span className="text-caption text-on-surface-variant font-medium">(24 nhận xét)</span>
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <div className="p-6 bg-white dark:bg-slate-900 border border-outline-variant/30 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-lg shadow-inner">
-                      N
-                    </div>
-                    <div>
-                      <p className="font-label-md text-label-md text-on-surface">Nguyễn Thảo Nguyên</p>
-                      <p className="text-caption text-on-surface-variant">Đang thuê • Tháng 10, 2023</p>
-                    </div>
-                  </div>
-                  <p className="text-body-md text-on-surface-variant italic leading-relaxed pl-1">
-                    "Phòng ốc sạch sẽ, thoáng mát, nội thất gỗ tự nhiên rất đẹp và thơm mùi gỗ mới. Quản lý chi nhánh hỗ trợ siêu nhiệt tình. Khu dân cư cực an ninh, gần ĐH Hoa Sen đi học rất tiện lợi!"
-                  </p>
-                </div>
-
-                <div className="p-6 bg-white dark:bg-slate-900 border border-outline-variant/30 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-timber-accent/15 text-timber-accent flex items-center justify-center font-bold text-lg shadow-inner">
-                      A
-                    </div>
-                    <div>
-                      <p className="font-label-md text-label-md text-on-surface">Trần Minh Anh</p>
-                      <p className="text-caption text-on-surface-variant">Đã ở 1 năm • Tháng 08, 2023</p>
-                    </div>
-                  </div>
-                  <p className="text-body-md text-on-surface-variant italic leading-relaxed pl-1">
-                    "Không gian chung rất thoáng đãng, các bạn cùng phòng đều có ý thức văn minh cao. Bếp và máy giặt hiện đại, tiện lợi. Rất thích phong cách Sage & Timber mộc mạc thư thái ở đây."
-                  </p>
-                </div>
-
-                <button className="w-full py-3.5 border border-outline-variant hover:bg-surface-container-low rounded-full text-label-md font-label-md text-primary transition-colors cursor-pointer">
-                  Xem thêm đánh giá cũ hơn
-                </button>
-              </div>
-            </section>
 
           </div>
 

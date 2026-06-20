@@ -1,16 +1,15 @@
-import { useState, useMemo, useEffect } from 'react';
-import CustomSelect from '../../components/ui/CustomSelect';
+import { useState, useMemo, useEffect } from "react";
 
 const A = {
-  bg: '#fff8f3',          // Sand background
-  sidebar: '#faf2ec',     // Warm Cream
-  surface: '#ffffff',
-  primary: '#6f583c',     // Wood Brown
-  accent: '#5f745d',      // Sage Green
-  badgeBg: '#e8ede7',     // Sage Light
-  border: '#d1c4b9',      // Border Brownish
-  textPrimary: '#1e1b17', // Dark Wood
-  textMuted: '#4e453c',   // Soft Wood / Muted Text
+  bg: "#fff8f3", // Sand background
+  sidebar: "#faf2ec", // Warm Cream
+  surface: "#ffffff",
+  primary: "#6f583c", // Wood Brown
+  accent: "#5f745d", // Sage Green
+  badgeBg: "#e8ede7", // Sage Light
+  border: "#d1c4b9", // Border Brownish
+  textPrimary: "#1e1b17", // Dark Wood
+  textMuted: "#4e453c", // Soft Wood / Muted Text
 };
 
 interface Branch {
@@ -25,79 +24,135 @@ interface Branch {
   manager: string;
   totalRooms: number;
   activeRooms: number;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
 }
 
 const MOCK_BRANCHES: Branch[] = [
   {
-    id: 'CN-001',
-    code: 'Q1-01',
-    name: 'HomeStay Quận 1',
-    address: '123 Nguyễn Trãi',
-    district: 'Quận 1',
-    city: 'TP. Hồ Chí Minh',
-    phone: '028 1234 5678',
-    email: 'q1@homestay.vn',
-    manager: 'Nguyễn Thị Lan',
+    id: "CN-001",
+    code: "Q1-01",
+    name: "HomeStay Quận 1",
+    address: "123 Nguyễn Trãi",
+    district: "Quận 1",
+    city: "TP. Hồ Chí Minh",
+    phone: "028 1234 5678",
+    email: "q1@homestay.vn",
+    manager: "Nguyễn Thị Lan",
     totalRooms: 24,
     activeRooms: 20,
-    status: 'active',
+    status: "active",
   },
   {
-    id: 'CN-002',
-    code: 'Q3-01',
-    name: 'HomeStay Quận 3',
-    address: '45 Võ Văn Tần',
-    district: 'Quận 3',
-    city: 'TP. Hồ Chí Minh',
-    phone: '028 9876 5432',
-    email: 'q3@homestay.vn',
-    manager: 'Trần Văn Hùng',
+    id: "CN-002",
+    code: "Q3-01",
+    name: "HomeStay Quận 3",
+    address: "45 Võ Văn Tần",
+    district: "Quận 3",
+    city: "TP. Hồ Chí Minh",
+    phone: "028 9876 5432",
+    email: "q3@homestay.vn",
+    manager: "Trần Văn Hùng",
     totalRooms: 18,
     activeRooms: 15,
-    status: 'active',
+    status: "active",
   },
   {
-    id: 'CN-003',
-    code: 'BT-01',
-    name: 'HomeStay Bình Thạnh',
-    address: '88 Đinh Bộ Lĩnh',
-    district: 'Bình Thạnh',
-    city: 'TP. Hồ Chí Minh',
-    phone: '028 5555 4444',
-    email: 'binhthanh@homestay.vn',
-    manager: 'Lê Thị Mai',
+    id: "CN-003",
+    code: "BT-01",
+    name: "HomeStay Bình Thạnh",
+    address: "88 Đinh Bộ Lĩnh",
+    district: "Bình Thạnh",
+    city: "TP. Hồ Chí Minh",
+    phone: "028 5555 4444",
+    email: "binhthanh@homestay.vn",
+    manager: "Lê Thị Mai",
     totalRooms: 12,
     activeRooms: 8,
-    status: 'active',
+    status: "active",
   },
   {
-    id: 'CN-004',
-    code: 'TD-01',
-    name: 'HomeStay Thủ Đức',
-    address: '22 Tô Ngọc Vân',
-    district: 'Thủ Đức',
-    city: 'TP. Hồ Chí Minh',
-    phone: '028 3333 2222',
-    email: 'thuduc@homestay.vn',
-    manager: 'Phạm Quốc An',
+    id: "CN-004",
+    code: "TD-01",
+    name: "HomeStay Thủ Đức",
+    address: "22 Tô Ngọc Vân",
+    district: "Thủ Đức",
+    city: "TP. Hồ Chí Minh",
+    phone: "028 3333 2222",
+    email: "thuduc@homestay.vn",
+    manager: "Phạm Quốc An",
     totalRooms: 16,
     activeRooms: 4,
-    status: 'inactive',
+    status: "inactive",
   },
 ];
 
+interface BranchEmployee {
+  id: string;
+  full_name: string;
+  role: string;
+  branch: string;
+}
 
+const BRANCH_EMPLOYEES: BranchEmployee[] = [
+  {
+    id: "NV-002",
+    full_name: "Nguyễn Thị Lan",
+    role: "manager",
+    branch: "Quận 3",
+  },
+  {
+    id: "NV-006",
+    full_name: "Trần Văn Hùng",
+    role: "manager",
+    branch: "Quận 3",
+  },
+  {
+    id: "NV-007",
+    full_name: "Lê Thị Mai",
+    role: "manager",
+    branch: "Bình Thạnh",
+  },
+  {
+    id: "NV-008",
+    full_name: "Phạm Quốc An",
+    role: "manager",
+    branch: "Thủ Đức",
+  },
+  {
+    id: "NV-009",
+    full_name: "Nguyễn Minh Khoa",
+    role: "sale",
+    branch: "Quận 1",
+  },
+  {
+    id: "NV-010",
+    full_name: "Trần Hữu Danh",
+    role: "manager",
+    branch: "Quận 1",
+  },
+];
+
+const isManagerRole = (role: string) => {
+  const normalized = role.toLowerCase();
+  return (
+    normalized.includes("manager") ||
+    normalized.includes("quản lý") ||
+    normalized.includes("quan_ly") ||
+    normalized.includes("role_manager")
+  );
+};
 
 export default function AdminBranchesPage() {
   const [branches, setBranches] = useState<Branch[]>(MOCK_BRANCHES);
   const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [form, setForm] = useState<Partial<Branch>>({});
-  const [confirmStatusBranch, setConfirmStatusBranch] = useState<Branch | null>(null);
+  const [confirmStatusBranch, setConfirmStatusBranch] = useState<Branch | null>(
+    null,
+  );
 
   useEffect(() => {
     setIsLoading(true);
@@ -111,12 +166,14 @@ export default function AdminBranchesPage() {
     const total = branches.length;
     const totalRooms = branches.reduce((s, b) => s + b.totalRooms, 0);
     const activeRooms = branches.reduce((s, b) => s + b.activeRooms, 0);
-    const occupancy = totalRooms ? Math.round((activeRooms / totalRooms) * 100) : 0;
+    const occupancy = totalRooms
+      ? Math.round((activeRooms / totalRooms) * 100)
+      : 0;
     return [
-      { icon: 'location_city', label: 'Tổng chi nhánh', val: total },
-      { icon: 'meeting_room', label: 'Tổng số phòng', val: totalRooms },
-      { icon: 'bed', label: 'Phòng đang hoạt động', val: activeRooms },
-      { icon: 'percent', label: 'Tỷ lệ lấp đầy', val: `${occupancy}%` },
+      { icon: "location_city", label: "Tổng chi nhánh", val: total },
+      { icon: "meeting_room", label: "Tổng số phòng", val: totalRooms },
+      { icon: "bed", label: "Phòng đang hoạt động", val: activeRooms },
+      { icon: "percent", label: "Tỷ lệ lấp đầy", val: `${occupancy}%` },
     ];
   }, [branches]);
 
@@ -124,7 +181,10 @@ export default function AdminBranchesPage() {
     () =>
       branches.filter((b) => {
         const q = search.toLowerCase();
-        const matchQ = !q || b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q);
+        const matchQ =
+          !q ||
+          b.name.toLowerCase().includes(q) ||
+          b.address.toLowerCase().includes(q);
         const matchStatus = !filterStatus || b.status === filterStatus;
         return matchQ && matchStatus;
       }),
@@ -132,33 +192,33 @@ export default function AdminBranchesPage() {
   );
 
   const openAdd = () => {
-    setModalMode('add');
+    setModalMode("add");
     setForm({
-      name: '',
-      address: '',
-      phone: '',
-      district: '',
-      city: 'TP. Hồ Chí Minh',
-      email: '',
-      manager: '',
+      name: "",
+      address: "",
+      phone: "",
+      district: "",
+      city: "TP. Hồ Chí Minh",
+      email: "",
+      manager: "",
       totalRooms: 0,
-      status: 'active',
+      status: "active",
     });
     setShowModal(true);
   };
 
   const openEdit = (b: Branch) => {
-    setModalMode('edit');
+    setModalMode("edit");
     setForm({ ...b });
     setShowModal(true);
   };
 
   const saveForm = () => {
     if (!form.name || !form.address || !form.phone) return;
-    if (modalMode === 'add') {
+    if (modalMode === "add") {
       const newBranch: Branch = {
         ...(form as Branch),
-        id: `CN-${String(branches.length + 1).padStart(3, '0')}`,
+        id: `CN-${String(branches.length + 1).padStart(3, "0")}`,
         code: `NEW-${branches.length + 1}`,
         activeRooms: 0,
       };
@@ -177,9 +237,12 @@ export default function AdminBranchesPage() {
 
   const confirmToggleStatus = () => {
     if (!confirmStatusBranch) return;
-    const nextStatus = confirmStatusBranch.status === 'active' ? 'inactive' : 'active';
+    const nextStatus =
+      confirmStatusBranch.status === "active" ? "inactive" : "active";
     setBranches((prev) =>
-      prev.map((b) => (b.id === confirmStatusBranch.id ? { ...b, status: nextStatus } : b)),
+      prev.map((b) =>
+        b.id === confirmStatusBranch.id ? { ...b, status: nextStatus } : b,
+      ),
     );
     if (form?.id === confirmStatusBranch.id) {
       setForm((prev) => ({ ...prev, status: nextStatus }));
@@ -187,18 +250,31 @@ export default function AdminBranchesPage() {
     setConfirmStatusBranch(null);
   };
 
-
+  const managerOptions = useMemo(() => {
+    const branchKey = String(form.district || "").trim();
+    if (!branchKey) return [];
+    return BRANCH_EMPLOYEES.filter(
+      (emp) => emp.branch === branchKey && isManagerRole(emp.role),
+    );
+  }, [form.district]);
 
   return (
-    <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+    <div
+      className="space-y-6 animate-fade-in-up"
+      style={{ fontFamily: "Lexend, sans-serif" }}
+    >
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" style={{ color: A.primary }}>
+          <h1
+            className="text-3xl font-bold tracking-tight"
+            style={{ color: A.primary }}
+          >
             Quản trị chi nhánh
           </h1>
           <p className="text-sm mt-1" style={{ color: A.textMuted }}>
-            Quản lý thông tin liên hệ, địa chỉ và tình trạng hoạt động của các chi nhánh HomeStay Dorm.
+            Quản lý thông tin liên hệ, địa chỉ và tình trạng hoạt động của các
+            chi nhánh HomeStay Dorm.
           </p>
         </div>
         <button
@@ -206,7 +282,9 @@ export default function AdminBranchesPage() {
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
           style={{ background: A.primary }}
         >
-          <span className="material-symbols-outlined text-[18px]">add_business</span>
+          <span className="material-symbols-outlined text-[18px]">
+            add_business
+          </span>
           Thêm chi nhánh
         </button>
       </header>
@@ -220,15 +298,24 @@ export default function AdminBranchesPage() {
             style={{
               background: A.surface,
               border: `1px solid ${A.border}`,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
             }}
           >
-            <div className="p-2 rounded-lg w-fit" style={{ background: A.badgeBg, color: A.accent }}>
-              <span className="material-symbols-outlined text-xl">{kpi.icon}</span>
+            <div
+              className="p-2 rounded-lg w-fit"
+              style={{ background: A.badgeBg, color: A.accent }}
+            >
+              <span className="material-symbols-outlined text-xl">
+                {kpi.icon}
+              </span>
             </div>
             <div>
-              <p className="text-sm font-medium" style={{ color: A.textMuted }}>{kpi.label}</p>
-              <p className="text-3xl font-bold" style={{ color: A.primary }}>{kpi.val}</p>
+              <p className="text-sm font-medium" style={{ color: A.textMuted }}>
+                {kpi.label}
+              </p>
+              <p className="text-3xl font-bold" style={{ color: A.primary }}>
+                {kpi.val}
+              </p>
             </div>
           </div>
         ))}
@@ -251,22 +338,32 @@ export default function AdminBranchesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+            style={{
+              border: `1px solid ${A.border}`,
+              background: A.bg,
+              color: A.textPrimary,
+            }}
           />
         </div>
-        <CustomSelect
+        <select
           value={filterStatus}
-          onChange={setFilterStatus}
-          options={[
-            { value: '', label: 'Tất cả trạng thái' },
-            { value: 'active', label: 'Đang hoạt động' },
-            { value: 'inactive', label: 'Tạm dừng' }
-          ]}
-          className="min-w-[160px]"
-          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-        />
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
+          style={{
+            border: `1px solid ${A.border}`,
+            background: A.surface,
+            color: A.textPrimary,
+          }}
+        >
+          <option value="">Tất cả trạng thái</option>
+          <option value="active">Đang hoạt động</option>
+          <option value="inactive">Tạm dừng</option>
+        </select>
         <button
-          onClick={() => { setSearch(''); setFilterStatus(''); }}
+          onClick={() => {
+            setSearch("");
+            setFilterStatus("");
+          }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}
         >
@@ -279,7 +376,10 @@ export default function AdminBranchesPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl p-5 border border-[#d1c4b9] bg-white animate-pulse space-y-4">
+            <div
+              key={i}
+              className="rounded-xl p-5 border border-[#d1c4b9] bg-white animate-pulse space-y-4"
+            >
               <div className="flex justify-between items-start">
                 <div className="space-y-2">
                   <div className="h-4 bg-gray-200 rounded w-16"></div>
@@ -301,21 +401,33 @@ export default function AdminBranchesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center bg-white border border-[#d1c4b9] rounded-2xl">
-          <span className="material-symbols-outlined text-5xl block mb-3 animate-bounce" style={{ color: A.border }}>
+          <span
+            className="material-symbols-outlined text-5xl block mb-3 animate-bounce"
+            style={{ color: A.border }}
+          >
             manage_search
           </span>
-          <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>Không tìm thấy chi nhánh nào.</p>
-          <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+          <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>
+            Không tìm thấy chi nhánh nào.
+          </p>
+          <p className="text-xs mt-1" style={{ color: A.textMuted }}>
+            Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.
+          </p>
         </div>
       ) : (
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filtered.map((b) => {
-            const occupancy = b.totalRooms ? Math.round((b.activeRooms / b.totalRooms) * 100) : 0;
+            const occupancy = b.totalRooms
+              ? Math.round((b.activeRooms / b.totalRooms) * 100)
+              : 0;
             return (
               <div
                 key={b.id}
                 className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
-                style={{ background: A.surface, border: `1px solid ${A.border}` }}
+                style={{
+                  background: A.surface,
+                  border: `1px solid ${A.border}`,
+                }}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -325,16 +437,26 @@ export default function AdminBranchesPage() {
                     >
                       {b.code}
                     </span>
-                    <h3 className="text-base font-bold mt-1" style={{ color: A.primary }}>{b.name}</h3>
-                    <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: A.textMuted }}>
-                      <span className="material-symbols-outlined text-[14px]">location_on</span>
-                      {b.address}{b.district ? `, ${b.district}` : ''}
+                    <h3
+                      className="text-base font-bold mt-1"
+                      style={{ color: A.primary }}
+                    >
+                      {b.name}
+                    </h3>
+                    <p
+                      className="text-xs mt-0.5 flex items-center gap-1"
+                      style={{ color: A.textMuted }}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">
+                        location_on
+                      </span>
+                      {b.address}, {b.district}
                     </p>
                   </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
                   >
-                    {b.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
+                    {b.status === "active" ? "Hoạt động" : "Tạm dừng"}
                   </span>
                 </div>
 
@@ -342,37 +464,59 @@ export default function AdminBranchesPage() {
                 <div className="mb-3">
                   <div className="flex justify-between text-xs mb-1">
                     <span style={{ color: A.textMuted }}>Phòng đang thuê</span>
-                    <span className="font-semibold" style={{ color: A.primary }}>
+                    <span
+                      className="font-semibold"
+                      style={{ color: A.primary }}
+                    >
                       {b.activeRooms}/{b.totalRooms} phòng
                     </span>
                   </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: A.border }}>
+                  <div
+                    className="h-2 rounded-full overflow-hidden"
+                    style={{ background: A.border }}
+                  >
                     <div
                       className="h-full rounded-full transition-all"
-                      style={{ width: `${occupancy}%`, background: occupancy > 70 ? A.accent : A.primary }}
+                      style={{
+                        width: `${occupancy}%`,
+                        background: occupancy > 70 ? A.accent : A.primary,
+                      }}
                     />
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-xs" style={{ color: A.textMuted }}>
-                    <span className="material-symbols-outlined text-[14px]">person</span>
+                  <div
+                    className="flex items-center gap-1 text-xs"
+                    style={{ color: A.textMuted }}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">
+                      person
+                    </span>
                     {b.manager}
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={(e) => { e.stopPropagation(); openEdit(b); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(b);
+                      }}
                       className="p-1.5 rounded-full"
                       style={{ color: A.accent }}
                     >
-                      <span className="material-symbols-outlined text-[18px]">edit</span>
+                      <span className="material-symbols-outlined text-[18px]">
+                        edit
+                      </span>
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); toggleBranchStatus(b); }}
-                      className={`p-1.5 rounded-full ${b.status === 'active' ? 'text-red-600' : 'text-emerald-600'}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleBranchStatus(b);
+                      }}
+                      className={`p-1.5 rounded-full ${b.status === "active" ? "text-red-600" : "text-emerald-600"}`}
                     >
                       <span className="material-symbols-outlined text-[18px]">
-                        {b.status === 'active' ? 'toggle_off' : 'toggle_on'}
+                        {b.status === "active" ? "toggle_off" : "toggle_on"}
                       </span>
                     </button>
                   </div>
@@ -388,51 +532,202 @@ export default function AdminBranchesPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: `${A.primary}66` }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
         >
           <div
-            className="w-full max-w-lg rounded-2xl shadow-2xl p-5 flex flex-col gap-4 overflow-hidden max-h-[85vh] overflow-y-auto"
+            className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
             style={{ background: A.surface }}
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
-                {modalMode === 'add' ? 'Thêm chi nhánh mới' : 'Sửa thông tin chi nhánh'}
+                {modalMode === "add"
+                  ? "Thêm chi nhánh mới"
+                  : "Sửa thông tin chi nhánh"}
               </h2>
               <button onClick={() => setShowModal(false)}>
-                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ color: A.textMuted }}
+                >
+                  close
+                </span>
               </button>
             </div>
-            {[
-              { label: 'Tên chi nhánh', key: 'name', type: 'text' },
-              { label: 'Địa chỉ', key: 'address', type: 'text' },
-              { label: 'Điện thoại', key: 'phone', type: 'text' },
-              { label: 'Email', key: 'email', type: 'email' },
-              { label: 'Tổng số phòng', key: 'totalRooms', type: 'number' },
-            ].map(({ label, key, type }) => (
-              <div key={key}>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>{label}</label>
-                <input
-                  type={type}
-                  value={(form as any)[key] || ''}
-                  onChange={e => setForm(prev => ({ ...prev, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-                  placeholder={`Nhập ${label.toLowerCase()}...`}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                />
-              </div>
-            ))}
-            {/* Manager select - uses dropdown from employees list */}
-            <div>
-              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Quản lý phụ trách</label>
-              <input
-                type="text"
-                value={form.manager || ''}
-                onChange={e => setForm(prev => ({ ...prev, manager: e.target.value }))}
-                placeholder="Nhập tên quản lý..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-              />
-            </div>
+            {modalMode === "add" ? (
+              <>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1 uppercase"
+                    style={{ color: A.textMuted }}
+                  >
+                    Tên chi nhánh
+                  </label>
+                  <input
+                    type="text"
+                    value={form.name || ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="Nhập tên chi nhánh..."
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{
+                      border: `1px solid ${A.border}`,
+                      background: A.bg,
+                      color: A.textPrimary,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1 uppercase"
+                    style={{ color: A.textMuted }}
+                  >
+                    Địa chỉ
+                  </label>
+                  <input
+                    type="text"
+                    value={form.address || ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, address: e.target.value }))
+                    }
+                    placeholder="Nhập địa chỉ..."
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{
+                      border: `1px solid ${A.border}`,
+                      background: A.bg,
+                      color: A.textPrimary,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1 uppercase"
+                    style={{ color: A.textMuted }}
+                  >
+                    Số điện thoại
+                  </label>
+                  <input
+                    type="text"
+                    value={form.phone || ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, phone: e.target.value }))
+                    }
+                    placeholder="Nhập số điện thoại..."
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{
+                      border: `1px solid ${A.border}`,
+                      background: A.bg,
+                      color: A.textPrimary,
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1 uppercase"
+                    style={{ color: A.textMuted }}
+                  >
+                    Tên chi nhánh
+                  </label>
+                  <input
+                    type="text"
+                    value={form.name || ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="Nhập tên chi nhánh..."
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{
+                      border: `1px solid ${A.border}`,
+                      background: A.bg,
+                      color: A.textPrimary,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1 uppercase"
+                    style={{ color: A.textMuted }}
+                  >
+                    Địa chỉ
+                  </label>
+                  <input
+                    type="text"
+                    value={form.address || ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, address: e.target.value }))
+                    }
+                    placeholder="Nhập địa chỉ..."
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{
+                      border: `1px solid ${A.border}`,
+                      background: A.bg,
+                      color: A.textPrimary,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1 uppercase"
+                    style={{ color: A.textMuted }}
+                  >
+                    Số điện thoại
+                  </label>
+                  <input
+                    type="text"
+                    value={form.phone || ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, phone: e.target.value }))
+                    }
+                    placeholder="Nhập số điện thoại..."
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{
+                      border: `1px solid ${A.border}`,
+                      background: A.bg,
+                      color: A.textPrimary,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1 uppercase"
+                    style={{ color: A.textMuted }}
+                  >
+                    Quản lý phụ trách
+                  </label>
+                  <select
+                    value={form.manager || ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, manager: e.target.value }))
+                    }
+                    disabled={managerOptions.length === 0}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{
+                      border: `1px solid ${A.border}`,
+                      background: A.bg,
+                      color: A.textPrimary,
+                    }}
+                  >
+                    {managerOptions.length === 0 ? (
+                      <option value="">Chưa có quản lý phù hợp</option>
+                    ) : (
+                      <>
+                        <option value="">Chọn quản lý...</option>
+                        {managerOptions.map((opt) => (
+                          <option key={opt.id} value={opt.full_name}>
+                            {opt.full_name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+              </>
+            )}
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setShowModal(false)}
@@ -446,22 +741,21 @@ export default function AdminBranchesPage() {
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
                 style={{ background: A.primary }}
               >
-                {modalMode === 'add' ? 'Thêm chi nhánh' : 'Lưu thay đổi'}
+                {modalMode === "add" ? "Thêm chi nhánh" : "Lưu thay đổi"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Confirm Status Change Modal (from nhatanh) */}
       {confirmStatusBranch && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{
             background:
-              confirmStatusBranch.status === 'active'
-                ? 'rgba(185, 28, 28, 0.4)'
-                : 'rgba(30, 27, 23, 0.4)',
+              confirmStatusBranch.status === "active"
+                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for deactivation
+                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for activation
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmStatusBranch(null);
@@ -471,44 +765,60 @@ export default function AdminBranchesPage() {
             className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4 transform transition-all border animate-fade-in-up"
             style={{
               background: A.surface,
-              borderColor: confirmStatusBranch.status === 'active' ? '#fca5a5' : A.border,
+              borderColor:
+                confirmStatusBranch.status === "active" ? "#fca5a5" : A.border,
             }}
           >
             <div className="flex items-center gap-3">
               <div
                 className="p-2.5 rounded-full flex items-center justify-center"
                 style={{
-                  background: confirmStatusBranch.status === 'active' ? '#fee2e2' : '#d1fae5',
-                  color: confirmStatusBranch.status === 'active' ? '#dc2626' : '#059669',
+                  background:
+                    confirmStatusBranch.status === "active"
+                      ? "#fee2e2"
+                      : "#d1fae5",
+                  color:
+                    confirmStatusBranch.status === "active"
+                      ? "#dc2626"
+                      : "#059669",
                 }}
               >
                 <span className="material-symbols-outlined text-2xl">
-                  {confirmStatusBranch.status === 'active' ? 'warning' : 'check_circle'}
+                  {confirmStatusBranch.status === "active"
+                    ? "warning"
+                    : "check_circle"}
                 </span>
               </div>
               <h3
                 className="text-lg font-bold"
                 style={{
-                  color: confirmStatusBranch.status === 'active' ? '#dc2626' : '#059669',
+                  color:
+                    confirmStatusBranch.status === "active"
+                      ? "#dc2626"
+                      : "#059669",
                 }}
               >
-                {confirmStatusBranch.status === 'active'
-                  ? 'Ngưng hoạt động chi nhánh'
-                  : 'Kích hoạt lại chi nhánh'}
+                {confirmStatusBranch.status === "active"
+                  ? "Ngưng hoạt động chi nhánh"
+                  : "Kích hoạt lại chi nhánh"}
               </h3>
             </div>
             
             <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
-              {confirmStatusBranch.status === 'active' ? (
+              {confirmStatusBranch.status === "active" ? (
                 <>
-                  Bạn có chắc muốn <strong>ngưng hoạt động</strong> chi nhánh{' '}
-                  <span className="font-semibold text-gray-900">{confirmStatusBranch.name}</span>{' '}
+                  Bạn có chắc muốn <strong>ngưng hoạt động</strong> chi nhánh{" "}
+                  <span className="font-semibold text-gray-900">
+                    {confirmStatusBranch.name}
+                  </span>{" "}
                   không? Mọi hoạt động của chi nhánh này sẽ bị tạm dừng.
                 </>
               ) : (
                 <>
-                  Bạn có chắc muốn <strong>kích hoạt lại</strong> chi nhánh{' '}
-                  <span className="font-semibold text-gray-900">{confirmStatusBranch.name}</span>{' '}
+                  Bạn có chắc muốn <strong>kích hoạt lại</strong> chi nhánh{" "}
+                  <span className="font-semibold text-gray-900">
+                    {confirmStatusBranch.name}
+                  </span>{" "}
                   không?
                 </>
               )}
@@ -526,10 +836,15 @@ export default function AdminBranchesPage() {
                 onClick={confirmToggleStatus}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
                 style={{
-                  background: confirmStatusBranch.status === 'active' ? '#dc2626' : '#10b981',
+                  background:
+                    confirmStatusBranch.status === "active"
+                      ? "#dc2626"
+                      : "#10b981",
                 }}
               >
-                {confirmStatusBranch.status === 'active' ? 'Ngưng hoạt động' : 'Kích hoạt lại'}
+                {confirmStatusBranch.status === "active"
+                  ? "Ngưng hoạt động"
+                  : "Kích hoạt lại"}
               </button>
             </div>
           </div>

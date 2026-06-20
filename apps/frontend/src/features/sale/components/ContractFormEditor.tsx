@@ -411,7 +411,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
                       key={val}
                       type="button"
                       onClick={() => setContractType(val)}
-                      className={`px-4 py-3 rounded-xl border-2 text-left transition-all ${
+                      className={`px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer active:scale-[0.98] ${
                         contractType === val
                           ? 'border-[#6f583c] bg-[#fff8f3]'
                           : 'border-[#d1c4b9] bg-white hover:border-[#9d8879]'
@@ -640,7 +640,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-sm font-semibold hover:bg-[#faf2ec] transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#d1c4b9] text-[#4e453c] text-sm font-semibold hover:bg-[#faf2ec] transition cursor-pointer active:scale-[0.98]"
           >
             <ChevronLeft className="w-4 h-4" />
             Hủy bỏ
@@ -649,7 +649,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
           <div className="flex items-center gap-3">
             <button
               onClick={handleSaveDraft}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#6f583c] text-[#6f583c] text-sm font-semibold hover:bg-[#fff8f3] transition"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#6f583c] text-[#6f583c] text-sm font-semibold hover:bg-[#fff8f3] transition cursor-pointer active:scale-[0.98]"
             >
               <Save className="w-4 h-4" />
               Lưu nháp
@@ -659,7 +659,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
               disabled={!allChecklistDone}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-md ${
                 allChecklistDone
-                  ? 'bg-[#6f583c] text-white hover:bg-[#5c4830] hover:shadow-lg active:scale-95'
+                  ? 'bg-[#6f583c] text-white hover:bg-[#5c4830] hover:shadow-lg active:scale-95 cursor-pointer'
                   : 'bg-[#d1c4b9] text-[#9d8879] cursor-not-allowed'
               }`}
             >

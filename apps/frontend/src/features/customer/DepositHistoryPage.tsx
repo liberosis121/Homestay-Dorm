@@ -1,40 +1,105 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarCheck, CheckCircle, Clock, CreditCard, Receipt, Search, XCircle } from 'lucide-react';
-import { CustomerDepositRequest, getMockDB } from '../../lib/supabaseClient';
+import { CustomerDepositRequest, getMockDB, saveMockDB, ManagerDeposit } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
+import PaymentDialog from './components/PaymentDialog';
+import { Invoice } from './store/useInvoiceStore';
 
-const statusMap: Record<CustomerDepositRequest['status'], { label: string; cls: string; icon: any; desc: string }> = {
-  pending_sale_confirmation: {
-    label: 'Chờ Sale xác nhận',
-    cls: 'bg-primary-fixed/30 text-timber-accent border-timber-accent/20',
-    icon: Clock,
-    desc: 'Nhân viên Sale đang kiểm tra lại phòng/giường đã xem.',
-  },
-  confirmed: {
-    label: 'Đã xác nhận',
-    cls: 'bg-primary/10 text-primary border-primary/20',
-    icon: CalendarCheck,
-    desc: 'Yêu cầu đã được xác nhận và đang chuyển sang bước lập hóa đơn.',
-  },
-  invoice_created: {
+const getDynamicStatus = (request: CustomerDepositRequest, matchingMgrDep?: ManagerDeposit) => {
+  if (request.status === 'paid' || matchingMgrDep?.status === 'approved') {
+    return {
+      label: 'Đã cọc thành công',
+      cls: 'bg-status-success/10 text-status-success border-status-success/20',
+      icon: CheckCircle,
+      desc: 'Khoản cọc đã được ghi nhận thành công và được Quản lý duyệt giữ chỗ.',
+      showPayBtn: false,
+    };
+  }
+  if (request.status === 'cancelled') {
+    return {
+      label: 'Đã hủy',
+      cls: 'bg-error-container text-error border-error/20',
+      icon: XCircle,
+      desc: 'Yêu cầu đặt cọc đã được hủy.',
+      showPayBtn: false,
+    };
+  }
+  if (request.status === 'pending_sale_confirmation') {
+    return {
+      label: 'Chờ Sale xác nhận',
+      cls: 'bg-primary-fixed/30 text-timber-accent border-timber-accent/20',
+      icon: Clock,
+      desc: 'Nhân viên Sale đang kiểm tra lại phòng/giường đã xem.',
+      showPayBtn: false,
+    };
+  }
+  if (request.status === 'confirmed') {
+    return {
+      label: 'Đã xác nhận',
+      cls: 'bg-primary/10 text-primary border-primary/20',
+      icon: CalendarCheck,
+      desc: 'Yêu cầu đã được xác nhận và đang chuyển sang bước lập hóa đơn.',
+      showPayBtn: false,
+    };
+  }
+
+  // Under 'invoice_created' status:
+  if (request.status === 'invoice_created') {
+    if (!matchingMgrDep) {
+      return {
+        label: 'Chờ thanh toán',
+        cls: 'bg-sage-light text-timber-accent border-outline-variant',
+        icon: Receipt,
+        desc: 'Hóa đơn đặt cọc đã được lập. Vui lòng thanh toán cọc để giữ chỗ phòng.',
+        showPayBtn: true,
+      };
+    }
+    if (matchingMgrDep.status === 'pending') {
+      return {
+        label: 'Chờ duyệt minh chứng',
+        cls: 'bg-primary-fixed/30 text-timber-accent border-timber-accent/20',
+        icon: Clock,
+        desc: 'Minh chứng thanh toán cọc đang chờ Quản lý kiểm duyệt thông tin.',
+        showPayBtn: false,
+      };
+    }
+    if (matchingMgrDep.status === 'rejected') {
+      return {
+        label: 'Minh chứng bị từ chối',
+        cls: 'bg-error-container text-error border-error/20',
+        icon: XCircle,
+        desc: `Minh chứng bị từ chối: ${matchingMgrDep.reviewer_note || 'Thông tin chuyển khoản không khớp'}. Vui lòng thanh toán lại.`,
+        showPayBtn: true,
+      };
+    }
+    if (matchingMgrDep.status === 'need_more') {
+      return {
+        label: 'Cần bổ sung',
+        cls: 'bg-primary-fixed/30 text-timber-accent border-timber-accent/20',
+        icon: Clock,
+        desc: `Cần bổ sung thông tin: ${matchingMgrDep.reviewer_note || 'Vui lòng bổ sung thêm thông tin giao dịch'}. Vui lòng thanh toán lại.`,
+        showPayBtn: true,
+      };
+    }
+    if (matchingMgrDep.status === 'expired') {
+      return {
+        label: 'Quá hạn',
+        cls: 'bg-error-container text-error border-error/20',
+        icon: XCircle,
+        desc: 'Đã quá hạn thanh toán đặt cọc.',
+        showPayBtn: false,
+      };
+    }
+  }
+
+  return {
     label: 'Chờ thanh toán',
     cls: 'bg-sage-light text-timber-accent border-outline-variant',
     icon: Receipt,
     desc: 'Hóa đơn đặt cọc đã được tạo.',
-  },
-  paid: {
-    label: 'Đã thanh toán',
-    cls: 'bg-status-success/10 text-status-success border-status-success/20',
-    icon: CheckCircle,
-    desc: 'Khoản cọc đã được ghi nhận thành công.',
-  },
-  cancelled: {
-    label: 'Đã hủy',
-    cls: 'bg-error-container text-error border-error/20',
-    icon: XCircle,
-    desc: 'Yêu cầu đặt cọc đã được hủy.',
-  },
+    showPayBtn: true,
+  };
 };
 
 const formatDate = (value: string) => new Date(value).toLocaleDateString('vi-VN');
@@ -43,8 +108,13 @@ export default function DepositHistoryPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<CustomerDepositRequest[]>([]);
+  const [managerDeposits, setManagerDeposits] = useState<ManagerDeposit[]>([]);
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Payment dialog states
+  const [selectedRequest, setSelectedRequest] = useState<CustomerDepositRequest | null>(null);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -58,9 +128,73 @@ export default function DepositHistoryPage() {
         .filter((r: CustomerDepositRequest) => r.customer_id === user.id)
         .sort((a: CustomerDepositRequest, b: CustomerDepositRequest) => b.created_at.localeCompare(a.created_at));
       setRequests(list);
+      setManagerDeposits(db.manager_deposits || []);
       setIsLoading(false);
     }, 500);
   }, [user, navigate]);
+
+  // Map deposit request to Invoice type for PaymentDialog
+  const selectedInvoice = useMemo((): Invoice | null => {
+    if (!selectedRequest) return null;
+    return {
+      id: selectedRequest.id,
+      billingPeriod: `Đặt cọc giữ chỗ ${selectedRequest.room_name}`,
+      month: new Date(selectedRequest.created_at).getMonth() + 1,
+      year: new Date(selectedRequest.created_at).getFullYear(),
+      type: 'incidental' as const,
+      typeName: 'Đặt cọc giữ chỗ',
+      roomPrice: 0,
+      electricityPrice: 0,
+      electricityUsage: '',
+      waterPrice: 0,
+      waterUsage: '',
+      servicePrice: selectedRequest.deposit_amount,
+      serviceDetails: `Đặt cọc phòng ${selectedRequest.room_name} (${selectedRequest.branch_name})`,
+      totalAmount: selectedRequest.deposit_amount,
+      dueDate: selectedRequest.expected_move_in_date,
+      status: 'unpaid' as const,
+    };
+  }, [selectedRequest]);
+
+  const handlePaymentSuccess = (method: 'qr' | 'wallet' | 'card', proofImgUrl?: string) => {
+    if (!selectedRequest || !user) return;
+    const db = getMockDB();
+    
+    // Create new manager deposit proof record
+    const newMgrDep: ManagerDeposit = {
+      id: `MGR-DEP-${Date.now()}`,
+      customer_id: user.id,
+      customer_name: user.full_name || 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: user.phone || '0977889900',
+      room_id: selectedRequest.room_id,
+      room_name: selectedRequest.room_name,
+      deposit_type: 'room',
+      amount: selectedRequest.deposit_amount,
+      deposit_date: new Date().toISOString().split('T')[0],
+      bill_image_url: proofImgUrl || 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
+      bank_name: method === 'card' ? 'Thẻ Ngân hàng' : method === 'wallet' ? 'Ví điện tử' : 'Vietcombank',
+      account_number: method === 'card' ? '1234567812345678' : '1012345678',
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+
+    const updatedMgrDeps = [newMgrDep, ...(db.manager_deposits || [])];
+    db.manager_deposits = updatedMgrDeps;
+    
+    // Save DB
+    saveMockDB(db);
+
+    // Reload state from DB to ensure sync
+    const reloadedDb = getMockDB();
+    const list = (reloadedDb.customer_deposit_requests || [])
+      .filter((r: CustomerDepositRequest) => r.customer_id === user.id)
+      .sort((a: CustomerDepositRequest, b: CustomerDepositRequest) => b.created_at.localeCompare(a.created_at));
+    
+    setRequests(list);
+    setManagerDeposits(reloadedDb.manager_deposits || []);
+    setIsPaymentOpen(false);
+    setSelectedRequest(null);
+  };
 
   const filtered = useMemo(() => {
     if (!query.trim()) return requests;
@@ -72,12 +206,33 @@ export default function DepositHistoryPage() {
     );
   }, [requests, query]);
 
-  const stats = useMemo(() => ({
-    total: requests.length,
-    pending: requests.filter(r => r.status === 'pending_sale_confirmation' || r.status === 'confirmed').length,
-    payable: requests.filter(r => r.status === 'invoice_created').length,
-    paid: requests.filter(r => r.status === 'paid').length,
-  }), [requests]);
+  const stats = useMemo(() => {
+    let pendingCount = 0;
+    let payableCount = 0;
+    let paidCount = 0;
+
+    requests.forEach(r => {
+      const matchingMgrDep = [...managerDeposits]
+        .filter(md => md.customer_id === r.customer_id && md.room_id === r.room_id)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+      const statusInfo = getDynamicStatus(r, matchingMgrDep);
+      
+      if (statusInfo.label === 'Đã cọc thành công') {
+        paidCount++;
+      } else if (statusInfo.label === 'Chờ thanh toán' || statusInfo.label === 'Minh chứng bị từ chối' || statusInfo.label === 'Cần bổ sung') {
+        payableCount++;
+      } else {
+        pendingCount++;
+      }
+    });
+
+    return {
+      total: requests.length,
+      pending: pendingCount,
+      payable: payableCount,
+      paid: paidCount,
+    };
+  }, [requests, managerDeposits]);
 
   return (
     <div className="max-w-[1280px] mx-auto w-full px-margin-mobile md:px-margin-desktop">
@@ -149,8 +304,12 @@ export default function DepositHistoryPage() {
         ) : (
           <div className="divide-y divide-outline-variant/40">
             {filtered.map((request) => {
-              const status = statusMap[request.status];
-              const Icon = status.icon;
+              const matchingMgrDep = [...managerDeposits]
+                .filter(md => md.customer_id === request.customer_id && md.room_id === request.room_id)
+                .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+
+              const statusInfo = getDynamicStatus(request, matchingMgrDep);
+              const Icon = statusInfo.icon;
               return (
                 <article key={request.id} className="p-5 md:p-6 flex flex-col lg:flex-row gap-5 hover:bg-surface-container-low/60 transition-colors">
                   <div className="w-full lg:w-36 h-28 rounded-24 overflow-hidden bg-surface-container-low shrink-0">
@@ -164,9 +323,9 @@ export default function DepositHistoryPage() {
                         <h3 className="text-lg font-bold text-primary mt-1">{request.room_name}</h3>
                         <p className="text-sm text-on-surface-variant mt-0.5">{request.branch_name}</p>
                       </div>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start ${status.cls}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start ${statusInfo.cls}`}>
                         <Icon className="w-3.5 h-3.5" />
-                        {status.label}
+                        {statusInfo.label}
                       </span>
                     </div>
 
@@ -185,7 +344,22 @@ export default function DepositHistoryPage() {
                       </div>
                     </div>
 
-                    <p className="text-xs text-on-surface-variant mt-3 leading-relaxed">{status.desc}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 pt-3 border-t border-outline-variant/30">
+                      <p className="text-xs text-on-surface-variant leading-relaxed">{statusInfo.desc}</p>
+                      {statusInfo.showPayBtn && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedRequest(request);
+                            setIsPaymentOpen(true);
+                          }}
+                          className="px-5 py-2.5 bg-primary text-on-primary rounded-full text-xs font-semibold hover:opacity-90 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 self-end sm:self-auto"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          Thanh toán cọc
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </article>
               );
@@ -193,6 +367,18 @@ export default function DepositHistoryPage() {
           </div>
         )}
       </section>
+
+      {isPaymentOpen && selectedInvoice && (
+        <PaymentDialog
+          isOpen={isPaymentOpen}
+          invoice={selectedInvoice}
+          onClose={() => {
+            setIsPaymentOpen(false);
+            setSelectedRequest(null);
+          }}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }

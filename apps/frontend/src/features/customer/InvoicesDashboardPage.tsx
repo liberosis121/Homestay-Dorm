@@ -1,38 +1,63 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInvoiceStore } from './store/useInvoiceStore';
 import InvoiceTable from './components/InvoiceTable';
 import InvoiceDetail from './components/InvoiceDetail';
 import CustomSelect from '../../components/ui/CustomSelect';
-import { ArrowLeft, FileClock, DollarSign, CalendarDays, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileClock, DollarSign, CalendarDays, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
 
 const MONTH_OPTIONS = [
   { value: 'Tất cả', label: 'Tất cả các tháng' },
+  { value: '01', label: 'Tháng 01' },
+  { value: '02', label: 'Tháng 02' },
+  { value: '03', label: 'Tháng 03' },
+  { value: '04', label: 'Tháng 04' },
   { value: '05', label: 'Tháng 05' },
   { value: '06', label: 'Tháng 06' },
   { value: '07', label: 'Tháng 07' },
   { value: '08', label: 'Tháng 08' },
   { value: '09', label: 'Tháng 09' },
   { value: '10', label: 'Tháng 10' },
+  { value: '11', label: 'Tháng 11' },
+  { value: '12', label: 'Tháng 12' },
 ];
 
 const YEAR_OPTIONS = [
   { value: 'Tất cả', label: 'Tất cả năm' },
   { value: '2024', label: 'Năm 2024' },
+  { value: '2025', label: 'Năm 2025' },
+  { value: '2026', label: 'Năm 2026' },
 ];
 
 const INVOICE_TYPE_OPTIONS = [
   { value: 'Tất cả', label: 'Tất cả loại' },
+  { value: 'monthly', label: 'Định kỳ' },
   { value: 'service', label: 'Dịch vụ' },
   { value: 'incidental', label: 'Phát sinh' },
-  { value: 'monthly', label: 'Định kỳ' },
 ];
 
 export default function InvoicesDashboardPage() {
   const navigate = useNavigate();
-  const { invoices, filters, setFilters, selectedInvoiceId, setSelectedInvoiceId } = useInvoiceStore();
+  const { user } = useAuthStore();
+  const { 
+    invoices, 
+    filters, 
+    setFilters, 
+    selectedInvoiceId, 
+    setSelectedInvoiceId, 
+    fetchInvoices, 
+    isLoading, 
+    error 
+  } = useInvoiceStore();
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (user?.email) {
+      fetchInvoices(user.email);
+    }
+  }, [user?.email, fetchInvoices]);
 
   const handleSelectInvoice = (id: string) => {
     setSelectedInvoiceId(id);
@@ -45,9 +70,11 @@ export default function InvoicesDashboardPage() {
   }, [invoices]);
 
   const currentMonthCost = useMemo(() => {
-    // Current month is 10 (October) in our mock database
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
     return invoices
-      .filter((inv) => inv.month === 10 && inv.year === 2024)
+      .filter((inv) => inv.month === currentMonth && inv.year === currentYear)
       .reduce((sum, inv) => sum + inv.totalAmount, 0);
   }, [invoices]);
 
@@ -97,6 +124,19 @@ export default function InvoicesDashboardPage() {
     navigate(`/customer/payment/${invoiceId}`);
   };
 
+  const currentMonthLabel = useMemo(() => {
+    return new Date().getMonth() + 1;
+  }, []);
+
+  if (isLoading && invoices.length === 0) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        <p className="text-on-surface-variant font-medium text-sm">Đang tải danh sách hóa đơn...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-8">
       {/* Header Section */}
@@ -114,6 +154,13 @@ export default function InvoicesDashboardPage() {
           Tra cứu thông tin chi phí định kỳ và thực hiện thanh toán trực tuyến nhanh chóng.
         </p>
       </header>
+
+      {error && (
+        <div className="mb-6 flex items-center gap-3 p-4 bg-status-error/10 border border-status-error/20 rounded-2xl text-status-error text-sm font-semibold">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI Cards Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -134,7 +181,7 @@ export default function InvoicesDashboardPage() {
           <div className="w-10 h-10 bg-tertiary/10 text-tertiary rounded-xl flex items-center justify-center mb-4">
             <DollarSign className="w-5 h-5" />
           </div>
-          <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Tổng chi phí tháng 10</h3>
+          <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Tổng chi phí tháng {currentMonthLabel}</h3>
           <p className="text-2xl font-bold text-on-surface">
             {currentMonthCost.toLocaleString('vi-VN')}{' '}
             <span className="text-sm font-medium text-on-surface-variant">VNĐ</span>

@@ -5,6 +5,18 @@ import {
 import { mockSupabase, getMockDB, saveMockDB, MonthlyInvoice, ServiceSubscription } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 
+const STANDARD_INCIDENTALS = [
+  { value: 'voi_sen', label: 'Đền bù làm hỏng vòi sen tắm', code: 'CPPS-8821', amount: 150000 },
+  { value: 'the_tu', label: 'Đền bù làm mất thẻ từ/chìa khóa', code: 'CPPS-4102', amount: 100000 },
+  { value: 've_sinh', label: 'Phạt vi phạm nội quy vệ sinh', code: 'CPPS-1104', amount: 200000 },
+  { value: 'tu_ao', label: 'Đền bù hư hỏng tủ quần áo', code: 'CPPS-5531', amount: 500000 },
+  { value: 'phu_thu', label: 'Phí phụ thu vệ sinh phòng thêm', code: 'CPPS-3211', amount: 300000 },
+  { value: 'ban_hoc', label: 'Đền bù làm hư hỏng bàn học + ghế', code: 'CPPS-6204', amount: 150000 },
+  { value: 'khoa_cua', label: 'Đền bù làm hỏng khóa cửa điện tử', code: 'CPPS-7128', amount: 800000 },
+  { value: 'giuong_nem', label: 'Đền bù hư hỏng giường đơn + nệm', code: 'CPPS-9901', amount: 200000 },
+  { value: 'other', label: 'Khác (Tự nhập chi tiết)', code: '', amount: 0 },
+];
+
 export default function AccountantMonthlyPage() {
   const [invoices, setInvoices] = useState<MonthlyInvoice[]>([]);
   const [activeTab, setActiveTab] = useState<'input' | 'list'>('input');
@@ -24,8 +36,17 @@ export default function AccountantMonthlyPage() {
   const [elecNew, setElecNew] = useState(1280);
   const [waterOld, setWaterOld] = useState(45);
   const [waterNew, setWaterNew] = useState(51);
-  const [incidentals, setIncidentals] = useState<{ id: string; name: string; amount: number; confirmed: boolean }[]>([]);
+  const [incidentals, setIncidentals] = useState<{ id: string; name: string; amount: number; confirmed: boolean; dateRecorded?: string }[]>([]);
   const [subscriptions, setSubscriptions] = useState<ServiceSubscription[]>([]);
+
+  // Modal states for adding incidental cost (UC 5)
+  const [showAddIncidentalModal, setShowAddIncidentalModal] = useState(false);
+  const [newIncidentalCode, setNewIncidentalCode] = useState('');
+  const [newIncidentalName, setNewIncidentalName] = useState('');
+  const [newIncidentalAmount, setNewIncidentalAmount] = useState(0);
+  const [newIncidentalStatus, setNewIncidentalStatus] = useState('confirmed');
+  const [newIncidentalDate, setNewIncidentalDate] = useState('');
+  const [selectedIncidentalType, setSelectedIncidentalType] = useState('voi_sen');
 
   // Search query for contracts list in left panel
   const [contractSearchQuery, setContractSearchQuery] = useState('');
@@ -72,7 +93,7 @@ export default function AccountantMonthlyPage() {
       // Pre-populate some unconfirmed incidentals for specific contracts for A4 flow
       if (selectedContract.customer_id === 'u-5') {
         setIncidentals([
-          { id: 'inc-1', name: 'Đền bù làm hỏng vòi sen tắm (báo cáo bởi Quản lý)', amount: 150000, confirmed: false }
+          { id: 'CPPS-8821', name: 'Đền bù làm hỏng vòi sen tắm (báo cáo bởi Quản lý)', amount: 150000, confirmed: false, dateRecorded: '2026-06-05' }
         ]);
       } else {
         setIncidentals([]);
@@ -101,17 +122,44 @@ export default function AccountantMonthlyPage() {
   };
 
   const handleAddIncidental = () => {
-    const name = prompt("Nhập tên khoản phát sinh:");
-    if (!name) return;
-    const amountStr = prompt("Nhập số tiền (VND):");
-    if (!amountStr) return;
-    const amount = parseInt(amountStr) || 0;
+    setSelectedIncidentalType('voi_sen');
+    setNewIncidentalCode('CPPS-8821');
+    setNewIncidentalName('Đền bù làm hỏng vòi sen tắm');
+    setNewIncidentalAmount(150000);
+    setNewIncidentalStatus('confirmed');
+    setNewIncidentalDate(new Date().toISOString().split('T')[0]);
+    setShowAddIncidentalModal(true);
+  };
+
+  const handleIncidentalTypeChange = (value: string) => {
+    setSelectedIncidentalType(value);
+    const standard = STANDARD_INCIDENTALS.find(item => item.value === value);
+    if (standard) {
+      if (value === 'other') {
+        setNewIncidentalCode(`CPPS-${Math.floor(1000 + Math.random() * 9000)}`);
+        setNewIncidentalName('');
+        setNewIncidentalAmount(0);
+      } else {
+        setNewIncidentalCode(standard.code);
+        setNewIncidentalName(standard.label);
+        setNewIncidentalAmount(standard.amount);
+      }
+    }
+  };
+
+  const handleSubmitIncidental = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalName = selectedIncidentalType === 'other' ? newIncidentalName : STANDARD_INCIDENTALS.find(item => item.value === selectedIncidentalType)?.label;
+    if (!finalName || !finalName.trim()) return;
+
     setIncidentals(prev => [...prev, {
-      id: `inc-${Date.now()}`,
-      name,
-      amount,
-      confirmed: true
+      id: newIncidentalCode.trim() || `CPPS-${Math.floor(1000 + Math.random() * 9000)}`,
+      name: finalName,
+      amount: newIncidentalAmount,
+      confirmed: newIncidentalStatus === 'confirmed',
+      dateRecorded: newIncidentalDate
     }]);
+    setShowAddIncidentalModal(false);
   };
 
   const handleDeleteIncidental = (id: string) => {
@@ -240,7 +288,7 @@ export default function AccountantMonthlyPage() {
             onChange={setSelectedPeriod}
             options={periodOptions}
             theme="accountant"
-            className="w-40"
+            className="w-48"
           />
           <CustomSelect
             value={selectedBranch}
@@ -383,7 +431,7 @@ export default function AccountantMonthlyPage() {
                   <div className="bg-[#FAF9F6] border border-[#d1c4b9] p-4 rounded-xl space-y-3">
                     <div className="flex items-center gap-2 text-[#5a462d] mb-1">
                       <FileText className="w-4 h-4" />
-                      <span className="font-bold text-sm uppercase tracking-wide font-label-caps">Chi tiết hợp đồng selected</span>
+                      <span className="font-bold text-sm uppercase tracking-wide font-label-caps">Chi tiết hợp đồng</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                       <div>
@@ -516,25 +564,32 @@ export default function AccountantMonthlyPage() {
                       {incidentals.map((inc) => (
                         <div
                           key={inc.id}
-                          className={`flex items-center justify-between p-2.5 rounded-lg border text-xs font-mono transition-all duration-300 ${
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 ${
                             inc.confirmed 
                               ? 'bg-white border-[#d1c4b9]' 
-                              : 'bg-amber-50 border-amber-300 animate-pulse'
+                              : 'bg-amber-50/50 border-amber-300'
                           }`}
                         >
-                          <div className="flex items-center gap-2 flex-1">
-                            {!inc.confirmed && (
-                              <span className="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider shrink-0 mr-1.5">Chưa xác nhận</span>
-                            )}
-                            <span className="font-sans font-medium text-[#1b1c1c]">{inc.name}</span>
+                          <div className="flex flex-col gap-1 flex-1">
+                            <div className="flex items-center gap-2">
+                              {!inc.confirmed && (
+                                <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider shrink-0 mr-1.5">Chưa xác nhận</span>
+                              )}
+                              <span className="font-sans font-bold text-[#1b1c1c] text-xs">{inc.name}</span>
+                            </div>
+                            <div className="text-[10px] text-[#5e5f5d] font-mono flex items-center gap-3">
+                              <span>Mã: <strong className="text-[#5a462d]">{inc.id}</strong></span>
+                              <span className="text-[#d1c4b9]">•</span>
+                              <span>Ngày sự cố: <strong>{inc.dateRecorded || new Date().toISOString().split('T')[0]}</strong></span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-bold text-[#5a462d]">{inc.amount.toLocaleString('vi-VN')} đ</span>
+                            <span className="font-bold text-[#5a462d] text-xs font-mono">{inc.amount.toLocaleString('vi-VN')} đ</span>
                             {!inc.confirmed && (
                               <button
                                 type="button"
                                 onClick={() => handleConfirmIncidental(inc.id)}
-                                className="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold hover:opacity-90 cursor-pointer"
+                                className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-bold hover:bg-emerald-700 transition-colors cursor-pointer"
                               >
                                 Xác nhận
                               </button>
@@ -542,7 +597,7 @@ export default function AccountantMonthlyPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteIncidental(inc.id)}
-                              className="text-error hover:bg-error/10 p-1 rounded transition cursor-pointer"
+                              className="text-error hover:bg-error/10 p-1.5 rounded-lg transition cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -792,6 +847,154 @@ export default function AccountantMonthlyPage() {
                 </button>
               )}
             </div>
+          </div>
+        </>
+      )}
+      {/* Modal: Thêm khoản phí phát sinh */}
+      {showAddIncidentalModal && (
+        <>
+          {/* Overlay backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/45 z-50 backdrop-blur-sm transition-all duration-300"
+            onClick={() => setShowAddIncidentalModal(false)}
+          />
+          
+          {/* Modal Container */}
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white border border-[#d1c4b9] rounded-3xl shadow-2xl z-[60] overflow-hidden animate-fade-in-up">
+            {/* Header */}
+            <div className="p-6 border-b border-[#e4e2e1] flex justify-between items-center bg-[#faf2ec]/50">
+              <div>
+                <h3 className="text-sm text-[#5a462d] font-bold font-headline-sm uppercase tracking-wider flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Chi phí phát sinh
+                </h3>
+                <p className="text-xs text-[#5e5f5d] mt-1 font-sans">Thêm mới khoản chi phí phát sinh / phạt trong kỳ</p>
+              </div>
+              <button 
+                onClick={() => setShowAddIncidentalModal(false)} 
+                className="p-1.5 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitIncidental} className="p-6 space-y-4 text-xs font-sans">
+              {/* Row 1: Chọn Loại chi phí (Dropdown đồng bộ) */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
+                  Loại chi phí phát sinh <span className="text-red-500">*</span>
+                </label>
+                <CustomSelect
+                  value={selectedIncidentalType}
+                  onChange={handleIncidentalTypeChange}
+                  options={STANDARD_INCIDENTALS}
+                  theme="accountant"
+                  pill={true}
+                  dropdownClassName="z-[70]"
+                />
+              </div>
+
+              {/* Tên chi phí tùy chỉnh (chỉ hiển thị khi chọn 'Khác') */}
+              {selectedIncidentalType === 'other' && (
+                <div className="space-y-1.5 animate-fade-in">
+                  <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
+                    Tên chi phí khác <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newIncidentalName}
+                    onChange={(e) => setNewIncidentalName(e.target.value)}
+                    placeholder="Nhập mô tả chi tiết chi phí..."
+                    className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]"
+                  />
+                </div>
+              )}
+
+              {/* Row 2: Mã chi phí */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
+                  Mã chi phí <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  disabled={selectedIncidentalType !== 'other'}
+                  value={newIncidentalCode}
+                  onChange={(e) => setNewIncidentalCode(e.target.value)}
+                  placeholder="Ví dụ: CPPS-1021"
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono disabled:opacity-60 disabled:bg-[#f3ede8]"
+                />
+              </div>
+
+              {/* Row 3: Số tiền phạt */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
+                  Số tiền phạt (đ) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  disabled={selectedIncidentalType !== 'other'}
+                  value={newIncidentalAmount || ''}
+                  onChange={(e) => setNewIncidentalAmount(parseInt(e.target.value) || 0)}
+                  placeholder="Nhập số tiền..."
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono disabled:opacity-60 disabled:bg-[#f3ede8]"
+                />
+              </div>
+
+              {/* Row 4: Trạng thái & Ngày ghi nhận sự cố */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
+                    Trạng thái <span className="text-red-500">*</span>
+                  </label>
+                  <CustomSelect
+                    value={newIncidentalStatus}
+                    onChange={(val) => setNewIncidentalStatus(val)}
+                    options={[
+                      { value: 'pending', label: 'Chưa xác nhận' },
+                      { value: 'confirmed', label: 'Đã xác nhận' }
+                    ]}
+                    theme="accountant"
+                    pill={true}
+                    dropdownClassName="z-[70]"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
+                    Ngày ghi nhận sự cố <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newIncidentalDate}
+                    onChange={(e) => setNewIncidentalDate(e.target.value)}
+                    className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-2.5 px-4 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-[#e4e2e1]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddIncidentalModal(false)}
+                  className="flex-1 border border-[#d1c4b9] text-[#4e453c] hover:bg-[#e4e2e1]/30 py-3 rounded-24 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#5a462d] text-white hover:opacity-90 py-3 rounded-24 text-xs font-bold transition-all cursor-pointer shadow-sm hover:shadow"
+                >
+                  Xác nhận thêm
+                </button>
+              </div>
+            </form>
           </div>
         </>
       )}

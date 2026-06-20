@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -176,29 +175,21 @@ export default function AdminServicesPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <CustomSelect
-          value={filterType}
-          onChange={setFilterType}
-          options={[
-            { value: '', label: 'Tất cả loại' },
-            { value: 'utility', label: 'Tiện ích' },
-            { value: 'amenity', label: 'Tiện nghi' },
-            { value: 'extra', label: 'Bổ sung' }
-          ]}
-          className="min-w-[150px]"
-          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-        />
-        <CustomSelect
-          value={filterActive}
-          onChange={setFilterActive}
-          options={[
-            { value: '', label: 'Tất cả trạng thái' },
-            { value: 'active', label: 'Đang kích hoạt' },
-            { value: 'inactive', label: 'Đã tắt' }
-          ]}
-          className="min-w-[150px]"
-          triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-        />
+        <select value={filterType} onChange={e => setFilterType(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
+          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
+          <option value="">Tất cả loại</option>
+          <option value="utility">Tiện ích</option>
+          <option value="amenity">Tiện nghi</option>
+          <option value="extra">Bổ sung</option>
+        </select>
+        <select value={filterActive} onChange={e => setFilterActive(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
+          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
+          <option value="">Tất cả trạng thái</option>
+          <option value="active">Đang kích hoạt</option>
+          <option value="inactive">Đã tắt</option>
+        </select>
         <button onClick={() => { setSearch(''); setFilterType(''); setFilterActive(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -336,31 +327,23 @@ export default function AdminServicesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại dịch vụ</label>
-                <CustomSelect
-                  value={form.type || 'utility'}
-                  onChange={val => setForm(prev => ({ ...prev, type: val as ServiceType }))}
-                  options={[
-                    { value: 'utility', label: 'Tiện ích' },
-                    { value: 'amenity', label: 'Tiện nghi' },
-                    { value: 'extra', label: 'Bổ sung' }
-                  ]}
-                  className="w-full"
-                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-                />
+                <select value={form.type || 'utility'} onChange={e => setForm(prev => ({ ...prev, type: e.target.value as ServiceType }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
+                  <option value="utility">Tiện ích</option>
+                  <option value="amenity">Tiện nghi</option>
+                  <option value="extra">Bổ sung</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Chu kỳ</label>
-                <CustomSelect
-                  value={form.billingCycle || 'monthly'}
-                  onChange={val => setForm(prev => ({ ...prev, billingCycle: val as BillingCycle }))}
-                  options={[
-                    { value: 'monthly', label: 'Hàng tháng' },
-                    { value: 'per_usage', label: 'Theo số lượng' },
-                    { value: 'one_time', label: 'Một lần' }
-                  ]}
-                  className="w-full"
-                  triggerClassName="h-10 !rounded-lg !border-[#d1c4b9] !bg-[#fff8f3] text-[#1e1b17] py-2"
-                />
+                <select value={form.billingCycle || 'monthly'} onChange={e => setForm(prev => ({ ...prev, billingCycle: e.target.value as BillingCycle }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
+                  <option value="monthly">Hàng tháng</option>
+                  <option value="per_usage">Theo số lượng</option>
+                  <option value="one_time">Một lần</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Đơn giá (đ)</label>

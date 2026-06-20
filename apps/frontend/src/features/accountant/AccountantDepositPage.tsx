@@ -135,21 +135,7 @@ export default function AccountantDepositPage() {
     }
   };
 
-  const handleUpdateStatus = (id: string, nextStatus: DepositInvoice['status']) => {
-    const db = getMockDB();
-    const invoice = db.deposit_invoices?.find((inv: DepositInvoice) => inv.id === id);
-    if (!invoice) return;
 
-    const res = mockSupabase.from('deposit_invoices').update(id, { status: nextStatus });
-    if (res.data) {
-      const updatedDb = getMockDB();
-      setInvoices(updatedDb.deposit_invoices || []);
-      if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
-        setSelectedDetailInvoice({ ...selectedDetailInvoice, status: nextStatus });
-      }
-      setToastMessage(nextStatus === 'paid' ? 'Đã xác nhận thu tiền thành công.' : 'Đã hủy hóa đơn thành công.');
-    }
-  };
 
   // Summaries
   const totalCount = invoices.length;
@@ -605,22 +591,7 @@ export default function AccountantDepositPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
-                      {inv.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleUpdateStatus(inv.id, 'paid')}
-                            className="px-2 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:opacity-90 active:scale-[0.95] transition-all cursor-pointer"
-                          >
-                            Xác nhận thu
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(inv.id, 'cancelled')}
-                            className="px-2 py-1 border border-[#A94F4F] text-[#A94F4F] rounded text-[11px] font-semibold hover:bg-[#A94F4F]/10 active:scale-[0.95] transition-all cursor-pointer"
-                          >
-                            Hủy HĐ
-                          </button>
-                        </>
-                      )}
+
                       <button 
                         onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
                         className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]"
@@ -657,9 +628,6 @@ export default function AccountantDepositPage() {
         onClose={() => setIsDrawerOpen(false)}
         invoiceType="deposit"
         invoiceData={selectedDetailInvoice}
-        onConfirmPayment={(id) => {
-          handleUpdateStatus(id, 'paid');
-        }}
       />
 
       {/* Toast Notification */}

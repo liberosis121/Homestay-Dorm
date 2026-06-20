@@ -1,15 +1,12 @@
-import { Mail } from 'lucide-react';
 import { Customer } from '../../../lib/mockCustomers';
 export type { Customer };
 
 interface CustomerProfileCardProps {
   customer: Customer;
-  onActionEmail?: () => void;
 }
 
 export default function CustomerProfileCard({
   customer,
-  onActionEmail,
 }: CustomerProfileCardProps) {
   // Huy hiệu phân hạng khách hàng
   const getTierBadge = (tier: Customer['tier']) => {
@@ -66,13 +63,6 @@ export default function CustomerProfileCard({
         </div>
       </div>
       <div className="flex flex-wrap gap-3 shrink-0">
-        <button
-          onClick={onActionEmail}
-          className="flex items-center gap-2 px-4 py-2 border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] rounded-xl transition-all cursor-pointer font-semibold text-xs active:scale-95 duration-200"
-        >
-          <Mail className="w-4 h-4 text-[#6f583c]" />
-          Gửi email
-        </button>
       </div>
     </div>
   );

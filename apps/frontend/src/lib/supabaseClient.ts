@@ -92,6 +92,33 @@ export interface CustomerDepositRequest {
   created_at: string;
 }
 
+export interface RentalRegistration {
+  id: string;
+  customer_id?: string;
+  customer_name: string;
+  phone?: string;
+  customer_phone?: string;
+  email?: string;
+  customer_email?: string;
+  gender?: string;
+  preferred_room_type?: string;
+  rental_type?: string;
+  occupants_count?: number;
+  preferred_branch_id?: string;
+  preferred_branch_name?: string;
+  budget_range?: string;
+  move_in_date?: string;
+  preferred_viewing_date?: string;
+  preferred_viewing_time?: string;
+  viewing_time_note?: string;
+  preferred_amenities?: string[];
+  note?: string;
+  status?: 'pending_schedule' | 'scheduled' | 'cancelled';
+  created_at: string;
+  interested_room_id?: string;
+  interested_room_name?: string;
+}
+
 // ─── Sale Dashboard Interfaces ────────────────────────────────────────────────
 export interface TodayAppointment {
   id: string;
@@ -289,32 +316,14 @@ export interface AssetHandover {
   room_id: string;
   room_name: string;
   handover_date: string;
-  checklist: { item: string; condition: string; note?: string; checked: boolean }[];
+  checklist: { item: string; condition: string; note?: string; checked: boolean; quantity?: number }[];
   customer_signed: boolean;
   manager_signed: boolean;
   signature_ip?: string;
   signature_timestamp?: string;
   status: 'pending' | 'signed' | 'partial';
   created_at: string;
-}
-
-export interface AssetInspection {
-  id: string;             // "INS-XXXX"
-  customer_id: string;
-  customer_name: string;
-  room_id: string;
-  room_name: string;
-  checkout_date: string;
-  items: {
-    name: string;
-    original_condition: string;
-    current_condition: 'good' | 'minor_damage' | 'major_damage' | 'missing';
-    compensation: number;
-  }[];
-  total_compensation: number;
-  evidence_urls: string[];
-  status: 'pending' | 'in_progress' | 'completed' | 'sent_to_accountant';
-  created_at: string;
+  note?: string;
 }
 
 export interface ManagedAsset {
@@ -329,6 +338,50 @@ export interface ManagedAsset {
   purchase_price: number;
   depreciation_rate: number; // 0-100
   transfer_history: { from: string; to: string; date: string; reason: string; by: string }[];
+}
+
+export interface TenantMember {
+  name: string;
+  cccd: string;
+  phone: string;
+  email?: string;
+  role: 'representative' | 'member';
+}
+
+export interface ManagerContract {
+  id: string;             // "CON-XXXX"
+  contract_code: string;  // "HD-2026-XXXX"
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_cccd: string;
+  customer_address: string;
+  room_id: string;
+  room_name: string;
+  deposit_type: 'room' | 'bed';
+  bed_name?: string;
+  branch_name: string;
+  rent_amount: number;
+  deposit_amount: number;
+  service_fee: number;
+  start_date: string;
+  end_date: string;
+  duration: string;
+  status: 'active' | 'expired' | 'terminated';
+  terms: string;
+  payment_policy: string;
+  termination_policy: string;
+  manager_name: string;
+  manager_phone: string;
+  created_at: string;
+  // Thuộc tính bổ sung theo ERD
+  deposit_code: string;    // Khóa ngoại Ma dat coc
+  sale_staff_name: string; // Khóa ngoại Ma nv lap (Sale phụ trách)
+  payment_cycle: '1_month' | '3_months' | '6_months'; // Kỳ thanh toán
+  contract_type: 'long_term' | 'short_term';          // Loại hợp đồng
+  room_type: string;       // Loại phòng (từ bảng Phong)
+  floor_number: number;    // Tầng (từ bảng Phong)
+  tenants?: TenantMember[]; // Chi tiết khách thuê (bảng CT Hop Dong Khach Hang)
 }
 
 // Helper to generate dynamic mock data for Accountant Phase
@@ -367,6 +420,50 @@ const generateDepositInvoices = (): DepositInvoice[] => {
       note: i % 4 === 0 ? 'Khách hàng đặt cọc online giữ chỗ' : undefined
     });
   }
+  
+  // Append test cases for u-6
+  list.push(
+    {
+      id: 'DEP-TEST-01',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      room_id: 'r-3',
+      room_name: 'Phòng 201 (Nam)',
+      amount: 1500000,
+      deadline: '2026-06-12 12:00',
+      payment_method: 'transfer',
+      status: 'pending',
+      created_at: '2026-06-05 10:00',
+      deposit_request_id: 'cdr-test-invoice'
+    },
+    {
+      id: 'DEP-TEST-02',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      amount: 1200000,
+      deadline: '2026-06-11 12:00',
+      payment_method: 'transfer',
+      status: 'pending',
+      created_at: '2026-06-04 09:00',
+      deposit_request_id: 'cdr-test-pending-mgr'
+    },
+    {
+      id: 'DEP-TEST-03',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      room_id: 'r-5',
+      room_name: 'Phòng 103 (Nam)',
+      amount: 1000000,
+      deadline: '2026-05-17 12:00',
+      payment_method: 'transfer',
+      status: 'paid',
+      created_at: '2026-05-15 09:00',
+      deposit_request_id: 'cdr-test-paid'
+    }
+  );
+
   return list;
 };
 
@@ -560,7 +657,15 @@ const INITIAL_DB = {
     { id: 'u-3', email: 'sale@homestay.com', role: 'sale', full_name: 'Nguyễn Thị Trúc Hằng (NV Sale)', phone: '0912345678', avatar_url: avatarSale },
     { id: 'u-4', email: 'accountant@homestay.com', role: 'accountant', full_name: 'Lê Hoàng Nhật Anh (Kế toán)', phone: '0987654321', avatar_url: avatarAccountant },
     { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556', renting_room_name: 'Phòng 101 (Nam)', avatar_url: avatarCustomer },
-    { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900', avatar_url: avatarNewCustomer }
+    { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900', avatar_url: avatarNewCustomer },
+    // Sync with real DB profiles
+    { id: 'c001c001-c001-c001-c001-c001c001c001', email: 'customer1@gmail.com', role: 'customer', full_name: 'Phạm Thị Khách Hàng 1', phone: '0944445566', renting_room_name: 'P-101', avatar_url: avatarCustomer },
+    { id: 'c002c002-c002-c002-c002-c002c002c002', email: 'customer2@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Khách Hàng 2', phone: '0955556677', avatar_url: avatarCustomer },
+    { id: 'c003c003-c003-c003-c003-c003c003c003', email: 'customer3@gmail.com', role: 'customer', full_name: 'Lê Thị Khách Hàng 3', phone: '0966667788', avatar_url: avatarCustomer },
+    { id: 'e001e001-e001-e001-e001-e001e001e001', email: 'sale@homestay.vn', role: 'sale', full_name: 'Nguyễn Văn Sale', phone: '0901234567', avatar_url: avatarSale },
+    { id: 'e002e002-e002-e002-e002-e002e002e002', email: 'manager@homestay.vn', role: 'manager', full_name: 'Trần Thị Quản Lý', phone: '0907654321', avatar_url: avatarManager },
+    { id: 'e003e003-e003-e003-e003-e003e003e003', email: 'accountant@homestay.vn', role: 'accountant', full_name: 'Lê Văn Kế Toán', phone: '0987654321', avatar_url: avatarAccountant },
+    { id: 'e004e004-e004-e004-e004-e004e004e004', email: 'admin@homestay.vn', role: 'admin', full_name: 'Hoàng Admin', phone: '0901234567', avatar_url: avatarAdmin }
   ] as Profile[],
   branches: [
     { id: 'b-1', name: 'Chi nhánh Quận 1', address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM', manager_id: 'u-2' },
@@ -572,7 +677,8 @@ const INITIAL_DB = {
     { id: 'r-3', branch_id: 'b-2', name: 'Phòng 201 (Nam)', capacity: 8, current_occupants: 8, floor: 2, room_type: 'Dorm', gender_type: 'male', has_ac: false, has_private_wc: false, price: 900000, amenities: ['Wifi', 'Washing Machine'], image_url: roomDorm, status: 'occupied' },
     { id: 'r-4', branch_id: 'b-2', name: 'Phòng 202 (Nữ)', capacity: 6, current_occupants: 2, floor: 2, room_type: 'Twin', gender_type: 'female', has_ac: true, has_private_wc: true, price: 1200000, amenities: ['AC', 'Wifi', 'Washing Machine'], image_url: roomTwin, status: 'available' },
     { id: 'r-5', branch_id: 'b-1', name: 'Phòng 103 (Nam)', capacity: 6, current_occupants: 2, floor: 1, room_type: 'Dorm', gender_type: 'male', has_ac: true, has_private_wc: true, price: 1600000, amenities: ['AC', 'Wifi', 'Private WC', 'Washing Machine'], image_url: roomDorm, status: 'available' },
-    { id: 'r-6', branch_id: 'b-2', name: 'Phòng 203 (Nữ)', capacity: 2, current_occupants: 1, floor: 2, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2500000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV'], image_url: roomSingle, status: 'partial' }
+    { id: 'r-6', branch_id: 'b-2', name: 'Phòng 203 (Nữ)', capacity: 2, current_occupants: 1, floor: 2, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2500000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen', 'TV'], image_url: roomSingle, status: 'partial' },
+    { id: 'r-7', branch_id: 'b-1', name: 'Phòng 104 (Nữ)', capacity: 4, current_occupants: 0, floor: 1, room_type: 'Studio', gender_type: 'female', has_ac: true, has_private_wc: true, price: 2200000, amenities: ['AC', 'Wifi', 'Private WC', 'Kitchen'], image_url: roomStudio, status: 'available' }
   ] as Room[],
   beds: [
     { id: 'bed-1-1', room_id: 'r-1', name: 'Giường A1', price: 1500000, status: 'available' },
@@ -636,8 +742,8 @@ const INITIAL_DB = {
       branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
       scheduled_date: '2026-06-03', scheduled_time: '10:00',
       staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
-      status: 'confirmed', timeline_step: 2,
-      note: 'Lịch hẹn ngày mai. Nhắc khách mang theo CCCD khi đến xem phòng.',
+      status: 'completed', timeline_step: 3,
+      note: 'Lịch hẹn xem phòng thành công. Khách rất ưng ý và muốn làm thủ tục đặt cọc.',
       created_at: '2026-05-30T10:00:00Z'
     },
     {
@@ -647,8 +753,8 @@ const INITIAL_DB = {
       branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
       scheduled_date: '2026-06-04', scheduled_time: '15:30',
       staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
-      status: 'pending', timeline_step: 1,
-      note: 'Khách muốn xem thử chất lượng wifi và khu vực giặt giũ công cộng.',
+      status: 'completed', timeline_step: 3,
+      note: 'Khách muốn xem thử chất lượng wifi và khu vực giặt giũ công cộng. Xem xong đã gửi yêu cầu cọc.',
       created_at: '2026-06-01T11:00:00Z'
     },
     {
@@ -663,14 +769,14 @@ const INITIAL_DB = {
       created_at: '2026-06-01T15:00:00Z'
     },
     {
-      id: 'vs-8', customer_id: 'u-6', room_id: 'r-2',
-      room_name: 'Phòng 102 (Nữ)',
+      id: 'vs-8', customer_id: 'u-6', room_id: 'r-7',
+      room_name: 'Phòng 104 (Nữ)',
       room_image_url: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=400&q=80',
       branch_name: 'Chi nhánh Quận 1', branch_address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
       scheduled_date: '2026-05-28', scheduled_time: '14:30',
       staff_name: 'NV. Nguyễn Thị Trúc Hằng', staff_phone: '0912345678',
       status: 'completed', timeline_step: 3,
-      note: 'Khách rất ưng ý với thiết kế tủ đồ âm tường và bàn trang điểm có sẵn. Đang thảo luận thêm với gia đình về giá.',
+      note: 'Khách rất ưng ý với thiết kế và muốn làm thủ tục đặt cọc.',
       created_at: '2026-05-25T09:30:00Z'
     },
     {
@@ -680,8 +786,8 @@ const INITIAL_DB = {
       branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)', branch_address: 'Đường Tạ Quang Bửu, Phường Linh Trung, Thủ Đức, TP.HCM',
       scheduled_date: '2026-05-31', scheduled_time: '16:00',
       staff_name: 'NV. Quốc Bảo', staff_phone: '0987654321',
-      status: 'cancelled', timeline_step: 1,
-      note: 'Không liên lạc được với khách hàng sau 3 cuộc gọi xác nhận trước giờ hẹn.',
+      status: 'completed', timeline_step: 3,
+      note: 'Xem phòng hoàn tất và tiến hành cọc.',
       created_at: '2026-05-30T14:00:00Z'
     },
     {
@@ -709,7 +815,7 @@ const INITIAL_DB = {
       viewing_schedule_id: 'vs-3',
       deposit_amount: 1000000,
       expected_move_in_date: '2026-05-01',
-      status: 'pending_sale_confirmation',
+      status: 'confirmed',
       note: 'Khách đã xem phòng và muốn được xác nhận đặt cọc.',
       created_at: '2026-04-20T11:00:00Z'
     },
@@ -725,7 +831,7 @@ const INITIAL_DB = {
       viewing_schedule_id: 'vs-1',
       deposit_amount: 2000000,
       expected_move_in_date: '2026-06-10',
-      status: 'pending_sale_confirmation',
+      status: 'confirmed',
       note: 'Khách hàng muốn giữ phòng Studio ban công rộng.',
       created_at: '2026-06-04T10:00:00Z'
     },
@@ -744,8 +850,130 @@ const INITIAL_DB = {
       status: 'pending_sale_confirmation',
       note: 'Yêu cầu giữ chỗ giường Dorm tầng dưới.',
       created_at: '2026-06-05T09:00:00Z'
+    },
+    {
+      id: 'cdr-test-invoice',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-3',
+      room_name: 'Phòng 201 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      viewing_schedule_id: 'vs-6',
+      deposit_amount: 1500000,
+      expected_move_in_date: '2026-06-15',
+      status: 'invoice_created',
+      note: 'Hóa đơn cọc đã được lập và đang chờ khách thanh toán.',
+      created_at: '2026-06-05T10:00:00Z'
+    },
+    {
+      id: 'cdr-test-pending-mgr',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      room_image_url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      viewing_schedule_id: 'vs-9',
+      deposit_amount: 1200000,
+      expected_move_in_date: '2026-06-20',
+      status: 'invoice_created',
+      note: 'Khách đã thanh toán cọc và chờ duyệt minh chứng.',
+      created_at: '2026-06-04T09:00:00Z'
+    },
+    {
+      id: 'cdr-test-paid',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-5',
+      room_name: 'Phòng 103 (Nam)',
+      room_image_url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=400&q=80',
+      branch_name: 'Chi nhánh Quận 1',
+      viewing_schedule_id: 'vs-5',
+      deposit_amount: 1000000,
+      expected_move_in_date: '2026-06-01',
+      status: 'paid',
+      note: 'Đã hoàn tất thanh toán cọc và được Quản lý duyệt.',
+      created_at: '2026-05-15T09:00:00Z'
     }
   ] as CustomerDepositRequest[],
+  rental_registrations: [
+    {
+      id: 'rr-101',
+      customer_id: 'u-6',
+      customer_name: 'Lê Minh Tuấn',
+      phone: '0901234567',
+      customer_phone: '0901234567',
+      email: 'leminhtuan@gmail.com',
+      customer_email: 'leminhtuan@gmail.com',
+      gender: 'male',
+      preferred_room_type: 'Dorm',
+      rental_type: 'shared',
+      occupants_count: 1,
+      preferred_branch_id: 'b-1',
+      preferred_branch_name: 'Chi nhánh Quận 1',
+      budget_range: 'under_2m',
+      move_in_date: '2026-06-15',
+      preferred_viewing_date: '2026-06-12',
+      preferred_viewing_time: '10:00-12:00',
+      viewing_time_note: 'Rảnh sáng thứ 6',
+      preferred_amenities: ['AC', 'Wifi'],
+      note: 'Mong muốn phòng yên tĩnh, sạch sẽ.',
+      status: 'pending_schedule',
+      created_at: '2026-06-02T08:00:00Z'
+    },
+    {
+      id: 'rr-102',
+      customer_id: 'u-mock-rr102',
+      customer_name: 'Hoàng Thu Thủy',
+      phone: '0987654321',
+      customer_phone: '0987654321',
+      email: 'thuthuy@gmail.com',
+      customer_email: 'thuthuy@gmail.com',
+      gender: 'female',
+      preferred_room_type: 'Studio',
+      rental_type: 'full_room',
+      occupants_count: 1,
+      preferred_branch_id: 'b-2',
+      preferred_branch_name: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      budget_range: '2m_5m',
+      move_in_date: '2026-06-20',
+      preferred_viewing_date: '2026-06-15',
+      preferred_viewing_time: '13:30-15:30',
+      viewing_time_note: 'Có xe máy riêng cần bãi xe',
+      preferred_amenities: ['AC', 'Wifi', 'Kitchen'],
+      note: 'Ưu tiên tầng cao thoáng mát.',
+      status: 'pending_schedule',
+      created_at: '2026-06-02T09:15:00Z'
+    },
+    {
+      id: 'rr-103',
+      customer_id: 'u-mock-rr103',
+      customer_name: 'Nguyễn Bảo Long',
+      phone: '0912345678',
+      customer_phone: '0912345678',
+      email: 'baolong@gmail.com',
+      customer_email: 'baolong@gmail.com',
+      gender: 'male',
+      preferred_room_type: 'Twin',
+      rental_type: 'flexible',
+      occupants_count: 1,
+      preferred_branch_id: 'b-1',
+      preferred_branch_name: 'Chi nhánh Quận 1',
+      budget_range: 'flexible',
+      move_in_date: '2026-06-18',
+      preferred_viewing_date: '2026-06-18',
+      preferred_viewing_time: 'flexible',
+      viewing_time_note: 'Linh hoạt theo Sale',
+      preferred_amenities: ['AC', 'Wifi', 'Washing Machine'],
+      note: 'Cần xem phòng thực tế để chốt nhanh.',
+      status: 'pending_schedule',
+      created_at: '2026-06-02T10:00:00Z'
+    }
+  ] as RentalRegistration[],
   today_appointments: [
     { id: 'ta-1', time: '09:30', customer_name: 'Nguyễn Văn A', room_type: 'Phòng Đơn Premium', status: 'confirmed', branch: 'Quận 1' },
     { id: 'ta-2', time: '11:00', customer_name: 'Lê Thị Minh Châu', room_type: 'Phòng Dorm Nam 4 người', status: 'confirmed', branch: 'Thủ Đức' },
@@ -822,8 +1050,8 @@ const INITIAL_DB = {
   manager_deposits: generateManagerDeposits(),
   residency_checks: generateResidencyChecks(),
   asset_handovers: generateAssetHandovers(),
-  asset_inspections: generateAssetInspections(),
-  managed_assets: generateManagedAssets()
+  managed_assets: generateManagedAssets(),
+  contracts: generateContracts()
 };
 
 // ─── Manager Phase Mock Data Generators ──────────────────────────────────────
@@ -858,6 +1086,43 @@ function generateManagerDeposits(): ManagerDeposit[] {
       created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
     });
   }
+
+  // Append test cases for u-6
+  list.push(
+    {
+      id: 'MGR-DEP-TEST-01',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-4',
+      room_name: 'Phòng 202 (Nữ)',
+      deposit_type: 'room',
+      amount: 1200000,
+      deposit_date: '2026-06-05',
+      bill_image_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
+      bank_name: 'MB Bank',
+      account_number: '999988887777',
+      status: 'pending',
+      created_at: '2026-06-05T11:00:00Z'
+    },
+    {
+      id: 'MGR-DEP-TEST-02',
+      customer_id: 'u-6',
+      customer_name: 'Nguyễn Văn Nam (Khách mới)',
+      customer_phone: '0977889900',
+      room_id: 'r-5',
+      room_name: 'Phòng 103 (Nam)',
+      deposit_type: 'room',
+      amount: 1000000,
+      deposit_date: '2026-05-16',
+      bill_image_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
+      bank_name: 'Vietcombank',
+      account_number: '1012345678',
+      status: 'approved',
+      created_at: '2026-05-16T10:00:00Z'
+    }
+  );
+
   return list;
 }
 
@@ -926,9 +1191,10 @@ function generateAssetHandovers(): AssetHandover[] {
     { item: 'Kệ sách / Kệ đa năng', condition: 'Tốt', checked: true },
     { item: 'Ổ cắm điện + USB', condition: '4 ổ, hoạt động tốt', checked: true }
   ];
-  const statuses: AssetHandover['status'][] = ['signed', 'signed', 'signed', 'pending', 'partial'];
+  const statuses: AssetHandover['status'][] = ['signed', 'signed', 'signed', 'partial', 'partial'];
   const list: AssetHandover[] = [];
   for (let i = 1; i <= 22; i++) {
+    const isSigned = statuses[i % statuses.length] === 'signed';
     list.push({
       id: `AHO-${4000 + i}`,
       customer_id: `u-mock-${400 + i}`,
@@ -937,42 +1203,13 @@ function generateAssetHandovers(): AssetHandover[] {
       room_name: rooms[i % rooms.length],
       handover_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
       checklist: defaultChecklist.map(item => ({ ...item })),
-      customer_signed: i % 5 !== 4,
-      manager_signed: i % 5 !== 4,
-      signature_ip: i % 5 !== 4 ? `192.168.1.${10 + i}` : undefined,
-      signature_timestamp: i % 5 !== 4 ? new Date(2026, 4, 1 + (i % 28), 10, 30).toISOString() : undefined,
+      customer_signed: isSigned,
+      manager_signed: true,
+      signature_ip: '192.168.1.1',
+      signature_timestamp: new Date(2026, 4, 1 + (i % 28), 10, 30).toISOString(),
       status: statuses[i % statuses.length],
-      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
-    });
-  }
-  return list;
-}
-
-function generateAssetInspections(): AssetInspection[] {
-  const names = ['Nguyễn Văn An', 'Trần Thị Bích', 'Lê Văn Cường', 'Phạm Thị Dung', 'Hoàng Anh Tuấn', 'Đỗ Mỹ Linh', 'Nguyễn Thị Sâm', 'Bùi Văn Hải', 'Phan Thanh Tùng', 'Ngô Quốc Bảo'];
-  const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)'];
-  const statuses: AssetInspection['status'][] = ['pending', 'in_progress', 'completed', 'sent_to_accountant'];
-  const list: AssetInspection[] = [];
-  for (let i = 1; i <= 21; i++) {
-    const hasIssues = i % 3 !== 0;
-    list.push({
-      id: `INS-${5000 + i}`,
-      customer_id: `u-mock-${500 + i}`,
-      customer_name: names[i % names.length],
-      room_id: `r-${(i % 5) + 1}`,
-      room_name: rooms[i % rooms.length],
-      checkout_date: new Date(2026, 4, 1 + (i % 28)).toISOString().split('T')[0],
-      items: [
-        { name: 'Giường đơn + nệm', original_condition: 'Tốt', current_condition: hasIssues && i % 7 === 0 ? 'minor_damage' : 'good', compensation: hasIssues && i % 7 === 0 ? 200000 : 0 },
-        { name: 'Tủ quần áo', original_condition: 'Tốt', current_condition: hasIssues && i % 5 === 0 ? 'major_damage' : 'good', compensation: hasIssues && i % 5 === 0 ? 500000 : 0 },
-        { name: 'Bàn học + ghế', original_condition: 'Tốt', current_condition: hasIssues && i % 4 === 0 ? 'minor_damage' : 'good', compensation: hasIssues && i % 4 === 0 ? 150000 : 0 },
-        { name: 'Máy lạnh (1.5HP)', original_condition: 'Tốt', current_condition: 'good', compensation: 0 },
-        { name: 'Khóa cửa điện tử', original_condition: 'Hoạt động tốt', current_condition: hasIssues && i % 6 === 0 ? 'missing' : 'good', compensation: hasIssues && i % 6 === 0 ? 800000 : 0 }
-      ],
-      total_compensation: hasIssues ? [0, 200000, 500000, 150000, 800000, 650000][i % 6] : 0,
-      evidence_urls: hasIssues ? ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=300&q=80'] : [],
-      status: statuses[i % statuses.length],
-      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString()
+      created_at: new Date(2026, 4, 1 + (i % 28)).toISOString(),
+      note: 'Bàn giao đầy đủ trang thiết bị phòng, khách hàng đã kiểm tra và đồng ý nhận phòng.'
     });
   }
   return list;
@@ -1013,6 +1250,126 @@ function generateManagedAssets(): ManagedAsset[] {
       transfer_history: i % 3 === 0 ? [
         { from: 'Kho tầng 1', to: locations[i % 6], date: new Date(2023, 5, (i % 28) + 1).toISOString().split('T')[0], reason: 'Bàn giao phòng mới', by: 'QL. Minh Đức' }
       ] : []
+    });
+  }
+  return list;
+}
+
+function generateContracts(): ManagerContract[] {
+  const names = [
+    'Nguyễn Hoàng Nam', 'Trần Thị Mai Anh', 'Lê Văn Phúc', 'Phạm Thị Hương',
+    'Hoàng Minh Tuấn', 'Đinh Thị Lan', 'Vũ Quang Huy', 'Bùi Thị Thanh Hoa',
+    'Ngô Văn Tâm', 'Lý Thu Ngân', 'Đặng Quốc Hưng', 'Trương Minh Khoa'
+  ];
+  const rooms = [
+    { id: 'r-1', name: 'Phòng 101 (Nam)', price: 1500000 },
+    { id: 'r-2', name: 'Phòng 102 (Nữ)', price: 2000000 },
+    { id: 'r-3', name: 'Phòng 201 (Nam)', price: 900000 },
+    { id: 'r-4', name: 'Phòng 202 (Nữ)', price: 1200000 },
+    { id: 'r-5', name: 'Phòng 103 (Nam)', price: 1600000 },
+    { id: 'r-6', name: 'Phòng 203 (Nữ)', price: 2500005 }
+  ];
+  const statuses: ManagerContract['status'][] = ['active', 'active', 'expired', 'terminated', 'active', 'expired', 'active', 'terminated', 'active', 'active', 'expired', 'active'];
+  const bedNames = ['Giường A1', 'Giường A2', 'Giường G1', 'Giường G2', 'Giường B1', 'Giường B2'];
+
+  const roomDetailsMap: Record<string, { floor: number; type: string }> = {
+    'r-1': { floor: 1, type: 'Dorm' },
+    'r-2': { floor: 1, type: 'Studio' },
+    'r-3': { floor: 2, type: 'Dorm' },
+    'r-4': { floor: 2, type: 'Twin' },
+    'r-5': { floor: 1, type: 'Dorm' },
+    'r-6': { floor: 2, type: 'Studio' }
+  };
+
+  const list: ManagerContract[] = [];
+  for (let i = 0; i < names.length; i++) {
+    const name = names[i];
+    const room = rooms[i % rooms.length];
+    const isBed = i % 2 === 0;
+    const status = statuses[i];
+    
+    // Dates
+    const startYear = status === 'expired' || status === 'terminated' ? 2024 : 2025;
+    const endYear = startYear + 1;
+    const startDate = `${startYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
+    const endDate = `${endYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
+
+    let tenantsList: TenantMember[] | undefined = undefined;
+    const selfPhone = `090${(i * 1357924) % 9000000 + 1000000}`;
+    const selfCccd = `079203${String(100000 + i * 1234).padStart(6, '0')}`;
+
+    if (name === 'Ngô Văn Tâm') {
+      tenantsList = [
+        {
+          name: 'Ngô Văn Tâm',
+          cccd: selfCccd,
+          phone: selfPhone,
+          role: 'representative'
+        },
+        {
+          name: 'Lê Hoàng Long',
+          cccd: '079203112233',
+          phone: '0912445566',
+          role: 'member'
+        },
+        {
+          name: 'Trần Minh Quân',
+          cccd: '079203445566',
+          phone: '0987334455',
+          role: 'member'
+        }
+      ];
+    } else if (name === 'Nguyễn Hoàng Nam') {
+      tenantsList = [
+        {
+          name: 'Nguyễn Hoàng Nam',
+          cccd: selfCccd,
+          phone: selfPhone,
+          role: 'representative'
+        },
+        {
+          name: 'Phan Văn Đức',
+          cccd: '079203778899',
+          phone: '0909112233',
+          role: 'member'
+        }
+      ];
+    }
+
+    list.push({
+      id: `CON-${7000 + i}`,
+      contract_code: `HD-2026-${String(100 + i)}`,
+      customer_id: `u-mock-cust-${200 + i}`,
+      customer_name: name,
+      customer_phone: selfPhone,
+      customer_cccd: selfCccd,
+      customer_address: `Số ${i * 12 + 1} Đường Lê Lợi, Quận ${i % 3 + 1}, TP.HCM`,
+      room_id: room.id,
+      room_name: room.name,
+      deposit_type: isBed ? 'bed' : 'room',
+      bed_name: isBed ? bedNames[i % bedNames.length] : undefined,
+      branch_name: i % 2 === 0 ? 'Chi nhánh Quận 1' : 'Chi nhánh Thủ Đức (Khu ĐHQG)',
+      rent_amount: room.price,
+      deposit_amount: room.price * 2,
+      service_fee: 150000 + (i % 3) * 50000,
+      start_date: startDate,
+      end_date: endDate,
+      duration: '12 tháng',
+      status: status,
+      terms: `Bên A đồng ý cho bên B thuê 01 vị trí ${isBed ? `giường (${bedNames[i % bedNames.length]})` : 'phòng'} tại ${room.name}. Tài sản bàn giao bao gồm các trang thiết bị cơ bản phục vụ sinh hoạt cá nhân.`,
+      payment_policy: `Tiền thuê đóng định kỳ vào từ ngày 01 đến ngày 05 hàng tháng. Chậm thanh toán quá 3 ngày sẽ chịu phạt theo quy định.`,
+      termination_policy: `Bên B cần báo trước 30 ngày nếu có ý định trả phòng trước hạn. Hoàn trả phòng sạch sẽ, bàn giao đầy đủ trang thiết bị như ban đầu để nhận lại tiền đặt cọc.`,
+      manager_name: 'Trần Kim Yến',
+      manager_phone: '0907654321',
+      created_at: new Date(startYear, i % 12, 5).toISOString(),
+      // Thuộc tính bổ sung theo ERD
+      deposit_code: `DEP-${1000 + i}`,
+      sale_staff_name: ['Nguyễn Thị Trúc Hằng', 'Phan Thanh Tùng', 'Vũ Thị Hạnh'][i % 3],
+      payment_cycle: ['1_month', '3_months', '6_months'][i % 3] as '1_month' | '3_months' | '6_months',
+      contract_type: i % 2 === 0 ? 'long_term' : 'short_term',
+      room_type: roomDetailsMap[room.id]?.type || 'Dorm',
+      floor_number: roomDetailsMap[room.id]?.floor || 1,
+      tenants: tenantsList
     });
   }
   return list;

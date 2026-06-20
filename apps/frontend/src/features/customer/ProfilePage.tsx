@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
 import { 
-  User, Shield, Camera, ChevronRight, Lock, Bell, Globe, 
+  User, Shield, Camera, ChevronRight, Lock, 
   Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
-  X, Eye, EyeOff, Check, Zap
+  X, Eye, EyeOff, Check, Zap, ClipboardList
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -172,51 +172,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Language Modal ────────────────────────────────────────────────────────────
-const LANGUAGES = [
-  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'zh', label: '中文 (Chinese)', flag: '🇨🇳' },
-  { code: 'ko', label: '한국어 (Korean)', flag: '🇰🇷' },
-  { code: 'ja', label: '日本語 (Japanese)', flag: '🇯🇵' },
-];
 
-function LanguageModal({ current, onSelect, onClose }: { current: string; onSelect: (code: string) => void; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-surface w-full max-w-sm rounded-32 shadow-2xl border border-surface-variant overflow-hidden animate-fade-in-up">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-surface-variant">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-full">
-              <Globe className="w-5 h-5 text-primary" />
-            </div>
-            <h2 className="font-headline-md text-lg font-bold text-on-surface">Chọn ngôn ngữ</h2>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer text-on-surface-variant">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-4 space-y-1">
-          {LANGUAGES.map(lang => (
-            <button
-              key={lang.code}
-              onClick={() => { onSelect(lang.code); onClose(); }}
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-24 transition-all cursor-pointer text-left ${
-                current === lang.code
-                  ? 'bg-primary-container text-on-primary-container font-bold'
-                  : 'hover:bg-surface-container-low text-on-surface'
-              }`}
-            >
-              <span className="text-2xl">{lang.flag}</span>
-              <span className="font-label-md text-sm">{lang.label}</span>
-              {current === lang.code && <Check className="w-4 h-4 ml-auto" />}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
@@ -290,17 +246,6 @@ export default function ProfilePage() {
 
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-
-  // Notification toggles
-  const [notifInvoice, setNotifInvoice] = useState(true);
-  const [notifContract, setNotifContract] = useState(true);
-  const [notifPromo, setNotifPromo] = useState(false);
-  const [notifSystem, setNotifSystem] = useState(true);
-
-  // Language
-  const [language, setLanguage] = useState('vi');
-  const currentLang = LANGUAGES.find(l => l.code === language);
 
   // ── Shared InputField ─────────────────────────────────────────────────────
   const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => {
@@ -338,27 +283,12 @@ export default function ProfilePage() {
     );
   };
 
-  // ── Toggle Switch ─────────────────────────────────────────────────────────
-  const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
-    <button
-      onClick={onChange}
-      className={`w-12 h-6 rounded-full relative transition-colors duration-200 cursor-pointer flex-shrink-0 ${value ? 'bg-[#4a6549]' : 'bg-surface-variant'}`}
-    >
-      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${value ? 'right-1' : 'left-1'}`} />
-    </button>
-  );
+
 
   return (
     <>
       {/* Modals */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
-      {showLanguageModal && (
-        <LanguageModal
-          current={language}
-          onSelect={setLanguage}
-          onClose={() => setShowLanguageModal(false)}
-        />
-      )}
 
       <div className="max-w-container-max mx-auto w-full px-margin-mobile md:px-margin-desktop py-8 animate-fade-in-up theme-customer">
         <div className="flex flex-col xl:flex-row gap-8">
@@ -408,6 +338,9 @@ export default function ProfilePage() {
                     </Link>
                     <Link to="/customer/services" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Zap className="w-5 h-5" /> Dịch vụ của tôi
+                    </Link>
+                    <Link to="/customer/checkout-request" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <ClipboardList className="w-5 h-5" /> Đăng ký trả phòng
                     </Link>
                     <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
                       <Compass className="w-5 h-5" /> Tìm phòng khác
@@ -637,80 +570,8 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Section: Thông báo */}
-                <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm">
-                  <h3 className="font-headline-md text-base text-on-surface-variant font-bold flex items-center gap-2 mb-5 uppercase tracking-wider">
-                    <Bell className="w-4 h-4" /> Thông báo
-                  </h3>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        label: 'Thông báo hóa đơn',
-                        desc: 'Nhận thông báo khi hóa đơn mới được phát hành hoặc đến hạn.',
-                        value: notifInvoice,
-                        toggle: () => setNotifInvoice(v => !v),
-                      },
-                      {
-                        label: 'Thông báo hợp đồng',
-                        desc: 'Nhận thông báo khi hợp đồng sắp hết hạn hoặc có cập nhật.',
-                        value: notifContract,
-                        toggle: () => setNotifContract(v => !v),
-                      },
-                      {
-                        label: 'Thông báo khuyến mãi',
-                        desc: 'Nhận ưu đãi, chương trình khuyến mãi từ HomeStay Dorm.',
-                        value: notifPromo,
-                        toggle: () => setNotifPromo(v => !v),
-                      },
-                      {
-                        label: 'Thông báo hệ thống',
-                        desc: 'Cập nhật bảo trì, lịch kiểm tra phòng và sự kiện của ký túc xá.',
-                        value: notifSystem,
-                        toggle: () => setNotifSystem(v => !v),
-                      },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center justify-between p-5 bg-surface-container-low border border-surface-variant rounded-24 hover:bg-surface-container transition-colors">
-                        <div className="flex items-center gap-5">
-                          <div className={`p-3 rounded-full shadow-sm border transition-colors ${item.value ? 'bg-[#4a6549]/10 text-[#4a6549] border-[#4a6549]/20' : 'bg-surface text-on-surface-variant border-surface-variant/50'}`}>
-                            <Bell className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-on-surface text-base">{item.label}</h4>
-                            <p className="text-sm text-on-surface-variant mt-0.5">{item.desc}</p>
-                          </div>
-                        </div>
-                        <Toggle value={item.value} onChange={item.toggle} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Section: Ngôn ngữ & Giao diện */}
-                <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm">
-                  <h3 className="font-headline-md text-base text-on-surface-variant font-bold flex items-center gap-2 mb-5 uppercase tracking-wider">
-                    <Globe className="w-4 h-4" /> Ngôn ngữ &amp; Giao diện
-                  </h3>
-                  <div className="space-y-3">
-                    {/* Ngôn ngữ */}
-                    <button
-                      onClick={() => setShowLanguageModal(true)}
-                      className="w-full flex items-center justify-between p-5 bg-surface-container-low border border-surface-variant rounded-24 hover:bg-surface-container transition-colors cursor-pointer group text-left"
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className="p-3 bg-surface rounded-full text-on-surface-variant shadow-sm border border-surface-variant/50 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                          <Globe className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-on-surface text-base">Ngôn ngữ hiển thị</h4>
-                          <p className="text-sm text-on-surface-variant mt-0.5">
-                            {currentLang?.flag} {currentLang?.label}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-                    </button>
-                  </div>
-                </div>
+
 
               </div>
             )}
