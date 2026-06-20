@@ -236,7 +236,7 @@ git pull origin dev
 #### 📌 Bước 2: Tạo nhánh tính năng mới
 Tạo nhánh mới từ `dev` để bắt đầu code:
 ```bash
-git checkout -b feature/ten-chức-năng-cua-ban
+git checkout -b ten-branch
 ```
 
 #### 📌 Bước 3: Commit và Push code lên GitHub
