@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
 import { 
@@ -10,6 +10,7 @@ import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import FormLabel from '../../components/ui/FormLabel';
+import { fetchProfile, updateProfileApi } from './services/profile.service';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
@@ -180,6 +181,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
   
@@ -201,24 +204,40 @@ export default function ProfilePage() {
 
   const [initialData, setInitialData] = useState<typeof formData | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      const defaultData = {
-        full_name: user.full_name || '',
-        email: user.email || '',
-        phone: user.phone || '0977889900',
-        cccd: isNewCustomer ? '' : '012345678910',
-        dob: '2000-01-01',
-        gender: 'male',
+  const loadProfile = useCallback(async (email: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchProfile(email);
+      const profileData = {
+        full_name: data.full_name || user?.full_name || '',
+        email: data.email || user?.email || '',
+        phone: data.phone || user?.phone || '',
+        cccd: data.cccd || '',
+        dob: data.dob || '',
+        gender: data.gender || 'male',
         issue_date: '2018-05-10',
         issue_place: 'Cục CSQLHC về TTXH',
-        nationality: 'Việt Nam',
-        permanent_address: '123 Đường A, Quận B, TP.HCM',
+        nationality: data.nationality || 'Việt Nam',
+        permanent_address: data.permanent_address || '',
       };
-      setFormData(defaultData);
-      setInitialData(defaultData);
+      setFormData(profileData);
+      setInitialData(profileData);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi tải thông tin cá nhân');
+    } finally {
+      setIsLoading(false);
     }
-  }, [user, isNewCustomer]);
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.email) {
+      loadProfile(user.email);
+    } else {
+      setIsLoading(false);
+    }
+  }, [user?.email, loadProfile]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -231,17 +250,33 @@ export default function ProfilePage() {
     if (initialData) setFormData(initialData);
   };
 
-  const saveProfile = () => {
-    if (!isDirty) return;
+  const saveProfile = async () => {
+    if (!isDirty || !user?.email) return;
     setIsSaving(true);
     setSaveSuccess(false);
-    setTimeout(() => {
-      setIsSaving(false);
-      setSaveSuccess(true);
+    setError(null);
+    try {
+      await updateProfileApi(user.email, formData);
       setInitialData(formData);
       setIsEditing(false);
+      setSaveSuccess(true);
+      
+      // Sync global auth store
+      useAuthStore.setState((state) => ({
+        user: state.user ? {
+          ...state.user,
+          full_name: formData.full_name,
+          phone: formData.phone,
+        } : null
+      }));
+
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi cập nhật thông tin cá nhân');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // ── Settings State ────────────────────────────────────────────────────────
@@ -395,57 +430,77 @@ export default function ProfilePage() {
 
             {/* ── PROFILE TAB ───────────────────────────────────────────── */}
             {activeTab === 'profile' && (
-              <div className="space-y-6 animate-fade-in">
-                {/* Profile Avatar Card */}
-                <div className="bg-surface-container-lowest rounded-32 p-8 border border-surface-variant flex flex-col sm:flex-row items-center gap-8 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 left-0 bottom-0 w-32 bg-primary/10 hidden sm:block"></div>
-                  
-                  <div className="relative shrink-0 sm:ml-4 z-10">
-                    <img 
-                      src={user?.avatar_url || avatarCartoon} 
-                      alt="Avatar" 
-                      className="w-28 h-28 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
-                    />
-                    <button className="absolute bottom-1 right-1 p-2 bg-[#4a6549] text-white rounded-full border-[3px] border-surface shadow-sm cursor-pointer hover:bg-[#3a503a] transition-colors z-20">
-                      <Camera className="w-4 h-4" />
-                    </button>
+              isLoading ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                  <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin cá nhân...</p>
+                </div>
+              ) : error && !formData.email ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 bg-error-container/30 rounded-full flex items-center justify-center text-error border border-error/20">
+                    <X className="w-6 h-6" />
                   </div>
-                  
-                  <div className="flex-1 text-center sm:text-left z-10">
-                    <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
-                    <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
-                      {isNewCustomer ? (
-                        <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                          Khách hàng mới
-                        </span>
-                      ) : (
-                        <>
-                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                            Sinh viên
-                          </span>
-                          <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
-                            Phòng 402-B
-                          </span>
-                        </>
-                      )}
+                  <p className="text-error font-bold text-base">Không thể tải thông tin cá nhân</p>
+                  <p className="text-on-surface-variant text-sm text-center max-w-md">{error}</p>
+                  <button
+                    onClick={() => user?.email && loadProfile(user.email)}
+                    className="px-6 py-2.5 bg-primary text-white rounded-full font-label-md text-sm hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+                  >
+                    Thử tải lại
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6 animate-fade-in">
+                  {/* Profile Avatar Card */}
+                  <div className="bg-surface-container-lowest rounded-32 p-8 border border-surface-variant flex flex-col sm:flex-row items-center gap-8 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 bottom-0 w-32 bg-primary/10 hidden sm:block"></div>
+                    
+                    <div className="relative shrink-0 sm:ml-4 z-10">
+                      <img 
+                        src={user?.avatar_url || avatarCartoon} 
+                        alt="Avatar" 
+                        className="w-28 h-28 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
+                      />
+                      <button className="absolute bottom-1 right-1 p-2 bg-[#4a6549] text-white rounded-full border-[3px] border-surface shadow-sm cursor-pointer hover:bg-[#3a503a] transition-colors z-20">
+                        <Camera className="w-4 h-4" />
+                      </button>
                     </div>
                     
-                    <div className="mt-4 flex flex-col sm:flex-row gap-4 w-full">
-                      <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
-                        <span className="text-on-surface-variant font-label-md">Thành viên từ:</span>
-                        <span className="font-semibold text-on-surface">
-                          {isNewCustomer ? '06/2026' : '05/2023'}
-                        </span>
+                    <div className="flex-1 text-center sm:text-left z-10">
+                      <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
+                      <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+                        {isNewCustomer ? (
+                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                            Khách hàng mới
+                          </span>
+                        ) : (
+                          <>
+                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                              Sinh viên
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
+                              {user?.renting_room_name || 'Phòng 402-B'}
+                            </span>
+                          </>
+                        )}
                       </div>
-                      <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
-                        <span className="text-on-surface-variant font-label-md">Phòng lưu trú:</span>
-                        <span className={`font-semibold ${isNewCustomer ? 'text-error' : 'text-primary'}`}>
-                          {isNewCustomer ? 'Chưa đăng ký' : 'Premium Eco'}
-                        </span>
+                      
+                      <div className="mt-4 flex flex-col sm:flex-row gap-4 w-full">
+                        <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
+                          <span className="text-on-surface-variant font-label-md">Thành viên từ:</span>
+                          <span className="font-semibold text-on-surface">
+                            {isNewCustomer ? '06/2026' : '05/2023'}
+                          </span>
+                        </div>
+                        <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
+                          <span className="text-on-surface-variant font-label-md">Phòng lưu trú:</span>
+                          <span className={`font-semibold ${isNewCustomer ? 'text-error' : 'text-primary'}`}>
+                            {isNewCustomer ? 'Chưa đăng ký' : (user?.renting_room_name ? (user.renting_room_name.includes('101') ? 'Standard Dorm' : 'Premium Eco') : 'Premium Eco')}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
                 {/* Profile Details Form */}
                 <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm relative">
@@ -528,6 +583,11 @@ export default function ProfilePage() {
                           ✓ Đã cập nhật thành công!
                         </span>
                       )}
+                      {error && (
+                        <span className="text-sm text-error font-semibold animate-fade-in">
+                          ⚠ {error}
+                        </span>
+                      )}
                       <button 
                         onClick={saveProfile}
                         disabled={!isDirty || isSaving}
@@ -539,6 +599,7 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
+            )
             )}
 
             {/* ── SETTINGS TAB ──────────────────────────────────────────── */}
