@@ -174,6 +174,20 @@ export default function AdminEmployeesPage() {
     [employees, search, filterRole, filterBranch],
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
+  const displayedEmployees = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterRole, filterBranch]);
+
   const confirmToggleLock = () => {
     if (!confirmLockEmployee) return;
     const nextStatus =
@@ -445,7 +459,7 @@ export default function AdminEmployeesPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((emp, i) => {
+                displayedEmployees.map((emp, i) => {
                   const roleInfo = ROLES[emp.role];
                   return (
                     <tr
@@ -535,7 +549,7 @@ export default function AdminEmployeesPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-1 transition-opacity">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -573,23 +587,28 @@ export default function AdminEmployeesPage() {
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}
         >
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {employees.length} nhân viên
+            Hiển thị {filtered.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} -{" "}
+            {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} trong số{" "}
+            {filtered.length} nhân viên
           </p>
-          <div className="flex gap-1">
-            {[1, 2].map((n) => (
-              <button
-                key={n}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium"
-                style={
-                  n === 1
-                    ? { background: A.primary, color: "#fff" }
-                    : { color: A.textPrimary }
-                }
-              >
-                {n}
-              </button>
-            ))}
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCurrentPage(n)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                  style={
+                    n === currentPage
+                      ? { background: A.primary, color: "#fff" }
+                      : { color: A.textPrimary }
+                  }
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

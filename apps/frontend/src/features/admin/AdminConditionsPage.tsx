@@ -257,7 +257,7 @@ export default function AdminConditionsPage() {
                     Có hiệu lực từ: {c.effectiveDate}
                   </p>
                 </div>
-                <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 shrink-0 transition-opacity">
                   <button onClick={e => { e.stopPropagation(); openEdit(c); }}
                     className="p-1.5 rounded-full hover:bg-gray-100 transition-colors" style={{ color: A.accent }}
                     title="Chỉnh sửa điều kiện lưu trú">

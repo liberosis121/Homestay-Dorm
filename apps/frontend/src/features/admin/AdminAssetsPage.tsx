@@ -237,7 +237,7 @@ export default function AdminAssetsPage() {
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
                 {['Mã TS', 'Tên tài sản', 'Loại', 'Vị trí', 'Thương hiệu', 'Giá trị', 'Trạng thái', 'Thao tác'].map(h => (
-                  <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${h === 'Thao tác' ? 'text-center' : 'text-left'}`}
                     style={{ color: A.textMuted }}>{h}</th>
                 ))}
               </tr>
@@ -290,7 +290,7 @@ export default function AdminAssetsPage() {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${si.cls}`}>{si.label}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-center gap-1 transition-opacity">
                         <button onClick={e => { e.stopPropagation(); openEdit(a); }}
                           className="p-1.5 rounded-full hover:bg-gray-100 transition-colors" style={{ color: A.accent }}
                           title="Chỉnh sửa tài sản">
