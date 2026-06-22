@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -112,6 +113,36 @@ export default function AdminConditionsPage() {
     setShowModal(false);
   };
 
+  const categoryFilterOptions = useMemo(() => [
+    { value: "", label: "Tất cả" },
+    ...categories.map(c => ({ value: c, label: c }))
+  ], [categories]);
+
+  const priorityFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "high", label: "Bắt buộc" },
+    { value: "medium", label: "Quan trọng" },
+    { value: "low", label: "Khuyến nghị" }
+  ];
+
+  const categoryFormOptions = [
+    { value: "Nội quy", label: "Nội quy" },
+    { value: "Pháp lý", label: "Pháp lý" },
+    { value: "Vệ sinh", label: "Vệ sinh" },
+    { value: "An ninh", label: "An ninh" }
+  ];
+
+  const priorityFormOptions = [
+    { value: "high", label: "Bắt buộc" },
+    { value: "medium", label: "Quan trọng" },
+    { value: "low", label: "Khuyến nghị" }
+  ];
+
+  const statusFormOptions = [
+    { value: "true", label: "Đang áp dụng" },
+    { value: "false", label: "Ngưng áp dụng" }
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
       {/* Header */}
@@ -123,8 +154,7 @@ export default function AdminConditionsPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}>
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer">
           <span className="material-symbols-outlined text-[18px]">add_circle</span>
           Thêm điều kiện
         </button>
@@ -158,20 +188,22 @@ export default function AdminConditionsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả danh mục</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả mức độ</option>
-          <option value="high">Bắt buộc</option>
-          <option value="medium">Quan trọng</option>
-          <option value="low">Khuyến nghị</option>
-        </select>
+        <CustomSelect
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={categoryFilterOptions}
+          placeholder="Danh mục"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
+        <CustomSelect
+          value={filterPriority}
+          onChange={setFilterPriority}
+          options={priorityFilterOptions}
+          placeholder="Mức độ"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
         <button onClick={() => { setSearch(''); setFilterCategory(''); setFilterPriority(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -315,31 +347,24 @@ export default function AdminConditionsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Danh mục</label>
-                  <select
+                  <CustomSelect
                     value={form.category || 'Nội quy'}
-                    onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="Nội quy">Nội quy</option>
-                    <option value="Pháp lý">Pháp lý</option>
-                    <option value="Vệ sinh">Vệ sinh</option>
-                    <option value="An ninh">An ninh</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, category: val }))}
+                    options={categoryFormOptions}
+                    placeholder="Danh mục"
+                    theme="sale"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mức độ</label>
-                  <select
+                  <CustomSelect
                     value={form.priority || 'medium'}
-                    onChange={e => setForm(prev => ({ ...prev, priority: e.target.value as any }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="high">Bắt buộc</option>
-                    <option value="medium">Quan trọng</option>
-                    <option value="low">Khuyến nghị</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, priority: val as any }))}
+                    options={priorityFormOptions}
+                    placeholder="Mức độ"
+                    theme="sale"
+                  />
                 </div>
               </div>
 
@@ -347,15 +372,13 @@ export default function AdminConditionsPage() {
               {modalMode === 'edit' && (
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                  <select
+                  <CustomSelect
                     value={form.isActive ? 'true' : 'false'}
-                    onChange={e => setForm(prev => ({ ...prev, isActive: e.target.value === 'true' }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="true">Đang áp dụng</option>
-                    <option value="false">Ngưng áp dụng</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, isActive: val === 'true' }))}
+                    options={statusFormOptions}
+                    placeholder="Trạng thái"
+                    theme="sale"
+                  />
                 </div>
               )}
             </div>
@@ -363,13 +386,13 @@ export default function AdminConditionsPage() {
             {/* Modal Actions */}
             <div className="flex gap-3 pt-3 border-t mt-2" style={{ borderColor: A.border }}>
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border hover:bg-gray-50 transition-colors animate-fade-in"
-                style={{ borderColor: A.border, color: A.textMuted }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
+              >
                 Hủy
               </button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95 shadow"
-                style={{ background: A.primary }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
+              >
                 {modalMode === 'add' ? 'Thêm điều kiện' : 'Lưu thay đổi'}
               </button>
             </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -129,6 +130,36 @@ export default function AdminAssetsPage() {
     setShowModal(false);
   };
 
+  const categoryFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "furniture", label: "Nội thất" },
+    { value: "electronics", label: "Điện tử" },
+    { value: "appliance", label: "Thiết bị" },
+    { value: "facility", label: "Cơ sở hạ tầng" }
+  ];
+
+  const statusFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "in_use", label: "Đang sử dụng" },
+    { value: "available", label: "Sẵn sàng" },
+    { value: "maintenance", label: "Đang bảo trì" },
+    { value: "damaged", label: "Hư hỏng" }
+  ];
+
+  const categoryFormOptions = [
+    { value: "furniture", label: "Nội thất" },
+    { value: "electronics", label: "Điện tử" },
+    { value: "appliance", label: "Thiết bị" },
+    { value: "facility", label: "Cơ sở hạ tầng" }
+  ];
+
+  const statusFormOptions = [
+    { value: "available", label: "Sẵn sàng" },
+    { value: "in_use", label: "Đang sử dụng" },
+    { value: "maintenance", label: "Bảo trì" },
+    { value: "damaged", label: "Hư hỏng" }
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
       {/* Header */}
@@ -140,8 +171,7 @@ export default function AdminAssetsPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}>
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer">
           <span className="material-symbols-outlined text-[18px]">add_circle</span>
           Thêm tài sản
         </button>
@@ -175,24 +205,22 @@ export default function AdminAssetsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả loại</option>
-          <option value="furniture">Nội thất</option>
-          <option value="electronics">Điện tử</option>
-          <option value="appliance">Thiết bị</option>
-          <option value="facility">Cơ sở hạ tầng</option>
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="in_use">Đang sử dụng</option>
-          <option value="available">Sẵn sàng</option>
-          <option value="maintenance">Đang bảo trì</option>
-          <option value="damaged">Hư hỏng</option>
-        </select>
+        <CustomSelect
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={categoryFilterOptions}
+          placeholder="Loại tài sản"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={statusFilterOptions}
+          placeholder="Trạng thái"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
         <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterCategory(''); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ color: A.accent }}>
@@ -377,34 +405,26 @@ export default function AdminAssetsPage() {
                     style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                   />
                 ) : (
-                  <select
+                  <CustomSelect
                     value={form.category || 'furniture'}
-                    onChange={e => setForm(prev => ({ ...prev, category: e.target.value as AssetCategory }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="furniture">Nội thất</option>
-                    <option value="electronics">Điện tử</option>
-                    <option value="appliance">Thiết bị</option>
-                    <option value="facility">Cơ sở hạ tầng</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, category: val as AssetCategory }))}
+                    options={categoryFormOptions}
+                    placeholder="Loại"
+                    theme="sale"
+                  />
                 )}
               </div>
 
               {/* Trạng thái - EDITABLE in both modes */}
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                <select
+                <CustomSelect
                   value={form.status || 'available'}
-                  onChange={e => setForm(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                >
-                  <option value="available">Sẵn sàng</option>
-                  <option value="in_use">Đang sử dụng</option>
-                  <option value="maintenance">Bảo trì</option>
-                  <option value="damaged">Hư hỏng</option>
-                </select>
+                  onChange={val => setForm(prev => ({ ...prev, status: val as AssetStatus }))}
+                  options={statusFormOptions}
+                  placeholder="Trạng thái"
+                  theme="sale"
+                />
               </div>
 
               {/* Thương hiệu */}
@@ -456,13 +476,13 @@ export default function AdminAssetsPage() {
             {/* Modal Actions */}
             <div className="flex gap-3 pt-3 border-t mt-2" style={{ borderColor: A.border }}>
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border hover:bg-gray-50 transition-colors"
-                style={{ borderColor: A.border, color: A.textMuted }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
+              >
                 Hủy
               </button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95 shadow"
-                style={{ background: A.primary }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
+              >
                 {modalMode === 'add' ? 'Thêm tài sản' : 'Lưu thay đổi'}
               </button>
             </div>

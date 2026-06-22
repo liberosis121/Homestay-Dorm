@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 const A = {
   bg: "#fff8f3", // Sand background
@@ -210,6 +211,21 @@ export default function AdminEmployeesPage() {
     });
   };
 
+  const roleOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "sale", label: "Nhân viên Sale" },
+    { value: "manager", label: "Quản lý CN" },
+    { value: "accountant", label: "Kế toán" },
+    { value: "admin", label: "Quản trị viên" }
+  ];
+
+  const branchOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "Quận 1", label: "Quận 1" },
+    { value: "Quận 3", label: "Quận 3" },
+    { value: "Bình Thạnh", label: "Bình Thạnh" }
+  ];
+
   return (
     <div
       className="space-y-6 animate-fade-in-up"
@@ -298,37 +314,22 @@ export default function AdminEmployeesPage() {
             }}
           />
         </div>
-        <select
+        <CustomSelect
           value={filterRole}
-          onChange={(e) => setFilterRole(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Tất cả vai trò</option>
-          <option value="sale">Nhân viên Sale</option>
-          <option value="manager">Quản lý CN</option>
-          <option value="accountant">Kế toán</option>
-          <option value="admin">Quản trị viên</option>
-        </select>
-        <select
+          onChange={setFilterRole}
+          options={roleOptions}
+          placeholder="Vai trò"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
+        <CustomSelect
           value={filterBranch}
-          onChange={(e) => setFilterBranch(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Tất cả chi nhánh</option>
-          <option value="Quận 1">Quận 1</option>
-          <option value="Quận 3">Quận 3</option>
-          <option value="Bình Thạnh">Bình Thạnh</option>
-        </select>
+          onChange={setFilterBranch}
+          options={branchOptions}
+          placeholder="Chi nhánh"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
         <button
           onClick={() => {
             setSearch("");
@@ -683,21 +684,13 @@ export default function AdminEmployeesPage() {
                 >
                   Đổi vai trò
                 </h4>
-                <select
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.surface,
-                    color: A.textPrimary,
-                  }}
+                <CustomSelect
                   value={editRole || selected.role}
-                  onChange={(e) => setEditRole(e.target.value as Role)}
-                >
-                  <option value="sale">Nhân viên Sale</option>
-                  <option value="manager">Quản lý CN</option>
-                  <option value="accountant">Kế toán</option>
-                  <option value="admin">Quản trị viên</option>
-                </select>
+                  onChange={(val) => setEditRole(val as Role)}
+                  options={roleOptions.filter((o) => o.value !== "")}
+                  placeholder="Vai trò"
+                  theme="sale"
+                />
               </div>
               <div
                 className="p-4 rounded-lg"
@@ -709,21 +702,16 @@ export default function AdminEmployeesPage() {
                 >
                   Đổi chi nhánh
                 </h4>
-                <select
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.surface,
-                    color: A.textPrimary,
-                  }}
+                <CustomSelect
                   value={editBranch || selected.branch}
-                  onChange={(e) => setEditBranch(e.target.value)}
-                >
-                  <option value="Quận 1">Quận 1</option>
-                  <option value="Quận 3">Quận 3</option>
-                  <option value="Bình Thạnh">Bình Thạnh</option>
-                  <option value="Tất cả">Tất cả</option>
-                </select>
+                  onChange={setEditBranch}
+                  options={[
+                    ...branchOptions.filter((o) => o.value !== ""),
+                    { value: "Tất cả", label: "Tất cả" },
+                  ]}
+                  placeholder="Chi nhánh"
+                  theme="sale"
+                />
               </div>
             </div>
             <div
@@ -843,23 +831,13 @@ export default function AdminEmployeesPage() {
                 >
                   Vai trò
                 </label>
-                <select
+                <CustomSelect
                   value={newEmp.role}
-                  onChange={(e) =>
-                    setNewEmp({ ...newEmp, role: e.target.value as Role })
-                  }
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.bg,
-                    color: A.textPrimary,
-                  }}
-                >
-                  <option value="sale">Nhân viên Sale</option>
-                  <option value="manager">Quản lý CN</option>
-                  <option value="accountant">Kế toán</option>
-                  <option value="admin">Quản trị viên</option>
-                </select>
+                  onChange={(val) => setNewEmp({ ...newEmp, role: val as Role })}
+                  options={roleOptions.filter((o) => o.value !== "")}
+                  placeholder="Vai trò"
+                  theme="sale"
+                />
               </div>
               <div>
                 <label
@@ -868,22 +846,13 @@ export default function AdminEmployeesPage() {
                 >
                   Chi nhánh
                 </label>
-                <select
+                <CustomSelect
                   value={newEmp.branch}
-                  onChange={(e) =>
-                    setNewEmp({ ...newEmp, branch: e.target.value })
-                  }
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.bg,
-                    color: A.textPrimary,
-                  }}
-                >
-                  <option value="Quận 1">Quận 1</option>
-                  <option value="Quận 3">Quận 3</option>
-                  <option value="Bình Thạnh">Bình Thạnh</option>
-                </select>
+                  onChange={(val) => setNewEmp({ ...newEmp, branch: val })}
+                  options={branchOptions.filter((o) => o.value !== "")}
+                  placeholder="Chi nhánh"
+                  theme="sale"
+                />
               </div>
             </div>
             <div className="flex gap-3 pt-1">
