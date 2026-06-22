@@ -112,6 +112,7 @@ export default function AdminEmployeesPage() {
     branch: "Quận 1",
   });
   const [confirmLockEmployee, setConfirmLockEmployee] = useState<Employee | null>(null);
+  const [isConfirmHover, setIsConfirmHover] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -908,10 +909,7 @@ export default function AdminEmployeesPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{
-            background:
-              confirmLockEmployee.status === "active"
-                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for lock
-                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for unlock
+            background: "rgba(0, 0, 0, 0.4)",
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmLockEmployee(null);
@@ -960,42 +958,47 @@ export default function AdminEmployeesPage() {
               </h3>
             </div>
             
-            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
-              {confirmLockEmployee.status === "active" ? (
-                <>
-                  Bạn có chắc muốn <strong>khóa tài khoản</strong> của nhân viên{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockEmployee.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockEmployee.id}) không? Nhân viên này sẽ không thể đăng nhập vào hệ thống.
-                </>
-              ) : (
-                <>
-                  Bạn có chắc muốn <strong>mở khóa tài khoản</strong> của nhân viên{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockEmployee.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockEmployee.id}) không?
-                </>
+            <div className="flex flex-col gap-3.5 py-1 text-sm text-[#4e453c]">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn {confirmLockEmployee.status === "active" ? "khóa" : "mở khóa"} tài khoản của nhân viên này không?
+              </p>
+              <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold text-gray-500">Nhân viên:</span>
+                  <span className="font-bold text-gray-900">{confirmLockEmployee.full_name}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-semibold text-gray-500">Mã NV:</span>
+                  <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmLockEmployee.id}>
+                    {confirmLockEmployee.id}
+                  </span>
+                </div>
+              </div>
+              {confirmLockEmployee.status === "active" && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+                  <span>Nhân viên này sẽ không thể đăng nhập vào hệ thống sau khi tài khoản bị khóa.</span>
+                </div>
               )}
-            </p>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setConfirmLockEmployee(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: A.border, color: A.textMuted }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 onClick={confirmToggleLock}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                onMouseEnter={() => setIsConfirmHover(true)}
+                onMouseLeave={() => setIsConfirmHover(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
                 style={{
                   background:
                     confirmLockEmployee.status === "active"
-                      ? "#dc2626"
-                      : "#10b981",
+                      ? (isConfirmHover ? "#b91c1c" : "#dc2626")
+                      : (isConfirmHover ? "#059669" : "#10b981"),
                 }}
               >
                 {confirmLockEmployee.status === "active"
