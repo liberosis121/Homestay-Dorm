@@ -1,5 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import CustomSelect from "../../components/ui/CustomSelect";
+import {
+  fetchAdminEmployees,
+  createEmployeeApi,
+  updateEmployeeApi,
+  toggleEmployeeLockApi,
+} from "./services/admin.service";
 
 const A = {
   bg: "#fff8f3", // Sand background
@@ -42,62 +48,10 @@ const ROLES: Record<Role, { label: string; cls: string }> = {
   admin: { label: "Quản trị viên", cls: "bg-[#e8ede7] text-[#5f745d]" },
 };
 
-const MOCK_EMPLOYEES: Employee[] = [
-  {
-    id: "NV-001",
-    full_name: "Trần Minh Khoa",
-    email: "khoa.tran@homestay.vn",
-    phone: "090 111 2233",
-    role: "sale",
-    branch: "Quận 1",
-    status: "active",
-    joinDate: "01/03/2023",
-  },
-  {
-    id: "NV-002",
-    full_name: "Nguyễn Thị Lan",
-    email: "lan.nguyen@homestay.vn",
-    phone: "091 222 3344",
-    role: "manager",
-    branch: "Quận 3",
-    status: "active",
-    joinDate: "15/07/2022",
-  },
-  {
-    id: "NV-003",
-    full_name: "Lê Văn Đức",
-    email: "duc.le@homestay.vn",
-    phone: "093 333 4455",
-    role: "accountant",
-    branch: "Quận 1",
-    status: "active",
-    joinDate: "10/01/2024",
-  },
-  {
-    id: "NV-004",
-    full_name: "Phạm Thị Hoa",
-    email: "hoa.pham@homestay.vn",
-    phone: "094 444 5566",
-    role: "sale",
-    branch: "Bình Thạnh",
-    status: "locked",
-    joinDate: "05/09/2023",
-  },
-  {
-    id: "NV-005",
-    full_name: "Hoàng Admin",
-    email: "admin@homestay.vn",
-    phone: "095 000 0000",
-    role: "admin",
-    branch: "Tất cả",
-    status: "active",
-    joinDate: "01/01/2022",
-  },
-];
-
 export default function AdminEmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(MOCK_EMPLOYEES);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [filterBranch, setFilterBranch] = useState("");
@@ -115,12 +69,22 @@ export default function AdminEmployeesPage() {
   const [confirmLockEmployee, setConfirmLockEmployee] = useState<Employee | null>(null);
   const [isConfirmHover, setIsConfirmHover] = useState(false);
 
-  useEffect(() => {
+  const loadEmployees = async () => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
+    setError(null);
+    try {
+      const data = await fetchAdminEmployees();
+      setEmployees(data || []);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Lỗi khi tải danh sách nhân viên");
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadEmployees();
   }, []);
 
   useEffect(() => {
@@ -188,43 +152,75 @@ export default function AdminEmployeesPage() {
     setCurrentPage(1);
   }, [search, filterRole, filterBranch]);
 
-  const confirmToggleLock = () => {
+  const confirmToggleLock = async () => {
     if (!confirmLockEmployee) return;
-    const nextStatus =
-      confirmLockEmployee.status === "active" ? "locked" : "active";
-    setEmployees((prev) =>
-      prev.map((e) =>
-        e.id === confirmLockEmployee.id
-          ? { ...e, status: nextStatus }
-          : e,
-      ),
-    );
-    if (selected?.id === confirmLockEmployee.id) {
-      setSelected((prev) =>
-        prev ? { ...prev, status: nextStatus } : null,
+    try {
+      const nextStatus = await toggleEmployeeLockApi(confirmLockEmployee.id);
+      setEmployees((prev) =>
+        prev.map((e) =>
+          e.id === confirmLockEmployee.id
+            ? { ...e, status: nextStatus as any }
+            : e,
+        ),
       );
+      if (selected?.id === confirmLockEmployee.id) {
+        setSelected((prev) =>
+          prev ? { ...prev, status: nextStatus as any } : null,
+        );
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Lỗi khi thay đổi trạng thái khóa tài khoản!");
+    } finally {
+      setConfirmLockEmployee(null);
     }
-    setConfirmLockEmployee(null);
   };
 
-  const addEmployee = () => {
-    const emp: Employee = {
-      ...newEmp,
-      id: `NV-${String(employees.length + 1).padStart(3, "0")}`,
-      status: "active",
-      joinDate: new Date().toLocaleDateString("vi-VN"),
-    };
-    setEmployees((prev) => [...prev, emp]);
-    setShowAddModal(false);
-    setNewEmp({
-      full_name: "",
-      email: "",
-      phone: "",
-      role: "sale",
-      branch: "Quận 1",
-    });
+  const addEmployee = async () => {
+    if (!newEmp.full_name || !newEmp.email) {
+      alert("Họ tên và email là bắt buộc");
+      return;
+    }
+    try {
+      const created = await createEmployeeApi(newEmp);
+      setEmployees((prev) => [...prev, created]);
+      setShowAddModal(false);
+      setNewEmp({
+        full_name: "",
+        email: "",
+        phone: "",
+        role: "sale",
+        branch: "Quận 1",
+      });
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Lỗi khi thêm nhân viên mới");
+    }
   };
 
+  const saveChanges = async () => {
+    if (!selected) return;
+    try {
+      await updateEmployeeApi(selected.id, {
+        role: editRole,
+        branch: editBranch,
+      });
+      setEmployees((prev) =>
+        prev.map((e) =>
+          e.id === selected.id
+            ? { ...e, role: editRole as Role, branch: editBranch }
+            : e,
+        ),
+      );
+      setSelected((prev) =>
+        prev ? { ...prev, role: editRole as Role, branch: editBranch } : null,
+      );
+      alert("Cập nhật thông tin nhân viên thành công!");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Lỗi khi cập nhật thông tin nhân viên");
+    }
+  };
   const roleOptions = [
     { value: "", label: "Tất cả" },
     { value: "sale", label: "Nhân viên Sale" },
@@ -269,6 +265,13 @@ export default function AdminEmployeesPage() {
           Thêm nhân viên
         </button>
       </header>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -741,6 +744,7 @@ export default function AdminEmployeesPage() {
               }}
             >
               <button
+                onClick={saveChanges}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
               >
                 Lưu thay đổi
