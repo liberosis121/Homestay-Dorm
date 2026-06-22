@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import {
+  fetchAdminAssets,
+  createAssetApi,
+  updateAssetApi,
+} from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -42,18 +47,10 @@ const CAT_LABEL: Record<AssetCategory, { label: string; icon: string }> = {
   facility: { label: 'Cơ sở hạ tầng', icon: 'construction' },
 };
 
-const MOCK_ASSETS: Asset[] = [
-  { id: 'TS001', name: 'Giường tầng - Set A', category: 'furniture', location: 'Phòng 101 - Quận 1', brand: 'Nội thất Hòa Phát', purchaseDate: '01/06/2022', value: 3500000, status: 'in_use', serialNumber: 'HP-BED-001A' },
-  { id: 'TS002', name: 'Điều hòa 12000BTU', category: 'electronics', location: 'Phòng 101 - Quận 1', brand: 'Daikin', purchaseDate: '15/07/2021', value: 8500000, status: 'in_use', serialNumber: 'DK-AC-0078' },
-  { id: 'TS003', name: 'Máy lạnh 9000BTU', category: 'electronics', location: 'Kho - Quận 1', brand: 'Samsung', purchaseDate: '10/03/2023', value: 6200000, status: 'available', serialNumber: 'SAM-AC-1234' },
-  { id: 'TS004', name: 'Tủ quần áo 4 ngăn', category: 'furniture', location: 'Phòng 202 - Quận 3', brand: 'IKEA', purchaseDate: '01/01/2020', value: 2800000, status: 'damaged', serialNumber: 'IKEA-WRD-456' },
-  { id: 'TS005', name: 'Máy nước nóng', category: 'appliance', location: 'Phòng 102 - Quận 1', brand: 'Ariston', purchaseDate: '05/08/2022', value: 4200000, status: 'maintenance', serialNumber: 'ARS-HWT-789' },
-  { id: 'TS006', name: 'Camera an ninh', category: 'facility', location: 'Hành lang tầng 1 - Quận 1', brand: 'Hikvision', purchaseDate: '20/09/2021', value: 1800000, status: 'in_use', serialNumber: 'HIK-CAM-321' },
-];
-
 export default function AdminAssetsPage() {
-  const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -61,12 +58,33 @@ export default function AdminAssetsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
 
-  useEffect(() => {
+  const loadAssets = async () => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
+    setError(null);
+    try {
+      const data = await fetchAdminAssets();
+      const mapped = (data || []).map((dbAsset: any) => ({
+        id: dbAsset.serial_number,
+        name: dbAsset.name || '',
+        category: dbAsset.category || 'furniture',
+        location: dbAsset.location || '',
+        brand: dbAsset.brand || '',
+        purchaseDate: dbAsset.purchase_date ? dbAsset.purchase_date.split('-').reverse().join('/') : '',
+        value: dbAsset.value || 0,
+        status: dbAsset.status || 'available',
+        serialNumber: dbAsset.serial_number
+      }));
+      setAssets(mapped);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi tải danh sách tài sản');
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadAssets();
   }, []);
 
   const kpis = useMemo(() => {
@@ -102,7 +120,7 @@ export default function AdminAssetsPage() {
     setShowModal(true);
   };
 
-  const saveForm = () => {
+  const saveForm = async () => {
     if (!form.name?.trim()) {
       alert("Tên tài sản không được để trống!");
       return;
@@ -111,23 +129,49 @@ export default function AdminAssetsPage() {
       alert("Vị trí không được để trống!");
       return;
     }
-    if (modalMode === 'add') {
-      const na: Asset = {
-        name: form.name,
-        category: form.category || 'furniture',
-        location: form.location,
-        brand: form.brand || '',
-        value: form.value || 0,
-        status: form.status || 'available',
-        purchaseDate: form.purchaseDate || new Date().toLocaleDateString('vi-VN'),
-        serialNumber: form.serialNumber || `SN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        id: `TS${String(assets.length + 1).padStart(3, '0')}`
-      };
-      setAssets(prev => [...prev, na]);
-    } else {
-      setAssets(prev => prev.map(a => a.id === form.id ? { ...a, ...form } as Asset : a));
+    try {
+      if (modalMode === 'add') {
+        const pDate = new Date().toISOString().split('T')[0];
+        const created = await createAssetApi({
+          name: form.name,
+          category: form.category || 'furniture',
+          location: form.location,
+          brand: form.brand || '',
+          value: form.value || 0,
+          status: form.status || 'available',
+          purchase_date: pDate
+        });
+        const na: Asset = {
+          id: created.serial_number,
+          name: created.name,
+          category: created.category as AssetCategory,
+          location: created.location,
+          brand: created.brand,
+          value: created.value,
+          status: created.status as AssetStatus,
+          purchaseDate: created.purchase_date ? created.purchase_date.split('-').reverse().join('/') : '',
+          serialNumber: created.serial_number
+        };
+        setAssets(prev => [na, ...prev]);
+      } else {
+        if (!form.serialNumber) return;
+        const updated = await updateAssetApi(form.serialNumber, {
+          location: form.location,
+          value: form.value,
+          status: form.status
+        });
+        setAssets(prev => prev.map(a => a.serialNumber === form.serialNumber ? {
+          ...a,
+          location: updated.location,
+          value: updated.value,
+          status: updated.status as AssetStatus
+        } : a));
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi lưu thông tin tài sản');
     }
-    setShowModal(false);
   };
 
   const formatNumber = (num: number | undefined) => {
@@ -181,6 +225,13 @@ export default function AdminAssetsPage() {
           Thêm tài sản
         </button>
       </header>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI */}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">

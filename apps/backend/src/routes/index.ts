@@ -7,6 +7,7 @@ import checkoutRoutes from './checkout.routes';
 import adminCustomersRoutes from './admin-customers.routes';
 import adminEmployeesRoutes from './admin-employees.routes';
 import adminConditionsRoutes from './admin-conditions.routes';
+import adminAssetsRoutes from './admin-assets.routes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/checkouts', checkoutRoutes);
 router.use('/admin', adminCustomersRoutes);
 router.use('/admin', adminEmployeesRoutes);
 router.use('/admin', adminConditionsRoutes);
+router.use('/admin', adminAssetsRoutes);
 
 export default router;
