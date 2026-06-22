@@ -235,8 +235,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow transition-all hover:opacity-90 active:scale-95"
-            style={{ background: A.primary }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">
               person_add
@@ -968,8 +967,7 @@ export default function AdminUsersPage() {
               </button>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:bg-[#5e4b33] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
-                style={{ background: A.primary }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
               >
                 Tạo tài khoản
               </button>
