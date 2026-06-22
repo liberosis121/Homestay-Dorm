@@ -133,3 +133,35 @@ export const exportBackupDataApi = async () => {
   const result = await res.json();
   return result.data;
 };
+
+// ─── CONDITIONS API ──────────────────────────────────────────────────
+export const fetchAdminConditions = async () => {
+  const res = await fetch(`${API}/api/admin/conditions`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải danh sách điều kiện lưu trú');
+  const result = await res.json();
+  return result.data;
+};
+
+export const createConditionApi = async (cond: any) => {
+  const res = await fetch(`${API}/api/admin/conditions`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(cond)
+  });
+  if (!res.ok) throw new Error('Lỗi khi thêm điều kiện mới');
+  const result = await res.json();
+  return result.data;
+};
+
+export const updateConditionApi = async (id: string, cond: any) => {
+  const res = await fetch(`${API}/api/admin/conditions/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(cond)
+  });
+  if (!res.ok) throw new Error('Lỗi khi cập nhật điều kiện lưu trú');
+  const result = await res.json();
+  return result.data;
+};

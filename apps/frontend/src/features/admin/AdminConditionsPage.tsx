@@ -1,5 +1,12 @@
+
+
 import { useState, useMemo, useEffect } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import {
+  fetchAdminConditions,
+  createConditionApi,
+  updateConditionApi,
+} from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -29,19 +36,33 @@ const PRIORITY_MAP: Record<string, { label: string; cls: string }> = {
   low:    { label: 'Khuyến nghị',  cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
 };
 
-const MOCK_CONDITIONS: Condition[] = [
-  { id: 'DC001', title: 'Đăng ký tạm trú', category: 'Pháp lý', description: 'Khách thuê người nước ngoài phải hoàn thành thủ tục đăng ký tạm trú với cơ quan công an địa phương trong vòng 24 giờ kể từ ngày nhận phòng.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
-  { id: 'DC002', title: 'Giờ giấc ra vào', category: 'Nội quy', description: 'Cổng chính đóng cửa lúc 23:00 và mở cửa lúc 06:00. Khách thuê về muộn hơn 23:00 phải thông báo trước cho bảo vệ và sử dụng thẻ từ cá nhân.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
-  { id: 'DC003', title: 'Không hút thuốc trong phòng', category: 'Vệ sinh', description: 'Nghiêm cấm hút thuốc lá trong tất cả các khu vực có mái che. Khu vực hút thuốc được quy định riêng ngoài sân.', effectiveDate: '01/03/2023', isActive: true, priority: 'high' },
-  { id: 'DC004', title: 'Giữ yên lặng sau 22:00', category: 'Nội quy', description: 'Không gây tiếng ồn lớn, tụ tập đông người trong phòng sau 22:00 để đảm bảo quyền nghỉ ngơi của các khách hàng khác.', effectiveDate: '01/01/2024', isActive: true, priority: 'medium' },
-  { id: 'DC005', title: 'Giấy tờ tùy thân', category: 'Pháp lý', description: 'Khách hàng phải cung cấp bản sao CCCD/CMND/Hộ chiếu còn hiệu lực khi ký hợp đồng. Không chấp nhận giấy tờ hết hạn.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
-  { id: 'DC006', title: 'Đưa khách ngoài ở lại qua đêm', category: 'Nội quy', description: 'Khách ngoài muốn ở lại qua đêm phải đăng ký với quản lý và đóng phí phụ thu là 50,000đ/đêm. Tối đa 2 đêm/tháng.', effectiveDate: '15/06/2023', isActive: true, priority: 'medium' },
-  { id: 'DC007', title: 'Vật nuôi', category: 'Nội quy', description: 'Không được phép nuôi vật nuôi trong các phòng ký túc xá. Áp dụng cho tất cả các loại động vật.', effectiveDate: '01/01/2022', isActive: false, priority: 'low' },
-];
+
+
+const classifyCondition = (title: string, desc: string) => {
+  const text = (title + ' ' + desc).toLowerCase();
+  let category = 'Nội quy';
+  if (text.includes('tạm trú') || text.includes('pháp lý') || text.includes('giấy tờ') || text.includes('cccd')) {
+    category = 'Pháp lý';
+  } else if (text.includes('hút thuốc') || text.includes('vệ sinh') || text.includes('rác') || text.includes('sân')) {
+    category = 'Vệ sinh';
+  } else if (text.includes('bảo vệ') || text.includes('an ninh') || text.includes('thẻ từ') || text.includes('trộm') || text.includes('cổng')) {
+    category = 'An ninh';
+  }
+
+  let priority: 'high' | 'medium' | 'low' = 'medium';
+  if (text.includes('bắt buộc') || text.includes('nghiêm cấm') || text.includes('tạm trú') || text.includes('giờ giấc') || text.includes('giấy tờ') || text.includes('hút thuốc') || text.includes('khóa')) {
+    priority = 'high';
+  } else if (text.includes('khuyến nghị') || text.includes('nên') || text.includes('nhắc nhở')) {
+    priority = 'low';
+  }
+
+  return { category, priority };
+};
 
 export default function AdminConditionsPage() {
-  const [conditions, setConditions] = useState<Condition[]>(MOCK_CONDITIONS);
+  const [conditions, setConditions] = useState<Condition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -49,12 +70,34 @@ export default function AdminConditionsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Condition>>({});
 
-  useEffect(() => {
+  const loadConditions = async () => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
+    setError(null);
+    try {
+      const data = await fetchAdminConditions();
+      const mapped = (data || []).map((dbCond: any) => {
+        const { category, priority } = classifyCondition(dbCond.title || '', dbCond.description || '');
+        return {
+          id: dbCond.id,
+          title: dbCond.title || '',
+          description: dbCond.description || '',
+          isActive: dbCond.is_active,
+          effectiveDate: dbCond.created_at ? new Date(dbCond.created_at).toLocaleDateString('vi-VN') : '',
+          category,
+          priority
+        };
+      });
+      setConditions(mapped);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi tải danh sách điều kiện lưu trú');
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadConditions();
   }, []);
 
   const categories = useMemo(() => [...new Set(conditions.map(c => c.category))], [conditions]);
@@ -91,26 +134,51 @@ export default function AdminConditionsPage() {
     setShowModal(true);
   };
 
-  const saveForm = () => {
+  const saveForm = async () => {
     if (!form.title?.trim() || !form.description?.trim()) {
       alert("Tiêu đề và nội dung quy định không được để trống!");
       return;
     }
-    if (modalMode === 'add') {
-      const nc: Condition = {
-        title: form.title,
-        category: form.category || 'Nội quy',
-        description: form.description,
-        effectiveDate: form.effectiveDate || new Date().toLocaleDateString('vi-VN'),
-        isActive: form.isActive !== undefined ? form.isActive : true,
-        priority: (form.priority as 'high' | 'medium' | 'low') || 'medium',
-        id: `DC${String(conditions.length + 1).padStart(3, '0')}`
-      };
-      setConditions(prev => [...prev, nc]);
-    } else {
-      setConditions(prev => prev.map(c => c.id === form.id ? { ...c, ...form } as Condition : c));
+    try {
+      if (modalMode === 'add') {
+        const created = await createConditionApi({
+          title: form.title,
+          description: form.description,
+          is_active: form.isActive !== undefined ? form.isActive : true
+        });
+        const { category, priority } = classifyCondition(created.title || '', created.description || '');
+        const newCond: Condition = {
+          id: created.id,
+          title: created.title,
+          description: created.description,
+          isActive: created.is_active,
+          effectiveDate: created.created_at ? new Date(created.created_at).toLocaleDateString('vi-VN') : '',
+          category,
+          priority
+        };
+        setConditions(prev => [newCond, ...prev]);
+      } else {
+        if (!form.id) return;
+        const updated = await updateConditionApi(form.id, {
+          title: form.title,
+          description: form.description,
+          is_active: form.isActive
+        });
+        const { category, priority } = classifyCondition(updated.title || '', updated.description || '');
+        setConditions(prev => prev.map(c => c.id === form.id ? {
+          ...c,
+          title: updated.title,
+          description: updated.description,
+          isActive: updated.is_active,
+          category,
+          priority
+        } : c));
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi lưu điều kiện lưu trú');
     }
-    setShowModal(false);
   };
 
   const categoryFilterOptions = useMemo(() => [
@@ -159,6 +227,13 @@ export default function AdminConditionsPage() {
           Thêm điều kiện
         </button>
       </header>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI */}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
