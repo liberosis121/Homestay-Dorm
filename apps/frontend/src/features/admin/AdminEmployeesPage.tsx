@@ -388,7 +388,7 @@ export default function AdminEmployeesPage() {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+                    className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider ${h === "Thao tác" ? "text-center" : "text-left"}`}
                     style={{ color: A.textMuted }}
                   >
                     {h}
@@ -549,7 +549,7 @@ export default function AdminEmployeesPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end gap-1 transition-opacity">
+                        <div className="flex justify-center gap-1 transition-opacity">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

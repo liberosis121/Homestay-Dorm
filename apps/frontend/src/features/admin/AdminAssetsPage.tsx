@@ -130,6 +130,11 @@ export default function AdminAssetsPage() {
     setShowModal(false);
   };
 
+  const formatNumber = (num: number | undefined) => {
+    if (!num) return "";
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
   const categoryFilterOptions = [
     { value: "", label: "Tất cả" },
     { value: "furniture", label: "Nội thất" },
@@ -449,9 +454,14 @@ export default function AdminAssetsPage() {
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giá trị (đ)</label>
                 <input
-                  type="number"
-                  value={form.value || 0}
-                  onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value) }))}
+                  type="text"
+                  value={formatNumber(form.value)}
+                  onChange={e => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    const num = clean ? parseInt(clean, 10) : 0;
+                    setForm(prev => ({ ...prev, value: num }));
+                  }}
+                  placeholder="Nhập giá trị..."
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
                   style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
