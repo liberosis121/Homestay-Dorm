@@ -1,120 +1,168 @@
+/**
+ * 📁 FILE: routes/auth.routes.ts
+ * 🎯 MỤC ĐÍCH: Khai báo các endpoints (routes) API liên quan đến xác thực và thông tin cá nhân.
+ * 🏗️ TẦNG: Route Layer (Tầng trên cùng — nhận HTTP request từ Client, kiểm tra tính hợp lệ sơ bộ của tham số, chuyển tiếp dữ liệu đến Service, và trả về HTTP response)
+ * 📦 PHỤ THUỘC:
+ *   - middleware/auth.middleware.ts  → Middleware requireAuth bảo mật
+ *   - services/auth.service.ts       → Xử lý logic nghiệp vụ chính
+ *   - utils/response.util.ts         → Định dạng response trả về cho client đồng nhất
+ *
+ * 🔄 DANH SÁCH ENDPOINTS:
+ *   - `POST /api/auth/register`        : Đăng ký tài khoản (Public)
+ *   - `POST /api/auth/login`           : Đăng nhập (Public)
+ *   - `POST /api/auth/logout`          : Đăng xuất (Private)
+ *   - `GET  /api/auth/me`              : Lấy thông tin phiên đăng nhập hiện tại (Private)
+ *   - `GET  /api/auth/profile`         : Lấy hồ sơ cá nhân đầy đủ (Private)
+ *   - `PUT  /api/auth/profile`         : Cập nhật hồ sơ cá nhân (Private)
+ *   - `POST /api/auth/forgot-password` : Yêu cầu reset mật khẩu (Public)
+ */
+
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
+import { authService } from '../services/auth.service';
 import { sendSuccess, sendError } from '../utils/response.util';
-import { supabase } from '../utils/supabase';
 
 const router = Router();
 
-router.get('/me', requireAuth, (req, res) => {
-  sendSuccess(res, req.user, 'Xác thực tài khoản thành công!');
+// ============================================================
+// PUBLIC ENDPOINTS (Không yêu cầu đăng nhập)
+// ============================================================
+
+/**
+ * 🔗 POST /api/auth/register
+ * 📝 Đăng ký tài khoản khách hàng mới.
+ * 📥 Body input: { email, password, fullName, phone }
+ */
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, fullName, phone } = req.body;
+
+    // 1. Kiểm tra tính hợp lệ thô của dữ liệu đầu vào (Validation)
+    if (!email || !password || !fullName || !phone) {
+      return sendError(res, null, 'Vui lòng cung cấp đầy đủ thông tin: email, password, fullName, phone.', 400);
+    }
+
+    if (password.length < 6) {
+      return sendError(res, null, 'Mật khẩu phải chứa ít nhất 6 ký tự.', 400);
+    }
+
+    // 2. Chuyển tiếp dữ liệu đến tầng Service để xử lý logic nghiệp vụ
+    const result = await authService.register(email, password, fullName, phone);
+
+    // 3. Trả về response thành công (HTTP Status 201 Created)
+    return sendSuccess(res, result, 'Đăng ký tài khoản mới thành công!', 201);
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi xảy ra trong quá trình đăng ký tài khoản.');
+  }
 });
 
-// GET /api/auth/profile
+/**
+ * 🔗 POST /api/auth/login
+ * 📝 Đăng nhập người dùng bằng email & mật khẩu.
+ * 📥 Body input: { email, password }
+ */
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Kiểm tra tính hợp lệ thô của dữ liệu đầu vào (Validation)
+    if (!email || !password) {
+      return sendError(res, null, 'Vui lòng cung cấp email và mật khẩu.', 400);
+    }
+
+    // 2. Chuyển tiếp dữ liệu đến tầng Service để xác thực
+    const result = await authService.login(email, password);
+
+    // 3. Trả về token và profile của user (HTTP Status 200 OK)
+    return sendSuccess(res, result, 'Đăng nhập thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+  }
+});
+
+/**
+ * 🔗 POST /api/auth/forgot-password
+ * 📝 Gửi email đặt lại mật khẩu cho tài khoản.
+ * 📥 Body input: { email }
+ */
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return sendError(res, null, 'Vui lòng cung cấp địa chỉ email.', 400);
+    }
+
+    const result = await authService.forgotPassword(email);
+    return sendSuccess(res, result, 'Hệ thống đã gửi email khôi phục mật khẩu. Vui lòng kiểm tra hòm thư của bạn.');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi yêu cầu đặt lại mật khẩu.');
+  }
+});
+
+// ============================================================
+// PRIVATE ENDPOINTS (Yêu cầu đăng nhập - Phải đi qua requireAuth)
+// ============================================================
+
+/**
+ * 🔗 GET /api/auth/me
+ * 📝 Lấy thông tin user đăng nhập từ token JWT (đọc trực tiếp từ req.user đã giải mã).
+ */
+router.get('/me', requireAuth, (req, res) => {
+  // `requireAuth` đã gán user hợp lệ vào `req.user`. Không cần query thêm database.
+  return sendSuccess(res, req.user, 'Xác thực tài khoản thành công!');
+});
+
+/**
+ * 🔗 POST /api/auth/logout
+ * 📝 Đăng xuất phiên làm việc hiện tại.
+ */
+router.post('/logout', requireAuth, async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization!;
+    const token = authHeader.split(' ')[1];
+
+    const result = await authService.logout(token);
+    return sendSuccess(res, result, 'Đăng xuất tài khoản thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi xảy ra trong quá trình đăng xuất.');
+  }
+});
+
+/**
+ * 🔗 GET /api/auth/profile
+ * 📝 Lấy thông tin hồ sơ cá nhân đầy đủ (kết hợp details theo vai trò).
+ */
 router.get('/profile', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'Chưa xác thực' });
+      return sendError(res, null, 'Phiên đăng nhập không hợp lệ.', 401);
     }
 
-    // Query khach_hang
-    const { data: customer, error: cErr } = await supabase
-      .from('khach_hang')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (cErr) throw cErr;
-
-    // Query profile as fallback
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    const result = {
-      full_name: customer?.full_name || profile?.full_name || '',
-      email: customer?.email || profile?.email || '',
-      phone: customer?.phone || profile?.phone || '',
-      cccd: customer?.cccd || '',
-      dob: customer?.dob || '',
-      gender: customer?.gender === 'Nam' ? 'male' : (customer?.gender === 'Nữ' ? 'female' : 'other'),
-      nationality: customer?.nationality || 'Việt Nam',
-      permanent_address: customer?.address || '',
-    };
-
-    sendSuccess(res, result, 'Lấy thông tin cá nhân thành công!');
-  } catch (err) {
-    sendError(res, err, 'Lỗi khi lấy thông tin cá nhân');
+    const profileData = await authService.getProfile(userId);
+    return sendSuccess(res, profileData, 'Lấy thông tin hồ sơ thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi lấy thông tin hồ sơ.');
   }
 });
 
-// PUT /api/auth/profile
+/**
+ * 🔗 PUT /api/auth/profile
+ * 📝 Cập nhật thông tin hồ sơ cá nhân.
+ * 📥 Body input: các trường cần cập nhật tùy theo vai trò
+ */
 router.put('/profile', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'Chưa xác thực' });
+      return sendError(res, null, 'Phiên đăng nhập không hợp lệ.', 401);
     }
 
-    const { full_name, phone, cccd, dob, gender, nationality, permanent_address } = req.body;
-
-    const dbGender = gender === 'male' ? 'Nam' : (gender === 'female' ? 'Nữ' : 'Khác');
-
-    // Check if khach_hang record exists
-    const { data: existing } = await supabase
-      .from('khach_hang')
-      .select('cccd')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (existing) {
-      // Update khach_hang
-      const { error: uErr } = await supabase
-        .from('khach_hang')
-        .update({
-          full_name,
-          phone,
-          cccd: cccd || existing.cccd, // preserve existing cccd if empty
-          dob: dob || null,
-          gender: dbGender,
-          nationality,
-          address: permanent_address,
-        })
-        .eq('user_id', userId);
-      if (uErr) throw uErr;
-    } else {
-      // Insert new khach_hang
-      const { error: iErr } = await supabase
-        .from('khach_hang')
-        .insert({
-          user_id: userId,
-          full_name,
-          phone,
-          cccd: cccd || `CCCD-${Date.now()}`,
-          dob: dob || null,
-          gender: dbGender,
-          nationality,
-          email: req.user?.email || '',
-          address: permanent_address,
-        });
-      if (iErr) throw iErr;
-    }
-
-    // Update profiles table
-    const { error: pErr } = await supabase
-      .from('profiles')
-      .update({
-        full_name,
-        phone,
-      })
-      .eq('id', userId);
-    if (pErr) throw pErr;
-
-    sendSuccess(res, { success: true }, 'Cập nhật thông tin cá nhân thành công!');
-  } catch (err) {
-    sendError(res, err, 'Lỗi khi cập nhật thông tin cá nhân');
+    const result = await authService.updateProfile(userId, req.body);
+    return sendSuccess(res, result, 'Cập nhật thông tin hồ sơ thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi cập nhật thông tin hồ sơ.');
   }
 });
 

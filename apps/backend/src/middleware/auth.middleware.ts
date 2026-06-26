@@ -158,3 +158,6 @@ export const requireRole = (...roles: UserRole[]) => {
     }
   };
 };
+
+// Xuất supabaseAdmin để tương thích với các route admin cũ
+export { supabase as supabaseAdmin } from '../utils/supabase';

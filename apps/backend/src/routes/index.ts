@@ -8,6 +8,7 @@ import adminCustomersRoutes from './admin-customers.routes';
 import adminEmployeesRoutes from './admin-employees.routes';
 import adminConditionsRoutes from './admin-conditions.routes';
 import adminAssetsRoutes from './admin-assets.routes';
+import roomRoutes from './room.routes';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/admin', adminCustomersRoutes);
 router.use('/admin', adminEmployeesRoutes);
 router.use('/admin', adminConditionsRoutes);
 router.use('/admin', adminAssetsRoutes);
+router.use('/', roomRoutes);
 
 export default router;
