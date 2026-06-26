@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useCheckoutStore, CheckoutRequest } from './store/useCheckoutStore';
 import { CheckoutForm } from './components/CheckoutForm';
 import { CheckoutTimeline } from './components/CheckoutTimeline';
-import { MOCK_CONTRACTS, ContractData } from './CustomerContractsPage';
+import { ContractData } from './CustomerContractsPage';
+import { fetchMyContracts } from './services/contract.service';
 import {
   FileText,
   Calendar,
@@ -61,8 +62,67 @@ export const CustomerCheckoutPage: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+  const [contractsList, setContractsList] = useState<ContractData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      setLoading(true);
+      fetchMyContracts(user.email)
+        .then((data) => {
+          setContractsList(data || []);
+          setError(null);
+        })
+        .catch((err) => {
+          console.error('Error fetching contracts for checkout:', err);
+          setError(err.message || 'Không thể tải thông tin hợp đồng');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-32 flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-16 space-y-6">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </button>
+        <div className="bg-red-50 border border-red-200 rounded-3xl p-8 text-center max-w-xl mx-auto space-y-4 shadow-sm">
+          <AlertTriangle className="w-12 h-12 text-red-600 mx-auto" />
+          <h2 className="text-lg font-bold text-red-800">Lỗi tải dữ liệu</h2>
+          <p className="text-sm text-red-700">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer shadow-sm"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Lọc danh sách hợp đồng hợp lệ để trả phòng
-  const eligibleContracts = MOCK_CONTRACTS.filter(c => c.status === 'active' || c.status === 'expired');
+  const eligibleContracts = contractsList.filter(c => c.status === 'active' || c.status === 'expired');
 
   const selectedContract =
     eligibleContracts.find(c => c.id === stateContractId) ||
@@ -85,7 +145,7 @@ export const CustomerCheckoutPage: React.FC = () => {
   const historyRequests = userRequests.filter(r => r.status === 'completed' || r.status === 'rejected');
 
   const contractForActiveRequest = activeRequest
-    ? MOCK_CONTRACTS.find(c => c.contractCode === activeRequest.contractId)
+    ? contractsList.find(c => c.contractCode === activeRequest.contractId)
     : null;
 
   const displayedDueDate = activeRequest
