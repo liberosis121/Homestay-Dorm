@@ -358,6 +358,7 @@ export default function AccountantDepositPage() {
                     options={deadlineOptions}
                     theme="accountant"
                     disabled={!selectedRequestId}
+                    triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
                   />
                 </div>
 
@@ -370,6 +371,7 @@ export default function AccountantDepositPage() {
                     options={paymentOptions}
                     theme="accountant"
                     disabled={!selectedRequestId}
+                    triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
                   />
                 </div>
 
