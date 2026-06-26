@@ -1,38 +1,6 @@
 /**
- * 📁 FILE: utils/id-generator.ts
- * 🎯 MỤC ĐÍCH: Tạo mã ID tự động theo format có prefix nghiệp vụ (DKT-001, LXM-002, PDC-003...)
- * 🏗️ TẦNG: Utility Layer (hàm tiện ích dùng ở tầng Service)
- * 📦 PHỤ THUỘC:
- *   - utils/supabase.ts   → Client kết nối database để query ID hiện có
- *   - types/constants.ts  → Các prefix ID (DKT, LXM, PDC)
- *
- * ❓ TẠI SAO CẦN SINH ID THỦ CÔNG? Không dùng UUID hoặc auto-increment?
- *
- *  Có 3 cách tạo ID phổ biến trong web dev:
- *
- *  1. AUTO-INCREMENT (số tự tăng): 1, 2, 3, 4...
- *     ✅ Đơn giản
- *     ❌ Không có ý nghĩa (nhìn vào số 42 không biết đó là phiếu gì)
- *     ❌ Lộ số lượng bản ghi (đối thủ biết bạn có bao nhiêu đơn hàng)
- *
- *  2. UUID (Universal Unique Identifier): "550e8400-e29b-41d4-a716-446655440000"
- *     ✅ Không bao giờ trùng dù nhiều server cùng tạo
- *     ❌ Dài, khó nhớ, khó đọc qua điện thoại với khách hàng
- *     ❌ Không có ý nghĩa nghiệp vụ
- *
- *  3. PREFIX + SỐ THỨ TỰ CÓ PADDING: "DKT-001", "LXM-042"  ← Chúng ta dùng cách này
- *     ✅ Có ý nghĩa: nhìn vào biết ngay loại phiếu
- *     ✅ Nhân viên dễ tra cứu, hỗ trợ khách hàng qua điện thoại
- *     ✅ Ngắn gọn, chuyên nghiệp
- *     ⚠️ Phải cẩn thận race condition (2 request cùng tạo ID lúc 1 giây → cả 2 đọc được số 5 → tạo ra DKT-005 và DKT-005 bị trùng)
- *     → Cách xử lý: dùng UNIQUE constraint trong Supabase → cái nào INSERT trùng thì Supabase báo lỗi, retry lại
- *
- * 🔢 PADDING là gì?
- *  "001" thay vì "1" → gọi là zero-padding (thêm số 0 vào trước cho đủ độ dài)
- *  padStart(3, '0') nghĩa là: đảm bảo chuỗi có ít nhất 3 ký tự, thiếu thì thêm '0' vào đầu
- *  → 1   → '1'.padStart(3, '0')   → '001'
- *  → 12  → '12'.padStart(3, '0')  → '012'
- *  → 123 → '123'.padStart(3, '0') → '123' (đã đủ 3 ký tự, giữ nguyên)
+ * Utility de tu dong tao ma ID theo format co prefix (VD: DKT-001, LXM-002, PDC-003).
+ * Phu thuoc: utils/supabase.ts
  */
 
 import { supabase } from './supabase';

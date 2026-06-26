@@ -1,22 +1,5 @@
 /**
- * 📁 FILE: types/index.d.ts
- * 🎯 MỤC ĐÍCH: Mở rộng (extend) kiểu dữ liệu sẵn có của thư viện Express.
- * 🏗️ TẦNG: Shared Types (dùng toàn bộ dự án)
- *
- * ❓ TẠI SAO CẦN FILE NÀY?
- *  Express mặc định có object `req` (request) với các thuộc tính: body, params, query, headers...
- *  Nhưng Express KHÔNG có `req.user` hay `req.profile` vì đây là thứ chúng ta tự thêm vào.
- *
- *  Khi middleware `requireAuth` chạy xong, nó gán: req.user = { id, email, ... }
- *  Nhưng TypeScript không biết điều này → sẽ báo lỗi: "Property 'user' does not exist on type Request"
- *
- *  File này dùng kỹ thuật "Declaration Merging" (gộp khai báo kiểu) của TypeScript:
- *  → Chúng ta nói với TypeScript: "Này, từ giờ kiểu Request của Express sẽ có thêm `user` và `profile` nha"
- *  → TypeScript hiểu và không báo lỗi nữa, đồng thời có autocomplete cho req.user / req.profile
- *
- * 💡 DECLARATION MERGING là gì?
- *  TypeScript cho phép khai báo cùng 1 interface nhiều lần → tự động gộp lại thành 1.
- *  Ở đây chúng ta "gộp" thêm 2 thuộc tính vào interface Request của Express mà không sửa code Express.
+ * Dinh nghia cac kieu du lieu mo rong (Extend Request cua Express).
  */
 
 import { User } from '@supabase/supabase-js';

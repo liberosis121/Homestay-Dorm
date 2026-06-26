@@ -1,14 +1,6 @@
 /**
- * 📁 FILE: repositories/room.repo.ts
- * 🎯 MỤC ĐÍCH: Cung cấp các hàm truy vấn trực tiếp bảng `rooms`, `beds` và `branches` trên database.
- * 🏗️ TẦNG: Repository Layer (tương tác trực tiếp với cơ sở dữ liệu Supabase)
- * 📦 PHỤ THUỘC:
- *   - utils/supabase.ts → Client kết nối Supabase
- *
- * 🔄 DANH SÁCH HÀM TRONG FILE:
- *   - `getAllRooms`: Tìm kiếm và lọc danh sách phòng kèm chi nhánh tương ứng.
- *   - `getRoomById`: Lấy thông tin chi tiết một phòng dựa vào ID (ví dụ: 'P-101') cùng chi nhánh.
- *   - `getBedsByRoomId`: Lấy tất cả giường thuộc một phòng (hỗ trợ kiểm tra tình trạng trống của từng giường).
+ * Repository layer de thao tac voi database cac bang rooms, beds, branches.
+ * Phu thuoc: utils/supabase.ts
  */
 
 import { supabase } from '../utils/supabase';

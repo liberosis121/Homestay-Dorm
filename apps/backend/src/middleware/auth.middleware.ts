@@ -1,38 +1,6 @@
 /**
- * 📁 FILE: middleware/auth.middleware.ts
- * 🎯 MỤC ĐÍCH: Cung cấp 2 middleware bảo mật cho toàn bộ API:
- *   1. `requireAuth`  — Xác thực: "Bạn có đăng nhập không?" (Authentication)
- *   2. `requireRole`  — Phân quyền: "Bạn có được phép làm điều này không?" (Authorization)
- * 🏗️ TẦNG: Middleware Layer (nằm giữa Route và Service — chạy trước khi vào route handler)
- * 📦 PHỤ THUỘC:
- *   - utils/supabase.ts  → Client kết nối Supabase để verify token
- *
- * ❓ MIDDLEWARE là gì?
- *  Middleware là hàm chạy GIỮA lúc request đến server và lúc server trả response.
- *  Nó giống như "trạm kiểm soát": request phải qua đây trước, nếu không hợp lệ thì bị chặn lại.
- *
- *  Ví dụ luồng một request đến API /api/deposit-requests (POST):
- *  [Client gửi request]
- *       ↓
- *  requireAuth     ← Middleware 1: Kiểm tra token JWT có hợp lệ không?
- *       ↓ (nếu OK)
- *  requireRole     ← Middleware 2: Kiểm tra user có role 'customer' không?
- *       ↓ (nếu OK)
- *  Route Handler   ← Xử lý logic chính: tạo phiếu đặt cọc
- *       ↓
- *  [Server trả response về Client]
- *
- * ❓ JWT TOKEN là gì?
- *  JWT = JSON Web Token. Là một chuỗi ký tự được mã hóa chứa thông tin người dùng.
- *  Khi đăng nhập thành công, Supabase trả về một `access_token` (JWT).
- *  Client lưu token này và gửi kèm vào header mỗi request:
- *    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *  Server nhận được → giải mã → biết đây là request của ai → không cần hỏi lại DB user mỗi lần.
- *
- * ❓ Tại sao dùng Service Role Key để verify token?
- *  Service Role Key là khóa bí mật admin của Supabase → có thể verify token của BẤT KỲ user nào.
- *  Không nên dùng anon key vì anon key bị giới hạn bởi Row Level Security (RLS) của Supabase.
- *  Service Role Key chỉ nên ở backend (server) → tuyệt đối không để lộ ra frontend.
+ * Middleware xac thuc requireAuth va phan quyen requireRole cho cac API endpoints.
+ * Phu thuoc: utils/supabase.ts
  */
 
 import { Request, Response, NextFunction } from 'express';

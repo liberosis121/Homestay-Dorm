@@ -1,32 +1,6 @@
 /**
- * 📁 FILE: repositories/profile.repo.ts
- * 🎯 MỤC ĐÍCH: Cung cấp các hàm truy vấn database cho bảng `profiles`, `khach_hang`, `nhan_vien`.
- * 🏗️ TẦNG: Repository Layer (tầng dưới cùng — giao tiếp trực tiếp với database)
- * 📦 PHỤ THUỘC:
- *   - utils/supabase.ts → Client kết nối Supabase
- *
- * ❓ REPOSITORY LAYER LÀ GÌ? TẠI SAO PHẢI CÓ?
- *
- *  Trong kiến trúc 3 tầng (Route → Service → Repository), Repository là tầng DUY NHẤT
- *  được phép "chạm vào" database (viết câu lệnh SQL / Supabase query).
- *
- *  Lợi ích của việc tách Repository riêng:
- *  1. DRY (Don't Repeat Yourself): Hàm `getProfileByUserId` dùng ở nhiều nơi
- *     (auth.service, requireRole middleware...) → chỉ cần viết 1 lần ở đây, import ra dùng.
- *  2. Dễ đổi database: Nếu mai mốt nhóm chuyển từ Supabase sang MongoDB,
- *     chỉ cần sửa trong file repo này → Service không cần đổi gì cả.
- *  3. Dễ test: Có thể mock (giả lập) repository trong unit test mà không cần DB thật.
- *
- * 🔗 SƠ ĐỒ QUAN HỆ CÁC BẢNG TRONG FILE NÀY:
- *
- *   [supabase auth.users]
- *         ↓ (user_id)
- *      [profiles]  ← role, full_name, phone, avatar_url
- *         ↓ (profiles.id = khach_hang.user_id hoặc nhan_vien.user_id)
- *   ┌─────────────────────────┐
- *   │       [khach_hang]      │   ← CCCD, dia_chi, ngay_sinh (khách hàng)
- *   │       [nhan_vien]       │   ← chuc_vu, phong_ban (nhân viên)
- *   └─────────────────────────┘
+ * Repository layer de thao tac voi database cac bang profiles, khach_hang, nhan_vien.
+ * Phu thuoc: utils/supabase.ts
  */
 
 import { supabase } from '../utils/supabase';

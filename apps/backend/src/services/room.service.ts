@@ -1,14 +1,6 @@
 /**
- * 📁 FILE: services/room.service.ts
- * 🎯 MỤC ĐÍCH: Xử lý logic nghiệp vụ cho module Phòng & Giường (Rooms & Beds).
- * 🏗️ TẦNG: Service Layer (Nhận dữ liệu thô từ database repo, tính toán nghiệp vụ bổ sung như đếm số giường trống, định dạng dữ liệu cho frontend)
- * 📦 PHỤ THUỘC:
- *   - repositories/room.repo.ts → Truy vấn dữ liệu từ DB
- *
- * 🔄 NGHIỆP VỤ ĐẶC THÙ:
- *   1. Lấy danh sách phòng: Kết quả cần được định dạng thân thiện, hiển thị thông tin chi nhánh rõ ràng.
- *   2. Lấy chi tiết phòng: Ngoài thông tin phòng, ta cần lấy toàn bộ danh sách giường trực thuộc phòng đó, đồng thời tự động tính toán xem phòng đó còn bao nhiêu giường trống (available) để khách hàng tiện đăng ký.
- *   3. Kiểm tra tính khả dụng của giường: Dùng khi đặt cọc để ngăn chặn 2 khách hàng đặt trùng 1 giường.
+ * Service layer de xu ly nghiep vu cho rooms va beds.
+ * Phu thuoc: repositories/room.repo.ts
  */
 
 import { roomRepo, RoomFilter } from '../repositories/room.repo';

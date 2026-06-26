@@ -1,20 +1,6 @@
 /**
- * 📁 FILE: routes/auth.routes.ts
- * 🎯 MỤC ĐÍCH: Khai báo các endpoints (routes) API liên quan đến xác thực và thông tin cá nhân.
- * 🏗️ TẦNG: Route Layer (Tầng trên cùng — nhận HTTP request từ Client, kiểm tra tính hợp lệ sơ bộ của tham số, chuyển tiếp dữ liệu đến Service, và trả về HTTP response)
- * 📦 PHỤ THUỘC:
- *   - middleware/auth.middleware.ts  → Middleware requireAuth bảo mật
- *   - services/auth.service.ts       → Xử lý logic nghiệp vụ chính
- *   - utils/response.util.ts         → Định dạng response trả về cho client đồng nhất
- *
- * 🔄 DANH SÁCH ENDPOINTS:
- *   - `POST /api/auth/register`        : Đăng ký tài khoản (Public)
- *   - `POST /api/auth/login`           : Đăng nhập (Public)
- *   - `POST /api/auth/logout`          : Đăng xuất (Private)
- *   - `GET  /api/auth/me`              : Lấy thông tin phiên đăng nhập hiện tại (Private)
- *   - `GET  /api/auth/profile`         : Lấy hồ sơ cá nhân đầy đủ (Private)
- *   - `PUT  /api/auth/profile`         : Cập nhật hồ sơ cá nhân (Private)
- *   - `POST /api/auth/forgot-password` : Yêu cầu reset mật khẩu (Public)
+ * Route layer cho cac API xac thuc va ho so ca nhan.
+ * Phu thuoc: services/auth.service.ts, middleware/auth.middleware.ts, utils/response.util.ts
  */
 
 import { Router } from 'express';

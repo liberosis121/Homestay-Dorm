@@ -1,34 +1,12 @@
 /**
- * 📁 FILE: types/constants.ts
- * 🎯 MỤC ĐÍCH: Định nghĩa tất cả các hằng số (constants) và enum trạng thái nghiệp vụ dùng chung cho toàn bộ dự án backend.
- * 🏗️ TẦNG: Shared / Utilities (không thuộc tầng nào cụ thể — mọi tầng đều dùng)
- * 📦 PHỤ THUỘC: Không có (file này không import gì khác)
- *
- * ❓ TẠI SAO CẦN FILE NÀY?
- *  Trong code, chúng ta thường xuyên cần dùng các giá trị trạng thái như 'pending_schedule', 'paid', 'available'...
- *  Nếu gõ thẳng chuỗi đó vào code (gọi là "magic string"), sẽ có 2 vấn đề lớn:
- *   1. Dễ typo (gõ sai): 'pending_scheduel' thay vì 'pending_schedule' → bug không thấy ngay
- *   2. Khó refactor: Muốn đổi tên status phải tìm-thay ở 20 chỗ khác nhau
- *  Giải pháp: Định nghĩa hết vào đây → import ra dùng → TypeScript sẽ báo lỗi ngay nếu gõ sai tên hằng số.
- *
- * 💡 `as const` là gì?
- *  `as const` báo cho TypeScript rằng "đây là giá trị cố định, không bao giờ thay đổi".
- *  Điều này cho phép TypeScript suy ra kiểu chính xác là literal type, ví dụ:
- *  thay vì `string`, nó biết cụ thể là `'pending_schedule' | 'scheduled' | ...`
- *  → Autocomplete tốt hơn, an toàn kiểu (type-safe) hơn.
- *
- * 💡 `typeof ... [keyof typeof ...]` là pattern gì?
- *  Đây là cách tạo Union Type từ object trong TypeScript.
- *  Ví dụ: type RegistrationStatus = typeof REGISTRATION_STATUS[keyof typeof REGISTRATION_STATUS]
- *  → Kết quả: 'pending_schedule' | 'scheduled' | 'deposited' | 'cancelled' | 'completed'
- *  → Dùng type này để khai báo tham số hàm, TypeScript sẽ cảnh báo nếu truyền sai.
+ * Dinh nghia cac hang so va enum trang thai nghiep vu dung chung cho toan bo backend.
  */
 
 // ============================================================
 // 1. TRẠNG THÁI ĐƠN ĐĂNG KÝ THUÊ PHÒNG (bảng rental_registrations)
 // ============================================================
 /**
- * 🔄 Luồng chuyển trạng thái đăng ký thuê:
+ * Luồng chuyển trạng thái đăng ký thuê:
  *
  *   [KH nộp đơn]
  *        ↓
@@ -56,7 +34,7 @@ export type RegistrationStatus = typeof REGISTRATION_STATUS[keyof typeof REGISTR
 // 2. TRẠNG THÁI LỊCH HẸN XEM PHÒNG (bảng viewing_schedules)
 // ============================================================
 /**
- * 🔄 Luồng chuyển trạng thái lịch xem phòng:
+ * Luồng chuyển trạng thái lịch xem phòng:
  *
  *   [Sale tạo lịch hẹn]
  *          ↓
@@ -78,7 +56,7 @@ export type ViewingStatus = typeof VIEWING_STATUS[keyof typeof VIEWING_STATUS];
 // 3. TRẠNG THÁI PHIẾU ĐẶT CỌC (bảng deposit_requests)
 // ============================================================
 /**
- * 🔄 Luồng chuyển trạng thái đặt cọc:
+ * Luồng chuyển trạng thái đặt cọc:
  *
  *   [KH gửi phiếu cọc + ảnh chuyển khoản]
  *              ↓

@@ -1,22 +1,6 @@
 /**
- * 📁 FILE: services/auth.service.ts
- * 🎯 MỤC ĐÍCH: Xử lý toàn bộ logic nghiệp vụ (business logic) liên quan đến xác thực tài khoản (Authentication)
- * 🏗️ TẦNG: Service Layer (Tầng trung gian xử lý nghiệp vụ — nhận data từ Route, kiểm tra logic, gọi Repo để lưu trữ)
- * 📦 PHỤ THUỘC:
- *   - utils/supabase.ts           → Client kết nối Supabase Auth
- *   - repositories/profile.repo.ts → Thao tác với các bảng profiles, khach_hang, nhan_vien trong Database
- *
- * 🔄 PHÂN TÍCH LUỒNG NGHIỆP VỤ ĐĂNG KÝ (Register):
- *   1. Gọi Supabase Auth API để đăng ký tài khoản (tạo user trong bảng auth.users quản lý bởi Supabase).
- *   2. Khi đăng ký thành công, nhận về `id` (UUID) của user mới.
- *   3. Thêm mới một dòng vào bảng `profiles` để lưu trữ vai trò (mặc định là 'customer') và các thông tin cơ bản.
- *   4. Thêm mới một dòng vào bảng `khach_hang` để phục vụ các thông tin nghiệp vụ sau này (địa chỉ, cccd, ngày sinh).
- *
- * 🔄 PHÂN TÍCH LUỒNG ĐĂNG NHẬP (Login):
- *   1. Gọi Supabase Auth API để đăng nhập bằng Email và Password.
- *   2. Nhận về access_token, refresh_token và thông tin user.
- *   3. Query database lấy vai trò từ bảng `profiles`.
- *   4. Trả về thông tin người dùng kèm token cho client.
+ * Service layer de xu ly nghiep vu lien quan den xac thuc tai khoan (Authentication).
+ * Phu thuoc: utils/supabase.ts, repositories/profile.repo.ts
  */
 
 import { supabase } from '../utils/supabase';
