@@ -317,7 +317,7 @@ export default function AdminRoomsPage() {
         <div className="px-5 py-3 flex items-center justify-between"
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}>
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {rooms.length} phòng
+            Hiển thị {filtered.length > 0 ? 1 : 0} - {filtered.length} trong số {filtered.length} phòng
           </p>
         </div>
       </section>

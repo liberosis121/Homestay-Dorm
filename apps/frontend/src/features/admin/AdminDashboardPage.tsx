@@ -10,9 +10,7 @@ import {
   ShieldCheck, 
   ArrowRight,
   TrendingUp,
-  Activity,
   UserCheck,
-  FileClock,
   Calendar,
   RefreshCw
 } from 'lucide-react';
@@ -89,17 +87,17 @@ export default function AdminDashboardPage() {
     : 0;
 
   const quickActions = [
-    { label: 'Cấu hình chi nhánh', path: '/admin/branches', icon: Building, color: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100/50' },
-    { label: 'Cấu hình phòng/giường', path: '/admin/rooms-catalog', icon: Layers, color: 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100/50' },
-    { label: 'Danh mục dịch vụ', path: '/admin/services', icon: Folder, color: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100/50' },
-    { label: 'Sao lưu dữ liệu', path: '/admin/backup', icon: Database, color: 'bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100/50' },
+    { label: 'Cấu hình chi nhánh', path: '/admin/branches', icon: Building, color: 'bg-[#e8ede7] text-[#5f745d] border-[#d8e2d6] hover:bg-[#d8e2d6]/50' },
+    { label: 'Cấu hình phòng/giường', path: '/admin/rooms-catalog', icon: Layers, color: 'bg-[#faf2ec] text-[#6f583c] border-[#eadacd] hover:bg-[#eadacd]/50' },
+    { label: 'Danh mục dịch vụ', path: '/admin/services', icon: Folder, color: 'bg-[#eef3f0] text-[#738a71] border-[#d0dfcf] hover:bg-[#d0dfcf]/50' },
+    { label: 'Sao lưu dữ liệu', path: '/admin/backup', icon: Database, color: 'bg-[#faf6f0] text-[#8a7051] border-[#ebdcc8] hover:bg-[#ebdcc8]/50' },
   ];
 
   const sysLogs = [
-    { action: 'Sao lưu tự động', time: '10 phút trước', desc: 'Bản sao lưu định kỳ tuần 23 hoàn tất', type: 'system', icon: Database, color: 'text-purple-600 bg-purple-50' },
-    { action: 'Thêm nhân viên mới', time: '2 giờ trước', desc: 'Tài khoản NV. Nguyễn Thị Trúc Hằng (Sale) đã được tạo', type: 'user', icon: UserCheck, color: 'text-emerald-600 bg-emerald-50' },
-    { action: 'Cập nhật dịch vụ', time: '4 giờ trước', desc: 'Đơn giá "Điện sinh hoạt" được cấu hình lại thành 3,500đ/kWh', type: 'service', icon: Folder, color: 'text-amber-600 bg-amber-50' },
-    { action: 'Cấu hình quy định', time: 'Hôm qua', desc: 'Cập nhật quy chế lưu trú đối với khách nước ngoài', type: 'policy', icon: ShieldCheck, color: 'text-blue-600 bg-blue-50' },
+    { action: 'Sao lưu tự động', time: '10 phút trước', desc: 'Bản sao lưu định kỳ tuần 23 hoàn tất', type: 'system', icon: Database, color: 'text-[#8a7051] bg-[#faf6f0]' },
+    { action: 'Thêm nhân viên mới', time: '2 giờ trước', desc: 'Tài khoản NV. Nguyễn Thị Trúc Hằng (Sale) đã được tạo', type: 'user', icon: UserCheck, color: 'text-[#5f745d] bg-[#e8ede7]' },
+    { action: 'Cập nhật dịch vụ', time: '4 giờ trước', desc: 'Đơn giá "Điện sinh hoạt" được cấu hình lại thành 3,500đ/kWh', type: 'service', icon: Folder, color: 'text-[#738a71] bg-[#eef3f0]' },
+    { action: 'Cấu hình quy định', time: 'Hôm qua', desc: 'Cập nhật quy chế lưu trú đối với khách nước ngoài', type: 'policy', icon: ShieldCheck, color: 'text-[#6f583c] bg-[#faf2ec]' },
   ];
 
   return (
@@ -116,7 +114,7 @@ export default function AdminDashboardPage() {
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 text-sm text-[#6f583c] hover:text-[#4d614b] transition-colors cursor-pointer font-bold"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all hover:bg-[#e8ede7] hover:text-[#4b5c4a] active:scale-95 cursor-pointer bg-[#faf2ec] border border-[#eadacd] text-[#6f583c] hover:border-[#d8e2d6]"
         >
           <RefreshCw className="w-4 h-4" /> Làm mới dữ liệu
         </button>
@@ -128,17 +126,17 @@ export default function AdminDashboardPage() {
         {/* Branch Card */}
         <div className="bg-white border border-[#d1c4b9] rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-700 transition-colors group-hover:bg-emerald-100">
+            <div className="p-3 bg-[#e8ede7] text-[#5f745d] rounded-xl transition-colors group-hover:bg-[#d8e2d6]">
               <Building className="w-6 h-6" />
             </div>
-            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
+            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-[#e8ede7] text-[#5f745d]">
               {stats.branchesCount} CHI NHÁNH
             </span>
           </div>
           <p className="text-xs text-[#4e453c] font-semibold uppercase tracking-wider">Hạ tầng hoạt động</p>
           <h3 className="text-2xl font-bold text-[#1e1b17] mt-1">{stats.branchesCount} Cơ sở</h3>
           <p className="text-xs text-[#4e453c] mt-2 flex items-center gap-1">
-            <span className="font-semibold text-emerald-600">Quận 1</span> và <span className="font-semibold text-emerald-600">Thủ Đức</span>
+            Danh sách ở <span className="font-semibold text-[#5f745d]">Quận 1</span> và <span className="font-semibold text-[#5f745d]">Thủ Đức</span>
           </p>
         </div>
 
@@ -168,36 +166,39 @@ export default function AdminDashboardPage() {
         {/* User Card */}
         <div className="bg-white border border-[#d1c4b9] rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-amber-50 rounded-xl text-amber-700 transition-colors group-hover:bg-amber-100">
+            <div className="p-3 bg-[#faf6f0] rounded-xl text-[#8a7051] transition-colors group-hover:bg-[#ebdcc8]">
               <Users className="w-6 h-6" />
             </div>
-            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700">
+            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-[#faf6f0] text-[#8a7051]">
               HOẠT ĐỘNG
             </span>
           </div>
           <p className="text-xs text-[#4e453c] font-semibold uppercase tracking-wider">Tài khoản trên hệ thống</p>
           <h3 className="text-2xl font-bold text-[#1e1b17] mt-1">{stats.staffCount + stats.customerCount} Tài khoản</h3>
-          <p className="text-xs text-[#4e453c] mt-2 flex items-center gap-1.5">
-            <span className="font-semibold text-[#1e1b17]">{stats.staffCount} Nhân sự</span>
-            <span className="text-[#DDD6CC]">•</span>
-            <span className="font-semibold text-[#1e1b17]">{stats.customerCount} Khách thuê</span>
-          </p>
+          <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-[#e8ede7] text-[#5f745d] text-[11px] font-semibold border border-[#d8e2d6]">
+              {stats.staffCount} Nhân sự
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-[#faf2ec] text-[#6f583c] text-[11px] font-semibold border border-[#eadacd]">
+              {stats.customerCount} Khách thuê
+            </span>
+          </div>
         </div>
 
         {/* Services Card */}
         <div className="bg-white border border-[#d1c4b9] rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-purple-50 rounded-xl text-purple-700 transition-colors group-hover:bg-purple-100">
+            <div className="p-3 bg-[#eef3f0] rounded-xl text-[#738a71] transition-colors group-hover:bg-[#d0dfcf]">
               <Folder className="w-6 h-6" />
             </div>
-            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700">
+            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-[#eef3f0] text-[#738a71]">
               8 LOẠI CHÍNH
             </span>
           </div>
           <p className="text-xs text-[#4e453c] font-semibold uppercase tracking-wider">Danh mục dịch vụ cung cấp</p>
           <h3 className="text-2xl font-bold text-[#1e1b17] mt-1">{stats.servicesCount} Dịch vụ</h3>
           <p className="text-xs text-[#4e453c] mt-2 flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+            <TrendingUp className="w-3.5 h-3.5 text-[#5f745d]" />
             <span>Có 2 dịch vụ mới được cập nhật giá tuần này</span>
           </p>
         </div>
@@ -212,11 +213,10 @@ export default function AdminDashboardPage() {
           
           {/* Room Status Analysis Panel */}
           <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-[#1e1b17] mb-6 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-[#8c7355]" />
+            <h2 className="text-lg font-bold text-[#1e1b17] mb-6">
               Phân tích trạng thái phòng trống & lấp đầy
             </h2>
-
+ 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               {/* Left Column: Visual Chart (SVG Donut Chart Mock) */}
               <div className="flex flex-col items-center justify-center">
@@ -226,16 +226,16 @@ export default function AdminDashboardPage() {
                     {/* Background Circle */}
                     <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#F3EFE8" strokeWidth="3" />
                     
-                    {/* Available Segment (Green) - 66.7% */}
-                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#10B981" strokeWidth="3" 
+                    {/* Available Segment (Sage Green) - 66.7% */}
+                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#5f745d" strokeWidth="3" 
                             strokeDasharray="66.7 33.3" strokeDashoffset="0" />
                     
-                    {/* Occupied Segment (Brown) - 16.7% */}
-                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#8c7355" strokeWidth="3" 
+                    {/* Occupied Segment (Wood Brown) - 16.7% */}
+                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#6f583c" strokeWidth="3" 
                             strokeDasharray="16.7 83.3" strokeDashoffset="-66.7" />
-
-                    {/* Deposited Segment (Amber) - 16.7% */}
-                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#F59E0B" strokeWidth="3" 
+ 
+                    {/* Deposited Segment (Sand) - 16.7% */}
+                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#c9af8f" strokeWidth="3" 
                             strokeDasharray="16.6 83.4" strokeDashoffset="-83.4" />
                   </svg>
                   {/* Center Text */}
@@ -244,29 +244,29 @@ export default function AdminDashboardPage() {
                     <p className="text-[10px] text-[#4e453c] font-bold uppercase tracking-wider">Tổng số phòng</p>
                   </div>
                 </div>
-
+ 
                 <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-6 text-xs font-semibold">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#5f745d]"></span>
                     <span className="text-[#4e453c]">Trống ({stats.roomStatus.available})</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#8c7355]"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#6f583c]"></span>
                     <span className="text-[#4e453c]">Đang ở ({stats.roomStatus.occupied})</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#c9af8f]"></span>
                     <span className="text-[#4e453c]">Đã cọc ({stats.roomStatus.deposited})</span>
                   </div>
                   {stats.roomStatus.partial > 0 && (
                     <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#a48f7a]"></span>
                       <span className="text-[#4e453c]">Trống một phần ({stats.roomStatus.partial})</span>
                     </div>
                   )}
                 </div>
               </div>
-
+ 
               {/* Right Column: Key Details */}
               <div className="space-y-4">
                 <div className="p-4 bg-[#faf2ec] rounded-2xl border border-[#d1c4b9] space-y-3">
@@ -282,11 +282,11 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#4e453c]">Tỷ lệ lấp đầy bình quân:</span>
-                      <span className="font-bold text-emerald-600">{occupancyRate}%</span>
+                      <span className="font-bold text-[#5f745d]">{occupancyRate}%</span>
                     </div>
                   </div>
                 </div>
-
+ 
                 <div className="border border-[#d1c4b9] rounded-2xl p-4 space-y-2">
                   <p className="text-xs font-bold text-[#4e453c] uppercase">Cảnh báo bảo trì phòng</p>
                   <div className="flex items-center justify-between text-sm">
@@ -299,8 +299,8 @@ export default function AdminDashboardPage() {
                         <Link to="/admin/rooms-catalog" className="text-xs text-[#8c7355] hover:underline font-bold">Kiểm tra ngay</Link>
                       </>
                     ) : (
-                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                      <span className="text-[#5f745d] font-semibold flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-[#5f745d]"></span>
                         Không có phòng nào đang sửa chữa/bảo trì
                       </span>
                     )}
@@ -309,7 +309,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           </div>
-
+ 
           {/* Quick Administration Actions */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-[#4e453c] uppercase tracking-wider">Lối tắt quản trị nhanh</h3>
@@ -320,7 +320,7 @@ export default function AdminDashboardPage() {
                   <Link
                     key={act.label}
                     to={act.path}
-                    className={`flex flex-col items-center justify-center gap-3 p-4 bg-white border border-[#d1c4b9] rounded-2xl text-center shadow-sm transition-all hover:shadow hover:scale-[1.02] active:scale-95 ${act.color}`}
+                    className={`flex flex-col items-center justify-center gap-3 p-4 rounded-2xl text-center shadow-sm border transition-all hover:shadow hover:scale-[1.02] active:scale-95 ${act.color}`}
                   >
                     <div className="p-2 bg-white rounded-lg shadow-sm border border-[#d1c4b9]">
                       <Icon className="w-5 h-5" />
@@ -331,20 +331,19 @@ export default function AdminDashboardPage() {
               })}
             </div>
           </div>
-
+ 
         </div>
-
+ 
         {/* Column 3: System Logs timeline & Backup summary */}
         <div className="space-y-6">
           
           {/* Backup Summary Widget */}
           <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-extrabold text-[#1e1b17] flex items-center gap-2">
-                <Database className="w-4.5 h-4.5 text-[#8c7355]" />
+              <h3 className="text-sm font-extrabold text-[#1e1b17]">
                 TRẠNG THÁI SAO LƯU
               </h3>
-              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e8ede7] text-[#5f745d] border border-[#d8e2d6]">
                 TỰ ĐỘNG BẬT
               </span>
             </div>
@@ -363,28 +362,27 @@ export default function AdminDashboardPage() {
                 <span className="font-bold text-[#1e1b17]">Hàng tuần (Chủ nhật)</span>
               </div>
             </div>
-
+ 
             <Link
               to="/admin/backup"
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#6f583c] hover:bg-[#5a4630] text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:gap-3 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#6f583c] hover:bg-[#54422c] active:scale-95 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:gap-3 cursor-pointer duration-200"
             >
               Vào trang Sao lưu & Khôi phục
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-
+ 
           {/* System Audit Logs */}
           <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-extrabold text-[#1e1b17] flex items-center gap-2">
-                <FileClock className="w-4.5 h-4.5 text-[#8c7355]" />
+              <h3 className="text-sm font-extrabold text-[#1e1b17]">
                 LỊCH SỬ HOẠT ĐỘNG
               </h3>
               <span className="text-[10px] text-[#4e453c] font-bold bg-[#faf2ec] px-2 py-0.5 rounded border border-[#d1c4b9]">
                 LOGS
               </span>
             </div>
-
+ 
             <div className="space-y-4">
               {sysLogs.map((log, i) => {
                 const Icon = log.icon;
