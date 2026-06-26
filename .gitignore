@@ -55,3 +55,6 @@ Nhom3_Report_tail.txt
 Nhom3_Report_tail2.txt
 
 package-lock.json
+
+# Supabase
+supabase/.temp/
