@@ -438,7 +438,7 @@ function GuestServicesView({
   }, [services, search, category, priceRange, feeType]);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8">
+    <div className="max-w-[1440px] mx-auto px-4 md:px-8 pt-0 pb-8">
       {/* Header Summary */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div className="max-w-2xl">
@@ -981,7 +981,7 @@ function RenterServicesView({
   }, [chartMonths]);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8">
+    <div className="max-w-[1440px] mx-auto px-4 md:px-8 pt-0 pb-8">
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
@@ -1009,7 +1009,7 @@ function RenterServicesView({
           </button>
           <button
             type="button"
-            onClick={() => navigate('/customer/invoices')}
+            onClick={() => navigate('/customer/invoices', { state: { filterType: 'service', from: '/customer/services' } })}
             className="flex-1 md:flex-none px-5 py-2.5 border border-outline text-on-surface-variant bg-white rounded-xl font-label-md text-xs font-bold hover:bg-primary/5 hover:border-primary/30 hover:text-primary hover:shadow-sm transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
           >
             <Clock className="w-4 h-4" />
@@ -1324,7 +1324,7 @@ function RenterServicesView({
 
             <button
               type="button"
-              onClick={() => navigate('/customer/invoices')}
+              onClick={() => navigate('/customer/invoices', { state: { filterType: 'service', from: '/customer/services' } })}
               className="w-full bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-surface-container hover:shadow-lg transition-all cursor-pointer active:scale-[0.97] shadow-md"
             >
               Thanh toán ngay

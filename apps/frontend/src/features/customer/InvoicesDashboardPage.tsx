@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useInvoiceStore } from './store/useInvoiceStore';
 import InvoiceTable from './components/InvoiceTable';
 import InvoiceDetail from './components/InvoiceDetail';
@@ -39,6 +39,7 @@ const INVOICE_TYPE_OPTIONS = [
 
 export default function InvoicesDashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const { 
     invoices, 
@@ -58,6 +59,12 @@ export default function InvoicesDashboardPage() {
       fetchInvoices(user.email);
     }
   }, [user?.email, fetchInvoices]);
+
+  useEffect(() => {
+    if (location.state?.filterType) {
+      setFilters({ type: location.state.filterType });
+    }
+  }, [location.state?.filterType, setFilters]);
 
   const handleSelectInvoice = (id: string) => {
     setSelectedInvoiceId(id);
@@ -143,7 +150,7 @@ export default function InvoicesDashboardPage() {
       <header className="mb-8">
         <button
           type="button"
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate(location.state?.from || '/profile')}
           className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
