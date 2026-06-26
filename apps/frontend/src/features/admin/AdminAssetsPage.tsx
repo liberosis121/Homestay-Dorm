@@ -278,7 +278,7 @@ export default function AdminAssetsPage() {
           triggerClassName="!py-2 min-w-[160px]"
         />
         <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterCategory(''); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}>
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           Làm mới
