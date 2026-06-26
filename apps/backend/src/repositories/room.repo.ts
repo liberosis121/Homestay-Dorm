@@ -134,4 +134,22 @@ export const roomRepo = {
 
     return data;
   },
+
+  /**
+   * Cap nhat trang thai cua mot giuong (vi du: 'available', 'deposited', 'occupied', 'maintenance').
+   */
+  updateBedStatus: async (bedId: string, status: string) => {
+    const { data, error } = await supabase
+      .from('beds')
+      .update({ status })
+      .eq('id', bedId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`[RoomRepo] Loi khi cap nhat trang thai giuong ID=${bedId}: ${error.message}`);
+    }
+
+    return data;
+  }
 };
