@@ -789,8 +789,7 @@ export default function AdminEmployeesPage() {
             </div>
             <div>
               <label
-                className="block text-xs font-semibold mb-1 uppercase"
-                style={{ color: A.textMuted }}
+                className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
               >
                 Họ và tên
               </label>
@@ -800,18 +799,12 @@ export default function AdminEmployeesPage() {
                   setNewEmp({ ...newEmp, full_name: e.target.value })
                 }
                 placeholder="Nhập họ và tên..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{
-                  border: `1px solid ${A.border}`,
-                  background: A.bg,
-                  color: A.textPrimary,
-                }}
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
               />
             </div>
             <div>
               <label
-                className="block text-xs font-semibold mb-1 uppercase"
-                style={{ color: A.textMuted }}
+                className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
               >
                 Email
               </label>
@@ -821,30 +814,19 @@ export default function AdminEmployeesPage() {
                   setNewEmp({ ...newEmp, email: e.target.value })
                 }
                 placeholder="email@homestay.vn"
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{
-                  border: `1px solid ${A.border}`,
-                  background: A.bg,
-                  color: A.textPrimary,
-                }}
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
               />
             </div>
             <div>
               <label
-                className="block text-xs font-semibold mb-1 uppercase"
-                style={{ color: A.textMuted }}
+                className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
               >
                 Mật khẩu
               </label>
               <input
                 type="password"
                 placeholder="Nhập mật khẩu..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{
-                  border: `1px solid ${A.border}`,
-                  background: A.bg,
-                  color: A.textPrimary,
-                }}
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

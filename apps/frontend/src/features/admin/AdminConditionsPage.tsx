@@ -396,26 +396,24 @@ export default function AdminConditionsPage() {
             {/* Editable Fields */}
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tiêu đề <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tiêu đề <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={form.title || ''}
                   onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="Tiêu đề điều kiện..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Nội dung quy định <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Nội dung quy định <span className="text-red-500">*</span></label>
                 <textarea
                   value={form.description || ''}
                   onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
                   rows={4}
-                  placeholder="Mô tả chi tiết điều kiện..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  placeholder="Nhập nội dung quy định lưu trú chi tiết..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
 

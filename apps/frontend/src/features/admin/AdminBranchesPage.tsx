@@ -574,8 +574,7 @@ export default function AdminBranchesPage() {
               <>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Tên chi nhánh
                   </label>
@@ -586,18 +585,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, name: e.target.value }))
                     }
                     placeholder="Nhập tên chi nhánh..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Địa chỉ
                   </label>
@@ -608,18 +601,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, address: e.target.value }))
                     }
                     placeholder="Nhập địa chỉ..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Số điện thoại
                   </label>
@@ -630,12 +617,7 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, phone: e.target.value }))
                     }
                     placeholder="Nhập số điện thoại..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
               </>
@@ -643,8 +625,7 @@ export default function AdminBranchesPage() {
               <>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Tên chi nhánh
                   </label>
@@ -655,18 +636,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, name: e.target.value }))
                     }
                     placeholder="Nhập tên chi nhánh..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Địa chỉ
                   </label>
@@ -677,18 +652,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, address: e.target.value }))
                     }
                     placeholder="Nhập địa chỉ..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Số điện thoại
                   </label>
@@ -699,12 +668,7 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, phone: e.target.value }))
                     }
                     placeholder="Nhập số điện thoại..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>

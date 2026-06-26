@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -38,6 +39,11 @@ const GENDER_LABEL: Record<string, string> = {
 };
 
 export default function AdminRoomsPage() {
+  const formatNumber = (num: number | undefined) => {
+    if (num === undefined || num === null) return "";
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
   const db = getMockDB();
   const initialRooms: RoomCatalog[] = (db.rooms || []).map((r: any) => ({
     id: r.id,
@@ -162,8 +168,8 @@ export default function AdminRoomsPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}>
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-sm bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
+        >
           <span className="material-symbols-outlined text-[18px]">add_home</span>
           Thêm phòng mới
         </button>
@@ -197,26 +203,36 @@ export default function AdminRoomsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="available">Phòng trống</option>
-          <option value="occupied">Đang thuê</option>
-          <option value="deposited">Đã đặt cọc</option>
-          <option value="maintenance">Bảo trì</option>
-          <option value="partial">Trống một phần</option>
-        </select>
-        <select value={filterBranch} onChange={e => setFilterBranch(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[140px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả chi nhánh</option>
-          <option value="Quận 1">Quận 1</option>
-          <option value="Quận 3">Quận 3</option>
-          <option value="Bình Thạnh">Bình Thạnh</option>
-        </select>
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={[
+            { value: "", label: "Tất cả trạng thái" },
+            { value: "available", label: "Phòng trống" },
+            { value: "occupied", label: "Đang thuê" },
+            { value: "deposited", label: "Đã đặt cọc" },
+            { value: "maintenance", label: "Bảo trì" },
+            { value: "partial", label: "Trống một phần" },
+          ]}
+          theme="sale"
+          placeholder="Tất cả trạng thái"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
+        <CustomSelect
+          value={filterBranch}
+          onChange={setFilterBranch}
+          options={[
+            { value: "", label: "Tất cả chi nhánh" },
+            { value: "Quận 1", label: "Quận 1" },
+            { value: "Quận 3", label: "Quận 3" },
+            { value: "Bình Thạnh", label: "Bình Thạnh" },
+          ]}
+          theme="sale"
+          placeholder="Tất cả chi nhánh"
+          triggerClassName="!py-2 min-w-[140px]"
+        />
         <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterBranch(''); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}>
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           Làm mới
@@ -230,10 +246,13 @@ export default function AdminRoomsPage() {
           <table className="w-full text-left border-collapse">
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
-                {['Mã phòng', 'Tên phòng', 'Chi nhánh', 'Tầng', 'Sức chứa', 'Giới tính', 'Đơn giá/tháng', 'Trạng thái', 'Thao tác'].map(h => (
-                  <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                    style={{ color: A.textMuted }}>{h}</th>
-                ))}
+                {['Mã phòng', 'Tên phòng', 'Chi nhánh', 'Tầng', 'Sức chứa', 'Giới tính', 'Đơn giá/tháng', 'Trạng thái', 'Thao tác'].map(h => {
+                  const isCenter = h === 'Mã phòng' || h === 'Giới tính' || h === 'Thao tác';
+                  return (
+                    <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${isCenter ? 'text-center' : ''}`}
+                      style={{ color: A.textMuted }}>{h}</th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -267,24 +286,25 @@ export default function AdminRoomsPage() {
                     style={{ borderBottom: `1px solid ${A.border}`, background: i % 2 === 0 ? A.surface : A.bg }}
                     onMouseEnter={e => (e.currentTarget.style.background = A.bg)}
                     onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}>
-                    <td className="px-4 py-3 text-sm font-mono font-semibold" style={{ color: A.accent }}>{r.id}</td>
+                    <td className="px-4 py-3 text-sm font-mono font-semibold text-center" style={{ color: A.accent }}>{r.id}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{r.name}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>{r.branch}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>Tầng {r.floor}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{r.capacity} giường</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{GENDER_LABEL[r.gender_type]}</td>
+                    <td className="px-4 py-3 text-sm text-center" style={{ color: A.textPrimary }}>{GENDER_LABEL[r.gender_type]}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.primary }}>
                       {r.price.toLocaleString('vi-VN')}đ
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${si.cls}`}>{si.label}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex justify-center gap-1 transition-opacity">
                         <button onClick={e => { e.stopPropagation(); setSelected(r); }}
-                          className="p-1.5 rounded-full" style={{ color: A.accent }}
+                          className="p-1.5 rounded-full transition-all hover:bg-[#e8ede7] hover:text-[#5f745d] active:scale-90 cursor-pointer"
+                          style={{ color: A.accent }}
                           title="Xem chi tiết và chỉnh sửa">
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                          <span className="material-symbols-outlined text-[18px] block">edit</span>
                         </button>
                       </div>
                     </td>
@@ -305,15 +325,15 @@ export default function AdminRoomsPage() {
       {/* Drawer */}
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end"
-          style={{ background: `${A.primary}66` }}
+          style={{ background: "rgba(0, 0, 0, 0.4)" }}
           onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
           <div className="w-full max-w-[440px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
             style={{ background: A.surface }}>
             <div className="px-6 py-4 flex items-center justify-between"
               style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>Chi tiết & Chỉnh sửa</h2>
-              <button onClick={() => setSelected(null)}>
-                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+              <button onClick={() => setSelected(null)} className="p-1 rounded-full hover:bg-gray-200/50 active:scale-90 transition-all cursor-pointer">
+                <span className="material-symbols-outlined block" style={{ color: A.textMuted }}>close</span>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
@@ -362,55 +382,59 @@ export default function AdminRoomsPage() {
                 <h4 className="text-sm font-bold uppercase" style={{ color: A.accent }}>Chỉnh sửa thông tin</h4>
                 
                 <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Sức chứa (giường)</label>
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Sức chứa (giường)</label>
                   <input
                     type="number"
                     value={editCapacity}
                     onChange={e => setEditCapacity(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Đơn giá (đ/tháng)</label>
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đơn giá (đ/tháng)</label>
                   <input
-                    type="number"
-                    value={editPrice}
-                    onChange={e => setEditPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    type="text"
+                    value={formatNumber(editPrice)}
+                    onChange={e => {
+                      const clean = e.target.value.replace(/\D/g, "");
+                      const num = clean ? parseInt(clean, 10) : 0;
+                      setEditPrice(num);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giới tính</label>
-                  <select
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giới tính</label>
+                  <CustomSelect
                     value={editGenderType}
-                    onChange={e => setEditGenderType(e.target.value as any)}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                    <option value="mixed">Hỗn hợp</option>
-                  </select>
+                    onChange={val => setEditGenderType(val as any)}
+                    options={[
+                      { value: "male", label: "Nam" },
+                      { value: "female", label: "Nữ" },
+                      { value: "mixed", label: "Hỗn hợp" }
+                    ]}
+                    theme="sale"
+                    triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                  <select
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
+                  <CustomSelect
                     value={editStatus}
-                    onChange={e => setEditStatus(e.target.value as any)}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="available">Phòng trống</option>
-                    <option value="occupied">Đang thuê</option>
-                    <option value="deposited">Đã đặt cọc</option>
-                    <option value="maintenance">Bảo trì</option>
-                    <option value="partial">Trống một phần</option>
-                  </select>
+                    onChange={val => setEditStatus(val as any)}
+                    options={[
+                      { value: "available", label: "Phòng trống" },
+                      { value: "occupied", label: "Đang thuê" },
+                      { value: "deposited", label: "Đã đặt cọc" },
+                      { value: "maintenance", label: "Bảo trì" },
+                      { value: "partial", label: "Trống một phần" }
+                    ]}
+                    theme="sale"
+                    triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
+                  />
                 </div>
               </div>
             </div>
@@ -418,15 +442,14 @@ export default function AdminRoomsPage() {
             <div className="px-6 py-4 flex gap-3" style={{ background: A.sidebar, borderTop: `1px solid ${A.border}` }}>
               <button
                 onClick={() => setSelected(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50 text-center"
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-gray-50 hover:border-[#6f583c] hover:text-[#6f583c] hover:scale-[1.01] active:scale-[0.98] cursor-pointer text-center"
                 style={{ borderColor: A.border, color: A.textMuted }}
               >
                 Hủy
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95"
-                style={{ background: A.primary }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all bg-[#6f583c] hover:bg-[#54422c] hover:scale-[1.01] active:scale-[0.98] shadow-sm hover:shadow cursor-pointer"
               >
                 Lưu thay đổi
               </button>
@@ -437,8 +460,8 @@ export default function AdminRoomsPage() {
 
       {/* Add Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: `${A.primary}66` }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+          style={{ background: "rgba(0, 0, 0, 0.4)" }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
             style={{ background: A.surface }}>
@@ -446,74 +469,95 @@ export default function AdminRoomsPage() {
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
                 Thêm phòng mới
               </h2>
-              <button onClick={() => setShowModal(false)}>
-                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+              <button onClick={() => setShowModal(false)} className="p-1 rounded-full hover:bg-gray-100 active:scale-90 transition-all cursor-pointer">
+                <span className="material-symbols-outlined block" style={{ color: A.textMuted }}>close</span>
               </button>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tên phòng</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên phòng</label>
                 <input value={form.name || ''} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Phòng 101..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Chi nhánh</label>
-                <select value={form.branch || 'Quận 1'} onChange={e => setForm(prev => ({ ...prev, branch: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option>Quận 1</option><option>Quận 3</option><option>Bình Thạnh</option>
-                </select>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chi nhánh</label>
+                <CustomSelect
+                  value={form.branch || 'Quận 1'}
+                  onChange={val => setForm(prev => ({ ...prev, branch: val }))}
+                  options={[
+                    { value: "Quận 1", label: "Quận 1" },
+                    { value: "Quận 3", label: "Quận 3" },
+                    { value: "Bình Thạnh", label: "Bình Thạnh" }
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tầng</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tầng</label>
                 <input type="number" value={form.floor || 1} onChange={e => setForm(prev => ({ ...prev, floor: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Sức chứa</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Sức chứa</label>
                 <input type="number" value={form.capacity || 4} onChange={e => setForm(prev => ({ ...prev, capacity: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giới tính</label>
-                <select value={form.gender_type || 'mixed'} onChange={e => setForm(prev => ({ ...prev, gender_type: e.target.value as any }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                  <option value="mixed">Hỗn hợp</option>
-                </select>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giới tính</label>
+                <CustomSelect
+                  value={form.gender_type || 'mixed'}
+                  onChange={val => setForm(prev => ({ ...prev, gender_type: val as any }))}
+                  options={[
+                    { value: "male", label: "Nam" },
+                    { value: "female", label: "Nữ" },
+                    { value: "mixed", label: "Hỗn hợp" }
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Đơn giá (đ/tháng)</label>
-                <input type="number" value={form.price || 1500000} onChange={e => setForm(prev => ({ ...prev, price: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đơn giá (đ/tháng)</label>
+                <input
+                  type="text"
+                  value={formatNumber(form.price)}
+                  onChange={e => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    const num = clean ? parseInt(clean, 10) : 0;
+                    setForm(prev => ({ ...prev, price: num }));
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-              <select value={form.status || 'available'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value as any }))}
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                <option value="available">Phòng trống</option>
-                <option value="occupied">Đang thuê</option>
-                <option value="deposited">Đã đặt cọc</option>
-                <option value="maintenance">Bảo trì</option>
-                <option value="partial">Trống một phần</option>
-              </select>
+              <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
+              <CustomSelect
+                value={form.status || 'available'}
+                onChange={val => setForm(prev => ({ ...prev, status: val as any }))}
+                options={[
+                  { value: "available", label: "Phòng trống" },
+                  { value: "occupied", label: "Đang thuê" },
+                  { value: "deposited", label: "Đã đặt cọc" },
+                  { value: "maintenance", label: "Bảo trì" },
+                  { value: "partial", label: "Trống một phần" }
+                ]}
+                theme="sale"
+                triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+              />
             </div>
             <div className="flex gap-3 pt-1">
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-gray-50 hover:border-[#6f583c] hover:text-[#6f583c] hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
                 style={{ borderColor: A.border, color: A.textMuted }}>Hủy</button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all bg-[#6f583c] hover:bg-[#54422c] hover:scale-[1.01] active:scale-[0.98] shadow-sm hover:shadow cursor-pointer"
+              >
                 Thêm phòng
               </button>
             </div>

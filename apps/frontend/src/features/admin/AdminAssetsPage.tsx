@@ -431,8 +431,9 @@ export default function AdminAssetsPage() {
               )}
 
               {/* Tên tài sản */}
+              {/* Tên tài sản */}
               <div className="col-span-2">
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tên tài sản <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên tài sản <span className="text-red-500">*</span></label>
                 <input
                   value={form.name || ''}
                   onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
@@ -440,25 +441,23 @@ export default function AdminAssetsPage() {
                   disabled={modalMode === 'edit'}
                   tabIndex={modalMode === 'edit' ? -1 : undefined}
                   placeholder="Tên tài sản..."
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
-                      ? 'cursor-not-allowed select-none opacity-60'
-                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
                     }`}
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
 
               {/* Loại tài sản */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Loại</label>
                 {modalMode === 'edit' ? (
                   <input
                     value={CAT_LABEL[form.category as AssetCategory]?.label || ''}
                     readOnly
                     disabled
                     tabIndex={-1}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none border border-[#d1c4b9] bg-[#faf2ec]/50 text-[#1e1b17]"
                   />
                 ) : (
                   <CustomSelect
@@ -473,7 +472,7 @@ export default function AdminAssetsPage() {
 
               {/* Trạng thái - EDITABLE in both modes */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
                 <CustomSelect
                   value={form.status || 'available'}
                   onChange={val => setForm(prev => ({ ...prev, status: val as AssetStatus }))}
@@ -485,7 +484,7 @@ export default function AdminAssetsPage() {
 
               {/* Thương hiệu */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Thương hiệu</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Thương hiệu</label>
                 <input
                   value={form.brand || ''}
                   onChange={e => setForm(prev => ({ ...prev, brand: e.target.value }))}
@@ -493,17 +492,16 @@ export default function AdminAssetsPage() {
                   disabled={modalMode === 'edit'}
                   tabIndex={modalMode === 'edit' ? -1 : undefined}
                   placeholder="Thương hiệu..."
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
-                      ? 'cursor-not-allowed select-none opacity-60'
-                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
                     }`}
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
 
               {/* Giá trị - EDITABLE in both modes */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giá trị (đ)</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giá trị (đ)</label>
                 <input
                   type="text"
                   value={formatNumber(form.value)}
@@ -513,8 +511,7 @@ export default function AdminAssetsPage() {
                     setForm(prev => ({ ...prev, value: num }));
                   }}
                   placeholder="Nhập giá trị..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
 
