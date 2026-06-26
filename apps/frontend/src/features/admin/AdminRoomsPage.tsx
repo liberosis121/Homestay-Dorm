@@ -338,13 +338,22 @@ export default function AdminRoomsPage() {
             </div>
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
               {/* Room Header Info */}
-              <div className="flex items-center gap-4">
-                <div className="p-4 rounded-xl" style={{ background: A.badgeBg }}>
-                  <span className="material-symbols-outlined text-3xl" style={{ color: A.accent }}>meeting_room</span>
+               <div className="flex items-center gap-4">
+                <div className="p-3.5 rounded-xl" style={{ background: A.badgeBg }}>
+                  <span className="material-symbols-outlined text-3xl block" style={{ color: A.accent }}>meeting_room</span>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>{selected.name}</h3>
-                  <p className="text-sm" style={{ color: A.textMuted }}>Chi nhánh {selected.branch} · Tầng {selected.floor}</p>
+                  <h3 className="text-xl font-bold" style={{ color: A.primary }}>
+                    {selected.name} {!selected.name.includes('(') && `(${GENDER_LABEL[selected.gender_type]})`}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ background: A.badgeBg, color: A.accent }}>
+                      {selected.branch}
+                    </span>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ background: A.sidebar, color: A.primary }}>
+                      Tầng {selected.floor}
+                    </span>
+                  </div>
                 </div>
               </div>
 
