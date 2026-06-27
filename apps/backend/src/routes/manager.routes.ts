@@ -189,3 +189,12 @@ router.get('/residency', async (req, res) => {
     sendError(res, err);
   }
 });
+
+router.patch('/residency/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await residencyService.updateResidencyCheck(id, req.body);
+    sendSuccess(res, data, 'Updated residency status successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
