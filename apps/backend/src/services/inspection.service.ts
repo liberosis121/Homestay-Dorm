@@ -16,3 +16,15 @@ export const inspectionService = {
         try {
           const assetStatus = item.status as 'in_use' | 'in_stock' | 'maintenance' | 'retired';
           await assetRepo.update(item.asset_id, {
+            status: assetStatus,
+            // You can append custom log or note if desired
+          });
+        } catch (err) {
+          console.error(`Failed to update asset ${item.asset_id} during inspection:`, err);
+        }
+      }
+    }
+
+    return logged;
+  }
+};
