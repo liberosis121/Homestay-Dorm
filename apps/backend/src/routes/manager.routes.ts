@@ -115,3 +115,11 @@ router.post('/handovers', async (req, res) => {
 
 router.post('/handovers/:id/sign', async (req, res) => {
   try {
+    const { id } = req.params;
+    const signatureIp = (req.ip || req.headers['x-forwarded-for'] || '127.0.0.1') as string;
+    const data = await handoverService.signHandover(id, signatureIp);
+    sendSuccess(res, data, 'Signed handover successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
