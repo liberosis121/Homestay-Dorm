@@ -26,3 +26,19 @@ export const roomStatusService = {
     const { data, error } = await supabase
       .from('beds')
       .select('*')
+      .eq('room_id', roomId);
+    if (error) throw error;
+    return data || [];
+  },
+
+  updateBedStatus: async (bedId: string, status: 'available' | 'deposited' | 'occupied' | 'maintenance') => {
+    const { data, error } = await supabase
+      .from('beds')
+      .update({ status })
+      .eq('id', bedId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
