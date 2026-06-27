@@ -50,3 +50,11 @@ router.get('/contracts', async (req, res) => {
 });
 
 router.get('/contracts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await managerContractService.getContractById(id);
+    sendSuccess(res, data, 'Fetched contract details successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
