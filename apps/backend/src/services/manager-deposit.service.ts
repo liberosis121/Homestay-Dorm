@@ -30,3 +30,14 @@ export const managerDepositService = {
   },
 
   updateStatus: async (id: string, newStatus: string, reviewerNote?: string) => {
+    // 1. Get the current deposit record
+    const { data: deposit, error: fetchErr } = await supabase
+      .from('manager_deposits')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fetchErr || !deposit) throw new Error('Deposit record not found');
+
+    const reviewedAt = new Date().toISOString();
+
+    // 2. Update status of the manager deposit
