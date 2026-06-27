@@ -95,3 +95,12 @@ router.get('/handovers', async (req, res) => {
 
 router.get('/handovers/:id', async (req, res) => {
   try {
+    const { id } = req.params;
+    const data = await handoverService.getHandoverById(id);
+    sendSuccess(res, data, 'Fetched handover details successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post('/handovers', async (req, res) => {
