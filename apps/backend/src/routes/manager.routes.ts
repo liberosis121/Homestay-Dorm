@@ -31,3 +31,14 @@ router.patch('/deposits/:id/status', async (req, res) => {
     const data = await managerDepositService.updateStatus(id, status, reviewer_note);
     sendSuccess(res, data, 'Updated deposit status successfully');
   } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// ==========================================
+// 2. CONTRACTS
+// ==========================================
+router.get('/contracts', async (req, res) => {
+  try {
+    const customer_id = req.query.customer_id as string;
+    const status = req.query.status as string;
