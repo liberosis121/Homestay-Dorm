@@ -44,7 +44,10 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     let authError: any = null;
 
     if (token.startsWith('mock-token-')) {
-      const email = token.replace('mock-token-', '');
+      let email = token.replace('mock-token-', '');
+      if (email.endsWith('@homestay.com')) {
+        email = email.replace('@homestay.com', '@homestay.vn');
+      }
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')

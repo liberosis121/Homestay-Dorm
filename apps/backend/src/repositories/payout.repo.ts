@@ -2,99 +2,190 @@ import { supabase } from '../utils/supabase';
 
 export const payoutRepo = {
   /**
-   * Lay danh sach cac phieu chi tien tu table payout_records.
+   * Lay danh sach cac phieu chi tien (Hóa đơn hoàn cọc - type 'refund') tu table invoices.
    */
   getPayouts: async () => {
-    const { data, error } = await supabase
-      .from('payout_records')
-      .select(`
-        *,
-        refund_reconciliations (
-          *,
-          checkouts (
-            *,
-            contracts (
-              *,
-              rooms (
-                id,
-                name,
-                branches (
-                  id,
-                  name
-                )
-              ),
-              profiles:created_by_staff_id (
-                id,
-                full_name
-              )
-            )
-          )
-        )
-      `)
-      .order('paid_at', { ascending: false });
+    // 1. Fetch invoices of type 'refund'
+    const { data: invoices, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('invoice_type', 'refund');
 
     if (error) {
-      throw new Error(`[PayoutRepo] Loi khi lay danh sach phieu chi tien: ${error.message}`);
+      throw new Error(`[PayoutRepo] Loi khi lay danh sach phieu chi hoan coc: ${error.message}`);
     }
-    return data;
+
+    if (!invoices || invoices.length === 0) return [];
+
+    // 2. Fetch related refund reconciliations
+    const recIds = invoices.map(i => i.reconciliation_id).filter(Boolean);
+    const { data: reconciliations } = recIds.length > 0
+      ? await supabase.from('refund_reconciliations').select('*').in('id', recIds)
+      : { data: [] as any[] };
+
+    // 3. Fetch related checkouts
+    const checkoutIds = (reconciliations || []).map(r => r.checkout_id).filter(Boolean);
+    const { data: checkouts } = checkoutIds.length > 0
+      ? await supabase.from('checkouts').select('*').in('id', checkoutIds)
+      : { data: [] as any[] };
+
+    // 4. Fetch related contracts
+    const contractIds = (checkouts || []).map(ch => ch.contract_id).filter(Boolean);
+    const { data: contracts } = contractIds.length > 0
+      ? await supabase.from('contracts').select('*').in('id', contractIds)
+      : { data: [] as any[] };
+
+    // 5. Resolve rooms and branches
+    const depositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
+    const { data: depositReqs } = depositIds.length > 0
+      ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
+      : { data: [] as any[] };
+
+    const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
+    const { data: rooms } = roomIds.length > 0
+      ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
+      : { data: [] as any[] };
+
+    const branchIds = (rooms || []).map(r => r.branch_id).filter(Boolean);
+    const { data: branches } = branchIds.length > 0
+      ? await supabase.from('branches').select('id, name').in('id', branchIds)
+      : { data: [] as any[] };
+
+    // 6. Fetch customer names
+    const regIds = (depositReqs || []).map(dr => dr.registration_id).filter(Boolean);
+    const { data: regs } = regIds.length > 0
+      ? await supabase.from('rental_registrations').select('id, cccd').in('id', regIds)
+      : { data: [] as any[] };
+
+    const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
+    const { data: customers } = cccds.length > 0
+      ? await supabase.from('khach_hang').select('cccd, full_name, phone').in('cccd', cccds)
+      : { data: [] as any[] };
+
+    // 7. Map in-memory
+    const result = invoices.map(inv => {
+      const rec = (reconciliations || []).find(r => r.id === inv.reconciliation_id);
+      let mappedRec = null;
+
+      if (rec) {
+        const checkout = (checkouts || []).find(ch => ch.id === rec.checkout_id);
+        let mappedCheckout = null;
+
+        if (checkout) {
+          const contract = (contracts || []).find(c => c.id === checkout.contract_id);
+          let mappedContract = null;
+
+          if (contract) {
+            const depReq = (depositReqs || []).find(dr => dr.id === contract.deposit_id);
+            const room = depReq ? (rooms || []).find(r => r.id === depReq.room_id) : null;
+            const branch = room ? (branches || []).find(b => b.id === room.branch_id) : null;
+            const reg = depReq ? (regs || []).find(rg => rg.id === depReq.registration_id) : null;
+            const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
+
+            mappedContract = {
+              ...contract,
+              customer_name: customer?.full_name || 'Khách hàng',
+              rooms: room ? {
+                id: room.id,
+                name: room.name,
+                branches: branch ? {
+                  id: branch.id,
+                  name: branch.name
+                } : null
+              } : null,
+              profiles: customer ? {
+                id: customer.cccd,
+                full_name: customer.full_name
+              } : null
+            };
+          }
+
+          mappedCheckout = {
+            ...checkout,
+            contracts: mappedContract
+          };
+        }
+
+        mappedRec = {
+          ...rec,
+          checkouts: mappedCheckout
+        };
+      }
+
+      return {
+        ...inv,
+        customer_name: mappedRec?.checkouts?.contracts?.customer_name || 'Khách hàng',
+        room_name: mappedRec?.checkouts?.contracts?.rooms?.name || 'Phòng',
+        refund_reconciliations: mappedRec
+      };
+    });
+
+    // Sort descending in memory
+    return result.sort((a, b) => b.id.localeCompare(a.id));
   },
 
   /**
    * Xac nhan chi tien va thuc hien cac bien dong database (Cascading Updates):
-   * 1. Cap nhat trang thai phieu chi sang 'completed', thoi gian paid_at.
+   * 1. Cap nhat trang thai hoa don hoan coc sang 'paid', thoi gian payment_time.
    * 2. Cap nhat trang thai hop dong lien quan sang 'expired'.
    * 3. Giai phong phong/giuong (cap nhat status room sang 'available' hoac bed sang 'available').
    */
-  confirmPayout: async (payoutId: string, accountDetails: string) => {
+  confirmPayout: async (invoiceId: string, accountDetails: string) => {
     // 1. Lay thong tin record de tim hop dong va phong/giuong tuong ung
-    const { data: payout, error: getError } = await supabase
-      .from('payout_records')
-      .select(`
-        *,
-        refund_reconciliations!inner (
-          checkout_id,
-          checkouts!inner (
-            contract_id,
-            contracts!inner (
-              id,
-              deposit_requests!inner (
-                room_id,
-                bed_id
-              )
-            )
-          )
-        )
-      `)
-      .eq('id', payoutId)
+    const { data: invoice, error: getError } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', invoiceId)
       .single();
 
-    if (getError || !payout) {
-      throw new Error(`[PayoutRepo] Khong tim thay phieu chi tien ID=${payoutId}: ${getError?.message}`);
+    if (getError || !invoice) {
+      throw new Error(`[PayoutRepo] Khong tim thay hoa don hoan coc ID=${invoiceId}: ${getError?.message}`);
     }
 
-    const rec = payout.refund_reconciliations;
-    const checkout = rec?.checkouts;
-    const contract = checkout?.contracts;
-    const depositReq = contract?.deposit_requests;
+    // Resolve contract and deposit details manually
+    const { data: rec } = invoice.reconciliation_id
+      ? await supabase.from('refund_reconciliations').select('checkout_id').eq('id', invoice.reconciliation_id).maybeSingle()
+      : { data: null };
+
+    const { data: checkout } = rec?.checkout_id
+      ? await supabase.from('checkouts').select('contract_id').eq('id', rec.checkout_id).maybeSingle()
+      : { data: null };
+
+    const { data: contract } = checkout?.contract_id
+      ? await supabase.from('contracts').select('id, deposit_id').eq('id', checkout.contract_id).maybeSingle()
+      : { data: null };
 
     const contractId = contract?.id;
-    const roomId = depositReq?.room_id;
-    const bedId = depositReq?.bed_id;
+    let roomId = null;
+    let bedId = null;
 
-    // 2. Cap nhat status phieu chi sang completed
-    const { data: updatedPayout, error: updateError } = await supabase
-      .from('payout_records')
+    if (contract?.deposit_id) {
+      const { data: depositReq } = await supabase
+        .from('deposit_requests')
+        .select('room_id, bed_id')
+        .eq('id', contract.deposit_id)
+        .maybeSingle();
+      if (depositReq) {
+        roomId = depositReq.room_id;
+        bedId = depositReq.bed_id;
+      }
+    }
+
+    // 2. Cap nhat status hoa don hoan coc sang paid
+    const { data: updatedInvoice, error: updateError } = await supabase
+      .from('invoices')
       .update({
-        status: 'completed',
-        account_details: accountDetails,
-        paid_at: new Date().toISOString()
+        status: 'paid',
+        payment_method: 'transfer',
+        payment_time: new Date().toISOString(),
+        note: accountDetails
       })
-      .eq('id', payoutId)
+      .eq('id', invoiceId)
       .select()
       .single();
 
     if (updateError) {
-      throw new Error(`[PayoutRepo] Loi khi cap nhat trang thai phieu chi: ${updateError.message}`);
+      throw new Error(`[PayoutRepo] Loi khi cap nhat trang thai hoa don hoan coc: ${updateError.message}`);
     }
 
     // 3. Cap nhat hop dong sang expired
@@ -132,6 +223,6 @@ export const payoutRepo = {
       }
     }
 
-    return updatedPayout;
+    return updatedInvoice;
   }
 };

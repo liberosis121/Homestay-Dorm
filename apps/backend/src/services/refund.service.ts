@@ -51,19 +51,24 @@ export const refundService = {
 
     const reconciliation = await refundRepo.createRefundReconciliation(reconciliationData, data.checkoutId);
 
-    // Tu dong tao luon mot phieu chi tien (payout_records) o trang thai pending
-    const { error: payoutError } = await supabase
-      .from('payout_records')
-      .insert({
-        reconciliation_id: reconciliation.id,
-        payout_method: 'transfer',
-        account_details: '',
-        status: 'pending',
-        note: `Phieu chi hoan coc tu dong tu ban doi soat ${reconciliation.id}`
-      });
+    // Tu dong tao luon mot hoa don hoan coc (invoices) o trang thai pending neu so tien hoan duong (> 0)
+    if (data.finalRefund > 0) {
+      const { error: payoutError } = await supabase
+        .from('invoices')
+        .insert({
+          amount: data.finalRefund,
+          status: 'pending',
+          invoice_type: 'refund',
+          payment_method: 'transfer',
+          contract_id: data.contractId,
+          reconciliation_id: reconciliation.id,
+          staff_id: data.staffId,
+          note: `Phieu chi hoan coc tu dong tu ban doi soat ${reconciliation.id}`
+        });
 
-    if (payoutError) {
-      console.error(`[RefundService] Loi khi tao phieu chi tu dong: ${payoutError.message}`);
+      if (payoutError) {
+        console.error(`[RefundService] Loi khi tao phieu chi tu dong: ${payoutError.message}`);
+      }
     }
 
     // Neu finalRefund < 0, tuc la khach hang no them tien, ta tao 1 hoa don thu tien phat sinh
