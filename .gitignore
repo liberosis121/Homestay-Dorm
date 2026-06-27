@@ -58,3 +58,6 @@ package-lock.json
 
 # Supabase
 supabase/.temp/
+
+phase2_plan.md
+cicd_team_workflow.md
