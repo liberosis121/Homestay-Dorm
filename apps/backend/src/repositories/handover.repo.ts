@@ -24,3 +24,12 @@ export const handoverRepo = {
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  findById: async (id: string) => {
+    const { data, error } = await supabase
+      .from('asset_handovers')
+      .select('*')
