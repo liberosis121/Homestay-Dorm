@@ -9,7 +9,8 @@ export const monthlyInvoiceRepo = {
     const { data: invoices, error } = await supabase
       .from('invoices')
       .select('*')
-      .eq('invoice_type', 'monthly');
+      .eq('invoice_type', 'monthly')
+      .not('water_record_id', 'is', null);
 
     if (error) {
       throw new Error(`[MonthlyInvoiceRepo] Loi khi lay hoa don dinh ky: ${error.message}`);

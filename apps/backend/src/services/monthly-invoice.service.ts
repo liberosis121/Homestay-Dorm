@@ -64,7 +64,9 @@ export const monthlyInvoiceService = {
     const totalAmount = data.rentPrice + data.servicePrice + electricityCost + waterCost;
 
     // 3. Tao hoa don dinh ky
+    const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
     const invoiceData = {
+      id: invoiceId,
       amount: totalAmount,
       status: 'pending',
       invoice_type: 'monthly',
@@ -75,8 +77,7 @@ export const monthlyInvoiceService = {
       contract_id: data.contractId,
       water_record_id: reading.id,
       reconciliation_id: null,
-      staff_id: data.staffId,
-      note: data.note || null
+      staff_id: data.staffId
     };
 
     return await monthlyInvoiceRepo.createMonthlyInvoice(invoiceData);

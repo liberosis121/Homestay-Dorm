@@ -177,8 +177,7 @@ export const payoutRepo = {
       .update({
         status: 'paid',
         payment_method: 'transfer',
-        payment_time: new Date().toISOString(),
-        note: accountDetails
+        payment_time: new Date().toISOString()
       })
       .eq('id', invoiceId)
       .select()

@@ -53,17 +53,18 @@ export const refundService = {
 
     // Tu dong tao luon mot hoa don hoan coc (invoices) o trang thai pending neu so tien hoan duong (> 0)
     if (data.finalRefund > 0) {
+      const payoutInvoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
       const { error: payoutError } = await supabase
         .from('invoices')
         .insert({
+          id: payoutInvoiceId,
           amount: data.finalRefund,
           status: 'pending',
           invoice_type: 'refund',
           payment_method: 'transfer',
           contract_id: data.contractId,
           reconciliation_id: reconciliation.id,
-          staff_id: data.staffId,
-          note: `Phieu chi hoan coc tu dong tu ban doi soat ${reconciliation.id}`
+          staff_id: data.staffId
         });
 
       if (payoutError) {
@@ -73,18 +74,19 @@ export const refundService = {
 
     // Neu finalRefund < 0, tuc la khach hang no them tien, ta tao 1 hoa don thu tien phat sinh
     if (data.finalRefund < 0) {
+      const debtInvoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
       const debtAmount = Math.abs(data.finalRefund);
       const { error: debtInvError } = await supabase
         .from('invoices')
         .insert({
+          id: debtInvoiceId,
           amount: debtAmount,
           status: 'pending',
           invoice_type: 'refund',
           payment_method: 'transfer',
           contract_id: data.contractId,
           reconciliation_id: reconciliation.id,
-          staff_id: data.staffId,
-          note: `Hoa don thu no bo sung do chi phi khau tru vuot qua tien coc`
+          staff_id: data.staffId
         });
 
       if (debtInvError) {

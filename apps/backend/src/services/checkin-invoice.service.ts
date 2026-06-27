@@ -69,10 +69,12 @@ export const checkinInvoiceService = {
       }
     }
 
+    const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
     const invoiceData = {
+      id: invoiceId,
       amount: data.amount,
       status: 'pending',
-      invoice_type: 'checkin',
+      invoice_type: 'monthly',
       payment_method: data.paymentMethod || 'transfer',
       payment_time: null,
       evidence_url: null,
@@ -80,8 +82,7 @@ export const checkinInvoiceService = {
       contract_id: contractId,
       water_record_id: null,
       reconciliation_id: null,
-      staff_id: data.staffId,
-      note: data.note || null
+      staff_id: data.staffId
     };
 
     return await checkinInvoiceRepo.createCheckinInvoice(invoiceData);

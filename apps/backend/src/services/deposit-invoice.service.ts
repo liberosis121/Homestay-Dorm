@@ -42,7 +42,9 @@ export const depositInvoiceService = {
       deadlineDate.setDate(deadlineDate.getDate() + 3); // 72h
     }
 
+    const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
     const invoiceData = {
+      id: invoiceId,
       amount: data.amount,
       status: 'pending',
       invoice_type: 'deposit',
@@ -53,8 +55,7 @@ export const depositInvoiceService = {
       contract_id: null,
       water_record_id: null,
       reconciliation_id: null,
-      staff_id: data.staffId,
-      note: data.note || null
+      staff_id: data.staffId
     };
 
     return await depositInvoiceRepo.createDepositInvoice(invoiceData, data.requestId);
