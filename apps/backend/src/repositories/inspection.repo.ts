@@ -19,3 +19,14 @@ export const inspectionRepo = {
     if (error) throw error;
     return data || [];
   },
+
+  create: async (inspection: CreateInspectionDto) => {
+    const { data, error } = await supabase
+      .from('inspections')
+      .insert(inspection)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
