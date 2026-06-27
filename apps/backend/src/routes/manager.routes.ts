@@ -7,3 +7,17 @@ import { inspectionService } from '../services/inspection.service';
 import { roomStatusService } from '../services/room-status.service';
 import { residencyService } from '../services/residency.service';
 import { assetRepo } from '../repositories/asset.repo';
+
+const router = Router();
+
+// ==========================================
+// 1. DEPOSITS
+// ==========================================
+router.get('/deposits', async (req, res) => {
+  try {
+    const status = req.query.status as string;
+    const search = req.query.search as string;
+    const data = await managerDepositService.getDeposits({ status, search });
+    sendSuccess(res, data, 'Fetched manager deposits successfully');
+  } catch (err) {
+    sendError(res, err);
