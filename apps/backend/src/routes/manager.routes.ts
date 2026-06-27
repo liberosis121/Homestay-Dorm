@@ -123,3 +123,12 @@ router.post('/handovers/:id/sign', async (req, res) => {
     sendError(res, err);
   }
 });
+
+// ==========================================
+// 4. ASSETS & INSPECTIONS
+// ==========================================
+router.get('/assets', async (req, res) => {
+  try {
+    const category = req.query.category as string;
+    const status = req.query.status as string;
+    const location = req.query.location as string;
