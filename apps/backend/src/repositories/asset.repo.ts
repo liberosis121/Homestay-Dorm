@@ -33,3 +33,11 @@ export const assetRepo = {
   },
 
   findById: async (id: string) => {
+    const { data, error } = await supabase
+      .from('assets')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
