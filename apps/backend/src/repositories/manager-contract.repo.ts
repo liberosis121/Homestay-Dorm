@@ -28,3 +28,15 @@ export interface CreateContractDto {
   sale_staff_name: string;
   payment_cycle: '1_month' | '3_months' | '6_months';
   contract_type: 'long_term' | 'short_term';
+  room_type: string;
+  floor_number: number;
+  tenants?: any[];
+}
+
+export const managerContractRepo = {
+  findAll: async (filters?: { customer_id?: string; status?: string }) => {
+    let query = supabase.from('contracts').select('*');
+    if (filters?.customer_id) {
+      query = query.eq('customer_id', filters.customer_id);
+    }
+    if (filters?.status && filters.status !== 'all') {
