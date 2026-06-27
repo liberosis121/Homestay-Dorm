@@ -167,3 +167,15 @@ router.get('/inspections', async (req, res) => {
     sendError(res, err);
   }
 });
+
+router.post('/inspections', async (req, res) => {
+  try {
+    const data = await inspectionService.createInspection(req.body);
+    sendSuccess(res, data, 'Saved room inspection successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// ==========================================
+// 5. RESIDENCY
