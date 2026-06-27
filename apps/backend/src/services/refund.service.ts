@@ -35,18 +35,19 @@ export const refundService = {
       throw new Error('Cac truong bat buoc: checkoutId, contractId, originalDeposit');
     }
 
+    const reconciliationId = 'REF-' + Math.floor(100000 + Math.random() * 900000);
     const reconciliationData = {
+      id: reconciliationId,
       checkout_id: data.checkoutId,
-      contract_id: data.contractId,
       original_deposit: data.originalDeposit,
       refund_rate: data.refundRate,
       base_refund: data.baseRefund,
       total_deductions: data.totalDeductions,
       final_refund: data.finalRefund,
       additional_charge: data.additionalCharge,
-      reconciliation_date: new Date().toISOString(),
+      reconciliation_date: new Date().toISOString().split('T')[0],
       status: 'pending',
-      note: data.note || null
+      staff_id: data.staffId
     };
 
     const reconciliation = await refundRepo.createRefundReconciliation(reconciliationData, data.checkoutId);
