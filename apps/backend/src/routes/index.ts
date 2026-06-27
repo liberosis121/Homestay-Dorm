@@ -12,6 +12,8 @@ import roomRoutes from './room.routes';
 import leaseRegistrationRoutes from './lease-registration.routes';
 import viewingScheduleRoutes from './viewing-schedule.routes';
 import customerDepositRoutes from './customer-deposit.routes';
+import accountantRoutes from './accountant.routes';
+import customerLookupRoutes from './customer-lookup.routes';
 
 const router = Router();
 
@@ -27,6 +29,8 @@ router.use('/admin', adminAssetsRoutes);
 router.use('/lease-registrations', leaseRegistrationRoutes);
 router.use('/viewing-schedules', viewingScheduleRoutes);
 router.use('/deposit-requests', customerDepositRoutes);
+router.use('/accountant', accountantRoutes);
+router.use('/staff/customers', customerLookupRoutes);
 router.use('/', roomRoutes);
 
 export default router;

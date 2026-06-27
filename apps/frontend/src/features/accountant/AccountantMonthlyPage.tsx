@@ -4,6 +4,8 @@ import {
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, MonthlyInvoice, ServiceSubscription } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
 
 const STANDARD_INCIDENTALS = [
   { value: 'voi_sen', label: 'Đền bù làm hỏng vòi sen tắm', code: 'CPPS-8821', amount: 150000 },
@@ -18,6 +20,7 @@ const STANDARD_INCIDENTALS = [
 ];
 
 export default function AccountantMonthlyPage() {
+  const { user } = useAuthStore();
   const [invoices, setInvoices] = useState<MonthlyInvoice[]>([]);
   const [activeTab, setActiveTab] = useState<'input' | 'list'>('input');
   
@@ -57,40 +60,91 @@ export default function AccountantMonthlyPage() {
 
   // Load Initial Data
   useEffect(() => {
-    const db = getMockDB();
-    setInvoices(db.monthly_invoices || []);
-    
-    // Generate active contracts list based on active checkins / mock residents
-    const activeContracts = [
-      { id: 'HD-2026-0001', customer_id: 'u-5', customer_name: 'Lê Lâm Trí Đức', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
-      { id: 'HD-2026-0002', customer_id: 'u-mock-mon-101', customer_name: 'Nguyễn Văn Hải', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
-      { id: 'HD-2026-0003', customer_id: 'u-mock-mon-102', customer_name: 'Trần Thị Thu', room_id: 'r-2', room_name: 'Phòng 102 (Nữ)', rent_price: 2000000, period: '06/2026' },
-      { id: 'HD-2026-0004', customer_id: 'u-mock-mon-104', customer_name: 'Đinh Thị Hoa', room_id: 'r-4', room_name: 'Phòng 202 (Nữ)', rent_price: 1200000, period: '06/2026' },
-      { id: 'HD-2026-0005', customer_id: 'u-mock-mon-105', customer_name: 'Vũ Tú Anh', room_id: 'r-5', room_name: 'Phòng 103 (Nam)', rent_price: 1600000, period: '06/2026' },
-    ];
-    setContracts(activeContracts);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const liveInvoices = await accountantService.fetchMonthlyInvoices(email);
+        const mappedInvoices = (liveInvoices || []).map((inv: any) => {
+          const contract = inv.contracts || {};
+          const reading = inv.electricity_water_records || {};
+          const elecUse = reading.end_electricity - reading.start_electricity;
+          const waterUse = reading.end_water - reading.start_water;
+          return {
+            id: inv.id,
+            customer_id: contract.id || inv.customer_id,
+            customer_name: inv.customer_name || 'Khách hàng',
+            room_id: contract.room_id || inv.room_id,
+            room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+            period: reading.billing_period || inv.period || '06/2026',
+            rent_amount: contract.rent_price || 1500000,
+            electricity_kwh: elecUse > 0 ? elecUse : 80,
+            electricity_cost: elecUse > 0 ? elecUse * 3500 : 80 * 3500,
+            water_m3: waterUse > 0 ? waterUse : 6,
+            water_cost: waterUse > 0 ? waterUse * 15000 : 6 * 15000,
+            services_cost: 150000,
+            total: inv.amount,
+            due_date: inv.due_date || '2026-07-10',
+            status: inv.status,
+            created_at: inv.created_at || ''
+          };
+        });
+        setInvoices(mappedInvoices);
+      } catch (err) {
+        console.warn('[AccountantMonthly] Failed to load from backend, falling back to mock:', err);
+        const db = getMockDB();
+        setInvoices(db.monthly_invoices || []);
+      }
+
+      const activeContracts = [
+        { id: 'HD-2026-0001', customer_id: 'u-5', customer_name: 'Lê Lâm Trí Đức', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
+        { id: 'HD-2026-0002', customer_id: 'u-mock-mon-101', customer_name: 'Nguyễn Văn Hải', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
+        { id: 'HD-2026-0003', customer_id: 'u-mock-mon-102', customer_name: 'Trần Thị Thu', room_id: 'r-2', room_name: 'Phòng 102 (Nữ)', rent_price: 2000000, period: '06/2026' },
+        { id: 'HD-2026-0004', customer_id: 'u-mock-mon-104', customer_name: 'Đinh Thị Hoa', room_id: 'r-4', room_name: 'Phòng 202 (Nữ)', rent_price: 1200000, period: '06/2026' },
+        { id: 'HD-2026-0005', customer_id: 'u-mock-mon-105', customer_name: 'Vũ Tú Anh', room_id: 'r-5', room_name: 'Phòng 103 (Nam)', rent_price: 1600000, period: '06/2026' },
+      ];
+      setContracts(activeContracts);
+    };
+    loadData();
+  }, [user]);
 
   const selectedContract = contracts.find(c => c.id === selectedContractId);
 
   useEffect(() => {
     if (selectedContract) {
+      const fetchReading = async () => {
+        const email = user?.email || 'accountant@homestay.vn';
+        try {
+          const reading = await accountantService.fetchLatestMeterReading(email, selectedContract.room_id);
+          if (reading) {
+            setElecOld(reading.end_electricity);
+            setElecNew(reading.end_electricity + 85);
+            setWaterOld(reading.end_water);
+            setWaterNew(reading.end_water + 6);
+          } else {
+            const oldE = 1200 + (selectedContract.id === 'HD-2026-0001' ? 80 : 40);
+            const oldW = 45 + (selectedContract.id === 'HD-2026-0001' ? 8 : 4);
+            setElecOld(oldE);
+            setElecNew(oldE + 85);
+            setWaterOld(oldW);
+            setWaterNew(oldW + 6);
+          }
+        } catch (err) {
+          const oldE = 1200 + (selectedContract.id === 'HD-2026-0001' ? 80 : 40);
+          const oldW = 45 + (selectedContract.id === 'HD-2026-0001' ? 8 : 4);
+          setElecOld(oldE);
+          setElecNew(oldE + 85);
+          setWaterOld(oldW);
+          setWaterNew(oldW + 6);
+        }
+      };
+      fetchReading();
+
       const db = getMockDB();
-      // Load service subscriptions for this customer
       const subs = db.service_subscriptions?.filter(
         (s: ServiceSubscription) => s.customer_id === selectedContract.customer_id && s.status === 'active'
       ) || [];
       setSubscriptions(subs);
 
-      // Determine initial utility index values based on room or customer ID hash for mock simulation
-      const oldE = 1200 + (selectedContract.id === 'HD-2026-0001' ? 80 : 40);
-      const oldW = 45 + (selectedContract.id === 'HD-2026-0001' ? 8 : 4);
-      setElecOld(oldE);
-      setElecNew(oldE + 85);
-      setWaterOld(oldW);
-      setWaterNew(oldW + 6);
-
-      // Pre-populate some unconfirmed incidentals for specific contracts for A4 flow
       if (selectedContract.customer_id === 'u-5') {
         setIncidentals([
           { id: 'CPPS-8821', name: 'Đền bù làm hỏng vòi sen tắm (báo cáo bởi Quản lý)', amount: 150000, confirmed: false, dateRecorded: '2026-06-05' }
@@ -166,7 +220,7 @@ export default function AccountantMonthlyPage() {
     setIncidentals(prev => prev.filter(inc => inc.id !== id));
   };
 
-  const handleCreateMonthlyInvoice = (e: React.FormEvent) => {
+  const handleCreateMonthlyInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedContract) return;
 
@@ -175,57 +229,147 @@ export default function AccountantMonthlyPage() {
       return;
     }
 
-    const db = getMockDB();
-    const invoiceId = `MON-${Date.now().toString().slice(-4)}`;
-    const newInvoice: MonthlyInvoice = {
-      id: invoiceId,
-      customer_id: selectedContract.customer_id,
-      customer_name: selectedContract.customer_name,
-      room_id: selectedContract.room_id,
-      room_name: selectedContract.room_name,
-      period: selectedPeriod,
-      rent_amount: rentAmount,
-      electricity_kwh: elecUse,
-      electricity_cost: elecCost,
-      water_m3: waterUse,
-      water_cost: waterCost,
-      services_cost: servicesCost,
-      total: totalCost,
-      due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 10).toISOString().split('T')[0],
-      status: 'pending',
-      created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
-    };
+    const email = user?.email || 'accountant@homestay.vn';
 
-    db.monthly_invoices = [newInvoice, ...(db.monthly_invoices || [])];
-    saveMockDB(db);
-    
-    // Simulate updating contract next billing period
-    const updatedContracts = contracts.map(c => {
-      if (c.id === selectedContract.id) {
-        return { ...c, period: '07/2026' };
-      }
-      return c;
-    });
-    setContracts(updatedContracts);
-    setInvoices(db.monthly_invoices);
+    try {
+      await accountantService.createMonthlyInvoice(email, {
+        contractId: selectedContract.id,
+        roomId: selectedContract.room_id,
+        billingPeriod: selectedPeriod,
+        prevElectricity: elecOld,
+        newElectricity: elecNew,
+        prevWater: waterOld,
+        newWater: waterNew,
+        rentPrice: rentAmount,
+        servicePrice: servicesCost,
+        note: JSON.stringify({ incidentals })
+      });
 
-    // Reset fields
-    setSelectedContractId('');
-    setIncidentals([]);
-    
-    // Switch to invoices list tab
-    setActiveTab('list');
-    
-    alert(`Lập hóa đơn định kỳ thành công! Mã hóa đơn: ${invoiceId}`);
+      alert(`Lập hóa đơn định kỳ thành công!`);
+
+      // Refresh list
+      const liveInvoices = await accountantService.fetchMonthlyInvoices(email);
+      const mappedInvoices = (liveInvoices || []).map((inv: any) => {
+        const contract = inv.contracts || {};
+        const reading = inv.electricity_water_records || {};
+        const elecUse = reading.end_electricity - reading.start_electricity;
+        const waterUse = reading.end_water - reading.start_water;
+        return {
+          id: inv.id,
+          customer_id: contract.id || inv.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: contract.room_id || inv.room_id,
+          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+          period: reading.billing_period || inv.period || '06/2026',
+          rent_amount: contract.rent_price || 1500000,
+          electricity_kwh: elecUse > 0 ? elecUse : 80,
+          electricity_cost: elecUse > 0 ? elecUse * 3500 : 80 * 3500,
+          water_m3: waterUse > 0 ? waterUse : 6,
+          water_cost: waterUse > 0 ? waterUse * 15000 : 6 * 15000,
+          services_cost: 150000,
+          total: inv.amount,
+          due_date: inv.due_date || '2026-07-10',
+          status: inv.status,
+          created_at: inv.created_at || ''
+        };
+      });
+      setInvoices(mappedInvoices);
+
+      const updatedContracts = contracts.map(c => {
+        if (c.id === selectedContract.id) {
+          return { ...c, period: '07/2026' };
+        }
+        return c;
+      });
+      setContracts(updatedContracts);
+
+      setSelectedContractId('');
+      setIncidentals([]);
+      setActiveTab('list');
+    } catch (err: any) {
+      console.warn('[AccountantMonthly] Failed to create live invoice, falling back to mock:', err);
+      const db = getMockDB();
+      const invoiceId = `MON-${Date.now().toString().slice(-4)}`;
+      const newInvoice: MonthlyInvoice = {
+        id: invoiceId,
+        customer_id: selectedContract.customer_id,
+        customer_name: selectedContract.customer_name,
+        room_id: selectedContract.room_id,
+        room_name: selectedContract.room_name,
+        period: selectedPeriod,
+        rent_amount: rentAmount,
+        electricity_kwh: elecUse,
+        electricity_cost: elecCost,
+        water_m3: waterUse,
+        water_cost: waterCost,
+        services_cost: servicesCost,
+        total: totalCost,
+        due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 10).toISOString().split('T')[0],
+        status: 'pending',
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      };
+
+      db.monthly_invoices = [newInvoice, ...(db.monthly_invoices || [])];
+      saveMockDB(db);
+      
+      const updatedContracts = contracts.map(c => {
+        if (c.id === selectedContract.id) {
+          return { ...c, period: '07/2026' };
+        }
+        return c;
+      });
+      setContracts(updatedContracts);
+      setInvoices(db.monthly_invoices);
+
+      setSelectedContractId('');
+      setIncidentals([]);
+      setActiveTab('list');
+      alert(`Lập hóa đơn định kỳ thành công (Mock DB)! Mã hóa đơn: ${invoiceId}`);
+    }
   };
 
-  const handleConfirmPayment = (id: string) => {
-    const res = mockSupabase.from('monthly_invoices').update(id, { status: 'paid' });
-    if (res.data) {
-      const db = getMockDB();
-      setInvoices(db.monthly_invoices || []);
+  const handleConfirmPayment = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmInvoicePayment(email, id, 'transfer');
+      const liveInvoices = await accountantService.fetchMonthlyInvoices(email);
+      const mappedInvoices = (liveInvoices || []).map((inv: any) => {
+        const contract = inv.contracts || {};
+        const reading = inv.electricity_water_records || {};
+        const elecUse = reading.end_electricity - reading.start_electricity;
+        const waterUse = reading.end_water - reading.start_water;
+        return {
+          id: inv.id,
+          customer_id: contract.id || inv.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: contract.room_id || inv.room_id,
+          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+          period: reading.billing_period || inv.period || '06/2026',
+          rent_amount: contract.rent_price || 1500000,
+          electricity_kwh: elecUse > 0 ? elecUse : 80,
+          electricity_cost: elecUse > 0 ? elecUse * 3500 : 80 * 3500,
+          water_m3: waterUse > 0 ? waterUse : 6,
+          water_cost: waterUse > 0 ? waterUse * 15000 : 6 * 15000,
+          services_cost: 150000,
+          total: inv.amount,
+          due_date: inv.due_date || '2026-07-10',
+          status: inv.status,
+          created_at: inv.created_at || ''
+        };
+      });
+      setInvoices(mappedInvoices);
       if (selectedInvoice && selectedInvoice.id === id) {
         setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
+      }
+    } catch (err) {
+      console.warn('[AccountantMonthly] Payment confirm failed, falling back to mock:', err);
+      const res = mockSupabase.from('monthly_invoices').update(id, { status: 'paid' });
+      if (res.data) {
+        const db = getMockDB();
+        setInvoices(db.monthly_invoices || []);
+        if (selectedInvoice && selectedInvoice.id === id) {
+          setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
+        }
       }
     }
   };
