@@ -30,22 +30,22 @@ export const authService = {
     const userId = data.user.id;
 
     try {
-      // 2. Tạo bản ghi profile cơ bản (role mặc định: customer)
-      // profile.repo.ts không có hàm insertProfile nên chúng ta insert trực tiếp thông qua supabase ở đây
+      // 2. Supabase trigger tu dong tao profiles khi signUp voi role='customer' va full_name='Người dùng mới'.
+      // Dung upsert de cap nhat lai full_name, phone cho dung voi thong tin khach hang nhap vao.
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
+        .upsert({
           id: userId,
           email: email,
           full_name: fullName,
           phone: phone,
           role: USER_ROLE.CUSTOMER,
-          created_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'id' });
 
       if (profileError) throw profileError;
 
-      // 3. Tạo bản ghi khách hàng (khach_hang) liên kết với profile
+      // 3. Tao ban ghi khach hang lien ket voi profile
+      // cccd dung prefix 'TEMP-' de service layer nhan biet va yeu cau cap nhat CCCD that truoc khi dang ky thue
       const { error: customerError } = await supabase
         .from('khach_hang')
         .insert({
@@ -53,7 +53,7 @@ export const authService = {
           full_name: fullName,
           phone: phone,
           email: email,
-          cccd: `CCCD-${Date.now()}`, // Tạo tạm mã định danh cccd duy nhất để không bị lỗi CONSTRAINT UNIQUE
+          cccd: `TEMP-${Date.now()}`, // TEMP- prefix: service layer se check va yeu cau cap nhat CCCD that
           nationality: 'Việt Nam',
         });
 
@@ -67,8 +67,7 @@ export const authService = {
         role: USER_ROLE.CUSTOMER,
       };
     } catch (dbError: any) {
-      // Rollback: Nếu lưu database lỗi, ta nên xóa user đã được tạo ở Auth (để khách hàng có thể đăng ký lại)
-      // Dùng admin API để xóa user vừa tạo (chỉ làm được khi có service role key)
+      // Rollback: Neu luu DB loi, xoa user Auth vua tao de khach hang co the dang ky lai
       await supabase.auth.admin.deleteUser(userId);
       throw new Error(`Lỗi khởi tạo hồ sơ dữ liệu: ${dbError.message}`);
     }

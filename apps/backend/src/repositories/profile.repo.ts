@@ -146,7 +146,7 @@ export async function getStaffByUserId(userId: string) {
       *,
       profiles!inner(id, role, full_name, phone)
     `)
-    .eq('user_id', userId)
+    .eq('id', userId)  // nhan_vien.id = profiles.id = auth user UUID (khong co cot user_id trong nhan_vien)
     .single();
 
   if (error) {
@@ -156,3 +156,4 @@ export async function getStaffByUserId(userId: string) {
 
   return data;
 }
+
