@@ -20,3 +20,13 @@ export const managerDepositService = {
         d.id.toLowerCase().includes(q) ||
         d.customer_name.toLowerCase().includes(q) ||
         d.customer_phone.includes(q) ||
+        d.room_name.toLowerCase().includes(q) ||
+        (d.bed_name || '').toLowerCase().includes(q) ||
+        (d.bank_name || '').toLowerCase().includes(q)
+      );
+    }
+    
+    return result;
+  },
+
+  updateStatus: async (id: string, newStatus: string, reviewerNote?: string) => {
