@@ -236,6 +236,7 @@ export default function AccountantPayoutsPage() {
               options={statusOptions}
               theme="accountant"
               className="w-44"
+              triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
             />
           </div>
         </div>

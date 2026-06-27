@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useInvoiceStore } from './store/useInvoiceStore';
+import { useAuthStore } from '../../stores/authStore';
 import { 
   ArrowLeft, 
   QrCode, 
@@ -19,6 +20,7 @@ type TabType = 'qr' | 'wallet' | 'card';
 export default function InvoicePaymentPage() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { invoices, payInvoice } = useInvoiceStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('qr');
@@ -73,15 +75,20 @@ export default function InvoicePaymentPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const startPaymentSimulation = (method: 'qr' | 'wallet' | 'card') => {
+  const startPaymentSimulation = async (method: 'qr' | 'wallet' | 'card') => {
+    if (!user?.email) {
+      alert('Không tìm thấy thông tin tài khoản đăng nhập!');
+      return;
+    }
     setIsProcessing(true);
-    // Simulate API delay
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      await payInvoice(user.email, invoice.id, method);
       setIsSuccess(true);
-      // Trigger Zustand pay action
-      payInvoice(invoice.id, method);
-    }, 1800);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi thực hiện thanh toán');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleCardSubmit = (e: React.FormEvent) => {

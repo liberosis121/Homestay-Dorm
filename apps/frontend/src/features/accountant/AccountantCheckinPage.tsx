@@ -211,10 +211,10 @@ export default function AccountantCheckinPage() {
                       setIsContractDropdownOpen(!isContractDropdownOpen);
                       setContractSearchQuery('');
                     }}
-                    className={`w-full flex items-center justify-between bg-white border border-[#7f756c] px-4 py-2.5 rounded-xl outline-none transition-all cursor-pointer font-label-md text-sm ${
+                    className={`w-full flex items-center justify-between h-14 bg-[#F5F2EE] border-none px-4 rounded-2xl outline-none transition-all cursor-pointer font-label-md text-sm ${
                       isContractDropdownOpen
-                        ? 'ring-2 ring-[#5a462d] border-transparent shadow-sm'
-                        : 'hover:border-[#5a462d]/50'
+                        ? 'ring-2 ring-[#5a462d] shadow-sm'
+                        : 'hover:bg-[#EAE4DC]'
                     }`}
                   >
                     <div className="truncate text-left">

@@ -289,6 +289,7 @@ export default function AccountantMonthlyPage() {
             options={periodOptions}
             theme="accountant"
             className="w-48"
+            triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
           />
           <CustomSelect
             value={selectedBranch}
@@ -296,6 +297,7 @@ export default function AccountantMonthlyPage() {
             options={branchOptions}
             theme="accountant"
             className="w-44"
+            triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
           />
           <CustomSelect
             value={selectedStatus}
@@ -303,6 +305,7 @@ export default function AccountantMonthlyPage() {
             options={statusOptions}
             theme="accountant"
             className="w-48"
+            triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
           />
         </div>
       </div>

@@ -48,7 +48,7 @@ export default function CustomSelect({
 
   // Find active option label
   const activeOption = normalizedOptions.find((opt) => opt.value === value);
-  const displayLabel = activeOption ? activeOption.label : placeholder || value || '';
+  const displayLabel = (value === '' && placeholder) ? placeholder : (activeOption ? activeOption.label : placeholder || value || '');
 
   // Calculate coordinates when dropdown opens
   useEffect(() => {

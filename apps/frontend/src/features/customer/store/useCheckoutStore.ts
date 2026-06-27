@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { fetchCheckoutRequests, submitCheckoutRequestApi, cancelCheckoutRequestApi } from '../services/checkout.service';
 
 export interface CheckoutRequest {
   id: string;
@@ -25,157 +25,57 @@ export interface CheckoutRequest {
 
 interface CheckoutState {
   requests: CheckoutRequest[];
-  submitRequest: (request: Omit<CheckoutRequest, 'id' | 'status' | 'statusName' | 'createdAt' | 'updatedAt'>) => void;
-  cancelRequest: (requestId: string) => void;
-  updateRequestStatus: (requestId: string, status: CheckoutRequest['status'], rejectReason?: string) => void;
-  resetStore: () => void;
+  isLoading: boolean;
+  error: string | null;
+  loadRequests: (email: string) => Promise<void>;
+  submitRequest: (email: string, requestData: {
+    contractId: string;
+    expectedDate: string;
+    reason: string;
+    note?: string;
+    bankName: string;
+    bankAccount: string;
+    bankOwner: string;
+  }) => Promise<void>;
+  cancelRequest: (email: string, requestId: string) => Promise<void>;
 }
 
-const getStatusName = (status: CheckoutRequest['status']): string => {
-  switch (status) {
-    case 'submitted': return 'Đã gửi yêu cầu';
-    case 'inventory_checking': return 'Chờ quản lý kiểm kê';
-    case 'accounting_matching': return 'Chờ kế toán đối soát';
-    case 'refunding': return 'Chờ hoàn cọc';
-    case 'completed': return 'Hoàn tất';
-    case 'rejected': return 'Bị từ chối';
-    default: return 'Không xác định';
+export const useCheckoutStore = create<CheckoutState>((set) => ({
+  requests: [],
+  isLoading: false,
+  error: null,
+
+  loadRequests: async (email: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await fetchCheckoutRequests(email);
+      set({ requests: data || [], isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi khi tải danh sách yêu cầu trả phòng', isLoading: false });
+    }
+  },
+
+  submitRequest: async (email: string, requestData) => {
+    set({ isLoading: true, error: null });
+    try {
+      await submitCheckoutRequestApi(email, requestData);
+      const data = await fetchCheckoutRequests(email);
+      set({ requests: data || [], isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi khi đăng ký trả phòng', isLoading: false });
+      throw err;
+    }
+  },
+
+  cancelRequest: async (email: string, requestId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await cancelCheckoutRequestApi(email, requestId);
+      const data = await fetchCheckoutRequests(email);
+      set({ requests: data || [], isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi khi hủy yêu cầu trả phòng', isLoading: false });
+      throw err;
+    }
   }
-};
-
-const generateMockRequests = (): CheckoutRequest[] => {
-  const list: CheckoutRequest[] = [];
-
-  // ── Lịch sử của u-5 (Lê Lâm Trí Đức) ──────────────────────────────────────
-  // 1. Trả phòng thành công năm 2024
-  list.push({
-    id: 'YC-10010',
-    customerId: 'u-5',
-    customerName: 'Lê Lâm Trí Đức',
-    branchName: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
-    roomName: 'Phòng 201 (Nam)',
-    bedName: 'Giường G2',
-    contractId: 'HD-2024-0010',
-    expectedDate: '2024-12-31',
-    reason: 'Hết hạn hợp đồng',
-    note: 'Chuyển sang chi nhánh Quận 1 để gần chỗ làm mới.',
-    bankOwner: 'LE LAM TRI DUC',
-    bankName: 'Vietcombank',
-    bankAccount: '1014820938',
-    depositAmount: 1800000,
-    status: 'completed',
-    statusName: getStatusName('completed'),
-    createdAt: '2024-12-15T10:00:00Z',
-    updatedAt: '2024-12-30T16:00:00Z',
-  });
-
-  // 2. Bị từ chối đầu 2025 (gửi sớm hơn thời hạn cho phép)
-  list.push({
-    id: 'YC-10011',
-    customerId: 'u-5',
-    customerName: 'Lê Lâm Trí Đức',
-    branchName: 'Chi nhánh Thủ Đức (Khu ĐHQG)',
-    roomName: 'Phòng 201 (Nam)',
-    bedName: 'Giường G2',
-    contractId: 'HD-2024-0011',
-    expectedDate: '2025-03-31',
-    reason: 'Thay đổi nơi học tập/làm việc',
-    note: 'Đổi công ty, cần chuyển chỗ ở.',
-    bankOwner: 'LE LAM TRI DUC',
-    bankName: 'Techcombank',
-    bankAccount: '190348210984',
-    depositAmount: 1800000,
-    status: 'rejected',
-    statusName: getStatusName('rejected'),
-    createdAt: '2025-03-10T08:30:00Z',
-    updatedAt: '2025-03-12T14:15:00Z',
-    rejectReason: 'Hợp đồng chưa đủ thời hạn tối thiểu 6 tháng theo cam kết. Vui lòng liên hệ Quản lý để được hỗ trợ thêm.',
-  });
-
-  // ── Các khách hàng khác (chỉ để hệ thống quản lý có dữ liệu) ───────────────
-  const otherCustomers = [
-    { id: 'u-101', name: 'Nguyễn Văn Hải', room: 'Phòng 201 (Nam)', bed: 'Giường G1', branch: 'Chi nhánh Thủ Đức (Khu ĐHQG)', contract: 'HD-2025-0012' },
-    { id: 'u-102', name: 'Trần Thị Thuỳ', room: 'Phòng 202 (Nữ)', bed: 'Giường B1', branch: 'Chi nhánh Thủ Đức (Khu ĐHQG)', contract: 'HD-2025-0015' },
-    { id: 'u-103', name: 'Phạm Thành Long', room: 'Phòng 103 (Nam)', bed: 'Giường A1', branch: 'Chi nhánh Quận 1', contract: 'HD-2025-0018' },
-    { id: 'u-104', name: 'Lê Thị Mai', room: 'Phòng 203 (Nữ)', bed: 'Giường C2', branch: 'Chi nhánh Thủ Đức (Khu ĐHQG)', contract: 'HD-2025-0022' },
-    { id: 'u-105', name: 'Hoàng Minh Quân', room: 'Phòng 101 (Nam)', bed: 'Giường A2', branch: 'Chi nhánh Quận 1', contract: 'HD-2025-0025' },
-  ];
-  const bankNames = ['Vietcombank', 'Techcombank', 'BIDV', 'MBBank', 'ACB'];
-  const reasons = ['Hết hạn hợp đồng', 'Thay đổi nơi học tập/làm việc', 'Lý do cá nhân', 'Không hài lòng với dịch vụ'];
-
-  for (let i = 1; i <= 10; i++) {
-    const cust = otherCustomers[i % otherCustomers.length];
-    const isRejected = i % 3 === 0;
-    const status: CheckoutRequest['status'] = isRejected ? 'rejected' : 'completed';
-    const month = i < 10 ? `0${i}` : `${i}`;
-    const dateStr = `2025-${month}-15`;
-    list.push({
-      id: `YC-100${20 + i}`,
-      customerId: cust.id,
-      customerName: cust.name,
-      branchName: cust.branch,
-      roomName: cust.room,
-      bedName: cust.bed,
-      contractId: cust.contract,
-      expectedDate: `2025-${month}-20`,
-      reason: reasons[i % reasons.length],
-      note: i % 2 === 0 ? 'Phòng sạch sẽ, cảm ơn Homestay.' : undefined,
-      bankOwner: cust.name.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/Đ/g, 'D'),
-      bankName: bankNames[i % bankNames.length],
-      bankAccount: `03482109848${i}`,
-      depositAmount: 1500000 + (i % 3) * 500000,
-      status,
-      statusName: getStatusName(status),
-      createdAt: `${dateStr}T09:00:00Z`,
-      updatedAt: `${dateStr}T15:30:00Z`,
-      rejectReason: isRejected ? 'Chưa dọn dẹp phòng sạch sẽ theo biên bản bàn giao.' : undefined,
-    });
-  }
-
-  return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-};
-
-const initialRequests = generateMockRequests();
-
-export const useCheckoutStore = create<CheckoutState>()(
-  persist(
-    (set) => ({
-      requests: initialRequests,
-      submitRequest: (reqData) =>
-        set((state) => {
-          const now = new Date().toISOString();
-          const newRequest: CheckoutRequest = {
-            id: `YC-${Math.floor(10000 + Math.random() * 90000)}`,
-            ...reqData,
-            status: 'submitted',
-            statusName: getStatusName('submitted'),
-            createdAt: now,
-            updatedAt: now,
-          };
-          return { requests: [newRequest, ...state.requests] };
-        }),
-      cancelRequest: (requestId) =>
-        set((state) => ({
-          requests: state.requests.filter((r) => r.id !== requestId),
-        })),
-      updateRequestStatus: (requestId, status, rejectReason) =>
-        set((state) => ({
-          requests: state.requests.map((r) => {
-            if (r.id === requestId) {
-              const now = new Date().toISOString();
-              return {
-                ...r,
-                status,
-                statusName: getStatusName(status),
-                rejectReason: status === 'rejected' ? rejectReason : undefined,
-                updatedAt: now,
-              };
-            }
-            return r;
-          }),
-        })),
-      resetStore: () => set({ requests: generateMockRequests() }),
-    }),
-    { name: 'checkout-storage' }
-  )
-);
+}));
