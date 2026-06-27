@@ -18,3 +18,11 @@ export const roomStatusService = {
       .eq('id', roomId)
       .select()
       .single();
+    if (error) throw error;
+    return data;
+  },
+
+  getBedsByRoom: async (roomId: string) => {
+    const { data, error } = await supabase
+      .from('beds')
+      .select('*')
