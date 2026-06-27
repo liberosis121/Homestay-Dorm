@@ -43,3 +43,20 @@ export const handoverRepo = {
     const { data, error } = await supabase
       .from('asset_handovers')
       .insert(handover)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  update: async (id: string, updates: Partial<CreateHandoverDto>) => {
+    const { data, error } = await supabase
+      .from('asset_handovers')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
