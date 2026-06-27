@@ -78,3 +78,11 @@ router.patch('/contracts/:id/status', async (req, res) => {
     sendError(res, err);
   }
 });
+
+// ==========================================
+// 3. HANDOVERS
+// ==========================================
+router.get('/handovers', async (req, res) => {
+  try {
+    const customer_id = req.query.customer_id as string;
+    const status = req.query.status as string;
