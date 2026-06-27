@@ -58,3 +58,23 @@ export const managerContractRepo = {
   },
 
   create: async (contract: CreateContractDto) => {
+    const { data, error } = await supabase
+      .from('contracts')
+      .insert(contract)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  update: async (id: string, updates: Partial<CreateContractDto>) => {
+    const { data, error } = await supabase
+      .from('contracts')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
