@@ -41,3 +41,16 @@ export const managerDepositService = {
     const reviewedAt = new Date().toISOString();
 
     // 2. Update status of the manager deposit
+    const { data: updatedDeposit, error: updateErr } = await supabase
+      .from('manager_deposits')
+      .update({
+        status: newStatus,
+        reviewer_note: reviewerNote,
+        reviewed_at: reviewedAt
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (updateErr) throw updateErr;
+
+    // 3. Sync with customer_deposit_requests and deposit_invoices tables
