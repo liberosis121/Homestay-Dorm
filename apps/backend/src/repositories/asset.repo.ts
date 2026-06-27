@@ -41,3 +41,15 @@ export const assetRepo = {
     if (error) throw error;
     return data;
   },
+
+  create: async (asset: CreateAssetDto) => {
+    const { data, error } = await supabase
+      .from('assets')
+      .insert({
+        ...asset,
+        transfer_history: asset.transfer_history || []
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
