@@ -33,3 +33,13 @@ export const handoverRepo = {
     const { data, error } = await supabase
       .from('asset_handovers')
       .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  create: async (handover: CreateHandoverDto) => {
+    const { data, error } = await supabase
+      .from('asset_handovers')
+      .insert(handover)
