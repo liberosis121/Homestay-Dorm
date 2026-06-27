@@ -207,3 +207,42 @@ router.get('/rooms', async (req, res) => {
   try {
     const branch_id = req.query.branch_id as string;
     const data = await roomStatusService.getRooms(branch_id);
+    sendSuccess(res, data, 'Fetched rooms successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.patch('/rooms/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const data = await roomStatusService.updateRoomStatus(id, status);
+    sendSuccess(res, data, 'Updated room status successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.get('/rooms/:id/beds', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await roomStatusService.getBedsByRoom(id);
+    sendSuccess(res, data, 'Fetched room beds successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.patch('/beds/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const data = await roomStatusService.updateBedStatus(id, status);
+    sendSuccess(res, data, 'Updated bed status successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+export default router;
