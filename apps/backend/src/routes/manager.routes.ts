@@ -104,3 +104,14 @@ router.get('/handovers/:id', async (req, res) => {
 });
 
 router.post('/handovers', async (req, res) => {
+  try {
+    const { assetsList, ...handoverData } = req.body;
+    const data = await handoverService.createHandover(handoverData, assetsList);
+    sendSuccess(res, data, 'Created handover successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post('/handovers/:id/sign', async (req, res) => {
+  try {
