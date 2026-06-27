@@ -12,3 +12,24 @@ export interface CreateAssetDto {
   depreciation_rate: number;
   transfer_history?: any[];
 }
+
+export const assetRepo = {
+  findAll: async (filters?: { category?: string; status?: string; location?: string }) => {
+    let query = supabase.from('assets').select('*');
+    
+    if (filters?.category && filters.category !== 'all') {
+      query = query.eq('category', filters.category);
+    }
+    if (filters?.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.location) {
+      query = query.ilike('current_location', `%${filters.location}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  findById: async (id: string) => {
