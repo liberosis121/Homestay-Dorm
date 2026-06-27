@@ -179,3 +179,13 @@ router.post('/inspections', async (req, res) => {
 
 // ==========================================
 // 5. RESIDENCY
+// ==========================================
+router.get('/residency', async (req, res) => {
+  try {
+    const status = req.query.status as string;
+    const data = await residencyService.getResidencyChecks({ status });
+    sendSuccess(res, data, 'Fetched residency records successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
