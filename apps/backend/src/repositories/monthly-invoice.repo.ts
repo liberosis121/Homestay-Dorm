@@ -102,6 +102,60 @@ export const monthlyInvoiceRepo = {
   },
 
   /**
+   * Lay danh sach cac hop dong dang active phuc vu ghi chi so dien nuoc.
+   */
+  getActiveContracts: async () => {
+    const { data: contracts, error } = await supabase
+      .from('contracts')
+      .select('*')
+      .eq('status', 'active');
+
+    if (error) {
+      throw new Error(`[MonthlyInvoiceRepo] Loi khi lay hop dong active: ${error.message}`);
+    }
+
+    if (!contracts || contracts.length === 0) return [];
+
+    const depositIds = contracts.map(c => c.deposit_id).filter(Boolean);
+    const { data: depositReqs } = depositIds.length > 0
+      ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
+      : { data: [] as any[] };
+
+    const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
+    const { data: rooms } = roomIds.length > 0
+      ? await supabase.from('rooms').select('id, name').in('id', roomIds)
+      : { data: [] as any[] };
+
+    const regIds = (depositReqs || []).map(dr => dr.registration_id).filter(Boolean);
+    const { data: regs } = regIds.length > 0
+      ? await supabase.from('rental_registrations').select('id, cccd').in('id', regIds)
+      : { data: [] as any[] };
+
+    const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
+    const { data: customers } = cccds.length > 0
+      ? await supabase.from('khach_hang').select('cccd, full_name, phone').in('cccd', cccds)
+      : { data: [] as any[] };
+
+    return contracts.map(c => {
+      const depReq = (depositReqs || []).find(dr => dr.id === c.deposit_id);
+      const room = depReq ? (rooms || []).find(r => r.id === depReq.room_id) : null;
+      const reg = depReq ? (regs || []).find(rg => rg.id === depReq.registration_id) : null;
+      const customer = reg ? (customers || []).find(cust => cust.cccd === reg.cccd) : null;
+
+      return {
+        id: c.id,
+        customer_id: customer?.cccd || c.id,
+        customer_name: customer?.full_name || 'Khách thuê',
+        customer_phone: customer?.phone || '',
+        room_id: room?.id || '',
+        room_name: room?.name || 'Chưa xếp phòng',
+        rent_price: c.rent_price || 1500000,
+        period: '06/2026'
+      };
+    });
+  },
+
+  /**
    * Lay chi so dien nuoc moi nhat cua mot phong.
    */
   getLatestMeterReading: async (roomId: string) => {

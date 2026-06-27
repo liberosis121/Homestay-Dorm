@@ -9,6 +9,13 @@ export const monthlyInvoiceService = {
   },
 
   /**
+   * Lay danh sach cac hop dong dang active.
+   */
+  getActiveContracts: async () => {
+    return await monthlyInvoiceRepo.getActiveContracts();
+  },
+
+  /**
    * Lay chi so dien nuoc moi nhat de ho tro dien tu dong khi nhap o front-end.
    */
   getLatestReading: async (roomId: string) => {

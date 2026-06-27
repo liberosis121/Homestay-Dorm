@@ -114,6 +114,19 @@ router.post('/checkin-invoices', async (req, res) => {
 // ============================================================
 
 /**
+ * 🔗 GET /api/accountant/active-contracts
+ * 📝 Lay danh sach cac hop dong active dang cho ghi so dien nuoc.
+ */
+router.get('/active-contracts', async (req, res) => {
+  try {
+    const data = await monthlyInvoiceService.getActiveContracts();
+    return sendSuccess(res, data, 'Lay danh sach hop dong active thanh cong!');
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi lay hop dong active.');
+  }
+});
+
+/**
  * 🔗 GET /api/accountant/monthly-invoices
  * 📝 Lay toan bo danh sach hoa don dinh ky.
  */

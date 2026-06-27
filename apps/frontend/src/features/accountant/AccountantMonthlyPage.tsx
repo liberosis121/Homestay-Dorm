@@ -63,7 +63,11 @@ export default function AccountantMonthlyPage() {
     const loadData = async () => {
       const email = user?.email || 'accountant@homestay.vn';
       try {
-        const liveInvoices = await accountantService.fetchMonthlyInvoices(email);
+        const [liveInvoices, liveContracts] = await Promise.all([
+          accountantService.fetchMonthlyInvoices(email),
+          accountantService.fetchActiveContracts(email)
+        ]);
+
         const mappedInvoices = (liveInvoices || []).map((inv: any) => {
           const contract = inv.contracts || {};
           const reading = inv.electricity_water_records || {};
@@ -89,20 +93,21 @@ export default function AccountantMonthlyPage() {
           };
         });
         setInvoices(mappedInvoices);
+        setContracts(liveContracts || []);
       } catch (err) {
         console.warn('[AccountantMonthly] Failed to load from backend, falling back to mock:', err);
         const db = getMockDB();
         setInvoices(db.monthly_invoices || []);
+        
+        const mockContracts = [
+          { id: 'HD-2026-0001', customer_id: 'u-5', customer_name: 'Lê Lâm Trí Đức', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
+          { id: 'HD-2026-0002', customer_id: 'u-mock-mon-101', customer_name: 'Nguyễn Văn Hải', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
+          { id: 'HD-2026-0003', customer_id: 'u-mock-mon-102', customer_name: 'Trần Thị Thu', room_id: 'r-2', room_name: 'Phòng 102 (Nữ)', rent_price: 2000000, period: '06/2026' },
+          { id: 'HD-2026-0004', customer_id: 'u-mock-mon-104', customer_name: 'Đinh Thị Hoa', room_id: 'r-4', room_name: 'Phòng 202 (Nữ)', rent_price: 1200000, period: '06/2026' },
+          { id: 'HD-2026-0005', customer_id: 'u-mock-mon-105', customer_name: 'Vũ Tú Anh', room_id: 'r-5', room_name: 'Phòng 103 (Nam)', rent_price: 1600000, period: '06/2026' },
+        ];
+        setContracts(mockContracts);
       }
-
-      const activeContracts = [
-        { id: 'HD-2026-0001', customer_id: 'u-5', customer_name: 'Lê Lâm Trí Đức', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
-        { id: 'HD-2026-0002', customer_id: 'u-mock-mon-101', customer_name: 'Nguyễn Văn Hải', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
-        { id: 'HD-2026-0003', customer_id: 'u-mock-mon-102', customer_name: 'Trần Thị Thu', room_id: 'r-2', room_name: 'Phòng 102 (Nữ)', rent_price: 2000000, period: '06/2026' },
-        { id: 'HD-2026-0004', customer_id: 'u-mock-mon-104', customer_name: 'Đinh Thị Hoa', room_id: 'r-4', room_name: 'Phòng 202 (Nữ)', rent_price: 1200000, period: '06/2026' },
-        { id: 'HD-2026-0005', customer_id: 'u-mock-mon-105', customer_name: 'Vũ Tú Anh', room_id: 'r-5', room_name: 'Phòng 103 (Nam)', rent_price: 1600000, period: '06/2026' },
-      ];
-      setContracts(activeContracts);
     };
     loadData();
   }, [user]);

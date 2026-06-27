@@ -94,6 +94,15 @@ export const accountantService = {
     return result.data;
   },
 
+  fetchActiveContracts: async (email: string) => {
+    const res = await fetch(`${API}/api/accountant/active-contracts`, {
+      headers: getHeaders(email)
+    });
+    if (!res.ok) throw new Error('Không thể tải danh sách hợp đồng hoạt động');
+    const result = await res.json();
+    return result.data;
+  },
+
   fetchLatestMeterReading: async (email: string, roomId: string) => {
     const res = await fetch(`${API}/api/accountant/monthly-invoices/latest-reading/${roomId}`, {
       headers: getHeaders(email)
