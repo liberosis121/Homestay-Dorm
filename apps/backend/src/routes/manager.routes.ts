@@ -141,3 +141,11 @@ router.get('/assets', async (req, res) => {
 
 router.post('/assets', async (req, res) => {
   try {
+    const data = await assetRepo.create(req.body);
+    sendSuccess(res, data, 'Added new asset successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.put('/assets/:id', async (req, res) => {
