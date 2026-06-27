@@ -31,3 +31,33 @@ export const handoverService = {
                 date: today,
                 reason: handover.note || 'Bàn giao tài sản phòng',
                 by: 'QL. System'
+              }
+            ];
+
+            await assetRepo.update(sa.assetId, {
+              current_location: handover.room_name,
+              location_type: 'room',
+              status: 'in_use',
+              transfer_history: newHistory
+            });
+          }
+        } catch (err) {
+          console.error(`Failed to update asset ${sa.assetId} during handover:`, err);
+        }
+      }
+    }
+
+    return createdHandover;
+  },
+
+  signHandover: async (id: string, signatureIp: string) => {
+    const now = new Date().toISOString();
+    return await handoverRepo.update(id, {
+      status: 'signed',
+      customer_signed: true,
+      manager_signed: true,
+      signature_ip: signatureIp,
+      signature_timestamp: now
+    });
+  }
+};
