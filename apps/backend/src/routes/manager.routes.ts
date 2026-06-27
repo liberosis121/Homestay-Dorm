@@ -159,3 +159,11 @@ router.put('/assets/:id', async (req, res) => {
 });
 
 router.get('/inspections', async (req, res) => {
+  try {
+    const room_id = req.query.room_id as string;
+    const data = await inspectionService.getInspections({ room_id });
+    sendSuccess(res, data, 'Fetched inspections successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
