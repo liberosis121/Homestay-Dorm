@@ -18,3 +18,19 @@ export const residencyService = {
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  updateResidencyCheck: async (id: string, updates: ResidencyCheckUpdate) => {
+    const { data, error } = await supabase
+      .from('residency_checks')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
