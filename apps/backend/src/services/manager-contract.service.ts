@@ -16,3 +16,10 @@ export const managerContractService = {
       contract.contract_code = `HD-2026-${uniqueSuffix}`;
     }
     contract.status = contract.status || 'active';
+    return await managerContractRepo.create(contract);
+  },
+
+  updateContractStatus: async (id: string, status: 'active' | 'expired' | 'terminated') => {
+    return await managerContractRepo.update(id, { status });
+  }
+};
