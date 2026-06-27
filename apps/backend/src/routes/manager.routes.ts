@@ -86,3 +86,12 @@ router.get('/handovers', async (req, res) => {
   try {
     const customer_id = req.query.customer_id as string;
     const status = req.query.status as string;
+    const data = await handoverService.getHandovers({ customer_id, status });
+    sendSuccess(res, data, 'Fetched handovers successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.get('/handovers/:id', async (req, res) => {
+  try {
