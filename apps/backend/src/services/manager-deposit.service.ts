@@ -54,3 +54,36 @@ export const managerDepositService = {
     if (updateErr) throw updateErr;
 
     // 3. Sync with customer_deposit_requests and deposit_invoices tables
+    if (newStatus === 'approved') {
+      // Update customer_deposit_requests status to 'paid'
+      await supabase
+        .from('customer_deposit_requests')
+        .update({ status: 'paid', note: reviewerNote || undefined })
+        .eq('customer_id', deposit.customer_id)
+        .eq('room_id', deposit.room_id);
+
+      // Update deposit_invoices status to 'paid'
+      await supabase
+        .from('deposit_invoices')
+        .update({ status: 'paid' })
+        .eq('customer_id', deposit.customer_id)
+        .eq('room_id', deposit.room_id);
+    } else if (newStatus === 'rejected' || newStatus === 'need_more') {
+      // Update customer_deposit_requests status to 'invoice_created'
+      await supabase
+        .from('customer_deposit_requests')
+        .update({ status: 'invoice_created', note: reviewerNote || undefined })
+        .eq('customer_id', deposit.customer_id)
+        .eq('room_id', deposit.room_id);
+
+      // Update deposit_invoices status to 'pending'
+      await supabase
+        .from('deposit_invoices')
+        .update({ status: 'pending' })
+        .eq('customer_id', deposit.customer_id)
+        .eq('room_id', deposit.room_id);
+    }
+
+    return updatedDeposit;
+  }
+};
