@@ -132,3 +132,12 @@ router.get('/assets', async (req, res) => {
     const category = req.query.category as string;
     const status = req.query.status as string;
     const location = req.query.location as string;
+    const data = await assetRepo.findAll({ category, status, location });
+    sendSuccess(res, data, 'Fetched assets successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post('/assets', async (req, res) => {
+  try {
