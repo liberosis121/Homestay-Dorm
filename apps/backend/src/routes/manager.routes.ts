@@ -67,3 +67,14 @@ router.post('/contracts', async (req, res) => {
     sendError(res, err);
   }
 });
+
+router.patch('/contracts/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const data = await managerContractService.updateContractStatus(id, status);
+    sendSuccess(res, data, 'Updated contract status successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
