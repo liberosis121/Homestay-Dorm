@@ -8,3 +8,11 @@ export const managerContractService = {
   getContractById: async (id: string) => {
     return await managerContractRepo.findById(id);
   },
+
+  createContract: async (contract: CreateContractDto) => {
+    // Generate standard contract code if not provided
+    if (!contract.contract_code) {
+      const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
+      contract.contract_code = `HD-2026-${uniqueSuffix}`;
+    }
+    contract.status = contract.status || 'active';
