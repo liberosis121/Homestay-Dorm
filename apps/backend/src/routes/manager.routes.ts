@@ -21,3 +21,13 @@ router.get('/deposits', async (req, res) => {
     sendSuccess(res, data, 'Fetched manager deposits successfully');
   } catch (err) {
     sendError(res, err);
+  }
+});
+
+router.patch('/deposits/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, reviewer_note } = req.body;
+    const data = await managerDepositService.updateStatus(id, status, reviewer_note);
+    sendSuccess(res, data, 'Updated deposit status successfully');
+  } catch (err) {
