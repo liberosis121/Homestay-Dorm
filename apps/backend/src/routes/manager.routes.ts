@@ -198,3 +198,12 @@ router.patch('/residency/:id/status', async (req, res) => {
   } catch (err) {
     sendError(res, err);
   }
+});
+
+// ==========================================
+// 6. ROOM & BED STATUS
+// ==========================================
+router.get('/rooms', async (req, res) => {
+  try {
+    const branch_id = req.query.branch_id as string;
+    const data = await roomStatusService.getRooms(branch_id);
