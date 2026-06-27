@@ -10,3 +10,11 @@ export interface ResidencyCheckUpdate {
   };
   violation_note?: string;
   confirmed?: boolean;
+}
+
+export const residencyService = {
+  getResidencyChecks: async (filters?: { status?: string }) => {
+    let query = supabase.from('residency_checks').select('*');
+    if (filters?.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status);
+    }
