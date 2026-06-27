@@ -149,3 +149,13 @@ router.post('/assets', async (req, res) => {
 });
 
 router.put('/assets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await assetRepo.update(id, req.body);
+    sendSuccess(res, data, 'Updated asset successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.get('/inspections', async (req, res) => {
