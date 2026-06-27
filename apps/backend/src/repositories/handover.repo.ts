@@ -13,3 +13,14 @@ export interface CreateHandoverDto {
   signature_timestamp?: string;
   status: 'pending' | 'signed' | 'partial';
   note?: string;
+}
+
+export const handoverRepo = {
+  findAll: async (filters?: { customer_id?: string; status?: string }) => {
+    let query = supabase.from('asset_handovers').select('*');
+    if (filters?.customer_id) {
+      query = query.eq('customer_id', filters.customer_id);
+    }
+    if (filters?.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status);
+    }
