@@ -58,3 +58,12 @@ router.get('/contracts/:id', async (req, res) => {
     sendError(res, err);
   }
 });
+
+router.post('/contracts', async (req, res) => {
+  try {
+    const data = await managerContractService.createContract(req.body);
+    sendSuccess(res, data, 'Created contract successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
