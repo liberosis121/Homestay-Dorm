@@ -11,6 +11,9 @@ import adminAssetsRoutes from './admin-assets.routes';
 import adminBranchesRoutes from './admin-branches.routes';
 import adminRoomsRoutes from './admin-rooms.routes';
 import adminServicesRoutes from './admin-services.routes';
+import saleScheduleRoutes from './sale-schedule.routes';
+import customerLookupRoutes from './customer-lookup.routes';
+import saleContractRoutes from './sale-contract.routes';
 
 const router = Router();
 
@@ -26,5 +29,8 @@ router.use('/admin', adminAssetsRoutes);
 router.use('/admin', adminBranchesRoutes);
 router.use('/admin', adminRoomsRoutes);
 router.use('/admin', adminServicesRoutes);
+router.use('/sale', saleScheduleRoutes);
+router.use('/sale', customerLookupRoutes);
+router.use('/sale', saleContractRoutes);
 
 export default router;
