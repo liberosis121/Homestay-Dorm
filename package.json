@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Homestay Dorm Management System",
   "scripts": {
-    "dev": "pnpm --parallel dev",
+    "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck"
   },

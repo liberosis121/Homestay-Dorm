@@ -16,6 +16,10 @@ import adminDashboardRoutes from './admin-dashboard.routes';
 import saleScheduleRoutes from './sale-schedule.routes';
 import customerLookupRoutes from './customer-lookup.routes';
 import saleContractRoutes from './sale-contract.routes';
+import roomRoutes from './room.routes';
+import leaseRegistrationRoutes from './lease-registration.routes';
+import viewingScheduleRoutes from './viewing-schedule.routes';
+import customerDepositRoutes from './customer-deposit.routes';
 
 const router = Router();
 
@@ -36,5 +40,9 @@ router.use('/admin', adminDashboardRoutes);
 router.use('/sale', saleScheduleRoutes);
 router.use('/sale', customerLookupRoutes);
 router.use('/sale', saleContractRoutes);
+router.use('/lease-registrations', leaseRegistrationRoutes);
+router.use('/viewing-schedules', viewingScheduleRoutes);
+router.use('/deposit-requests', customerDepositRoutes);
+router.use('/', roomRoutes);
 
 export default router;
