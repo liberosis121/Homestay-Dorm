@@ -53,3 +53,16 @@ export const assetRepo = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  update: async (id: string, updates: Partial<CreateAssetDto>) => {
+    const { data, error } = await supabase
+      .from('assets')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
