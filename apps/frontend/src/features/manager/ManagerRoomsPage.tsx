@@ -11,11 +11,11 @@ const T = {
 type RoomStatus = Room['status'];
 
 const STATUS_META: Record<RoomStatus, { label: string; dot: string; bg: string; text: string; border: string }> = {
-  available:   { label: 'Phòng trống',    dot: '#5F7D4E',  bg: '#EAF0E6',     text: '#5F7D4E',  border: '#D2DFCE' },
-  occupied:    { label: 'Đang ở',         dot: '#5C4632',  bg: '#FAF2E8',     text: '#5C4632',  border: '#E3D3C4' },
-  deposited:   { label: 'Đã cọc',         dot: '#B9792B',  bg: '#FAF2E8',     text: '#B9792B',  border: '#EBD8C1' },
-  maintenance: { label: 'Bảo trì',        dot: '#A94F4F',  bg: '#FCECEB',     text: '#A94F4F',  border: '#F6CDCC' },
-  partial:     { label: 'Còn chỗ',        dot: '#5F7D4E',  bg: '#F3FAF2',     text: '#5F7D4E',  border: '#D2DFCE' },
+  available: { label: 'Phòng trống', dot: '#5F7D4E', bg: '#EAF0E6', text: '#5F7D4E', border: '#D2DFCE' },
+  occupied: { label: 'Đang ở', dot: '#5C4632', bg: '#FAF2E8', text: '#5C4632', border: '#E3D3C4' },
+  deposited: { label: 'Đã cọc', dot: '#B9792B', bg: '#FAF2E8', text: '#B9792B', border: '#EBD8C1' },
+  maintenance: { label: 'Bảo trì', dot: '#A94F4F', bg: '#FCECEB', text: '#A94F4F', border: '#F6CDCC' },
+  partial: { label: 'Còn chỗ', dot: '#5F7D4E', bg: '#F3FAF2', text: '#5F7D4E', border: '#D2DFCE' },
 };
 
 const FLOORS = [1, 2, 3, 4, 5];
@@ -91,7 +91,7 @@ export default function ManagerRoomsPage() {
             return u;
           }
           return r;
-         }));
+        }));
       }
     } catch (err) {
       console.error('Error updating room status:', err);
@@ -118,16 +118,16 @@ export default function ManagerRoomsPage() {
       {/* Stats summary */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {Object.entries(STATUS_META).slice(0, 4).concat([['partial', STATUS_META.partial] as any]).map(([key, meta]: any) => (
-          <div key={key} style={{ 
-            background: meta.bg, 
-            border: `1.5px solid ${meta.border}`, 
-            borderRadius: 16, 
-            padding: '12px 16px', 
+          <div key={key} style={{
+            background: meta.bg,
+            border: `1.5px solid ${meta.border}`,
+            borderRadius: 16,
+            padding: '12px 16px',
             textAlign: 'center',
             boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
             transition: 'all 0.15s'
           }}
-          className="hover:-translate-y-0.5 hover:shadow-sm">
+            className="hover:-translate-y-0.5 hover:shadow-sm">
             <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 24, fontWeight: 800, color: meta.text }}>{summary[key]}</div>
             <div style={{ fontSize: 11, color: meta.text, fontWeight: 700, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>{meta.label}</div>
           </div>
@@ -142,15 +142,15 @@ export default function ManagerRoomsPage() {
             {FLOORS.map(floor => (
               <button key={floor} onClick={() => setSelectedFloor(floor)}
                 style={{
-                  width: '100%', 
-                  padding: '10px 0', 
-                  borderRadius: 12, 
-                  fontSize: 14, 
-                  fontWeight: 800, 
-                  cursor: 'pointer', 
-                  border: 'none', 
+                  width: '100%',
+                  padding: '10px 0',
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  border: 'none',
                   transition: 'all 0.15s ease-in-out',
-                  background: selectedFloor === floor ? T.primary : T.bg, 
+                  background: selectedFloor === floor ? T.primary : T.bg,
                   color: selectedFloor === floor ? '#fff' : T.text
                 }}
                 className="hover:bg-primary hover:text-white active:scale-[0.95]">
@@ -175,12 +175,12 @@ export default function ManagerRoomsPage() {
               {floorRooms.map(room => {
                 const meta = STATUS_META[room.status] || STATUS_META.available;
                 const isSelected = selectedRoom?.id === room.id;
-                
-                const gender = room.gender_type === 'male' 
+
+                const gender = room.gender_type === 'male'
                   ? { label: 'Nam', bg: '#EEF2FF', text: '#3730A3', icon: '♂' }
-                  : room.gender_type === 'female' 
-                  ? { label: 'Nữ', bg: '#FDF2F8', text: '#9D174D', icon: '♀' }
-                  : { label: 'Hỗn hợp', bg: '#F3F4F6', text: '#374151', icon: '⚥' };
+                  : room.gender_type === 'female'
+                    ? { label: 'Nữ', bg: '#FDF2F8', text: '#9D174D', icon: '♀' }
+                    : { label: 'Hỗn hợp', bg: '#F3F4F6', text: '#374151', icon: '⚥' };
 
                 const nameParts = room.name.split(' (');
                 const roomMainName = nameParts[0];
@@ -189,13 +189,13 @@ export default function ManagerRoomsPage() {
                 return (
                   <button key={room.id} onClick={() => { setSelectedRoom(room); setDrawerOpen(true); }}
                     style={{
-                      background: meta.bg, 
-                      border: `2px solid ${isSelected ? T.primary : meta.border}`, 
-                      borderRadius: 16, 
+                      background: meta.bg,
+                      border: `2px solid ${isSelected ? T.primary : meta.border}`,
+                      borderRadius: 16,
                       padding: 16,
-                      cursor: 'pointer', 
-                      textAlign: 'left', 
-                      transition: 'all 0.18s ease-in-out', 
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.18s ease-in-out',
                       boxShadow: isSelected ? `0 0 0 3px ${T.primaryLight}` : 'none',
                       display: 'flex',
                       flexDirection: 'column',
@@ -204,7 +204,7 @@ export default function ManagerRoomsPage() {
                       boxSizing: 'border-box'
                     }}
                     className="hover:-translate-y-1 hover:shadow-md active:scale-[0.98] active:translate-y-0 active:shadow-sm">
-                    
+
                     {/* Top Section */}
                     <div className="w-full">
                       <div className="flex items-center justify-between mb-2">
@@ -222,21 +222,21 @@ export default function ManagerRoomsPage() {
                           {meta.label}
                         </span>
                       </div>
-                      <span style={{ 
-                        display: 'block', 
-                        fontFamily: "'Lexend', sans-serif", 
-                        fontSize: 20, 
-                        fontWeight: 800, 
+                      <span style={{
+                        display: 'block',
+                        fontFamily: "'Lexend', sans-serif",
+                        fontSize: 20,
+                        fontWeight: 800,
                         color: T.text,
                         lineHeight: 1.15
                       }}>
                         {roomMainName}
                       </span>
                       {roomGenderSuffix && (
-                        <span style={{ 
-                          display: 'block', 
-                          fontSize: 12.5, 
-                          fontWeight: 700, 
+                        <span style={{
+                          display: 'block',
+                          fontSize: 12.5,
+                          fontWeight: 700,
                           color: T.textMuted,
                           marginTop: 3
                         }}>
@@ -244,7 +244,7 @@ export default function ManagerRoomsPage() {
                         </span>
                       )}
                     </div>
-                    
+
                     {/* Bottom Section */}
                     <div className="flex flex-wrap gap-1.5 w-full">
                       <span style={{
@@ -287,14 +287,14 @@ export default function ManagerRoomsPage() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setDrawerOpen(false)}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.45)', backdropFilter: 'blur(6px)' }} />
           <div
-            style={{ 
-              position: 'absolute', right: 0, top: 0, bottom: 0, width: 440, maxWidth: '90vw', 
-              background: T.surface, boxShadow: '-8px 0 40px rgba(111,88,60,0.18)', 
+            style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: 440, maxWidth: '90vw',
+              background: T.surface, boxShadow: '-8px 0 40px rgba(111,88,60,0.18)',
               display: 'flex', flexDirection: 'column', borderLeft: `1px solid ${T.border}`,
               animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
             }}
             onClick={e => e.stopPropagation()}>
-            
+
             {/* Drawer Header */}
             <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
               <div className="flex items-start justify-between">
@@ -345,14 +345,14 @@ export default function ManagerRoomsPage() {
                     return (
                       <button key={status} onClick={() => changeRoomStatus(selectedRoom.id, status)}
                         style={{
-                          padding: '10px 12px', 
-                          borderRadius: 12, 
+                          padding: '10px 12px',
+                          borderRadius: 12,
                           border: `2px solid ${isActive ? meta.dot : T.border}`,
-                          background: isActive ? meta.bg : T.surface, 
-                          cursor: 'pointer', 
-                          fontSize: 12, 
+                          background: isActive ? meta.bg : T.surface,
+                          cursor: 'pointer',
+                          fontSize: 12,
                           fontWeight: 700,
-                          color: isActive ? meta.text : T.textMuted, 
+                          color: isActive ? meta.text : T.textMuted,
                           transition: 'all 0.18s ease-in-out'
                         }}
                         className="hover:border-primary/30 hover:bg-primary/5 active:scale-[0.96]">

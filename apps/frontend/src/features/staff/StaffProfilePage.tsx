@@ -235,6 +235,25 @@ export default function StaffProfilePage() {
           };
         }
       }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          const role = mockUser.role || 'manager';
+          let email = mockUser.email;
+          if (email.includes('@homestay.com')) {
+            email = email.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${email}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
     } catch (err) {
       console.error('Error getting auth token:', err);
     }

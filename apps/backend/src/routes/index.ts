@@ -6,6 +6,6 @@ import { requireAuth } from '../middleware/auth.middleware';
 const router = Router();
 
 router.use('/auth', authRoutes);
-router.use('/manager', managerRoutes);
+router.use('/manager', requireAuth, managerRoutes);
 
 export default router;
