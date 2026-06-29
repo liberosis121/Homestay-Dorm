@@ -1,41 +1,19 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+/**
+ * profile.service.ts — API calls cho trang Profile của khách hàng.
+ *
+ * Đã chuyển sang dùng api.client (Axios với interceptor token thật).
+ * Trước đây dùng mock-token-${email}, giờ token thật được gắn tự động
+ * qua request interceptor trong api.client.ts.
+ */
 
-export const fetchProfile = async (email: string) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/auth/profile`, {
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    }
-  });
+import apiClient from '../../../lib/api.client';
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi tải thông tin cá nhân');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const fetchProfile = async (): Promise<any> => {
+  const response = await apiClient.get('/auth/profile');
+  return response.data.data;
 };
 
-export const updateProfileApi = async (email: string, profileData: any) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/auth/profile`, {
-    method: 'PUT',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    },
-    body: JSON.stringify(profileData)
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi cập nhật thông tin cá nhân');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const updateProfileApi = async (profileData: Record<string, any>): Promise<any> => {
+  const response = await apiClient.put('/auth/profile', profileData);
+  return response.data.data;
 };
