@@ -34,62 +34,6 @@ interface Branch {
   status: "active" | "inactive";
 }
 
-interface BranchEmployee {
-  id: string;
-  full_name: string;
-  role: string;
-  branch: string;
-}
-
-const BRANCH_EMPLOYEES: BranchEmployee[] = [
-  {
-    id: "NV-002",
-    full_name: "Nguyễn Thị Lan",
-    role: "manager",
-    branch: "Quận 3",
-  },
-  {
-    id: "NV-006",
-    full_name: "Trần Văn Hùng",
-    role: "manager",
-    branch: "Quận 3",
-  },
-  {
-    id: "NV-007",
-    full_name: "Lê Thị Mai",
-    role: "manager",
-    branch: "Bình Thạnh",
-  },
-  {
-    id: "NV-008",
-    full_name: "Phạm Quốc An",
-    role: "manager",
-    branch: "Thủ Đức",
-  },
-  {
-    id: "NV-009",
-    full_name: "Nguyễn Minh Khoa",
-    role: "sale",
-    branch: "Quận 1",
-  },
-  {
-    id: "NV-010",
-    full_name: "Trần Hữu Danh",
-    role: "manager",
-    branch: "Quận 1",
-  },
-];
-
-const isManagerRole = (role: string) => {
-  const normalized = role.toLowerCase();
-  return (
-    normalized.includes("manager") ||
-    normalized.includes("quản lý") ||
-    normalized.includes("quan_ly") ||
-    normalized.includes("role_manager")
-  );
-};
-
 export default function AdminBranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -238,22 +182,6 @@ export default function AdminBranchesPage() {
       alert(err.message || "Lỗi khi đổi trạng thái chi nhánh");
     }
   };
-
-  const managerOptions = useMemo(() => {
-    const branchKey = String(form.district || "").trim();
-    if (!branchKey) return [];
-    return BRANCH_EMPLOYEES.filter(
-      (emp) => emp.branch === branchKey && isManagerRole(emp.role),
-    );
-  }, [form.district]);
-
-  const managerFormOptions = useMemo(() => {
-    if (managerOptions.length === 0) return [];
-    return managerOptions.map((opt) => ({
-      value: opt.full_name,
-      label: opt.full_name,
-    }));
-  }, [managerOptions]);
 
   return (
     <div
@@ -452,11 +380,11 @@ export default function AdminBranchesPage() {
                       <span className="material-symbols-outlined text-[14px]">
                         location_on
                       </span>
-                      {b.address}, {b.district}
+                      {b.address}
                     </p>
                   </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
+                    className={`shrink-0 inline-flex items-center justify-center whitespace-nowrap min-w-[84px] text-[11px] px-2.5 py-1 rounded-full font-medium ${b.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
                   >
                     {b.status === "active" ? "Hoạt động" : "Tạm dừng"}
                   </span>
@@ -487,16 +415,7 @@ export default function AdminBranchesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div
-                    className="flex items-center gap-1 text-xs"
-                    style={{ color: A.textMuted }}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">
-                      person
-                    </span>
-                    {b.manager}
-                  </div>
+                <div className="flex items-center justify-end">
                   <div className="flex gap-1 transition-opacity">
                     <button
                       onClick={(e) => {
@@ -566,131 +485,62 @@ export default function AdminBranchesPage() {
                 </span>
               </button>
             </div>
-            {modalMode === "add" ? (
-              <>
-                <div>
-                  <label
-                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
-                  >
-                    Tên chi nhánh
-                  </label>
-                  <input
-                    type="text"
-                    value={form.name || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="Nhập tên chi nhánh..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
-                  >
-                    Địa chỉ
-                  </label>
-                  <input
-                    type="text"
-                    value={form.address || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, address: e.target.value }))
-                    }
-                    placeholder="Nhập địa chỉ..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
-                  >
-                    Số điện thoại
-                  </label>
-                  <input
-                    type="text"
-                    value={form.phone || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, phone: e.target.value }))
-                    }
-                    placeholder="Nhập số điện thoại..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label
-                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
-                  >
-                    Tên chi nhánh
-                  </label>
-                  <input
-                    type="text"
-                    value={form.name || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="Nhập tên chi nhánh..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
-                  >
-                    Địa chỉ
-                  </label>
-                  <input
-                    type="text"
-                    value={form.address || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, address: e.target.value }))
-                    }
-                    placeholder="Nhập địa chỉ..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
-                  >
-                    Số điện thoại
-                  </label>
-                  <input
-                    type="text"
-                    value={form.phone || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, phone: e.target.value }))
-                    }
-                    placeholder="Nhập số điện thoại..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
-                  >
-                    Quản lý phụ trách
-                  </label>
-                  <CustomSelect
-                    value={form.manager || ""}
-                    onChange={(val) =>
-                      setForm((prev) => ({ ...prev, manager: val }))
-                    }
-                    options={managerFormOptions}
-                    disabled={managerOptions.length === 0}
-                    placeholder={
-                      managerOptions.length === 0
-                        ? "Chưa có quản lý phù hợp"
-                        : "Chọn quản lý..."
-                    }
-                    theme="sale"
-                    triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
-                  />
-                </div>
-              </>
-            )}
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">
+                Tên chi nhánh
+              </label>
+              <input
+                type="text"
+                value={form.name || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder="Nhập tên chi nhánh..."
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">
+                Địa chỉ
+              </label>
+              <input
+                type="text"
+                value={form.address || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, address: e.target.value }))
+                }
+                placeholder="Nhập địa chỉ..."
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">
+                Số điện thoại
+              </label>
+              <input
+                type="text"
+                value={form.phone || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, phone: e.target.value }))
+                }
+                placeholder="Nhập số điện thoại..."
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">
+                Email
+              </label>
+              <input
+                type="email"
+                value={form.email || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, email: e.target.value }))
+                }
+                placeholder="Nhập email chi nhánh..."
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+              />
+            </div>
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setShowModal(false)}
