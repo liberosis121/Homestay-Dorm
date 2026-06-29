@@ -220,28 +220,61 @@ export default function StaffProfilePage() {
 
   const roleInfo = user ? getRoleDisplayInfo(user.role) : getRoleDisplayInfo('sale');
 
-  useEffect(() => {
-    if (user) {
-      const defaultData = {
-        full_name: user.full_name || '',
-        email: user.email || '',
-        phone: user.phone || '0912345678',
-        cccd: '012987654321',
-        dob: '1995-03-15',
-        gender: 'female',
-        issue_date: '2015-06-20',
-        issue_place: 'Cục CSQLHC về TTXH',
-        nationality: 'Việt Nam',
-        permanent_address: '45 Đường Nguyễn Huệ, Quận 1, TP.HCM',
-        department: roleInfo.dept,
-        position: roleInfo.label,
-        branch: 'Chi nhánh Quận 1',
-        employee_code: 'NV-' + (user.id || '001').toUpperCase().slice(-3),
-        start_date: '2023-01-10',
-      };
-      setFormData(defaultData);
-      setInitialData(defaultData);
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
     }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/auth/me`, { headers });
+      const result = await res.json();
+      if (result.success && result.data) {
+        const profileData = result.data;
+        const mappedData = {
+          full_name: profileData.full_name || '',
+          email: profileData.email || '',
+          phone: profileData.phone || '',
+          cccd: profileData.cccd || '',
+          dob: profileData.dob || '',
+          gender: profileData.gender || 'female',
+          issue_date: profileData.issue_date || '',
+          issue_place: profileData.issue_place || '',
+          nationality: profileData.nationality || 'Việt Nam',
+          permanent_address: profileData.permanent_address || profileData.address || '',
+          department: profileData.department || roleInfo.dept,
+          position: profileData.position || roleInfo.label,
+          branch: profileData.branch_id || 'Chi nhánh Quận 1',
+          employee_code: profileData.employee_code || 'NV-' + (profileData.id || '001').toUpperCase().slice(-3),
+          start_date: profileData.join_date || (profileData.created_at ? profileData.created_at.slice(0, 10) : ''),
+        };
+        setFormData(mappedData);
+        setInitialData(mappedData);
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, [user]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -255,17 +288,40 @@ export default function StaffProfilePage() {
     if (initialData) setFormData(initialData);
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!isDirty) return;
     setIsSaving(true);
     setSaveSuccess(false);
-    setTimeout(() => {
+    try {
+      const headers = await getAuthHeaders();
+      const updateData = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        dob: formData.dob || null,
+        gender: formData.gender,
+        join_date: formData.start_date || null
+      };
+
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(updateData)
+      });
+      
+      const result = await res.json();
+      if (result.success) {
+        setSaveSuccess(true);
+        setInitialData(formData);
+        setIsEditing(false);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        console.error(result.message);
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+    } finally {
       setIsSaving(false);
-      setSaveSuccess(true);
-      setInitialData(formData);
-      setIsEditing(false);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+    }
   };
 
   // ── Settings State ────────────────────────────────────────────────────────
