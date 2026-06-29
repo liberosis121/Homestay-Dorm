@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getRoomsApi, Room } from './rooms.api';
 import { useRoomSearchStore } from './store/useRoomSearchStore';
 import ListingRoomCard from './components/ListingRoomCard';
 import FilterBar from './components/FilterBar';
@@ -13,7 +13,7 @@ import { AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function RoomsPage() {
   const [showExtendedFilters, setShowExtendedFilters] = useState(false);
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
 
@@ -24,14 +24,17 @@ export default function RoomsPage() {
   } = useRoomSearchStore();
 
   useEffect(() => {
-    // Simulate API fetch
     setIsLoading(true);
     const fetchRooms = async () => {
-      const db = getMockDB();
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setRooms(db.rooms || []);
-      setIsLoading(false);
+      try {
+        // Gọi API thật thay vì getMockDB()
+        const data = await getRoomsApi();
+        setRooms(data);
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách phòng:', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchRooms();
   }, []);

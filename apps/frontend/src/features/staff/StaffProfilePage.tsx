@@ -395,10 +395,10 @@ export default function StaffProfilePage() {
                 <div className="relative shrink-0">
                   <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#6f583c]/20 to-[#8c7355]/30 border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
                     {user.avatar_url ? (
-                      <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                      <img src={user.avatar_url} alt={user.full_name ?? 'Staff'} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-5xl font-extrabold text-[#6f583c]">
-                        {user.full_name.charAt(0)}
+                        {user.full_name?.charAt(0) ?? 'U'}
                       </span>
                     )}
                   </div>

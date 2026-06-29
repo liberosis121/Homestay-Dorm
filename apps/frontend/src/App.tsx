@@ -24,7 +24,6 @@ import {
   LogIn,
   Search
 } from 'lucide-react';
-import { initializeMockDB } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
@@ -86,12 +85,8 @@ function ScrollToTop() {
   return null;
 }
 
-// App Wrapper to handle initialization
+// App Wrapper — khởi tạo phiên làm việc khi ứng dụng mở lần đầu
 export default function App() {
-  useEffect(() => {
-    initializeMockDB();
-  }, []);
-
   return (
     <HashRouter>
       <AppRoutes />
@@ -200,6 +195,7 @@ function DashboardLayout() {
 
   // Dynamic Sidebar Menu Items based on User Role
   const getMenuItems = () => {
+    if (!user) return [];
     switch (user.role) {
       case 'admin':
         return [
@@ -260,12 +256,14 @@ function DashboardLayout() {
   };
 
   const getRoleLabel = () => {
+    if (!user) return { text: 'Người dùng', bg: 'bg-surface-container text-on-surface border-outline/20' };
     switch (user.role) {
       case 'admin': return { text: 'Quản trị viên', bg: 'bg-primary-container text-on-primary-container border-primary/20' };
       case 'manager': return { text: 'Quản lý chi nhánh', bg: 'bg-primary-fixed-dim/20 text-primary border-primary/20' };
       case 'sale': return { text: 'Nhân viên Sale', bg: 'bg-secondary-container text-on-secondary-container border-secondary/20' };
       case 'accountant': return { text: 'Kế toán', bg: 'bg-tertiary-container text-on-tertiary-container border-tertiary/20' };
       case 'customer': return { text: 'Khách thuê', bg: 'bg-error-container text-on-error-container border-error/20' };
+      default: return { text: 'Người dùng', bg: 'bg-surface-container text-on-surface border-outline/20' };
     }
   };
 
@@ -273,6 +271,7 @@ function DashboardLayout() {
   const menuItems = getMenuItems();
 
   const getSidebarSubtitle = () => {
+    if (!user) return 'PHÂN HỆ';
     switch (user.role) {
       case 'sale': return 'PHÂN HỆ NHÂN VIÊN SALE';
       case 'manager': return 'PHÂN HỆ QUẢN LÝ';
@@ -422,10 +421,10 @@ function DashboardLayout() {
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer overflow-hidden"
               >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.full_name ?? 'User'} className="w-full h-full object-cover" />
                 ) : (
-                  user.full_name.charAt(0)
+                  user?.full_name?.charAt(0) ?? 'U'
                 )}
               </button>
 

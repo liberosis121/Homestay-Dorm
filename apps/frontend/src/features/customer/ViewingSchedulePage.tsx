@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { getMockDB, saveMockDB, ViewingSchedule, CustomerDepositRequest, Room, Bed } from '../../lib/supabaseClient';
+import { ViewingSchedule, getMyViewingSchedulesApi } from './viewing.api';
+import { getMyDepositsApi, createDepositApi } from './deposit.api';
+import { getRoomDetailApi } from '../rooms/rooms.api';
+import { getMockDB, saveMockDB, CustomerDepositRequest } from '../../lib/supabaseClient';
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -242,7 +245,7 @@ const AppointmentCard = ({
   depositRequest?: CustomerDepositRequest;
   onCancel: (id: string) => void;
   onReschedule: (id: string) => void;
-  onCreateDepositRequest: (schedule: ViewingSchedule) => { ok: boolean; message: string };
+  onCreateDepositRequest: (schedule: ViewingSchedule) => Promise<{ ok: boolean; message: string }> | { ok: boolean; message: string };
 }) => {
   const { cancellingId, setCancellingId, reschedulingId, setReschedulingId, rescheduleDate, rescheduleTime, setRescheduleDate, setRescheduleTime } = useViewingScheduleStore();
   const navigate = useNavigate();
@@ -264,8 +267,8 @@ const AppointmentCard = ({
     showToast('Đã cập nhật lịch hẹn thành công.');
   };
 
-  const confirmDepositRequest = () => {
-    const result = onCreateDepositRequest(schedule);
+  const confirmDepositRequest = async () => {
+    const result = await onCreateDepositRequest(schedule);
     setConfirmingDeposit(false);
     if (result.ok) {
       setDepositError('');
@@ -523,19 +526,18 @@ export default function ViewingSchedulePage() {
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
     setIsLoading(true);
-    setTimeout(() => {
-      const db = getMockDB();
-      const list: ViewingSchedule[] = (db.viewing_schedules || []).filter(
-        (s: ViewingSchedule) => s.customer_id === user.id
-      );
-      const requests: CustomerDepositRequest[] = (db.customer_deposit_requests || []).filter(
-        (r: CustomerDepositRequest) => r.customer_id === user.id
-      );
-      setAllSchedules(list);
-      setDepositRequests(requests);
-      setInitialDepositScheduleIds(new Set(requests.map(r => r.viewing_schedule_id)));
+    Promise.all([
+      getMyViewingSchedulesApi(),
+      getMyDepositsApi()
+    ]).then(([schedulesList, depositsList]) => {
+      setAllSchedules(schedulesList);
+      setDepositRequests(depositsList as any);
+      setInitialDepositScheduleIds(new Set(depositsList.map(r => r.viewing_schedule_id)));
+    }).catch(err => {
+      console.error('Lỗi khi tải lịch xem phòng hoặc đặt cọc:', err);
+    }).finally(() => {
       setIsLoading(false);
-    }, 800);
+    });
   }, [user, navigate]);
 
   // Stats
@@ -605,64 +607,34 @@ export default function ViewingSchedulePage() {
     setAllSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'confirmed' } : s));
   };
 
-  const handleCreateDepositRequest = (schedule: ViewingSchedule) => {
+  const handleCreateDepositRequest = async (schedule: ViewingSchedule) => {
     if (!user) return { ok: false, message: 'Bạn cần đăng nhập để gửi yêu cầu đặt cọc.' };
-    const db = getMockDB();
-    const list: CustomerDepositRequest[] = db.customer_deposit_requests || [];
-    const existing = list.find(r => r.viewing_schedule_id === schedule.id && r.customer_id === user.id);
-    if (existing) {
-      setDepositRequests(prev => prev.some(r => r.id === existing.id) ? prev : [...prev, existing]);
-      return { ok: true, message: 'Yêu cầu đặt cọc của bạn đã được ghi nhận trước đó.' };
-    }
 
-    const room = (db.rooms || []).find((r: Room) => r.id === schedule.room_id);
-    const activeRoomDeposit = list.find(
-      r => r.room_id === schedule.room_id && r.status !== 'cancelled'
-    );
+    try {
+      // 1. Lấy chi tiết phòng để xem giường nào trống
+      const roomDetails = await getRoomDetailApi(schedule.room_id);
+      const availableBed = roomDetails.beds?.find(b => b.status === 'available');
 
-    if (!room) {
-      return { ok: false, message: 'Không tìm thấy thông tin phòng trong hệ thống. Vui lòng liên hệ nhân viên Sale để kiểm tra lại.' };
-    }
-
-    if (activeRoomDeposit || room.status === 'deposited' || room.status === 'occupied' || room.status === 'maintenance') {
-      return {
-        ok: false,
-        message: 'Phòng/giường này đã được đặt cọc hoặc không còn trống. Nhân viên Sale sẽ hỗ trợ bạn chọn phương án phù hợp khác.',
-      };
-    }
-
-    if (room.status === 'partial') {
-      const availableBeds = (db.beds || []).filter(
-        (bed: Bed) => bed.room_id === room.id && bed.status === 'available'
-      );
-      if (availableBeds.length === 0) {
-        return {
-          ok: false,
-          message: 'Các giường còn lại trong phòng này hiện đã được đặt cọc hoặc đang có người thuê.',
-        };
+      if (!availableBed) {
+        return { ok: false, message: 'Hiện tại phòng này không còn giường nào trống ở trạng thái sẵn sàng để cọc.' };
       }
+
+      // 2. Gọi API tạo phiếu cọc thật trên hệ thống
+      await createDepositApi({
+        registration_id: schedule.registration_id,
+        bed_id: availableBed.id
+      });
+
+      // 3. Tải lại danh sách cọc để đồng bộ UI
+      const depositsList = await getMyDepositsApi();
+      setDepositRequests(depositsList as any);
+      setInitialDepositScheduleIds(new Set(depositsList.map(r => r.viewing_schedule_id)));
+
+      return { ok: true, message: 'Đã tạo yêu cầu đặt cọc giường thành công trên hệ thống!' };
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Có lỗi xảy ra khi tạo yêu cầu đặt cọc. Vui lòng liên hệ Sale để được hỗ trợ.';
+      return { ok: false, message: msg };
     }
-
-    const request: CustomerDepositRequest = {
-      id: `cdr-${Date.now()}`,
-      customer_id: user.id,
-      customer_name: user.full_name || 'Khách hàng mới',
-      customer_phone: user.phone || '0977889900',
-      room_id: schedule.room_id,
-      room_name: schedule.room_name,
-      room_image_url: schedule.room_image_url,
-      branch_name: schedule.branch_name,
-      viewing_schedule_id: schedule.id,
-      deposit_amount: 1000000,
-      expected_move_in_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: 'pending_sale_confirmation',
-      note: 'Khách đã xem phòng và muốn đăng ký đặt cọc.',
-      created_at: new Date().toISOString(),
-    };
-
-    saveMockDB({ ...db, customer_deposit_requests: [request, ...list] });
-    setDepositRequests(prev => [request, ...prev]);
-    return { ok: true, message: 'Đã gửi yêu cầu đặt cọc cho nhân viên Sale.' };
   };
 
   const statsCards = [
