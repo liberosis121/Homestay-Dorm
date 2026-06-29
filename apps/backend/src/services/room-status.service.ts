@@ -1,17 +1,30 @@
 import { supabase } from '../utils/supabase';
 
+export interface Room {
+  id: string;
+  branch_id: string;
+  name: string;
+  max_occupants: number;
+  floor: number;
+  room_type: string;
+  area: string;
+  amenities: string; // text
+  price: number;
+  status: string;
+}
+
 export const roomStatusService = {
-  getRooms: async (branchId?: string) => {
+  getRooms: async (branchId?: string): Promise<Room[]> => {
     let query = supabase.from('rooms').select('*');
     if (branchId) {
       query = query.eq('branch_id', branchId);
     }
     const { data, error } = await query;
     if (error) throw error;
-    return data || [];
+    return (data as Room[]) || [];
   },
 
-  updateRoomStatus: async (roomId: string, status: 'available' | 'deposited' | 'occupied' | 'maintenance' | 'partial') => {
+  updateRoomStatus: async (roomId: string, status: string): Promise<Room> => {
     const { data, error } = await supabase
       .from('rooms')
       .update({ status })
@@ -19,7 +32,7 @@ export const roomStatusService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as Room;
   },
 
   getBedsByRoom: async (roomId: string) => {
@@ -31,7 +44,7 @@ export const roomStatusService = {
     return data || [];
   },
 
-  updateBedStatus: async (bedId: string, status: 'available' | 'deposited' | 'occupied' | 'maintenance') => {
+  updateBedStatus: async (bedId: string, status: string) => {
     const { data, error } = await supabase
       .from('beds')
       .update({ status })
