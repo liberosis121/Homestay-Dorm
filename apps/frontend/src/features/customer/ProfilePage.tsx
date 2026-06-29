@@ -204,22 +204,23 @@ export default function ProfilePage() {
 
   const [initialData, setInitialData] = useState<typeof formData | null>(null);
 
-  const loadProfile = useCallback(async (email: string) => {
+  const loadProfile = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchProfile(email);
+      // fetchProfile không cần email nữa — token tự động kẹp qua api.client interceptor
+      const data = await fetchProfile();
       const profileData = {
         full_name: data.full_name || user?.full_name || '',
         email: data.email || user?.email || '',
         phone: data.phone || user?.phone || '',
-        cccd: data.cccd || '',
-        dob: data.dob || '',
-        gender: data.gender || 'male',
+        cccd: data.customer?.cccd || '',
+        dob: data.customer?.dob || '',
+        gender: data.customer?.gender === 'Nữ' ? 'female' : 'male',
         issue_date: '2018-05-10',
         issue_place: 'Cục CSQLHC về TTXH',
-        nationality: data.nationality || 'Việt Nam',
-        permanent_address: data.permanent_address || '',
+        nationality: data.customer?.nationality || 'Việt Nam',
+        permanent_address: data.customer?.address || '',
       };
       setFormData(profileData);
       setInitialData(profileData);
@@ -232,12 +233,12 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => {
-    if (user?.email) {
-      loadProfile(user.email);
+    if (user?.id) {
+      loadProfile();
     } else {
       setIsLoading(false);
     }
-  }, [user?.email, loadProfile]);
+  }, [user?.id, loadProfile]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -256,7 +257,7 @@ export default function ProfilePage() {
     setSaveSuccess(false);
     setError(null);
     try {
-      await updateProfileApi(user.email, formData);
+      await updateProfileApi(formData);
       setInitialData(formData);
       setIsEditing(false);
       setSaveSuccess(true);
@@ -443,7 +444,7 @@ export default function ProfilePage() {
                   <p className="text-error font-bold text-base">Không thể tải thông tin cá nhân</p>
                   <p className="text-on-surface-variant text-sm text-center max-w-md">{error}</p>
                   <button
-                    onClick={() => user?.email && loadProfile(user.email)}
+                    onClick={() => loadProfile()}
                     className="px-6 py-2.5 bg-primary text-white rounded-full font-label-md text-sm hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
                   >
                     Thử tải lại
