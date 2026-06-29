@@ -7,6 +7,71 @@ import {
   fetchAdminBranches,
 } from './services/admin.service';
 
+type RoomStatus = 'available' | 'full' | 'maintenance';
+
+interface RoomStatusOption {
+  value: RoomStatus;
+  label: string;
+}
+
+interface RoomFormValues {
+  name?: string;
+  branch?: string;
+  floor?: number;
+  capacity?: number;
+  price?: number;
+}
+
+type RoomFormErrors = Partial<Record<keyof RoomFormValues, string>>;
+
+const ROOM_STATUS_OPTIONS: RoomStatusOption[] = [
+  { value: 'available', label: 'Còn trống' },
+  { value: 'full', label: 'Đã đầy' },
+  { value: 'maintenance', label: 'Bảo trì' },
+];
+
+const ROOM_STATUS_META: Record<RoomStatus, { label: string; cls: string }> = {
+  available: { label: 'Còn trống', cls: 'bg-emerald-50 text-emerald-700' },
+  full: { label: 'Đã đầy', cls: 'bg-[#e8ede7] text-[#5f745d]' },
+  maintenance: { label: 'Bảo trì', cls: 'bg-gray-100 text-gray-600' },
+};
+
+const isRoomStatus = (value: unknown): value is RoomStatus =>
+  value === 'available' || value === 'full' || value === 'maintenance';
+
+const normalizeRoomStatus = (value: unknown): RoomStatus =>
+  isRoomStatus(value) ? value : 'available';
+
+const validateRoomForm = (values: RoomFormValues): RoomFormErrors => {
+  const errors: RoomFormErrors = {};
+
+  if (!values.name?.trim()) {
+    errors.name = 'Vui lòng nhập tên phòng.';
+  }
+  if (!values.branch?.trim()) {
+    errors.branch = 'Vui lòng chọn chi nhánh.';
+  }
+  if (values.floor === undefined || values.floor < 1) {
+    errors.floor = 'Tầng phải lớn hơn hoặc bằng 1.';
+  }
+  if (values.capacity === undefined || values.capacity < 1) {
+    errors.capacity = 'Sức chứa tối đa phải lớn hơn hoặc bằng 1.';
+  }
+  if (values.price === undefined || values.price < 0) {
+    errors.price = 'Đơn giá không được âm.';
+  }
+
+  return errors;
+};
+
+const hasRoomFormErrors = (errors: RoomFormErrors) => Object.keys(errors).length > 0;
+
+const getPageItems = <T,>(items: T[], page: number, pageSize: number): T[] => {
+  const safePage = Math.max(1, page);
+  const start = (safePage - 1) * pageSize;
+  return items.slice(start, start + pageSize);
+};
+
 const A = {
   bg: '#fff8f3',          // Sand background
   sidebar: '#faf2ec',     // Warm Cream
@@ -23,25 +88,21 @@ interface RoomCatalog {
   id: string;
   name: string;
   branch: string;
+  branchId: string;
   floor: number;
   capacity: number;
-  gender_type: 'male' | 'female' | 'mixed';
+  roomType: string;
+  area: string;
   price: number;
-  status: 'available' | 'occupied' | 'deposited' | 'maintenance';
+  status: RoomStatus;
   amenities: string[];
 }
 
-const STATUS_ROOM: Record<string, { label: string; cls: string }> = {
-  available:   { label: 'Phòng trống', cls: 'bg-emerald-50 text-emerald-700' },
-  occupied:    { label: 'Đang thuê',   cls: 'bg-[#e8ede7] text-[#5f745d]' },
-  deposited:   { label: 'Đã đặt cọc', cls: 'bg-amber-50 text-amber-700' },
-  maintenance: { label: 'Bảo trì',    cls: 'bg-gray-100 text-gray-600' },
-  partial:     { label: 'Trống một phần', cls: 'bg-blue-50 text-blue-700' },
+const ROOM_TYPE_LABEL: Record<string, string> = {
+  dorm: 'Dorm (KTX)', twin: 'Twin (Đôi)', single: 'Single (Đơn)',
 };
-
-const GENDER_LABEL: Record<string, string> = {
-  male: 'Nam', female: 'Nữ', mixed: 'Hỗn hợp',
-};
+const roomTypeLabel = (t: string) => ROOM_TYPE_LABEL[t] || t || '—';
+const PAGE_SIZE = 10;
 
 export default function AdminRoomsPage() {
   const formatNumber = (num: number | undefined) => {
@@ -56,26 +117,34 @@ export default function AdminRoomsPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState<RoomCatalog | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<Partial<RoomCatalog>>({});
+  const [formErrors, setFormErrors] = useState<RoomFormErrors>({});
 
+  const [editName, setEditName] = useState('');
   const [editCapacity, setEditCapacity] = useState<number>(4);
   const [editPrice, setEditPrice] = useState<number>(1500000);
-  const [editGenderType, setEditGenderType] = useState<'male' | 'female' | 'mixed'>('mixed');
-  const [editStatus, setEditStatus] = useState<'available' | 'occupied' | 'deposited' | 'maintenance' | 'partial'>('available');
+  const [editRoomType, setEditRoomType] = useState<string>('dorm');
+  const [editArea, setEditArea] = useState<string>('');
+  const [editStatus, setEditStatus] = useState<RoomStatus>('available');
+  const [editErrors, setEditErrors] = useState<RoomFormErrors>({});
 
   useEffect(() => {
     if (selected) {
+      setEditName(selected.name);
       setEditCapacity(selected.capacity);
       setEditPrice(selected.price);
-      setEditGenderType(selected.gender_type);
+      setEditRoomType(selected.roomType);
+      setEditArea(selected.area);
       setEditStatus(selected.status);
+      setEditErrors({});
     }
   }, [selected]);
 
   // DB room: {id,branch_id,name,max_occupants,floor,room_type,area,amenities,price,status}
-  // UI: capacity ← max_occupants; branch ← tên theo branch_id; gender_type không có trong DB → mặc định 'mixed'.
+  // UI: capacity ← max_occupants; branch ← tên theo branch_id; roomType ← room_type; area ← area (đều có thật trong DB).
   const loadRooms = async () => {
     try {
       setIsLoading(true);
@@ -95,12 +164,14 @@ export default function AdminRoomsPage() {
       const mapped: RoomCatalog[] = (dbRooms || []).map((r: any) => ({
         id: r.id,
         name: r.name ?? '',
+        branchId: r.branch_id ?? '',
         branch: nameById.get(r.branch_id) ?? r.branch_id ?? '',
         floor: r.floor ?? 1,
         capacity: r.max_occupants ?? 0,
-        gender_type: 'mixed',
+        roomType: r.room_type ?? '',
+        area: r.area ?? '',
         price: r.price ?? 0,
-        status: (r.status ?? 'available') as RoomCatalog['status'],
+        status: normalizeRoomStatus(r.status),
         amenities: Array.isArray(r.amenities) ? r.amenities : [],
       }));
       setRooms(mapped);
@@ -115,13 +186,17 @@ export default function AdminRoomsPage() {
     loadRooms();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, filterBranch]);
+
   const kpis = useMemo(() => {
     const total = rooms.length;
     const byStatus = (s: string) => rooms.filter(r => r.status === s).length;
     return [
       { icon: 'meeting_room', label: 'Tổng phòng', val: total },
-      { icon: 'check_circle', label: 'Phòng trống', val: byStatus('available'), iconCls: 'bg-emerald-50 text-emerald-700' },
-      { icon: 'bed', label: 'Đang có khách', val: byStatus('occupied'), iconCls: 'bg-[#e8ede7] text-[#5f745d]' },
+      { icon: 'check_circle', label: 'Còn trống', val: byStatus('available'), iconCls: 'bg-emerald-50 text-emerald-700' },
+      { icon: 'bed', label: 'Đã đầy', val: byStatus('full'), iconCls: 'bg-[#e8ede7] text-[#5f745d]' },
       { icon: 'construction', label: 'Đang bảo trì', val: byStatus('maintenance'), iconCls: 'bg-gray-100 text-gray-600' },
     ];
   }, [rooms]);
@@ -130,24 +205,41 @@ export default function AdminRoomsPage() {
     const q = search.toLowerCase();
     const matchQ = !q || r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
     const matchStatus = !filterStatus || r.status === filterStatus;
-    const matchBranch = !filterBranch || r.branch === filterBranch;
+    const matchBranch = !filterBranch || r.branchId === filterBranch;
     return matchQ && matchStatus && matchBranch;
   }), [rooms, search, filterStatus, filterBranch]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedRooms = getPageItems(filtered, safeCurrentPage, PAGE_SIZE);
+  const pageStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(safeCurrentPage * PAGE_SIZE, filtered.length);
+
   const openAdd = () => {
-    setForm({ name: '', branch: '', floor: 1, capacity: 4, gender_type: 'mixed', price: 1500000, status: 'available', amenities: [] });
+    setForm({ name: '', branch: '', floor: 1, capacity: 4, roomType: 'dorm', area: '', price: 1500000, status: 'available', amenities: [] });
+    setFormErrors({});
     setShowModal(true);
   };
 
   const saveForm = async () => {
     // form.branch ở chế độ Add lưu branch_id (chọn từ danh sách chi nhánh thật).
-    if (!form.name || !form.branch) return;
+    const errors = validateRoomForm({
+      name: form.name,
+      branch: form.branch,
+      floor: form.floor,
+      capacity: form.capacity,
+      price: form.price,
+    });
+    setFormErrors(errors);
+    if (hasRoomFormErrors(errors)) return;
+
     const payload = {
       branch_id: form.branch,
-      name: form.name,
+      name: form.name?.trim(),
       max_occupants: form.capacity ?? 0,
       floor: form.floor ?? 1,
-      room_type: 'dorm', // DB cần room_type; UI hiện không thu thập → mặc định 'dorm'
+      room_type: form.roomType || 'dorm',
+      area: form.area ?? '',
       price: form.price ?? 0,
       status: form.status ?? 'available',
       amenities: form.amenities ?? [],
@@ -163,12 +255,25 @@ export default function AdminRoomsPage() {
 
   const handleSaveEdit = async () => {
     if (!selected) return;
-    // gender_type không có cột trong DB → không gửi (chỉ lưu max_occupants/price/status).
+    const errors = validateRoomForm({
+      name: editName,
+      branch: selected.branchId,
+      floor: selected.floor,
+      capacity: editCapacity,
+      price: editPrice,
+    });
+    setEditErrors(errors);
+    if (hasRoomFormErrors(errors)) return;
+
+    // Gửi đúng các cột DB: max_occupants/price/status/room_type/area.
     try {
       await updateRoomApi(selected.id, {
+        name: editName.trim(),
         max_occupants: editCapacity,
         price: editPrice,
         status: editStatus,
+        room_type: editRoomType,
+        area: editArea,
       });
       setSelected(null);
       await loadRooms();
@@ -228,11 +333,7 @@ export default function AdminRoomsPage() {
           onChange={setFilterStatus}
           options={[
             { value: "", label: "Tất cả trạng thái" },
-            { value: "available", label: "Phòng trống" },
-            { value: "occupied", label: "Đang thuê" },
-            { value: "deposited", label: "Đã đặt cọc" },
-            { value: "maintenance", label: "Bảo trì" },
-            { value: "partial", label: "Trống một phần" },
+            ...ROOM_STATUS_OPTIONS,
           ]}
           theme="sale"
           placeholder="Tất cả trạng thái"
@@ -243,7 +344,7 @@ export default function AdminRoomsPage() {
           onChange={setFilterBranch}
           options={[
             { value: "", label: "Tất cả chi nhánh" },
-            ...branches.map((b) => ({ value: b.name, label: b.name })),
+            ...branches.map((b) => ({ value: b.id, label: b.name })),
           ]}
           theme="sale"
           placeholder="Tất cả chi nhánh"
@@ -272,8 +373,8 @@ export default function AdminRoomsPage() {
           <table className="w-full text-left border-collapse">
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
-                {['Mã phòng', 'Tên phòng', 'Chi nhánh', 'Tầng', 'Sức chứa', 'Giới tính', 'Đơn giá/tháng', 'Trạng thái', 'Thao tác'].map(h => {
-                  const isCenter = h === 'Mã phòng' || h === 'Giới tính' || h === 'Thao tác';
+                {['Mã phòng', 'Tên phòng', 'Chi nhánh', 'Tầng', 'Sức chứa tối đa', 'Loại phòng', 'Đơn giá/tháng', 'Trạng thái', 'Thao tác'].map(h => {
+                  const isCenter = h === 'Mã phòng' || h === 'Loại phòng' || h === 'Thao tác';
                   return (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${isCenter ? 'text-center' : ''}`}
                       style={{ color: A.textMuted }}>{h}</th>
@@ -304,8 +405,8 @@ export default function AdminRoomsPage() {
                     <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
                   </td>
                 </tr>
-              ) : filtered.map((r, i) => {
-                const si = STATUS_ROOM[r.status] || STATUS_ROOM.available;
+              ) : paginatedRooms.map((r, i) => {
+                const si = ROOM_STATUS_META[r.status];
                 return (
                   <tr key={r.id}
                     className="group transition-colors"
@@ -316,8 +417,8 @@ export default function AdminRoomsPage() {
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{r.name}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>{r.branch}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>Tầng {r.floor}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{r.capacity} giường</td>
-                    <td className="px-4 py-3 text-sm text-center" style={{ color: A.textPrimary }}>{GENDER_LABEL[r.gender_type]}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{r.capacity} người</td>
+                    <td className="px-4 py-3 text-sm text-center" style={{ color: A.textPrimary }}>{roomTypeLabel(r.roomType)}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.primary }}>
                       {r.price.toLocaleString('vi-VN')}đ
                     </td>
@@ -343,8 +444,31 @@ export default function AdminRoomsPage() {
         <div className="px-5 py-3 flex items-center justify-between"
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}>
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length > 0 ? 1 : 0} - {filtered.length} trong số {filtered.length} phòng
+            Hiển thị {pageStart} - {pageEnd} trong số {filtered.length} phòng
           </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={safeCurrentPage <= 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+              style={{ borderColor: A.border, color: A.textMuted }}
+            >
+              Trước
+            </button>
+            <span className="text-xs font-semibold" style={{ color: A.textMuted }}>
+              Trang {safeCurrentPage}/{totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={safeCurrentPage >= totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+              style={{ borderColor: A.border, color: A.textMuted }}
+            >
+              Sau
+            </button>
+          </div>
         </div>
       </section>
 
@@ -370,7 +494,7 @@ export default function AdminRoomsPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold" style={{ color: A.primary }}>
-                    {selected.name} {!selected.name.includes('(') && `(${GENDER_LABEL[selected.gender_type]})`}
+                    {selected.name} {!selected.name.includes('(') && `(${roomTypeLabel(selected.roomType)})`}
                   </h3>
                   <div className="flex flex-wrap items-center gap-2 mt-1.5">
                     <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ background: A.badgeBg, color: A.accent }}>
@@ -389,6 +513,8 @@ export default function AdminRoomsPage() {
                   { label: 'Mã phòng', val: selected.id },
                   { label: 'Tầng', val: `Tầng ${selected.floor}` },
                   { label: 'Chi nhánh', val: selected.branch },
+                  { label: 'Loại phòng', val: roomTypeLabel(selected.roomType) },
+                  { label: 'Khu vực', val: selected.area || '—' },
                 ].map(({ label, val }) => (
                   <div key={label}>
                     <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>{label}</p>
@@ -415,15 +541,28 @@ export default function AdminRoomsPage() {
               {/* Editable Fields Section */}
               <div className="space-y-4">
                 <h4 className="text-sm font-bold uppercase" style={{ color: A.accent }}>Chỉnh sửa thông tin</h4>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên phòng</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${editErrors.name ? 'border-red-400' : 'border-[#d1c4b9]'}`}
+                  />
+                  {editErrors.name && <p className="text-xs text-red-600 mt-1">{editErrors.name}</p>}
+                </div>
                 
                 <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Sức chứa (giường)</label>
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Sức chứa tối đa (người)</label>
                   <input
                     type="number"
                     value={editCapacity}
                     onChange={e => setEditCapacity(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                    min={1}
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${editErrors.capacity ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                   />
+                  {editErrors.capacity && <p className="text-xs text-red-600 mt-1">{editErrors.capacity}</p>}
                 </div>
 
                 <div>
@@ -436,19 +575,20 @@ export default function AdminRoomsPage() {
                       const num = clean ? parseInt(clean, 10) : 0;
                       setEditPrice(num);
                     }}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${editErrors.price ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                   />
+                  {editErrors.price && <p className="text-xs text-red-600 mt-1">{editErrors.price}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giới tính</label>
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Loại phòng</label>
                   <CustomSelect
-                    value={editGenderType}
-                    onChange={val => setEditGenderType(val as any)}
+                    value={editRoomType}
+                    onChange={val => setEditRoomType(val)}
                     options={[
-                      { value: "male", label: "Nam" },
-                      { value: "female", label: "Nữ" },
-                      { value: "mixed", label: "Hỗn hợp" }
+                      { value: "dorm", label: "Dorm (KTX)" },
+                      { value: "twin", label: "Twin (Đôi)" },
+                      { value: "single", label: "Single (Đơn)" }
                     ]}
                     theme="sale"
                     triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
@@ -456,17 +596,22 @@ export default function AdminRoomsPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Khu vực</label>
+                  <input
+                    type="text"
+                    value={editArea}
+                    onChange={e => setEditArea(e.target.value)}
+                    placeholder="VD: Khu A"
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
                   <CustomSelect
                     value={editStatus}
-                    onChange={val => setEditStatus(val as any)}
-                    options={[
-                      { value: "available", label: "Phòng trống" },
-                      { value: "occupied", label: "Đang thuê" },
-                      { value: "deposited", label: "Đã đặt cọc" },
-                      { value: "maintenance", label: "Bảo trì" },
-                      { value: "partial", label: "Trống một phần" }
-                    ]}
+                    onChange={val => setEditStatus(normalizeRoomStatus(val))}
+                    options={ROOM_STATUS_OPTIONS}
                     theme="sale"
                     triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
                   />
@@ -513,8 +658,9 @@ export default function AdminRoomsPage() {
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên phòng</label>
                 <input value={form.name || ''} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Phòng 101..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${formErrors.name ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.name && <p className="text-xs text-red-600 mt-1">{formErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chi nhánh</label>
@@ -524,33 +670,45 @@ export default function AdminRoomsPage() {
                   options={branches.map((b) => ({ value: b.id, label: b.name }))}
                   theme="sale"
                   placeholder="Chọn chi nhánh..."
-                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                  triggerClassName={`w-full !py-2.5 bg-[#fff8f3] ${formErrors.branch ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.branch && <p className="text-xs text-red-600 mt-1">{formErrors.branch}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tầng</label>
                 <input type="number" value={form.floor || 1} onChange={e => setForm(prev => ({ ...prev, floor: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                  min={1}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${formErrors.floor ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.floor && <p className="text-xs text-red-600 mt-1">{formErrors.floor}</p>}
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Sức chứa</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Sức chứa tối đa</label>
                 <input type="number" value={form.capacity || 4} onChange={e => setForm(prev => ({ ...prev, capacity: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                  min={1}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${formErrors.capacity ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.capacity && <p className="text-xs text-red-600 mt-1">{formErrors.capacity}</p>}
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giới tính</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Loại phòng</label>
                 <CustomSelect
-                  value={form.gender_type || 'mixed'}
-                  onChange={val => setForm(prev => ({ ...prev, gender_type: val as any }))}
+                  value={form.roomType || 'dorm'}
+                  onChange={val => setForm(prev => ({ ...prev, roomType: val }))}
                   options={[
-                    { value: "male", label: "Nam" },
-                    { value: "female", label: "Nữ" },
-                    { value: "mixed", label: "Hỗn hợp" }
+                    { value: "dorm", label: "Dorm (KTX)" },
+                    { value: "twin", label: "Twin (Đôi)" },
+                    { value: "single", label: "Single (Đơn)" }
                   ]}
                   theme="sale"
                   triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Khu vực</label>
+                <input type="text" value={form.area || ''} onChange={e => setForm(prev => ({ ...prev, area: e.target.value }))}
+                  placeholder="VD: Khu A"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
               <div>
@@ -563,22 +721,17 @@ export default function AdminRoomsPage() {
                     const num = clean ? parseInt(clean, 10) : 0;
                     setForm(prev => ({ ...prev, price: num }));
                   }}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${formErrors.price ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.price && <p className="text-xs text-red-600 mt-1">{formErrors.price}</p>}
               </div>
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
               <CustomSelect
                 value={form.status || 'available'}
-                onChange={val => setForm(prev => ({ ...prev, status: val as any }))}
-                options={[
-                  { value: "available", label: "Phòng trống" },
-                  { value: "occupied", label: "Đang thuê" },
-                  { value: "deposited", label: "Đã đặt cọc" },
-                  { value: "maintenance", label: "Bảo trì" },
-                  { value: "partial", label: "Trống một phần" }
-                ]}
+                onChange={val => setForm(prev => ({ ...prev, status: normalizeRoomStatus(val) }))}
+                options={ROOM_STATUS_OPTIONS}
                 theme="sale"
                 triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
               />
