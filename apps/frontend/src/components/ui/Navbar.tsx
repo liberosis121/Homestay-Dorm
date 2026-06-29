@@ -77,7 +77,7 @@ export default function Navbar() {
                     {user.avatar_url ? (
                       <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
                     ) : (
-                      user.email[0].toUpperCase()
+                      (user.email?.[0] ?? user.full_name?.[0] ?? 'U').toUpperCase()
                     )}
                   </div>
                   <span className="hidden sm:block font-label-md">{user.full_name || 'Khách hàng'}</span>
