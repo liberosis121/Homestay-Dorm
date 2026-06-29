@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getMockDB, saveMockDB, ManagerDeposit } from '../../lib/supabaseClient';
+import { ManagerDeposit } from '../../lib/supabaseClient';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -35,24 +35,82 @@ export default function ManagerDepositsPage() {
   const [reviewerNote, setReviewerNote] = useState('');
   const [drawerOpen, setDrawerOpen]     = useState(false);
 
-  useEffect(() => {
-    const db = getMockDB();
-    // ── Migrate old data that may lack deposit_type ──────────────
-    const migrated = (db.manager_deposits || []).map((d: ManagerDeposit, i: number) => ({
-      ...d,
-      deposit_type: d.deposit_type ?? ((i % 3 === 0) ? 'bed' : 'room'),
-    }));
-    // Persist migrated data back so subsequent loads are clean
-    if (!db.manager_deposits?.[0]?.deposit_type) {
-      db.manager_deposits = migrated;
-      saveMockDB(db);
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
     }
-    setDeposits(migrated);
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchDeposits = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/deposits`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        setDeposits(result.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching deposits:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDeposits();
   }, []);
 
   const counts = useMemo(() => {
     const c = { all: deposits.length, pending: 0, approved: 0, rejected: 0, need_more: 0, expired: 0 };
-    deposits.forEach(d => { c[d.status]++; });
+    deposits.forEach(d => { if (c[d.status] !== undefined) c[d.status]++; });
     return c;
   }, [deposits]);
 
@@ -78,46 +136,31 @@ export default function ManagerDepositsPage() {
     setDrawerOpen(true);
   };
 
-  const updateStatus = (newStatus: ManagerDeposit['status']) => {
+  const updateStatus = async (newStatus: ManagerDeposit['status']) => {
     if (!selected) return;
-    const db = getMockDB();
-    
-    // 1. Update the ManagerDeposit status
-    const updated = db.manager_deposits.map((d: ManagerDeposit) =>
-      d.id === selected.id
-        ? { ...d, status: newStatus, reviewer_note: reviewerNote, reviewed_at: new Date().toISOString() }
-        : d
-    );
-    db.manager_deposits = updated;
-
-    // 2. Sync with CustomerDepositRequest and DepositInvoice
-    if (newStatus === 'approved') {
-      db.customer_deposit_requests = (db.customer_deposit_requests || []).map((r: any) =>
-        r.customer_id === selected.customer_id && r.room_id === selected.room_id
-          ? { ...r, status: 'paid', note: reviewerNote || r.note }
-          : r
-      );
-      db.deposit_invoices = (db.deposit_invoices || []).map((i: any) =>
-        i.customer_id === selected.customer_id && i.room_id === selected.room_id
-          ? { ...i, status: 'paid' }
-          : i
-      );
-    } else if (newStatus === 'rejected' || newStatus === 'need_more') {
-      db.customer_deposit_requests = (db.customer_deposit_requests || []).map((r: any) =>
-        r.customer_id === selected.customer_id && r.room_id === selected.room_id
-          ? { ...r, status: 'invoice_created', note: reviewerNote || r.note }
-          : r
-      );
-      db.deposit_invoices = (db.deposit_invoices || []).map((i: any) =>
-        i.customer_id === selected.customer_id && i.room_id === selected.room_id
-          ? { ...i, status: 'pending' }
-          : i
-      );
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/deposits/${selected.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: newStatus,
+          reviewer_note: reviewerNote
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setDeposits(prev => prev.map((d: ManagerDeposit) =>
+          d.id === selected.id
+            ? { ...d, status: newStatus, reviewer_note: reviewerNote, reviewed_at: new Date().toISOString() }
+            : d
+        ));
+        setSelected(prev => prev ? { ...prev, status: newStatus, reviewer_note: reviewerNote } : null);
+        setDrawerOpen(false);
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
     }
-
-    saveMockDB(db);
-    setDeposits(updated);
-    setSelected(prev => prev ? { ...prev, status: newStatus, reviewer_note: reviewerNote } : null);
   };
 
   return (

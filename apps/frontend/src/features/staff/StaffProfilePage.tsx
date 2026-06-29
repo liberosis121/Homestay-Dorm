@@ -133,11 +133,10 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Nhập lại mật khẩu mới"
-                    className={`w-full bg-[#faf2ec] border rounded-full py-3.5 px-6 pr-12 text-sm focus:outline-none focus:ring-2 text-[#1e1b17] transition-all ${
-                      confirmPassword && confirmPassword !== newPassword
-                        ? 'border-error focus:ring-error/20 focus:border-error'
-                        : 'border-[#d1c4b9] focus:border-[#6f583c] focus:ring-[#6f583c]/20'
-                    }`}
+                    className={`w-full bg-[#faf2ec] border rounded-full py-3.5 px-6 pr-12 text-sm focus:outline-none focus:ring-2 text-[#1e1b17] transition-all ${confirmPassword && confirmPassword !== newPassword
+                      ? 'border-error focus:ring-error/20 focus:border-error'
+                      : 'border-[#d1c4b9] focus:border-[#6f583c] focus:ring-[#6f583c]/20'
+                      }`}
                   />
                   <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4e453c] hover:text-[#1e1b17] cursor-pointer">
                     {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -244,7 +243,7 @@ export default function StaffProfilePage() {
           const email = mockUser.email.toLowerCase();
           let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
           let role = mockUser.role || 'manager';
-          
+
           if (email.includes('manager')) {
             uid = 'e002e002-e002-e002-e002-e002e002e002';
             role = 'manager';
@@ -258,7 +257,7 @@ export default function StaffProfilePage() {
             uid = 'e004e004-e004-e004-e004-e004e004e004';
             role = 'admin';
           }
-          
+
           let emailVal = mockUser.email;
           if (emailVal.includes('@homestay.com')) {
             emailVal = emailVal.replace('.com', '.vn');
@@ -342,7 +341,7 @@ export default function StaffProfilePage() {
         headers,
         body: JSON.stringify(updateData)
       });
-      
+
       const result = await res.json();
       if (result.success) {
         setSaveSuccess(true);
@@ -449,22 +448,20 @@ export default function StaffProfilePage() {
           <div className="flex gap-2 bg-[#faf2ec] border border-[#d1c4b9] rounded-full p-1 shrink-0">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'profile'
-                  ? 'bg-[#6f583c] text-white shadow-md'
-                  : 'text-[#4e453c] hover:text-[#1e1b17]'
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${activeTab === 'profile'
+                ? 'bg-[#6f583c] text-white shadow-md'
+                : 'text-[#4e453c] hover:text-[#1e1b17]'
+                }`}
             >
               <User className="w-4 h-4" />
               Hồ sơ
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'settings'
-                  ? 'bg-[#6f583c] text-white shadow-md'
-                  : 'text-[#4e453c] hover:text-[#1e1b17]'
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${activeTab === 'settings'
+                ? 'bg-[#6f583c] text-white shadow-md'
+                : 'text-[#4e453c] hover:text-[#1e1b17]'
+                }`}
             >
               <Shield className="w-4 h-4" />
               Cài đặt
@@ -547,11 +544,10 @@ export default function StaffProfilePage() {
                       setIsEditing(true);
                     }
                   }}
-                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm cursor-pointer border ${
-                    isEditing
-                      ? 'bg-[#faf2ec] hover:bg-[#f4ede6] text-[#4e453c] border-[#d1c4b9]'
-                      : 'bg-[#6f583c]/10 hover:bg-[#6f583c]/20 text-[#6f583c] border-[#6f583c]/20'
-                  }`}
+                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm cursor-pointer border ${isEditing
+                    ? 'bg-[#faf2ec] hover:bg-[#f4ede6] text-[#4e453c] border-[#d1c4b9]'
+                    : 'bg-[#6f583c]/10 hover:bg-[#6f583c]/20 text-[#6f583c] border-[#6f583c]/20'
+                    }`}
                 >
                   {isEditing ? (
                     <>Hủy chỉnh sửa</>
@@ -612,15 +608,7 @@ export default function StaffProfilePage() {
                   <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" />
                   <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} />
 
-                  <InputField label="Số CCCD / Passport *" name="cccd" value={formData.cccd} />
-                  <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} />
 
-                  <div className="md:col-span-2">
-                    <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} />
-                  </div>
                 </div>
               </div>
 
