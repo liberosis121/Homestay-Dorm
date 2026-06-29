@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ManagerDeposit } from '../../lib/supabaseClient';
 
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes} ${day}/${month}/${year}`;
+  } catch (err) {
+    return dateStr;
+  }
+};
+
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
   border: '#E7DED2', primary: '#5C4632', primaryLight: '#FAF2E8',
@@ -273,15 +288,15 @@ export default function ManagerDepositsPage() {
         <div className="overflow-x-auto">
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '11%' }} /> {/* Mã cọc */}
-              <col style={{ width: '16%' }} /> {/* Khách hàng */}
-              <col style={{ width: '12%' }} /> {/* Loại đặt cọc */}
-              <col style={{ width: '14%' }} /> {/* Phòng / Giường */}
-              <col style={{ width: '12%' }} /> {/* Số tiền */}
-              <col style={{ width: '11%' }} /> {/* Ngân hàng */}
-              <col style={{ width: '11%' }} /> {/* Ngày cọc */}
-              <col style={{ width: '13%' }} /> {/* Trạng thái */}
-              <col style={{ width: '10%' }} /> {/* Action */}
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
@@ -358,7 +373,7 @@ export default function ManagerDepositsPage() {
                     <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dep.bank_name}</td>
 
                     {/* Ngày cọc */}
-                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>{dep.deposit_date}</td>
+                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>{formatDate(dep.deposit_date)}</td>
 
                     {/* Trạng thái */}
                     <td style={{ padding: '14px 16px' }}>
@@ -434,15 +449,20 @@ export default function ManagerDepositsPage() {
               </div>
               {/* Status + Type badges */}
               <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: STATUS_LABELS[selected.status].bg, color: STATUS_LABELS[selected.status].text,
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
-                  border: `1px solid ${STATUS_LABELS[selected.status].text}1A`
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{STATUS_LABELS[selected.status].icon}</span>
-                  {STATUS_LABELS[selected.status].label}
-                </span>
+                {(() => {
+                  const statusMeta = STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending;
+                  return (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      background: statusMeta.bg, color: statusMeta.text,
+                      fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
+                      border: `1px solid ${statusMeta.text}1A`
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{statusMeta.icon}</span>
+                      {statusMeta.label}
+                    </span>
+                  );
+                })()}
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   background: getTypeCfg(selected.deposit_type).bg,
@@ -480,7 +500,7 @@ export default function ManagerDepositsPage() {
                     { label: 'Số tiền cọc',   val: `${selected.amount.toLocaleString('vi-VN')}đ`, isAmount: true },
                     { label: 'Ngân hàng',     val: selected.bank_name },
                     { label: 'Số tài khoản',  val: selected.account_number },
-                    { label: 'Ngày cọc',      val: selected.deposit_date },
+                    { label: 'Ngày cọc',      val: formatDate(selected.deposit_date) },
                   ].map((row, i) => (
                     <div key={i} className="flex justify-between items-center">
                       <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
