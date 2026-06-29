@@ -241,13 +241,29 @@ export default function StaffProfilePage() {
       if (mockUserStr) {
         const mockUser = JSON.parse(mockUserStr);
         if (mockUser && mockUser.email) {
-          const uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
-          const role = mockUser.role || 'manager';
-          let email = mockUser.email;
-          if (email.includes('@homestay.com')) {
-            email = email.replace('.com', '.vn');
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
           }
-          const mockToken = `mock-token-${uid}-${role}-${email}`;
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
           return {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${mockToken}`
