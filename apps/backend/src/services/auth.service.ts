@@ -1,11 +1,19 @@
-/**
- * Service layer de xu ly nghiep vu lien quan den xac thuc tai khoan (Authentication).
- * Phu thuoc: utils/supabase.ts, repositories/profile.repo.ts
- */
-
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 import * as profileRepo from '../repositories/profile.repo';
 import { USER_ROLE } from '../types/constants';
+
+// Helper de tao client auth rieng cho tung request, tranh o nhiem session len client singleton dung chung
+const getAuthClient = () => createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  }
+);
 
 export const authService = {
   /**
@@ -17,8 +25,9 @@ export const authService = {
    * @param phone - Số điện thoại liên hệ
    */
   register: async (email: string, password: string, fullName: string, phone: string) => {
-    // 1. Gọi Supabase Auth đăng ký tài khoản mới
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    // 1. Gọi Supabase Auth đăng ký tài khoản mới qua client tam thoi
+    const authClient = getAuthClient();
+    const { data, error: signUpError } = await authClient.auth.signUp({
       email,
       password,
     });
@@ -68,7 +77,7 @@ export const authService = {
       };
     } catch (dbError: any) {
       // Rollback: Neu luu DB loi, xoa user Auth vua tao de khach hang co the dang ky lai
-      await supabase.auth.admin.deleteUser(userId);
+      await authClient.auth.admin.deleteUser(userId);
       throw new Error(`Lỗi khởi tạo hồ sơ dữ liệu: ${dbError.message}`);
     }
   },
@@ -80,8 +89,9 @@ export const authService = {
    * @param password - Mật khẩu người dùng
    */
   login: async (email: string, password: string) => {
-    // 1. Xác thực thông tin đăng nhập với Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // 1. Xác thực thông tin đăng nhập với Supabase Auth qua client tam thoi
+    const authClient = getAuthClient();
+    const { data, error } = await authClient.auth.signInWithPassword({
       email,
       password,
     });
@@ -126,8 +136,9 @@ export const authService = {
    * @param token - Token hiện tại của user để verify đăng xuất
    */
   logout: async (token: string) => {
-    // Thu hồi session hiện tại trên Supabase
-    const { error } = await supabase.auth.signOut();
+    // Thu hồi session hiện tại trên Supabase qua client tam thoi
+    const authClient = getAuthClient();
+    const { error } = await authClient.auth.signOut();
     if (error) {
       throw new Error(`Đăng xuất thất bại: ${error.message}`);
     }
@@ -140,6 +151,7 @@ export const authService = {
    * @param userId - UUID của người dùng hiện tại
    */
   getProfile: async (userId: string) => {
+
     // 1. Lấy thông tin profile gốc
     const profile = await profileRepo.getProfileByUserId(userId);
     if (!profile) {
@@ -180,6 +192,8 @@ export const authService = {
       throw new Error('Không tìm thấy thông tin hồ sơ.');
     }
 
+
+
     const { full_name, phone, avatar_url, ...restDetails } = data;
 
     // 2. Cập nhật bảng profiles chính
@@ -191,37 +205,46 @@ export const authService = {
 
     // 3. Cập nhật bảng chi tiết (khach_hang hoặc nhan_vien)
     if (profile.role === USER_ROLE.CUSTOMER) {
-      // Cập nhật bảng khach_hang
-      const dbGender = restDetails.gender === 'male' ? 'Nam' : (restDetails.gender === 'female' ? 'Nữ' : 'Khác');
-      
-      const { error: customerError } = await supabase
-        .from('khach_hang')
-        .update({
-          full_name,
-          phone,
-          cccd: restDetails.cccd,
-          dob: restDetails.dob || null,
-          gender: dbGender,
-          nationality: restDetails.nationality || 'Việt Nam',
-          address: restDetails.permanent_address || restDetails.address,
-        })
-        .eq('user_id', userId);
+      // Chi cap nhat cac truong khach hang co trong request body
+      const customerUpdates: Record<string, any> = {};
+      if (full_name !== undefined) customerUpdates.full_name = full_name;
+      if (phone !== undefined) customerUpdates.phone = phone;
+      if (restDetails.cccd !== undefined) customerUpdates.cccd = restDetails.cccd;
+      if (restDetails.dob !== undefined) customerUpdates.dob = restDetails.dob || null;
+      // Chi map gender khi KH co gui truong gender, tranh ghi de 'Khac' khi KH khong gui
+      if (restDetails.gender !== undefined) {
+        customerUpdates.gender = restDetails.gender === 'male' ? 'Nam' : (restDetails.gender === 'female' ? 'Nữ' : 'Khác');
+      }
+      if (restDetails.nationality !== undefined) customerUpdates.nationality = restDetails.nationality;
+      if (restDetails.permanent_address !== undefined || restDetails.address !== undefined) {
+        customerUpdates.address = restDetails.permanent_address || restDetails.address;
+      }
 
-      if (customerError) {
-        throw new Error(`Cập nhật thông tin khách hàng thất bại: ${customerError.message}`);
+      if (Object.keys(customerUpdates).length > 0) {
+        const { error: customerError } = await supabase
+          .from('khach_hang')
+          .update(customerUpdates)
+          .eq('user_id', userId);
+
+        if (customerError) {
+          throw new Error(`Cập nhật thông tin khách hàng thất bại: ${customerError.message}`);
+        }
       }
     } else if ([USER_ROLE.SALE, USER_ROLE.MANAGER, USER_ROLE.ACCOUNTANT].includes(profile.role as any)) {
-      // Cập nhật bảng nhan_vien
-      const { error: staffError } = await supabase
-        .from('nhan_vien')
-        .update({
-          full_name,
-          phone,
-        })
-        .eq('id', userId);
+      // Chi cap nhat cac truong nhan vien co trong request body
+      const staffUpdates: Record<string, any> = {};
+      if (full_name !== undefined) staffUpdates.full_name = full_name;
+      if (phone !== undefined) staffUpdates.phone = phone;
 
-      if (staffError) {
-        throw new Error(`Cập nhật thông tin nhân viên thất bại: ${staffError.message}`);
+      if (Object.keys(staffUpdates).length > 0) {
+        const { error: staffError } = await supabase
+          .from('nhan_vien')
+          .update(staffUpdates)
+          .eq('id', userId);
+
+        if (staffError) {
+          throw new Error(`Cập nhật thông tin nhân viên thất bại: ${staffError.message}`);
+        }
       }
     }
 
@@ -234,7 +257,9 @@ export const authService = {
    * @param email - Email cần khôi phục mật khẩu
    */
   forgotPassword: async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // Dung client tam thoi de tranh o nhiem session len singleton dung chung
+    const authClient = getAuthClient();
+    const { error } = await authClient.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password`,
     });
 

@@ -15,7 +15,7 @@ const router = Router();
  * 🔗 POST /api/deposit-requests
  * 📝 Khach hang gui yeu cau dat coc giuong/phong.
  */
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requireRole(USER_ROLE.CUSTOMER), async (req, res) => {
   try {
     const { registration_id, bed_id } = req.body;
 
@@ -82,7 +82,7 @@ router.get('/:id', requireAuth, requireRole(USER_ROLE.CUSTOMER, USER_ROLE.SALE, 
 
     return sendSuccess(res, result, 'Lay chi tiet phieu dat coc thanh cong!');
   } catch (error: any) {
-    const statusCode = error.message?.includes('khong ton tai') ? 404 : 500;
+    const statusCode = error.message?.includes('không tồn tại') || error.message?.includes('Không tìm thấy') ? 404 : 403;
     return sendError(res, error, error.message || 'Loi khi lay chi tiet phieu dat coc.', statusCode);
   }
 });

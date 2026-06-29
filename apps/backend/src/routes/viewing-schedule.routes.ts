@@ -54,7 +54,7 @@ router.get('/my', requireAuth, async (req, res) => {
  *    - Neu truyen ?staff_only=true ➔ Chỉ xem lich minh phu trach.
  *    - Ngoc lai ➔ Xem toan bo lich trong he thong.
  */
-router.get('/', requireAuth, requireRole(USER_ROLE.SALE), async (req, res) => {
+router.get('/', requireAuth, requireRole(USER_ROLE.SALE, USER_ROLE.MANAGER), async (req, res) => {
   try {
     const staffOnly = req.query.staff_only === 'true';
     let result;
