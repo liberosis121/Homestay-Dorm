@@ -3,9 +3,9 @@ import { sendSuccess, sendError } from '../utils/response.util';
 import { managerDepositService } from '../services/manager-deposit.service';
 import { managerContractService } from '../services/manager-contract.service';
 import { handoverService } from '../services/handover.service';
-import { inspectionService } from '../services/inspection.service';
-import { roomStatusService } from '../services/room-status.service';
 import { residencyService } from '../services/residency.service';
+import { roomStatusService } from '../services/room-status.service';
+import { incidentalCostService } from '../services/incidental-cost.service';
 import { assetRepo } from '../repositories/asset.repo';
 
 const router = Router();
@@ -84,9 +84,8 @@ router.patch('/contracts/:id/status', async (req, res) => {
 // ==========================================
 router.get('/handovers', async (req, res) => {
   try {
-    const customer_id = req.query.customer_id as string;
-    const status = req.query.status as string;
-    const data = await handoverService.getHandovers({ customer_id, status });
+    const contract_id = req.query.contract_id as string;
+    const data = await handoverService.getHandovers({ contract_id });
     sendSuccess(res, data, 'Fetched handovers successfully');
   } catch (err) {
     sendError(res, err);
@@ -105,8 +104,8 @@ router.get('/handovers/:id', async (req, res) => {
 
 router.post('/handovers', async (req, res) => {
   try {
-    const { assetsList, ...handoverData } = req.body;
-    const data = await handoverService.createHandover(handoverData, assetsList);
+    const { detailsList, ...handoverData } = req.body;
+    const data = await handoverService.createHandover(handoverData, detailsList);
     sendSuccess(res, data, 'Created handover successfully');
   } catch (err) {
     sendError(res, err);
@@ -116,16 +115,16 @@ router.post('/handovers', async (req, res) => {
 router.post('/handovers/:id/sign', async (req, res) => {
   try {
     const { id } = req.params;
-    const signatureIp = (req.ip || req.headers['x-forwarded-for'] || '127.0.0.1') as string;
-    const data = await handoverService.signHandover(id, signatureIp);
-    sendSuccess(res, data, 'Signed handover successfully');
+    const { isStaff } = req.body;
+    const data = await handoverService.signHandover(id, !!isStaff);
+    sendSuccess(res, data, 'Signed handover status successfully');
   } catch (err) {
     sendError(res, err);
   }
 });
 
 // ==========================================
-// 4. ASSETS & INSPECTIONS
+// 4. ASSETS
 // ==========================================
 router.get('/assets', async (req, res) => {
   try {
@@ -148,43 +147,89 @@ router.post('/assets', async (req, res) => {
   }
 });
 
-router.put('/assets/:id', async (req, res) => {
+router.get('/assets/:serialNumber', async (req, res) => {
   try {
-    const { id } = req.params;
-    const data = await assetRepo.update(id, req.body);
+    const { serialNumber } = req.params;
+    const data = await assetRepo.findBySerialNumber(serialNumber);
+    sendSuccess(res, data, 'Fetched asset by serial number successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.put('/assets/:serialNumber', async (req, res) => {
+  try {
+    const { serialNumber } = req.params;
+    const data = await assetRepo.update(serialNumber, req.body);
     sendSuccess(res, data, 'Updated asset successfully');
   } catch (err) {
     sendError(res, err);
   }
 });
 
-router.get('/inspections', async (req, res) => {
+// ==========================================
+// 5. INCIDENTAL COSTS
+// ==========================================
+router.get('/incidental-costs', async (req, res) => {
   try {
-    const room_id = req.query.room_id as string;
-    const data = await inspectionService.getInspections({ room_id });
-    sendSuccess(res, data, 'Fetched inspections successfully');
+    const contract_id = req.query.contract_id as string;
+    const status = req.query.status as string;
+    const data = await incidentalCostService.getIncidentalCosts({ contract_id, status });
+    sendSuccess(res, data, 'Fetched incidental costs successfully');
   } catch (err) {
     sendError(res, err);
   }
 });
 
-router.post('/inspections', async (req, res) => {
+router.post('/incidental-costs', async (req, res) => {
   try {
-    const data = await inspectionService.createInspection(req.body);
-    sendSuccess(res, data, 'Saved room inspection successfully');
+    const { assetStatusUpdate, ...costData } = req.body;
+    const data = await incidentalCostService.createIncidentalCost(costData, assetStatusUpdate);
+    sendSuccess(res, data, 'Created incidental cost successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.patch('/incidental-costs/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const data = await incidentalCostService.updateIncidentalCostStatus(id, status);
+    sendSuccess(res, data, 'Updated incidental cost status successfully');
   } catch (err) {
     sendError(res, err);
   }
 });
 
 // ==========================================
-// 5. RESIDENCY
+// 6. RESIDENCY
 // ==========================================
 router.get('/residency', async (req, res) => {
   try {
-    const status = req.query.status as string;
-    const data = await residencyService.getResidencyChecks({ status });
+    const contract_id = req.query.contract_id as string;
+    const check_result = req.query.check_result as string;
+    const data = await residencyService.getResidencyChecks({ contract_id, check_result });
     sendSuccess(res, data, 'Fetched residency records successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.get('/residency/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const data = await residencyService.getResidencyCheckById(id);
+    sendSuccess(res, data, 'Fetched residency record details successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post('/residency', async (req, res) => {
+  try {
+    const data = await residencyService.createResidencyCheck(req.body);
+    sendSuccess(res, data, 'Created residency record successfully');
   } catch (err) {
     sendError(res, err);
   }
@@ -192,7 +237,7 @@ router.get('/residency', async (req, res) => {
 
 router.patch('/residency/:id/status', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
     const data = await residencyService.updateResidencyCheck(id, req.body);
     sendSuccess(res, data, 'Updated residency status successfully');
   } catch (err) {
@@ -201,7 +246,7 @@ router.patch('/residency/:id/status', async (req, res) => {
 });
 
 // ==========================================
-// 6. ROOM & BED STATUS
+// 7. ROOM & BED STATUS
 // ==========================================
 router.get('/rooms', async (req, res) => {
   try {
