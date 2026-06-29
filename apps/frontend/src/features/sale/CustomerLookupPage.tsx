@@ -7,8 +7,11 @@ import CustomerTabs from './components/CustomerTabs';
 import CustomerTimeline from './components/CustomerTimeline';
 import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
 import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../stores/authStore';
+import { customerLookupService } from './services/customerLookup.service';
 
 export default function CustomerLookupPage() {
+  const { user } = useAuthStore();
 
   // Trạng thái Form Tìm kiếm
   const [searchName, setSearchName] = useState('');
@@ -22,13 +25,23 @@ export default function CustomerLookupPage() {
 
   // Load database từ LocalStorage lúc khởi tạo
   useEffect(() => {
-    const db = getMockDB();
-    if (db && db.customers && db.customers.length > 0) {
-      setCustomers(db.customers);
-    } else {
-      setCustomers(MOCK_CUSTOMERS);
-    }
-  }, []);
+    const loadCustomersList = async () => {
+      const email = user?.email || 'sale@homestay.vn';
+      try {
+        const liveCustomers = await customerLookupService.fetchCustomers(email);
+        setCustomers(liveCustomers);
+      } catch (err) {
+        console.warn('[CustomerLookup] Failed to fetch live customer data, falling back to mock:', err);
+        const db = getMockDB();
+        if (db && db.customers && db.customers.length > 0) {
+          setCustomers(db.customers);
+        } else {
+          setCustomers(MOCK_CUSTOMERS);
+        }
+      }
+    };
+    loadCustomersList();
+  }, [user]);
 
   // Lọc danh sách khách hàng dựa trên thông tin tìm kiếm
   const filteredCustomers = useMemo(() => {
@@ -107,15 +120,25 @@ export default function CustomerLookupPage() {
 
 
   // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
-  const handleUpdateCustomer = (updatedCust: Customer) => {
-    const db = getMockDB();
-    const updatedList = customers.map(c => 
-      c.id === updatedCust.id ? updatedCust : c
-    );
-    setCustomers(updatedList);
-    db.customers = updatedList;
-    saveMockDB(db);
-    setActiveCustomer(updatedCust);
+  const handleUpdateCustomer = async (updatedCust: Customer) => {
+    const email = user?.email || 'sale@homestay.vn';
+    try {
+      await customerLookupService.updateCustomerNote(email, updatedCust.id, updatedCust.importantNote);
+      const liveCustomers = await customerLookupService.fetchCustomers(email);
+      setCustomers(liveCustomers);
+      const updatedActive = liveCustomers.find((c: any) => c.id === updatedCust.id);
+      setActiveCustomer(updatedActive || updatedCust);
+    } catch (err) {
+      console.warn('[CustomerLookup] Note update live API failed, falling back to mock:', err);
+      const db = getMockDB();
+      const updatedList = customers.map(c => 
+        c.id === updatedCust.id ? updatedCust : c
+      );
+      setCustomers(updatedList);
+      db.customers = updatedList;
+      saveMockDB(db);
+      setActiveCustomer(updatedCust);
+    }
   };
 
 

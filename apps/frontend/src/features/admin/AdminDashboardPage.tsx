@@ -1,16 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getMockDB } from '../../lib/supabaseClient';
-import { 
-  Building, 
-  Layers, 
-  Users, 
-  Folder, 
-  Database, 
-  ShieldCheck, 
+import { fetchAdminDashboard } from './services/admin.service';
+import {
+  Building,
+  Layers,
+  Users,
+  Folder,
+  Database,
   ArrowRight,
   TrendingUp,
-  UserCheck,
   Calendar,
   RefreshCw
 } from 'lucide-react';
@@ -19,72 +17,97 @@ import { useAuthStore } from '../../stores/authStore';
 export default function AdminDashboardPage() {
   const { user } = useAuthStore();
   const [data, setData] = useState<any>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const db = getMockDB();
-    setData(db);
+    (async () => {
+      try {
+        setLoadError(null);
+        const dashboard = await fetchAdminDashboard();
+        setData(dashboard);
+      } catch (err: any) {
+        setLoadError(err.message || 'Lỗi khi tải số liệu tổng quan');
+      }
+    })();
   }, []);
 
+  // API shape: { branches, rooms{total,byStatus}, beds{total,occupied,available},
+  //   capacity{maxOccupants,occupancyRate}, accounts{staff,customers,total}, services{total,available} }
+  // Lưu ý: "Giường" ← beds.total; "người (sức chứa)" ← capacity.maxOccupants (DB không có capacity/current_occupants ở rooms).
   const stats = useMemo(() => {
     if (!data) return null;
 
-    const branchesCount = data.branches?.length || 0;
-    const rooms = data.rooms || [];
-    const roomsCount = rooms.length;
-    const capacityCount = rooms.reduce((acc: number, r: any) => acc + (r.capacity || 0), 0);
-    const occupantsCount = rooms.reduce((acc: number, r: any) => acc + (r.current_occupants || 0), 0);
-
-    const profiles = data.profiles || [];
-    const staffCount = profiles.filter((p: any) => p.role !== 'customer').length;
-    const customerCount = profiles.filter((p: any) => p.role === 'customer').length;
-
-    const servicesCount = data.services?.length || 0;
-
-    // Room Status breakdown
-    const roomStatus = {
-      available: rooms.filter((r: any) => r.status === 'available').length,
-      occupied: rooms.filter((r: any) => r.status === 'occupied').length,
-      deposited: rooms.filter((r: any) => r.status === 'deposited').length,
-      maintenance: rooms.filter((r: any) => r.status === 'maintenance').length,
-      partial: rooms.filter((r: any) => r.status === 'partial').length,
-    };
-
+    const rs = data.rooms?.byStatus || {};
     return {
-      branchesCount,
-      roomsCount,
-      capacityCount,
-      occupantsCount,
-      staffCount,
-      customerCount,
-      servicesCount,
-      roomStatus,
+      branchesCount: data.branches ?? 0,
+      roomsCount: data.rooms?.total ?? 0,
+      capacityCount: data.beds?.total ?? 0,
+      occupantsCount: data.beds?.occupied ?? 0,
+      maxOccupants: data.capacity?.maxOccupants ?? 0,
+      staffCount: data.accounts?.staff ?? 0,
+      customerCount: data.accounts?.customers ?? 0,
+      servicesCount: data.services?.total ?? 0,
+      servicesAvailable: data.services?.available ?? 0,
+      roomStatus: {
+        available: rs.available ?? 0,
+        occupied: rs.occupied ?? 0,
+        deposited: rs.deposited ?? 0,
+        maintenance: rs.maintenance ?? 0,
+        partial: rs.partial ?? 0,
+      },
     };
   }, [data]);
 
   const todayLabel = useMemo(() => {
-    return new Date().toLocaleDateString('vi-VN', { 
-      weekday: 'long', 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
+    return new Date().toLocaleDateString('vi-VN', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
     });
   }, []);
 
   if (!stats) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-10 h-10 border-4 border-[#6f583c] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-[#6f583c] mt-2">Đang tải dữ liệu tổng quan...</p>
-        </div>
+        {loadError ? (
+          <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2 bg-red-50 text-red-700 border border-red-200">
+            <span className="material-symbols-outlined text-[18px]">error</span>
+            {loadError}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-10 h-10 border-4 border-[#6f583c] border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm font-medium text-[#6f583c] mt-2">Đang tải dữ liệu tổng quan...</p>
+          </div>
+        )}
       </div>
     );
   }
 
   // Calculate percentages for UI display
-  const occupancyRate = stats.capacityCount > 0 
-    ? Math.round((stats.occupantsCount / stats.capacityCount) * 100) 
+  const occupancyRate = stats.capacityCount > 0
+    ? Math.round((stats.occupantsCount / stats.capacityCount) * 100)
     : 0;
+
+  // Vẽ vòng donut theo số liệu phòng THẬT (không hardcode tỉ lệ).
+  const donutBase = [
+    { label: 'Trống', color: '#5f745d', count: stats.roomStatus.available },
+    { label: 'Đang ở', color: '#6f583c', count: stats.roomStatus.occupied },
+    { label: 'Đã cọc', color: '#c9af8f', count: stats.roomStatus.deposited },
+    { label: 'Trống một phần', color: '#a48f7a', count: stats.roomStatus.partial },
+    { label: 'Bảo trì', color: '#9e9489', count: stats.roomStatus.maintenance },
+  ];
+  const donutTotal = donutBase.reduce((sum, s) => sum + s.count, 0);
+  let donutAcc = 0;
+  const donutSegments = donutBase
+    .filter((s) => s.count > 0)
+    .map((s) => {
+      const len = donutTotal > 0 ? (s.count / donutTotal) * 100 : 0;
+      const seg = { ...s, len, offset: -donutAcc };
+      donutAcc += len;
+      return seg;
+    });
 
   const quickActions = [
     { label: 'Cấu hình chi nhánh', path: '/admin/branches', icon: Building, color: 'bg-[#e8ede7] text-[#5f745d] border-[#d8e2d6] hover:bg-[#d8e2d6]/50' },
@@ -93,16 +116,9 @@ export default function AdminDashboardPage() {
     { label: 'Sao lưu dữ liệu', path: '/admin/backup', icon: Database, color: 'bg-[#faf6f0] text-[#8a7051] border-[#ebdcc8] hover:bg-[#ebdcc8]/50' },
   ];
 
-  const sysLogs = [
-    { action: 'Sao lưu tự động', time: '10 phút trước', desc: 'Bản sao lưu định kỳ tuần 23 hoàn tất', type: 'system', icon: Database, color: 'text-[#8a7051] bg-[#faf6f0]' },
-    { action: 'Thêm nhân viên mới', time: '2 giờ trước', desc: 'Tài khoản NV. Nguyễn Thị Trúc Hằng (Sale) đã được tạo', type: 'user', icon: UserCheck, color: 'text-[#5f745d] bg-[#e8ede7]' },
-    { action: 'Cập nhật dịch vụ', time: '4 giờ trước', desc: 'Đơn giá "Điện sinh hoạt" được cấu hình lại thành 3,500đ/kWh', type: 'service', icon: Folder, color: 'text-[#738a71] bg-[#eef3f0]' },
-    { action: 'Cấu hình quy định', time: 'Hôm qua', desc: 'Cập nhật quy chế lưu trú đối với khách nước ngoài', type: 'policy', icon: ShieldCheck, color: 'text-[#6f583c] bg-[#faf2ec]' },
-  ];
-
   return (
     <div className="space-y-8 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
-      
+
       {/* ── Greeting Header ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
@@ -122,7 +138,7 @@ export default function AdminDashboardPage() {
 
       {/* ── KPI Grid ──────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        
+
         {/* Branch Card */}
         <div className="bg-white border border-[#d1c4b9] rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="flex justify-between items-start mb-4">
@@ -136,7 +152,7 @@ export default function AdminDashboardPage() {
           <p className="text-xs text-[#4e453c] font-semibold uppercase tracking-wider">Hạ tầng hoạt động</p>
           <h3 className="text-2xl font-bold text-[#1e1b17] mt-1">{stats.branchesCount} Cơ sở</h3>
           <p className="text-xs text-[#4e453c] mt-2 flex items-center gap-1">
-            Danh sách ở <span className="font-semibold text-[#5f745d]">Quận 1</span> và <span className="font-semibold text-[#5f745d]">Thủ Đức</span>
+            Tổng số chi nhánh đang quản lý trong hệ thống
           </p>
         </div>
 
@@ -192,14 +208,14 @@ export default function AdminDashboardPage() {
               <Folder className="w-6 h-6" />
             </div>
             <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-[#eef3f0] text-[#738a71]">
-              8 LOẠI CHÍNH
+              {stats.servicesAvailable} ĐANG BẬT
             </span>
           </div>
           <p className="text-xs text-[#4e453c] font-semibold uppercase tracking-wider">Danh mục dịch vụ cung cấp</p>
           <h3 className="text-2xl font-bold text-[#1e1b17] mt-1">{stats.servicesCount} Dịch vụ</h3>
           <p className="text-xs text-[#4e453c] mt-2 flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5 text-[#5f745d]" />
-            <span>Có 2 dịch vụ mới được cập nhật giá tuần này</span>
+            <span>{stats.servicesAvailable}/{stats.servicesCount} dịch vụ đang hoạt động</span>
           </p>
         </div>
 
@@ -207,36 +223,38 @@ export default function AdminDashboardPage() {
 
       {/* ── Main Grid (Dashboard Details) ──────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Columns 1 & 2: Rooms Status Analysis & Quick Actions */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Room Status Analysis Panel */}
           <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm">
             <h2 className="text-lg font-bold text-[#1e1b17] mb-6">
               Phân tích trạng thái phòng trống & lấp đầy
             </h2>
- 
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-              {/* Left Column: Visual Chart (SVG Donut Chart Mock) */}
+              {/* Left Column: Donut chart vẽ theo số liệu thật */}
               <div className="flex flex-col items-center justify-center">
                 <div className="relative w-40 h-40 flex items-center justify-center">
-                  {/* SVG Donut Circle */}
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                     {/* Background Circle */}
                     <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#F3EFE8" strokeWidth="3" />
-                    
-                    {/* Available Segment (Sage Green) - 66.7% */}
-                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#5f745d" strokeWidth="3" 
-                            strokeDasharray="66.7 33.3" strokeDashoffset="0" />
-                    
-                    {/* Occupied Segment (Wood Brown) - 16.7% */}
-                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#6f583c" strokeWidth="3" 
-                            strokeDasharray="16.7 83.3" strokeDashoffset="-66.7" />
- 
-                    {/* Deposited Segment (Sand) - 16.7% */}
-                    <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#c9af8f" strokeWidth="3" 
-                            strokeDasharray="16.6 83.4" strokeDashoffset="-83.4" />
+
+                    {/* Các cung vẽ theo số liệu phòng thật từ roomStatus */}
+                    {donutSegments.map((seg) => (
+                      <circle
+                        key={seg.label}
+                        cx="18"
+                        cy="18"
+                        r="15.915"
+                        fill="transparent"
+                        stroke={seg.color}
+                        strokeWidth="3"
+                        strokeDasharray={`${seg.len} ${100 - seg.len}`}
+                        strokeDashoffset={seg.offset}
+                      />
+                    ))}
                   </svg>
                   {/* Center Text */}
                   <div className="absolute text-center">
@@ -244,29 +262,21 @@ export default function AdminDashboardPage() {
                     <p className="text-[10px] text-[#4e453c] font-bold uppercase tracking-wider">Tổng số phòng</p>
                   </div>
                 </div>
- 
+
                 <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-6 text-xs font-semibold">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#5f745d]"></span>
-                    <span className="text-[#4e453c]">Trống ({stats.roomStatus.available})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#6f583c]"></span>
-                    <span className="text-[#4e453c]">Đang ở ({stats.roomStatus.occupied})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#c9af8f]"></span>
-                    <span className="text-[#4e453c]">Đã cọc ({stats.roomStatus.deposited})</span>
-                  </div>
-                  {stats.roomStatus.partial > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#a48f7a]"></span>
-                      <span className="text-[#4e453c]">Trống một phần ({stats.roomStatus.partial})</span>
-                    </div>
+                  {donutSegments.length === 0 ? (
+                    <span className="text-[#7f756b]">Chưa có dữ liệu phòng</span>
+                  ) : (
+                    donutSegments.map((seg) => (
+                      <div key={seg.label} className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: seg.color }}></span>
+                        <span className="text-[#4e453c]">{seg.label} ({seg.count})</span>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
- 
+
               {/* Right Column: Key Details */}
               <div className="space-y-4">
                 <div className="p-4 bg-[#faf2ec] rounded-2xl border border-[#d1c4b9] space-y-3">
@@ -274,7 +284,7 @@ export default function AdminDashboardPage() {
                   <div className="space-y-2 text-sm text-[#1e1b17]">
                     <div className="flex justify-between">
                       <span className="text-[#4e453c]">Sức chứa tối đa:</span>
-                      <span className="font-bold">{stats.capacityCount} người</span>
+                      <span className="font-bold">{stats.maxOccupants} người</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#4e453c]">Đang ở thực tế:</span>
@@ -286,7 +296,7 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 </div>
- 
+
                 <div className="border border-[#d1c4b9] rounded-2xl p-4 space-y-2">
                   <p className="text-xs font-bold text-[#4e453c] uppercase">Cảnh báo bảo trì phòng</p>
                   <div className="flex items-center justify-between text-sm">
@@ -309,7 +319,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           </div>
- 
+
           {/* Quick Administration Actions */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-[#4e453c] uppercase tracking-wider">Lối tắt quản trị nhanh</h3>
@@ -331,38 +341,24 @@ export default function AdminDashboardPage() {
               })}
             </div>
           </div>
- 
+
         </div>
- 
+
         {/* Column 3: System Logs timeline & Backup summary */}
         <div className="space-y-6">
-          
+
           {/* Backup Summary Widget */}
           <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-extrabold text-[#1e1b17]">
                 TRẠNG THÁI SAO LƯU
               </h3>
-              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e8ede7] text-[#5f745d] border border-[#d8e2d6]">
-                TỰ ĐỘNG BẬT
-              </span>
             </div>
-            
-            <div className="p-4 bg-[#faf2ec] rounded-2xl border border-[#d1c4b9] text-xs space-y-2.5">
-              <div className="flex justify-between">
-                <span className="text-[#4e453c]">Bản sao lưu gần nhất:</span>
-                <span className="font-bold text-[#1e1b17]">01/06/2026 23:30</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#4e453c]">Kích thước tệp:</span>
-                <span className="font-bold text-[#1e1b17]">3.8 MB (.sql)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#4e453c]">Tần suất:</span>
-                <span className="font-bold text-[#1e1b17]">Hàng tuần (Chủ nhật)</span>
-              </div>
+
+            <div className="p-4 bg-[#faf2ec] rounded-2xl border border-[#d1c4b9] text-xs text-center text-[#7f756b]">
+              Chưa có bản ghi sao lưu nào.
             </div>
- 
+
             <Link
               to="/admin/backup"
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#6f583c] hover:bg-[#54422c] active:scale-95 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:gap-3 cursor-pointer duration-200"
@@ -371,7 +367,7 @@ export default function AdminDashboardPage() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
- 
+
           {/* System Audit Logs */}
           <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
@@ -382,25 +378,9 @@ export default function AdminDashboardPage() {
                 LOGS
               </span>
             </div>
- 
-            <div className="space-y-4">
-              {sysLogs.map((log, i) => {
-                const Icon = log.icon;
-                return (
-                  <div key={i} className="flex gap-3 text-xs items-start p-2.5 rounded-2xl hover:bg-[#faf2ec] transition-colors">
-                    <div className={`p-2 rounded-xl ${log.color} shrink-0`}>
-                      <Icon className="w-4.5 h-4.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-[#1e1b17] truncate">{log.action}</span>
-                        <span className="text-[10px] text-[#4e453c] shrink-0">{log.time}</span>
-                      </div>
-                      <p className="text-[#4e453c] mt-0.5 leading-relaxed">{log.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
+
+            <div className="py-8 text-center text-xs text-[#7f756b]">
+              Chưa có bản ghi hoạt động nào.
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { useAuthStore } from '../../../stores/authStore';
+import { fetchSchedules, updateScheduleApi } from '../services/sale.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ export interface TimelineEvent {
 }
 
 export interface SaleSchedule {
-  id: string;           // e.g. "BK-8821"
+  id: string;           // e.g. "LXM-001"
   customerId: string;
   customerName: string;
   roomId: string;
@@ -68,6 +68,8 @@ interface FilterState {
 
 interface SaleScheduleStore {
   schedules: SaleSchedule[];
+  isLoading: boolean;
+  loadError: string | null;
   selectedScheduleId: string | null;
   filters: FilterState;
   isCreateModalOpen: boolean;
@@ -80,9 +82,9 @@ interface SaleScheduleStore {
   getUpcoming24h: () => SaleSchedule[];
 
   // Actions
-  loadSchedules: () => void;
+  loadSchedules: () => Promise<void>;
   createSchedule: (payload: CreateSchedulePayload, createdBy: string) => void;
-  rescheduleAppointment: (payload: ReschedulePayload) => void;
+  rescheduleAppointment: (payload: ReschedulePayload) => Promise<void>;
   cancelSchedule: (id: string) => void;
   completeSchedule: (id: string) => void;
   setSelectedSchedule: (id: string | null) => void;
@@ -193,268 +195,54 @@ const makeId = () => {
   return `BK-${num}`;
 };
 
-// ─── Mock Data (30 records) ───────────────────────────────────────────────────
+// ─── Map dữ liệu API (viewing_schedules enriched) → SaleSchedule của UI ──────────
+// Lưu ý lệch schema: DB không có cột `status`/`end_time`; `result` là text tự do.
+//  - status suy giản: scheduled_time ở quá khứ → 'completed', tương lai → 'confirmed'.
+//  - endTime = startTime + 1h (DB không lưu giờ kết thúc).
+const pad2 = (n: number) => String(n).padStart(2, '0');
 
-const MOCK_SCHEDULES: SaleSchedule[] = [
-  // --- Confirmed (10) ---
-  {
-    id: 'BK-9001', customerId: 'c-01', customerName: 'Trần Hoàng Minh',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-02', startTime: '12:00', endTime: '13:00',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách muốn xem khu vực bếp chung',
-    createdAt: '2026-06-02T08:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-02T08:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-02', '12:00'),
-  },
-  {
-    id: 'BK-9002', customerId: 'c-02', customerName: 'Nguyễn Lan Anh',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-02', startTime: '14:30', endTime: '15:30',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách đi cùng phụ huynh',
-    createdAt: '2026-06-01T09:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-02', '14:30'),
-  },
-  {
-    id: 'BK-9003', customerId: 'c-03', customerName: 'Lê Văn Phong',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-03', startTime: '08:00', endTime: '09:00',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách muốn xem giường tầng KTX',
-    createdAt: '2026-06-01T10:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T10:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-03', '08:00'),
-  },
-  {
-    id: 'BK-9004', customerId: 'c-04', customerName: 'Phạm Thị Bích Ngọc',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-05', startTime: '08:00', endTime: '09:00',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Quan tâm đến tiện ích giặt ủi',
-    createdAt: '2026-06-01T14:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T14:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-05', '08:00'),
-  },
-  {
-    id: 'BK-9005', customerId: 'c-05', customerName: 'Hoàng Anh Tuấn',
-    roomId: 'r-5', roomName: 'Phòng 103 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-08', startTime: '15:00', endTime: '16:00',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-06-01T08:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T08:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-08', '15:00'),
-  },
-  {
-    id: 'BK-9006', customerId: 'c-06', customerName: 'Vũ Thị Minh Châu',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-12', startTime: '09:30', endTime: '10:30',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Sinh viên ĐH Quốc Khoa, cần phòng gần trạm bus',
-    createdAt: '2026-06-01T11:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T11:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-12', '09:30'),
-  },
-  {
-    id: 'BK-9007', customerId: 'c-07', customerName: 'Đinh Quốc Bảo',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-15', startTime: '11:00', endTime: '12:00',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-06-01T09:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-15', '11:00'),
-  },
-  {
-    id: 'BK-9008', customerId: 'c-08', customerName: 'Ngô Thị Thu Hà',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-18', startTime: '14:30', endTime: '15:30',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách muốn xem bố cục bàn học',
-    createdAt: '2026-06-01T14:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T14:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-18', '14:30'),
-  },
-  {
-    id: 'BK-9009', customerId: 'c-09', customerName: 'Trương Thanh Long',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-22', startTime: '08:30', endTime: '09:30',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-06-01T10:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T10:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-22', '08:30'),
-  },
-  {
-    id: 'BK-9010', customerId: 'c-10', customerName: 'Lý Thị Ngọc Hân',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-26', startTime: '16:00', endTime: '17:00',
-    status: 'confirmed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Cần phòng yên tĩnh để tự học',
-    createdAt: '2026-06-01T15:00:00Z',
-    timeline: buildTimeline('confirmed', '2026-06-01T15:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-26', '16:00'),
-  },
+const mapApiSchedule = (s: any): SaleSchedule => {
+  const d = new Date(s.scheduled_time);
+  const valid = !isNaN(d.getTime());
+  const base = valid ? d : new Date();
+  const viewDate = `${base.getFullYear()}-${pad2(base.getMonth() + 1)}-${pad2(base.getDate())}`;
+  const startTime = `${pad2(base.getHours())}:${pad2(base.getMinutes())}`;
+  const end = new Date(base.getTime() + 3600000);
+  const endTime = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
+  const status: ScheduleStatus = base.getTime() < Date.now() ? 'completed' : 'confirmed';
 
-  // --- Completed (8 - all in the past compared to June 2 09:00) ---
-  {
-    id: 'BK-8801', customerId: 'c-11', customerName: 'Phan Văn Hùng',
-    roomId: 'r-5', roomName: 'Phòng 103 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-05-28', startTime: '09:00', endTime: '10:00',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách hài lòng, đang xem xét đăng ký thuê',
-    createdAt: '2026-05-25T08:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-25T08:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-05-28', '09:00'),
-  },
-  {
-    id: 'BK-8802', customerId: 'c-12', customerName: 'Đặng Thị Kiều Oanh',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-05-29', startTime: '14:00', endTime: '15:00',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách xem xong nhưng thấy giá hơi cao',
-    createdAt: '2026-05-25T09:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-25T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-05-29', '14:00'),
-  },
-  {
-    id: 'BK-8803', customerId: 'c-13', customerName: 'Bùi Minh Quân',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-05-30', startTime: '10:00', endTime: '11:00',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-05-26T11:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-26T11:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-05-30', '10:00'),
-  },
-  {
-    id: 'BK-8804', customerId: 'c-14', customerName: 'Cao Thị Mỹ Linh',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-05-31', startTime: '08:30', endTime: '09:30',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Rất ưng ý vị trí, gần trường.',
-    createdAt: '2026-05-27T14:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-27T14:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-05-31', '08:30'),
-  },
-  {
-    id: 'BK-8805', customerId: 'c-15', customerName: 'Lưu Đức Hải',
-    roomId: 'r-5', roomName: 'Phòng 103 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-01', startTime: '15:30', endTime: '16:30',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-05-28T09:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-28T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-01', '15:30'),
-  },
-  {
-    id: 'BK-8806', customerId: 'c-16', customerName: 'Tô Thị Phương Thảo',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-02', startTime: '08:00', endTime: '09:00',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách muốn phòng có view nhìn ra sân chung',
-    createdAt: '2026-05-30T08:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-30T08:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-02', '08:00'),
-  },
-  {
-    id: 'BK-8807', customerId: 'c-17', customerName: 'Đỗ Thành Nhân',
-    roomId: 'r-5', roomName: 'Phòng 103 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-05-27', startTime: '14:00', endTime: '15:00',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-05-24T10:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-24T10:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-05-27', '14:00'),
-  },
-  {
-    id: 'BK-8808', customerId: 'c-18', customerName: 'Hồ Thị Ngọc Bảo',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-05-26', startTime: '10:30', endTime: '11:30',
-    status: 'completed', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Đã chụp ảnh phòng gửi cho ba mẹ xem',
-    createdAt: '2026-05-22T11:00:00Z',
-    timeline: buildTimeline('completed', '2026-05-22T11:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-05-26', '10:30'),
-  },
+  const reg = s.rental_registrations || {};
+  const kh = reg.khach_hang || {};
+  const room = s.rooms || {};
+  const branch = room.branches || {};
+  const createdBy = s.nhan_vien?.full_name || 'Nhân viên Sale';
+  const createdAt = s.created_at || new Date().toISOString();
 
-  // --- Pending (5) ---
-  {
-    id: 'BK-9011', customerId: 'c-19', customerName: 'Lê Thanh Tùng',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-02', startTime: '16:00', endTime: '17:00',
-    status: 'pending', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Đang chờ khách xác nhận qua Zalo',
-    createdAt: '2026-06-02T08:00:00Z',
-    timeline: buildTimeline('pending', '2026-06-02T08:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-02', '16:00'),
-  },
-  {
-    id: 'BK-9012', customerId: 'c-20', customerName: 'Nguyễn Thị Bảo Trâm',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-04', startTime: '14:00', endTime: '15:00',
-    status: 'pending', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-06-01T14:00:00Z',
-    timeline: buildTimeline('pending', '2026-06-01T14:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-04', '14:00'),
-  },
-  {
-    id: 'BK-9013', customerId: 'c-21', customerName: 'Trần Anh Khoa',
-    roomId: 'r-5', roomName: 'Phòng 103 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-09', startTime: '10:00', endTime: '11:00',
-    status: 'pending', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-06-01T09:00:00Z',
-    timeline: buildTimeline('pending', '2026-06-01T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-09', '10:00'),
-  },
-  {
-    id: 'BK-9014', customerId: 'c-22', customerName: 'Võ Thị Cẩm Vân',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-16', startTime: '08:00', endTime: '09:00',
-    status: 'pending', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách lần đầu liên hệ, chưa xác nhận',
-    createdAt: '2026-06-01T14:00:00Z',
-    timeline: buildTimeline('pending', '2026-06-01T14:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-16', '08:00'),
-  },
-  {
-    id: 'BK-9015', customerId: 'c-23', customerName: 'Phạm Hoàng Phúc',
-    roomId: 'r-5', roomName: 'Phòng 103 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-23', startTime: '15:30', endTime: '16:30',
-    status: 'pending', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-06-01T09:00:00Z',
-    timeline: buildTimeline('pending', '2026-06-01T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-23', '15:30'),
-  },
-
-  // --- Cancelled (4 - all placed in June so they appear on current calendar) ---
-  {
-    id: 'BK-8821', customerId: 'c-24', customerName: 'Dương Thị Hoa',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-04', startTime: '11:00', endTime: '12:00',
-    status: 'cancelled', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách đổi ý, thuê chỗ khác gần nhà hơn',
-    createdAt: '2026-06-01T08:00:00Z',
-    timeline: buildTimeline('cancelled', '2026-06-01T08:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-04', '11:00'),
-  },
-  {
-    id: 'BK-8822', customerId: 'c-25', customerName: 'Huỳnh Quang Vinh',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-08', startTime: '09:30', endTime: '10:30',
-    status: 'cancelled', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Không liên hệ được sau 3 lần gọi điện',
-    createdAt: '2026-06-01T10:00:00Z',
-    timeline: buildTimeline('cancelled', '2026-06-01T10:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-08', '09:30'),
-  },
-  {
-    id: 'BK-8823', customerId: 'c-26', customerName: 'Lê Thị Thu Giang',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-15', startTime: '15:00', endTime: '16:00',
-    status: 'cancelled', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách bận việc đột xuất, không dời được',
-    createdAt: '2026-06-01T14:00:00Z',
-    timeline: buildTimeline('cancelled', '2026-06-01T14:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-15', '15:00'),
-  },
-  {
-    id: 'BK-8824', customerId: 'c-27', customerName: 'Nguyễn Đức Mạnh',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-22', startTime: '10:00', endTime: '11:00',
-    status: 'cancelled', createdBy: 'Nguyễn Thị Trúc Hằng',
-    createdAt: '2026-06-01T09:00:00Z',
-    timeline: buildTimeline('cancelled', '2026-06-01T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-22', '10:00'),
-  },
-
-  // --- In Progress (2 — hôm nay, June 2) ---
-  {
-    id: 'BK-9016', customerId: 'c-28', customerName: 'Phạm Duy Khánh',
-    roomId: 'r-1', roomName: 'Phòng 101 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-02', startTime: '09:00', endTime: '10:00',
-    status: 'in_progress', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách đang tham quan phòng',
-    createdAt: '2026-06-01T08:00:00Z',
-    timeline: buildTimeline('in_progress', '2026-06-01T08:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-02', '09:00'),
-  },
-  {
-    id: 'BK-9017', customerId: 'c-29', customerName: 'Trịnh Thị Lan Anh',
-    roomId: 'r-2', roomName: 'Phòng 102 (Nữ)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-02', startTime: '10:00', endTime: '11:00',
-    status: 'in_progress', createdBy: 'Nguyễn Thị Trúc Hằng', notes: 'Khách đang cùng mẹ xem phòng',
-    createdAt: '2026-06-01T14:00:00Z',
-    timeline: buildTimeline('in_progress', '2026-06-01T14:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-02', '10:00'),
-  },
-
-  // --- Rescheduled (1) ---
-  {
-    id: 'BK-8825', customerId: 'c-30', customerName: 'Lê Nhật Tân',
-    roomId: 'r-5', roomName: 'Phòng 103 (Nam)', branchId: 'b-1', branchName: 'Chi nhánh Quận 1',
-    viewDate: '2026-06-25', startTime: '14:00', endTime: '15:00',
-    status: 'rescheduled', createdBy: 'Nguyễn Thị Trúc Hằng',
-    rescheduleReason: 'Khách bận thi cuối kỳ, xin dời sang tuần sau',
-    notes: 'Ban đầu hẹn 18/06, dời sang 25/06',
-    createdAt: '2026-06-01T09:00:00Z',
-    timeline: buildTimeline('rescheduled', '2026-06-01T09:00:00Z', 'Nguyễn Thị Trúc Hằng', '2026-06-25', '14:00'),
-  },
-];;
+  return {
+    id: s.id,
+    customerId: reg.cccd || '',
+    customerName: kh.full_name || 'Khách hàng',
+    roomId: s.room_id || room.id || '',
+    roomName: room.name || s.room_id || '',
+    branchId: room.branch_id || branch.id || '',
+    branchName: branch.name || '',
+    viewDate,
+    startTime,
+    endTime,
+    status,
+    createdBy,
+    notes: s.note || undefined,
+    createdAt,
+    timeline: buildTimeline(status, createdAt, createdBy, viewDate, startTime),
+  };
+};
 
 // ─── Store Implementation ─────────────────────────────────────────────────────
 
 export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
-  schedules: MOCK_SCHEDULES,
+  schedules: [],
+  isLoading: false,
+  loadError: null,
   selectedScheduleId: null,
   filters: {
     selectedDate: null,
@@ -468,13 +256,8 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
 
   getFilteredSchedules: () => {
     const { schedules, filters } = get();
-    const currentUser = useAuthStore.getState().user;
-    const isSale = currentUser?.role === 'sale';
 
     return schedules.filter((s) => {
-      // NV sales chỉ đc xem lịch hẹn tại chi nhánh mình làm việc (b-1)
-      if (isSale && s.branchId !== 'b-1') return false;
-
       if (filters.selectedDate && s.viewDate !== filters.selectedDate) return false;
       if (filters.selectedBranch && s.branchId !== filters.selectedBranch) return false;
       if (filters.selectedStatus && s.status !== filters.selectedStatus) return false;
@@ -496,12 +279,9 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
   getUpcoming24h: () => {
     const now = new Date();
     const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const currentUser = useAuthStore.getState().user;
-    const isSale = currentUser?.role === 'sale';
 
     return get()
       .schedules.filter((s) => {
-        if (isSale && s.branchId !== 'b-1') return false;
         if (!['confirmed', 'pending', 'in_progress'].includes(s.status)) return false;
         const dt = new Date(`${s.viewDate}T${s.startTime}:00`);
         return dt >= now && dt <= in24h;
@@ -514,11 +294,19 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
       .slice(0, 3);
   },
 
-  loadSchedules: () => {
-    // Could be extended to load from MockDB in future
-    set({ schedules: MOCK_SCHEDULES });
+  loadSchedules: async () => {
+    try {
+      set({ isLoading: true, loadError: null });
+      const data = await fetchSchedules();
+      const mapped = (data || []).map(mapApiSchedule);
+      set({ schedules: mapped, isLoading: false });
+    } catch (err: any) {
+      set({ loadError: err?.message || 'Lỗi khi tải lịch xem phòng', isLoading: false });
+    }
   },
 
+  // Tạo lịch hiện vẫn ở chế độ demo (local) — DB cần registration_id + room_id thật,
+  // modal tạo lịch đang dùng dữ liệu mock → chờ rework để gọi POST /sale/schedules.
   createSchedule: (payload, createdBy) => {
     const newSchedule: SaleSchedule = {
       id: makeId(),
@@ -540,7 +328,18 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     set((state) => ({ schedules: [newSchedule, ...state.schedules] }));
   },
 
-  rescheduleAppointment: (payload) => {
+  // Dời lịch: ghi thật scheduled_time + note (lý do) lên backend, rồi cập nhật local.
+  rescheduleAppointment: async (payload) => {
+    const iso = new Date(`${payload.newDate}T${payload.newStartTime}:00`).toISOString();
+    try {
+      await updateScheduleApi(payload.id, {
+        scheduled_time: iso,
+        note: `Dời lịch: ${payload.reason}`,
+      });
+    } catch (err: any) {
+      alert(err?.message || 'Lỗi khi dời lịch trên hệ thống');
+      return;
+    }
     set((state) => ({
       schedules: state.schedules.map((s) => {
         if (s.id !== payload.id) return s;
@@ -567,6 +366,7 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     }));
   },
 
+  // Hủy hiện ở chế độ demo (local). DB không có cột status để lưu trạng thái hủy.
   cancelSchedule: (id) => {
     set((state) => ({
       schedules: state.schedules.map((s) => {
@@ -586,6 +386,7 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     }));
   },
 
+  // Hoàn thành hiện ở chế độ demo (local). DB không có cột status để lưu.
   completeSchedule: (id) => {
     set((state) => ({
       schedules: state.schedules.map((s) => {

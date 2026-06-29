@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Search, X, Info } from 'lucide-react';
 import { getMockDB, saveMockDB, RefundRecord } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
 
 export default function AccountantRefundsPage() {
+  const { user } = useAuthStore();
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [selectedRefundId, setSelectedRefundId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,9 +29,60 @@ export default function AccountantRefundsPage() {
 
   // Load Data
   useEffect(() => {
-    const db = getMockDB();
-    setRefunds(db.refund_records || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [pendingCheckouts, liveReconciliations] = await Promise.all([
+          accountantService.fetchPendingCheckouts(email),
+          accountantService.fetchRefundReconciliations(email)
+        ]);
+
+        const mappedCheckouts = (pendingCheckouts || []).map((ch: any) => {
+          const contract = ch.contracts || {};
+          const profile = contract.profiles || {};
+          return {
+            id: ch.id,
+            customer_id: profile.id || contract.customer_id,
+            customer_name: profile.full_name || 'Khách hàng',
+            room_id: contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            deposit_original: contract.rent_price || 1500000,
+            status: ch.status === 'pending' ? 'pending' : 'calculated',
+            created_at: ch.request_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: 0,
+            total_deductions: 0
+          };
+        });
+
+        const mappedReconciliations = (liveReconciliations || []).map((rec: any) => {
+          const checkout = rec.checkouts || {};
+          const contract = checkout.contracts || {};
+          const customer_name = contract.profiles?.full_name || 'Khách hàng';
+          return {
+            id: rec.id,
+            customer_id: contract.customer_id || '',
+            customer_name,
+            room_id: contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            deposit_original: rec.original_deposit || 1500000,
+            status: rec.status || 'confirmed',
+            created_at: rec.reconciliation_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: rec.final_refund,
+            total_deductions: rec.total_deductions
+          };
+        });
+
+        setRefunds([...mappedCheckouts, ...mappedReconciliations]);
+      } catch (err) {
+        console.warn('[AccountantRefunds] Failed to fetch live data, falling back to mock:', err);
+        const db = getMockDB();
+        setRefunds(db.refund_records || []);
+      }
+    };
+    loadData();
+  }, [user]);
 
   const activeRefund = refunds.find(r => r.id === selectedRefundId);
   const isCancellation = activeRefund?.type === 'cancellation';
@@ -86,52 +140,112 @@ export default function AccountantRefundsPage() {
     setIsCalculated(true);
   };
 
-  const handleApproveRefund = () => {
+  const handleApproveRefund = async () => {
     if (!activeRefund) return;
     if (!isCalculated) {
       alert("Vui lòng nhấn 'Tính toán đối soát' trước khi phê duyệt!");
       return;
     }
     
-    const db = getMockDB();
-    
-    // Create payout record automatically first in UC17 list
-    const payoutId = `PAY-${Date.now().toString().slice(-4)}`;
-    const newPayout = {
-      id: payoutId,
-      refund_id: activeRefund.id,
-      customer_id: activeRefund.customer_id,
-      customer_name: activeRefund.customer_name,
-      bank_account: `001100${Math.floor(100000 + Math.random() * 900000)}`,
-      bank_name: 'Vietcombank',
-      account_holder: activeRefund.customer_name.toUpperCase(),
-      amount: netRefund, // Can be positive (hoàn cọc) or negative (thu thêm)
-      payment_method: 'transfer' as const,
-      status: 'pending' as const,
-      created_at: new Date().toISOString().split('T')[0]
-    };
-    
-    db.payout_records = [newPayout, ...(db.payout_records || [])];
-    
-    // Update refund status to confirmed (Chờ xử lý hoàn cọc)
-    const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
-      if (r.id === activeRefund.id) {
+    const email = user?.email || 'accountant@homestay.vn';
+
+    try {
+      // De biet checkoutId co the mapping dung hop dong, ta truyen activeRefund.id lam ca 2
+      await accountantService.createRefundReconciliation(email, {
+        checkoutId: activeRefund.id,
+        contractId: activeRefund.id,
+        originalDeposit: activeRefund.deposit_original,
+        refundRate: residencyRate / 100,
+        baseRefund: basicRefundAmount,
+        totalDeductions: totalDeductions,
+        finalRefund: netRefund,
+        additionalCharge: netRefund < 0 ? Math.abs(netRefund) : 0,
+        note: `Bản đối soát hoàn cọc cho ${activeRefund.customer_name}`
+      });
+
+      alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
+      setIsCalculated(false);
+
+      const pendingCheckouts = await accountantService.fetchPendingCheckouts(email);
+      const liveReconciliations = await accountantService.fetchRefundReconciliations(email);
+
+      const mappedCheckouts = (pendingCheckouts || []).map((ch: any) => {
+        const contract = ch.contracts || {};
+        const profile = contract.profiles || {};
         return {
-          ...r,
-          status: 'confirmed',
-          debt_deductions: parseInt(elecWaterDeduction) || 0,
-          total_deductions: totalDeductions,
-          refund_amount: netRefund
+          id: ch.id,
+          customer_id: profile.id || contract.customer_id,
+          customer_name: profile.full_name || 'Khách hàng',
+          room_id: contract.room_id || '',
+          room_name: contract.rooms?.name || 'Phòng',
+          deposit_original: contract.rent_price || 1500000,
+          status: ch.status === 'pending' ? 'pending' : 'calculated',
+          created_at: ch.request_date || new Date().toISOString(),
+          type: 'checkout' as const,
+          refund_amount: 0,
+          total_deductions: 0
         };
-      }
-      return r;
-    });
-    db.refund_records = updatedRefunds;
-    
-    saveMockDB(db);
-    setRefunds(updatedRefunds);
-    setIsCalculated(false);
-    alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
+      });
+
+      const mappedReconciliations = (liveReconciliations || []).map((rec: any) => {
+        const checkout = rec.checkouts || {};
+        const contract = checkout.contracts || {};
+        const customer_name = contract.profiles?.full_name || 'Khách hàng';
+        return {
+          id: rec.id,
+          customer_id: contract.customer_id || '',
+          customer_name,
+          room_id: contract.room_id || '',
+          room_name: contract.rooms?.name || 'Phòng',
+          deposit_original: rec.original_deposit || 1500000,
+          status: rec.status || 'confirmed',
+          created_at: rec.reconciliation_date || new Date().toISOString(),
+          type: 'checkout' as const,
+          refund_amount: rec.final_refund,
+          total_deductions: rec.total_deductions
+        };
+      });
+
+      setRefunds([...mappedCheckouts, ...mappedReconciliations]);
+    } catch (err) {
+      console.warn('[AccountantRefunds] Live API failed, falling back to mock:', err);
+      const db = getMockDB();
+      const payoutId = `PAY-${Date.now().toString().slice(-4)}`;
+      const newPayout = {
+        id: payoutId,
+        refund_id: activeRefund.id,
+        customer_id: activeRefund.customer_id,
+        customer_name: activeRefund.customer_name,
+        bank_account: `001100${Math.floor(100000 + Math.random() * 900000)}`,
+        bank_name: 'Vietcombank',
+        account_holder: activeRefund.customer_name.toUpperCase(),
+        amount: netRefund,
+        payment_method: 'transfer' as const,
+        status: 'pending' as const,
+        created_at: new Date().toISOString().split('T')[0]
+      };
+      
+      db.payout_records = [newPayout, ...(db.payout_records || [])];
+      
+      const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
+        if (r.id === activeRefund.id) {
+          return {
+            ...r,
+            status: 'confirmed',
+            debt_deductions: parseInt(elecWaterDeduction) || 0,
+            total_deductions: totalDeductions,
+            refund_amount: netRefund
+          };
+        }
+        return r;
+      });
+      db.refund_records = updatedRefunds;
+      
+      saveMockDB(db);
+      setRefunds(updatedRefunds);
+      setIsCalculated(false);
+      alert('Lập bảng đối soát hoàn cọc thành công (Mock DB)! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
+    }
   };
 
   // Stats

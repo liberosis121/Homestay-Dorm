@@ -11,6 +11,12 @@ export interface DbService {
   status: string;
 }
 
+const notFoundError = (id: string) => {
+  const err = new Error(`Không tìm thấy dịch vụ ${id}`) as Error & { statusCode: number };
+  err.statusCode = 404;
+  return err;
+};
+
 export const adminServicesRepo = {
   findAll: async (): Promise<DbService[]> => {
     const { data, error } = await supabase
@@ -91,9 +97,10 @@ export const adminServicesRepo = {
       })
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!data) throw notFoundError(id);
     return data;
   }
 };

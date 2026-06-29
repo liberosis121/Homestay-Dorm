@@ -1,5 +1,11 @@
 import { adminServicesRepo, DbService } from '../repositories/admin-services.repo';
 
+const httpError = (message: string, statusCode: number) => {
+  const err = new Error(message) as Error & { statusCode: number };
+  err.statusCode = statusCode;
+  return err;
+};
+
 export const adminServicesService = {
   getAllServices: async (): Promise<DbService[]> => {
     return await adminServicesRepo.findAll();
@@ -15,10 +21,10 @@ export const adminServicesService = {
     status?: string;
   }): Promise<DbService> => {
     if (!svc.name || !svc.service_type) {
-      throw new Error('Tên và loại dịch vụ là bắt buộc');
+      throw httpError('Tên và loại dịch vụ là bắt buộc', 400);
     }
     if (svc.price === undefined || svc.price === null) {
-      throw new Error('Đơn giá là bắt buộc');
+      throw httpError('Đơn giá là bắt buộc', 400);
     }
     return await adminServicesRepo.create(svc);
   },
@@ -33,7 +39,7 @@ export const adminServicesService = {
     status?: string;
   }): Promise<DbService> => {
     if (!id) {
-      throw new Error('ID dịch vụ là bắt buộc');
+      throw httpError('ID dịch vụ là bắt buộc', 400);
     }
     return await adminServicesRepo.update(id, svc);
   }
