@@ -25,8 +25,6 @@ const CAT_LABELS: Record<ManagedAsset['category'], string> = {
   fixture:     'Cố định',
 };
 
-
-
 export default function ManagerAssetsPage() {
   const [assets, setAssets] = useState<ManagedAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,10 +32,7 @@ export default function ManagerAssetsPage() {
   const [filterCat, setFilterCat] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [transferTarget, setTransferTarget] = useState('');
-  const [transferReason, setTransferReason] = useState('');
-  const [transferBy, setTransferBy] = useState('QL. Minh Đức');
   const [toast, setToast] = useState<string | null>(null);
-  const [destinations, setDestinations] = useState<string[]>(['Kho tầng 1', 'Kho tầng 2', 'Xưởng bảo trì']);
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
@@ -124,23 +119,8 @@ export default function ManagerAssetsPage() {
     }
   };
 
-  const fetchRooms = async () => {
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_BASE}/rooms`, { headers });
-      const result = await res.json();
-      if (result.success) {
-        const roomNames = (result.data || []).map((r: any) => r.name);
-        setDestinations(['Kho tầng 1', 'Kho tầng 2', 'Xưởng bảo trì', ...roomNames]);
-      }
-    } catch (err) {
-      console.error('Error fetching rooms for destinations:', err);
-    }
-  };
-
   useEffect(() => {
     fetchAssets();
-    fetchRooms();
   }, []);
 
   const showToast = (msg: string) => {
@@ -149,7 +129,7 @@ export default function ManagerAssetsPage() {
   };
 
   const doTransfer = async () => {
-    if (!selected || !transferTarget) return;
+    if (!selected || !transferTarget.trim()) return;
     try {
       const headers = await getAuthHeaders();
       
@@ -182,7 +162,6 @@ export default function ManagerAssetsPage() {
         } : null);
 
         setTransferTarget('');
-        setTransferReason('');
         showToast(`✓ Đã điều phối thành công ${selected.name} → ${transferTarget}`);
       }
     } catch (err) {
@@ -226,9 +205,9 @@ export default function ManagerAssetsPage() {
         <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Phân bổ và điều phối tài sản</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* LEFT: Asset list (2/3 width) */}
-        <div style={{ gridColumn: 'span 2 / span 2' }} className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch" style={{ height: 'calc(100vh - 190px)', minHeight: 0 }}>
+        {/* LEFT: Asset list (70% width -> col-span-8) */}
+        <div className="lg:col-span-8 flex flex-col space-y-4 min-h-0">
           {/* Filters Bar */}
           <div style={{
             background: T.surface, border: `1px solid ${T.border}`,
@@ -258,64 +237,56 @@ export default function ManagerAssetsPage() {
               pill={true}
               triggerClassName="h-9 !rounded-[24px] !border-[#E7DED2] !bg-white text-[#2C2520] py-1.5 text-xs font-semibold hover:!border-[#5C4632] hover:bg-[#FAF2E8]/40 transition-all duration-200"
             />
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: T.textMuted, alignSelf: 'center', fontWeight: 600 }}>
-              {filteredAssets.length} tài sản
-            </span>
           </div>
 
-          {/* Table Container */}
+          {/* Table Container with scrollbar */}
           <div style={{
             background: T.surface, border: `1px solid ${T.border}`,
             borderRadius: 20, overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(111,88,60,0.04)'
+            boxShadow: '0 4px 20px rgba(111,88,60,0.04)',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0
           }}>
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                <colgroup><col style={{ width: '12%' }} /><col style={{ width: '26%' }} /><col style={{ width: '14%' }} /><col style={{ width: '18%' }} /><col style={{ width: '24%' }} /><col style={{ width: '6%' }} /></colgroup>
+                <colgroup><col style={{ width: '42%' }} /><col style={{ width: '18%' }} /><col style={{ width: '22%' }} /><col style={{ width: '18%' }} /></colgroup>
                 <thead>
                   <tr style={{ background: T.bg }}>
                     <th style={{
                       padding: '14px 14px 14px 24px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                    }}>Mã</th>
-                    {['Tên tài sản', 'Danh mục', 'Vị trí hiện tại', 'Trạng thái'].map((h, idx) => (
+                    }}>Tên & Mã tài sản</th>
+                    {['Danh mục', 'Vị trí hiện tại', 'Trạng thái'].map((h) => (
                       <th key={h} style={{
-                        padding: idx === 0 ? '14px 14px 14px 24px' : '14px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                        padding: '14px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                         color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                         borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                       }}>{h}</th>
                     ))}
-                    <th style={{
-                      padding: '14px 24px 14px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700,
-                      color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
-                      borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                    }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }} className="animate-pulse">
-                        <td style={{ padding: '15px 14px 15px 24px' }}><div className="h-4 bg-gray-200 rounded w-10"></div></td>
-                        <td style={{ padding: '15px 14px 15px 24px' }}>
-                          <div className="h-4 bg-gray-200 rounded w-36"></div>
-                        </td>
+                        <td style={{ padding: '15px 14px 15px 24px' }}><div className="h-4 bg-gray-200 rounded w-24"></div></td>
                         <td style={{ padding: '15px 14px' }}><div className="h-4 bg-gray-200 rounded w-16"></div></td>
                         <td style={{ padding: '15px 14px' }}><div className="h-4 bg-gray-200 rounded w-24"></div></td>
                         <td style={{ padding: '15px 14px' }}><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
-                        <td style={{ padding: '15px 24px 15px 14px' }}><div className="h-4 bg-gray-200 rounded w-4"></div></td>
                       </tr>
                     ))
                   ) : filteredAssets.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '60px 40px', textAlign: 'center', color: T.textFaint }}>
+                      <td colSpan={4} style={{ padding: '60px 40px', textAlign: 'center', color: T.textFaint }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 40, display: 'block', marginBottom: 10, color: T.textFaint }}>inventory_2</span>
                         <p style={{ fontSize: 13, fontWeight: 600 }}>Không tìm thấy tài sản nào phù hợp bộ lọc.</p>
                       </td>
                     </tr>
                   ) : filteredAssets.map((asset) => {
-                    const meta = STATUS_META[asset.status];
+                    const meta = STATUS_META[asset.status] || STATUS_META.available;
                     const isSelected = selected?.id === asset.id;
                     return (
                       <tr key={asset.id} style={{
@@ -325,9 +296,12 @@ export default function ManagerAssetsPage() {
                       }}
                         onClick={() => setSelected(asset)}
                         className="hover:bg-[#FAF2E8] transition-colors duration-150">
-                        <td style={{ padding: '13px 14px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{asset.id}</td>
-                        <td style={{ padding: '13px 14px 13px 24px' }}>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{asset.name}</p>
+                        <td style={{
+                          padding: '13px 14px 13px 20px',
+                          borderLeft: isSelected ? `4px solid ${T.primary}` : '4px solid transparent'
+                        }}>
+                          <p style={{ fontSize: 13, fontWeight: isSelected ? 800 : 700, color: T.text }}>{asset.name}</p>
+                          <p style={{ fontSize: 11, color: T.textFaint, fontFamily: 'monospace', marginTop: 2 }}>{asset.id}</p>
                         </td>
                         <td style={{ padding: '13px 14px', fontSize: 12, color: T.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>{CAT_LABELS[asset.category]}</td>
                         <td style={{ padding: '13px 14px', fontSize: 13, color: T.text, fontWeight: 700, whiteSpace: 'nowrap' }}>{asset.current_location}</td>
@@ -338,14 +312,6 @@ export default function ManagerAssetsPage() {
                             border: `1px solid ${meta.text}1A`, whiteSpace: 'nowrap'
                           }}>{meta.label}</span>
                         </td>
-                        <td style={{ padding: '13px 24px 13px 14px', textAlign: 'right' }}>
-                          <span className="material-symbols-outlined" style={{
-                            fontSize: 18,
-                            color: isSelected ? T.primary : T.textFaint,
-                            transform: isSelected ? 'translateX(2px)' : 'none',
-                            transition: 'transform 0.15s ease'
-                          }}>{isSelected ? 'arrow_forward' : 'chevron_right'}</span>
-                        </td>
                       </tr>
                     );
                   })}
@@ -355,151 +321,138 @@ export default function ManagerAssetsPage() {
           </div>
         </div>
 
-        {/* RIGHT: Selected asset info & Transfer form (1/3 width) */}
-        <div className="space-y-6">
+        {/* RIGHT: Selected asset info & Transfer form (30% width -> col-span-4) */}
+        <div className="lg:col-span-4 flex flex-col min-h-0 h-full">
           {selected ? (
-            <>
-              {/* Selected asset info */}
-              <div style={{
-                background: T.surface, border: `1.5px solid ${T.primary}`,
-                borderRadius: 20, padding: 24,
-                boxShadow: '0 6px 20px rgba(92,70,50,0.06)'
-              }}>
-                <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.8 }}>Tài sản đang chọn</p>
-                <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 18, fontWeight: 800, color: T.text, letterSpacing: -0.5 }}>{selected.name}</h2>
-                
-                <div className="grid grid-cols-2 gap-3" style={{ marginTop: 16 }}>
-                  <div style={{ background: T.bg, padding: '10px 14px', borderRadius: 12, border: `1px solid ${T.border}` }}>
-                    <span style={{ fontSize: 10, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Vị trí hiện tại</span>
-                    <span style={{ fontSize: 13, color: T.text, fontWeight: 700, marginTop: 2, display: 'block' }}>{selected.current_location}</span>
-                  </div>
-                  <div style={{ background: T.bg, padding: '10px 14px', borderRadius: 12, border: `1px solid ${T.border}` }}>
-                    <span style={{ fontSize: 10, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Trạng thái</span>
-                    <span style={{
-                      fontSize: 11, color: STATUS_META[selected.status].text, fontWeight: 800,
-                      background: STATUS_META[selected.status].bg, padding: '2px 8px', borderRadius: 9999,
-                      border: `1px solid ${STATUS_META[selected.status].text}1A`, display: 'inline-block', marginTop: 4
-                    }}>{STATUS_META[selected.status].label}</span>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 16, borderTop: `1px solid ${T.border}`, paddingTop: 16 }} className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span style={{ color: T.textMuted, fontWeight: 500 }}>Mã tài sản:</span>
-                    <span style={{ color: T.text, fontWeight: 700, fontFamily: 'monospace' }}>{selected.id}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-xs">
-                    <span style={{ color: T.textMuted, fontWeight: 500 }}>Ngày mua:</span>
-                    <span style={{ color: T.text, fontWeight: 600 }}>{selected.purchase_date}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span style={{ color: T.textMuted, fontWeight: 500 }}>Giá trị:</span>
-                    <span style={{ color: T.primary, fontWeight: 700 }}>{selected.purchase_price.toLocaleString('vi-VN')}đ</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Transfer form */}
-              <div style={{
-                background: T.surface, border: `1px solid ${T.border}`,
-                borderRadius: 20, padding: 24,
-                boxShadow: '0 4px 12px rgba(111,88,60,0.02)'
-              }} className="space-y-4">
-                <p style={{ fontFamily: "'Lexend', sans-serif", fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: -0.3 }}>Điều phối tài sản</p>
+            <div style={{
+              background: T.surface, border: `1px solid ${T.border}`,
+              borderRadius: 20, boxShadow: '0 4px 20px rgba(111,88,60,0.04)',
+              height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0
+            }}>
+              <div style={{ padding: 24, overflowY: 'auto', flex: 1 }} className="space-y-6">
+                {/* Header Section */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Vị trí đích *</label>
-                  <CustomSelect
-                    value={transferTarget}
-                    onChange={setTransferTarget}
-                    options={[
-                      { value: '', label: '-- Chọn vị trí đích --' },
-                      ...destinations.filter(l => l !== selected.current_location).map(l => ({ value: l, label: l }))
-                    ]}
-                    className="w-full"
-                    triggerClassName="h-10 !rounded-xl !border-[#E7DED2] !bg-[#FAF9F6] text-[#2C2520] py-2 text-sm font-medium focus:!border-[#5C4632]"
-                  />
+                  <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text, letterSpacing: -0.5 }}>{selected.name}</h2>
+                  <p style={{ fontSize: 11.5, color: T.textFaint, fontFamily: 'monospace', marginTop: 2 }}>Mã: {selected.id}</p>
                 </div>
+
+                {/* Sơ đồ điều phối (Dọc) */}
+                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 16 }} className="space-y-2">
+                  <p style={{ fontSize: 10, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Sơ đồ điều phối</p>
+                  
+                  {/* TỪ (HIỆN TẠI) */}
+                  <div style={{ background: '#FAF9F6', border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 14px' }}>
+                    <span style={{ fontSize: 9, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5 }}>TỪ (HIỆN TẠI)</span>
+                    <span style={{ fontSize: 13, color: T.text, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.current_location}</span>
+                  </div>
+                  
+                  {/* Arrow downward */}
+                  <div className="flex justify-center my-1">
+                    <span className="material-symbols-outlined text-[#8A7563]" style={{ fontSize: 20 }}>arrow_downward</span>
+                  </div>
+
+                  {/* ĐẾN (VỊ TRÍ MỚI) */}
+                  <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 14px' }}>
+                    <label style={{ fontSize: 9, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5, marginBottom: 6 }}>ĐẾN (VỊ TRÍ MỚI) *</label>
+                    <input 
+                      type="text"
+                      value={transferTarget}
+                      onChange={e => setTransferTarget(e.target.value)}
+                      placeholder="Nhập vị trí điều phối tới..."
+                      style={{
+                        width: '100%', height: 40, border: `1.5px solid ${T.border}`, borderRadius: 8,
+                        padding: '0 12px', fontSize: 13, color: T.text, background: '#FFFFFF',
+                        outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+                      }}
+                      className="focus:border-[#5C4632] focus:ring-2 focus:ring-[#5C4632]/10"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Action */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Lý do điều phối</label>
-                  <input value={transferReason} onChange={e => setTransferReason(e.target.value)}
-                    placeholder="VD: Bàn giao phòng mới, sửa chữa..."
+                  <button onClick={doTransfer} disabled={!transferTarget.trim()}
                     style={{
-                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
-                      padding: '10px 14px', fontSize: 13, color: T.text, background: '#FFFFFF',
-                      outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+                      width: '100%',
+                      height: 44,
+                      background: transferTarget.trim() ? T.primary : '#D6CED8',
+                      color: '#fff', border: 'none', borderRadius: 8,
+                      fontSize: 13, fontWeight: 700,
+                      cursor: transferTarget.trim() ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      boxShadow: transferTarget.trim() ? '0 4px 12px rgba(92,70,50,0.15)' : 'none',
+                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
-                    className="focus:border-[#5C4632] focus:ring-2 focus:ring-[#5C4632]/10" />
+                    className={transferTarget.trim() ? "hover:-translate-y-0.5 active:scale-[0.97] hover:shadow-md" : ""}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>swap_horiz</span>
+                    Xác nhận điều phối
+                  </button>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Người phụ trách</label>
-                  <input value={transferBy} onChange={e => setTransferBy(e.target.value)}
-                    style={{
-                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
-                      padding: '10px 14px', fontSize: 13, color: T.text, background: '#FFFFFF',
-                      outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
-                    }}
-                    className="focus:border-[#5C4632] focus:ring-2 focus:ring-[#5C4632]/10" />
-                </div>
-                <button onClick={doTransfer} disabled={!transferTarget}
-                  style={{
-                    width: '100%',
-                    background: transferTarget ? T.primary : '#D6CED8',
-                    color: '#fff', border: 'none', borderRadius: 9999,
-                    padding: '14px', fontSize: 13, fontWeight: 700,
-                    cursor: transferTarget ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    boxShadow: transferTarget ? '0 4px 12px rgba(92,70,50,0.15)' : 'none',
-                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                  className={transferTarget ? "hover:-translate-y-0.5 active:scale-[0.97] hover:shadow-lg" : ""}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>swap_horiz</span>
-                  Xác nhận điều phối
-                </button>
-              </div>
 
-              {/* Transfer history timeline */}
-              {selected.transfer_history && selected.transfer_history.length > 0 && (
-                <div style={{
-                  background: T.surface, border: `1px solid ${T.border}`,
-                  borderRadius: 20, padding: 24,
-                  boxShadow: '0 4px 12px rgba(111,88,60,0.02)'
-                }}>
-                  <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 18, letterSpacing: 0.8 }}>Lịch sử điều chuyển</p>
-                  <div className="relative pl-6 border-l-2 border-[#FAF2E8] space-y-5">
-                    {[...selected.transfer_history].reverse().map((h, i) => (
-                      <div key={i} className="relative">
-                        {/* Bullet point */}
-                        <div style={{
-                          position: 'absolute', left: -30, top: 2,
-                          width: 8, height: 8, borderRadius: '50%',
-                          background: i === 0 ? T.primary : T.border,
-                          border: `3px solid ${T.surface}`,
-                          boxShadow: i === 0 ? '0 0 0 3px rgba(92,70,50,0.2)' : 'none'
-                        }} />
-                        <div>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{h.from} → {h.to}</p>
-                          <p style={{ fontSize: 12, color: T.textMuted, marginTop: 2, fontWeight: 500 }}>{h.reason}</p>
-                          <div className="flex justify-between items-center text-xs text-textFaint" style={{ marginTop: 4 }}>
-                            <span>Phụ trách: <strong style={{ color: T.textMuted }}>{h.by}</strong></span>
-                            <span style={{ fontFamily: 'monospace' }}>{h.date}</span>
+                {/* Cụm thông tin chi tiết */}
+                <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16 }} className="space-y-3">
+                  <p style={{ fontSize: 10, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8 }}>Thông tin tài sản</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div style={{ background: T.bg, padding: '8px 10px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 8.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Trạng thái</span>
+                      <span style={{
+                        fontSize: 10, color: STATUS_META[selected.status].text, fontWeight: 800,
+                        background: STATUS_META[selected.status].bg, padding: '2px 4px', borderRadius: 9999,
+                        border: `1px solid ${STATUS_META[selected.status].text}1A`, display: 'inline-block', marginTop: 4,
+                        whiteSpace: 'nowrap'
+                      }}>{STATUS_META[selected.status].label}</span>
+                    </div>
+                    <div style={{ background: T.bg, padding: '8px 10px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 8.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Ngày mua</span>
+                      <span style={{ fontSize: 11, color: T.text, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.purchase_date}</span>
+                    </div>
+                    <div style={{ background: T.bg, padding: '8px 10px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 8.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Giá trị</span>
+                      <span style={{ fontSize: 11, color: T.primary, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.purchase_price.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transfer history timeline inside card */}
+                {selected.transfer_history && selected.transfer_history.length > 0 && (
+                  <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16 }}>
+                    <p style={{ fontSize: 10, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 14, letterSpacing: 0.8 }}>Lịch sử điều chuyển</p>
+                    <div className="relative pl-6 border-l-2 border-[#FAF2E8] space-y-4">
+                      {[...selected.transfer_history].reverse().map((h, i) => (
+                        <div key={i} className="relative">
+                          <div style={{
+                            position: 'absolute', left: -30, top: 4,
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: i === 0 ? T.primary : T.border,
+                            border: `3px solid ${T.surface}`,
+                            boxShadow: i === 0 ? '0 0 0 3px rgba(92,70,50,0.2)' : 'none'
+                          }} />
+                          <div>
+                            <p style={{ fontSize: 12.5, fontWeight: 700, color: T.text }}>{h.from} → {h.to}</p>
+                            <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1, fontWeight: 500 }}>{h.reason}</p>
+                            <div className="flex justify-between items-center text-[10.5px] text-textFaint" style={{ marginTop: 2 }}>
+                              <span>Phụ trách: <strong style={{ color: T.textMuted }}>{h.by}</strong></span>
+                              <span style={{ fontFamily: 'monospace' }}>{h.date}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
+                )}
+              </div>
+            </div>
           ) : (
             <div style={{
-              background: T.surface, border: `2px dashed ${T.border}`,
-              borderRadius: 20, padding: '60px 24px', textAlign: 'center',
-              boxShadow: '0 4px 12px rgba(111,88,60,0.02)'
+              background: '#FAF9F6', border: `2px dashed ${T.border}`,
+              borderRadius: 20, padding: '80px 24px', textAlign: 'center',
+              height: '100%', display: 'flex', flexDirection: 'column',
+              justifyContent: 'center', alignItems: 'center',
+              boxShadow: '0 4px 12px rgba(111,88,60,0.01)'
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 44, color: T.textFaint, display: 'block', marginBottom: 14 }}>touch_app</span>
-              <p style={{ color: T.textMuted, fontSize: 14, fontWeight: 700 }}>Chọn một tài sản</p>
-              <p style={{ color: T.textFaint, fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 48, color: T.textFaint, marginBottom: 16 }}>touch_app</span>
+              <h3 style={{ color: T.text, fontSize: 15, fontWeight: 800 }}>Chưa chọn tài sản</h3>
+              <p style={{ color: T.textMuted, fontSize: 12.5, marginTop: 8, maxWidth: 280, lineHeight: 1.6 }}>
                 Vui lòng nhấp vào một dòng tài sản ở danh sách bên trái để thực hiện điều chuyển hoặc xem lịch sử dịch chuyển.
               </p>
             </div>

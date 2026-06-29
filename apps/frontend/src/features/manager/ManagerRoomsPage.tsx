@@ -50,7 +50,7 @@ export default function ManagerRoomsPage() {
           const email = mockUser.email.toLowerCase();
           let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
           let role = mockUser.role || 'manager';
-          
+
           if (email.includes('manager')) {
             uid = 'e002e002-e002-e002-e002-e002e002e002';
             role = 'manager';
@@ -64,7 +64,7 @@ export default function ManagerRoomsPage() {
             uid = 'e004e004-e004-e004-e004-e004e004e004';
             role = 'admin';
           }
-          
+
           let emailVal = mockUser.email;
           if (emailVal.includes('@homestay.com')) {
             emailVal = emailVal.replace('.com', '.vn');
@@ -196,7 +196,7 @@ export default function ManagerRoomsPage() {
         </div>
 
         {/* Rooms grid */}
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 22, flex: 1, maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 22, flex: 1 }}>
           <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 16 }}>
             Chi nhánh Quận 1 — Tầng {selectedFloor} ({floorRooms.length} phòng)
           </h3>
