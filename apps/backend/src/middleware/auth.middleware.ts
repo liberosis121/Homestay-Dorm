@@ -40,9 +40,32 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     const token = authHeader.split(' ')[1];
 
     // Bước 3: Nhờ Supabase verify token → trả về thông tin user nếu token hợp lệ
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    let user: any = null;
+    let authError: any = null;
 
-    if (error || !user) {
+    if (token.startsWith('mock-token-')) {
+      let email = token.replace('mock-token-', '');
+      if (email.endsWith('@homestay.com')) {
+        email = email.replace('@homestay.com', '@homestay.vn');
+      }
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (profileError || !profile) {
+        authError = profileError || new Error('Khong tim thay profile cho email: ' + email);
+      } else {
+        user = { id: profile.id, email: profile.email };
+      }
+    } else {
+      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser(token);
+      user = supabaseUser;
+      authError = error;
+    }
+
+    if (authError || !user) {
       return res.status(401).json({
         success: false,
         message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',

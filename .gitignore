@@ -58,3 +58,12 @@ package-lock.json
 
 # Supabase
 supabase/.temp/
+
+phase2_plan.md
+cicd_team_workflow.md
+project_overview.md
+implementation_plan.md
+progress_status.md
+
+# Personal dev notes (Trí Đức)
+triduc_docs/
