@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMockDB, saveMockDB, ManagedAsset } from '../../lib/supabaseClient';
+import { ManagedAsset } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 
 const T = {
@@ -37,14 +37,93 @@ export default function ManagerAssetsPage() {
   const [transferBy, setTransferBy] = useState('QL. Minh Đức');
   const [toast, setToast] = useState<string | null>(null);
 
-  useEffect(() => {
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchAssets = async () => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      const db = getMockDB();
-      setAssets(db.managed_assets || []);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/assets`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        const mappedAssets = (result.data || []).map((asset: any) => ({
+          id: asset.serial_number, // use serial_number as identifier
+          name: asset.name,
+          category: asset.category,
+          serial_number: asset.serial_number,
+          current_location: asset.location,
+          location_type: asset.location && asset.location.toLowerCase().includes('phòng') ? 'room' : 'warehouse',
+          status: asset.status,
+          purchase_date: asset.purchase_date,
+          purchase_price: Number(asset.value) || 0,
+          depreciation_rate: 10,
+          transfer_history: []
+        }));
+        setAssets(mappedAssets);
+      }
+    } catch (err) {
+      console.error('Error fetching assets:', err);
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssets();
   }, []);
 
   const showToast = (msg: string) => {
@@ -52,27 +131,46 @@ export default function ManagerAssetsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const doTransfer = () => {
+  const doTransfer = async () => {
     if (!selected || !transferTarget) return;
-    const db = getMockDB();
-    const newHistory = [...(selected.transfer_history || []), {
-      from: selected.current_location,
-      to: transferTarget,
-      date: new Date().toISOString().split('T')[0],
-      reason: transferReason || 'Điều phối tài sản',
-      by: transferBy
-    }];
-    const updated = db.managed_assets.map((a: ManagedAsset) =>
-      a.id === selected.id ? { ...a, current_location: transferTarget, transfer_history: newHistory } : a
-    );
-    db.managed_assets = updated;
-    saveMockDB(db);
-    setAssets(updated);
-    const updatedAsset = updated.find((a: ManagedAsset) => a.id === selected.id);
-    setSelected(updatedAsset);
-    setTransferTarget('');
-    setTransferReason('');
-    showToast(`✓ Đã điều phối thành công ${selected.name} → ${transferTarget}`);
+    try {
+      const headers = await getAuthHeaders();
+      
+      // Determine status based on destination location
+      let nextStatus = 'in_use';
+      if (transferTarget.toLowerCase().includes('kho')) {
+        nextStatus = 'in_stock';
+      } else if (transferTarget.toLowerCase().includes('bảo trì') || transferTarget.toLowerCase().includes('xưởng')) {
+        nextStatus = 'maintenance';
+      }
+
+      const res = await fetch(`${API_BASE}/assets/${selected.serial_number}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          location: transferTarget,
+          status: nextStatus
+        })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        await fetchAssets();
+        
+        // Update selected asset display state
+        setSelected(prev => prev ? {
+          ...prev,
+          current_location: transferTarget,
+          status: nextStatus as any
+        } : null);
+
+        setTransferTarget('');
+        setTransferReason('');
+        showToast(`✓ Đã điều phối thành công ${selected.name} → ${transferTarget}`);
+      }
+    } catch (err) {
+      console.error('Error transferring asset:', err);
+    }
   };
 
   const filteredAssets = assets.filter(a =>

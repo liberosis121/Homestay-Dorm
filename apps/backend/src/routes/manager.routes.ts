@@ -6,7 +6,7 @@ import { handoverService } from '../services/handover.service';
 import { residencyService } from '../services/residency.service';
 import { roomStatusService } from '../services/room-status.service';
 import { incidentalCostService } from '../services/incidental-cost.service';
-import { assetRepo } from '../repositories/asset.repo';
+import { assetService } from '../services/asset.service';
 
 const router = Router();
 
@@ -141,7 +141,7 @@ router.get('/assets', async (req, res) => {
     const category = req.query.category as string;
     const status = req.query.status as string;
     const location = req.query.location as string;
-    const data = await assetRepo.findAll({ category, status, location });
+    const data = await assetService.getAssets({ category, status, location });
     sendSuccess(res, data, 'Fetched assets successfully');
   } catch (err) {
     sendError(res, err);
@@ -150,7 +150,7 @@ router.get('/assets', async (req, res) => {
 
 router.post('/assets', async (req, res) => {
   try {
-    const data = await assetRepo.create(req.body);
+    const data = await assetService.createAsset(req.body);
     sendSuccess(res, data, 'Added new asset successfully');
   } catch (err) {
     sendError(res, err);
@@ -160,7 +160,7 @@ router.post('/assets', async (req, res) => {
 router.get('/assets/:serialNumber', async (req, res) => {
   try {
     const { serialNumber } = req.params;
-    const data = await assetRepo.findBySerialNumber(serialNumber);
+    const data = await assetService.getAssetBySerialNumber(serialNumber);
     sendSuccess(res, data, 'Fetched asset by serial number successfully');
   } catch (err) {
     sendError(res, err);
@@ -170,7 +170,7 @@ router.get('/assets/:serialNumber', async (req, res) => {
 router.put('/assets/:serialNumber', async (req, res) => {
   try {
     const { serialNumber } = req.params;
-    const data = await assetRepo.update(serialNumber, req.body);
+    const data = await assetService.updateAsset(serialNumber, req.body);
     sendSuccess(res, data, 'Updated asset successfully');
   } catch (err) {
     sendError(res, err);
