@@ -10,9 +10,10 @@ const T = {
   text: '#2C2520', textMuted: '#6E6259', textFaint: '#8A7563'
 };
 
-const STATUS_META: Record<ManagedAsset['status'], { label: string; bg: string; text: string }> = {
+const STATUS_META: Record<string, { label: string; bg: string; text: string }> = {
   in_use:      { label: 'Đang sử dụng', bg: T.sageBg,      text: T.sage    },
   in_stock:    { label: 'Trong kho',    bg: T.primaryLight, text: T.primary },
+  available:   { label: 'Sẵn có',       bg: T.primaryLight, text: T.primary },
   maintenance: { label: 'Bảo trì',      bg: T.amberBg,     text: T.amber   },
   retired:     { label: 'Ngừng dùng',   bg: T.redBg,       text: T.red     },
 };
@@ -254,14 +255,7 @@ export default function ManagerAssetsPage() {
           }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                <colgroup>
-                  <col style={{ width: '12%' }} /> {/* Mã */}
-                  <col style={{ width: '26%' }} /> {/* Tên tài sản */}
-                  <col style={{ width: '14%' }} /> {/* Danh mục */}
-                  <col style={{ width: '18%' }} /> {/* Vị trí */}
-                  <col style={{ width: '24%' }} /> {/* Trạng thái */}
-                  <col style={{ width: '6%' }} />  {/* Chevron Action */}
-                </colgroup>
+                <colgroup><col style={{ width: '12%' }} /><col style={{ width: '26%' }} /><col style={{ width: '14%' }} /><col style={{ width: '18%' }} /><col style={{ width: '24%' }} /><col style={{ width: '6%' }} /></colgroup>
                 <thead>
                   <tr style={{ background: T.bg }}>
                     <th style={{
