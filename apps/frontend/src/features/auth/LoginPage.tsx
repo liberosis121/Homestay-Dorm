@@ -25,9 +25,17 @@ export default function LoginPage() {
       return;
     }
 
-    const success = await login(email);
+    // Truyền cả email lẫn password — authStore giờ gọi API thật
+    const success = await login(email, password);
     if (success) {
-      navigate('/');
+      // Redirect theo role: sale/manager/accountant vào dashboard, customer về trang chủ
+      const savedUser = JSON.parse(localStorage.getItem('user_profile') || '{}');
+      const role = savedUser?.role;
+      if (role === 'sale') navigate('/sale/dashboard');
+      else if (role === 'manager') navigate('/manager/dashboard');
+      else if (role === 'accountant') navigate('/accountant/dashboard');
+      else if (role === 'admin') navigate('/admin/dashboard');
+      else navigate('/');
     } else {
       setFailed(true);
     }
