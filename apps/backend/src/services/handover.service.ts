@@ -1,5 +1,6 @@
 import { handoverRepo, AssetHandoverDto, HandoverDetailDto } from '../repositories/handover.repo';
 import { assetRepo } from '../repositories/asset.repo';
+import { supabase } from '../utils/supabase';
 
 export const handoverService = {
   getHandovers: async (filters?: { contract_id?: string }) => {
@@ -25,23 +26,57 @@ export const handoverService = {
       }));
       await handoverRepo.createDetails(detailsToInsert);
 
-      // 3. Get contract/room details if we need to set asset location.
-      // We will assume location is provided in note or we can fetch a contract if we had contractRepo.
-      // To keep it robust, we'll look for room information or default location updates.
-      // Update each asset's location to room and status to 'in_use'.
+      // 3. Resolve destination room location from contract
+      const [
+        { data: contracts },
+        { data: deposits },
+        { data: rooms }
+      ] = await Promise.all([
+        supabase.from('contracts').select('*').eq('id', handover.contract_id),
+        supabase.from('deposit_requests').select('*'),
+        supabase.from('rooms').select('*')
+      ]);
+
+      const contract = contracts?.[0];
+      const dep = deposits?.find(d => d.id === contract?.deposit_id);
+      const room = rooms?.find(r => r.id === dep?.room_id);
+      const destinationLocation = room?.name || 'Phòng';
+
+      // 4. Update each asset location and status to 'in_use'
       for (const sa of detailsList) {
         try {
-          // In new schema, asset is identified by serial_number
           const asset = await assetRepo.findBySerialNumber(sa.serial_number);
           if (asset) {
-            // Update location of the asset and status
             await assetRepo.update(sa.serial_number, {
-              location: handover.note || 'Bàn giao phòng',
+              location: destinationLocation,
               status: 'in_use'
             });
           }
         } catch (err) {
           console.error(`Failed to update asset ${sa.serial_number} during handover:`, err);
+        }
+      }
+
+      // 5. Update room & bed occupant counts and statuses
+      if (room) {
+        const isBed = dep?.bed_id ? true : false;
+        const nextOccupants = isBed 
+          ? Math.min(room.capacity || 4, (room.current_occupants || 0) + 1) 
+          : (room.capacity || 4);
+        
+        await supabase
+          .from('rooms')
+          .update({
+            status: 'occupied',
+            current_occupants: nextOccupants
+          })
+          .eq('id', room.id);
+
+        if (dep?.bed_id) {
+          await supabase
+            .from('beds')
+            .update({ status: 'occupied' })
+            .eq('id', dep.bed_id);
         }
       }
     }

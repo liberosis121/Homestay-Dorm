@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMockDB, saveMockDB, AssetHandover, ManagerContract, Room, Bed, Profile, ManagedAsset } from '../../lib/supabaseClient';
+import { AssetHandover, ManagerContract, ManagedAsset } from '../../lib/supabaseClient';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -43,34 +43,149 @@ export default function ManagerHandoversPage() {
   const [searchAssetQuery, setSearchAssetQuery] = useState('');
   const [assetSelectOpen, setAssetSelectOpen] = useState(false);
 
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const loadData = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const [resHandovers, resContracts, resAssets] = await Promise.all([
+        fetch(`${API_BASE}/handovers`, { headers }),
+        fetch(`${API_BASE}/contracts`, { headers }),
+        fetch(`${API_BASE}/assets`, { headers })
+      ]);
+
+      const [dataHandovers, dataContracts, dataAssets] = await Promise.all([
+        resHandovers.json(),
+        resContracts.json(),
+        resAssets.json()
+      ]);
+
+      if (dataHandovers.success) {
+        setRecords(dataHandovers.data || []);
+      }
+      if (dataContracts.success) {
+        setContracts(dataContracts.data || []);
+      }
+      if (dataAssets.success) {
+        // Map backend assets table columns to ManagedAsset interface format
+        const mappedAssets = (dataAssets.data || []).map((asset: any) => ({
+          id: asset.serial_number, // use serial_number as identifier
+          name: asset.name,
+          category: asset.category,
+          serial_number: asset.serial_number,
+          current_location: asset.location,
+          location_type: asset.location && asset.location.toLowerCase().includes('phòng') ? 'room' : 'warehouse',
+          status: asset.status,
+          purchase_date: asset.purchase_date,
+          purchase_price: Number(asset.value) || 0,
+          depreciation_rate: 10,
+          transfer_history: []
+        }));
+        setManagedAssets(mappedAssets);
+      }
+    } catch (err) {
+      console.error('Error loading handovers page data:', err);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
-
-  const loadData = () => {
-    const db = getMockDB();
-    setRecords(db.asset_handovers || []);
-    setContracts(db.contracts || []);
-    setManagedAssets(db.managed_assets || []);
-  };
 
   const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const markSigned = () => {
+  const markSigned = async () => {
     if (!selected) return;
-    const db = getMockDB();
-    const now = new Date().toISOString();
-    const updated = db.asset_handovers.map((h: AssetHandover) =>
-      h.id === selected.id ? { ...h, status: 'signed' as const, manager_signed: true, customer_signed: true, signature_ip: '192.168.1.1', signature_timestamp: now } : h
-    );
-    db.asset_handovers = updated;
-    saveMockDB(db);
-    setRecords(updated);
-    setSelected(prev => prev ? { ...prev, status: 'signed', manager_signed: true, customer_signed: true, signature_ip: '192.168.1.1', signature_timestamp: now } : null);
-    showToast('Biên bản đã được ký xác nhận thành công!', 'success');
+    try {
+      const headers = await getAuthHeaders();
+      // Sign for staff first, then customer to simulate full signature
+      await Promise.all([
+        fetch(`${API_BASE}/handovers/${selected.id}/sign`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ isStaff: true })
+        }),
+        fetch(`${API_BASE}/handovers/${selected.id}/sign`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ isStaff: false })
+        })
+      ]);
+
+      await loadData();
+      
+      const now = new Date().toISOString();
+      setSelected(prev => prev ? { 
+        ...prev, 
+        status: 'signed', 
+        manager_signed: true, 
+        customer_signed: true, 
+        signature_ip: '192.168.1.1', 
+        signature_timestamp: now 
+      } : null);
+
+      showToast('Biên bản đã được ký xác nhận thành công!', 'success');
+    } catch (err) {
+      console.error('Error signing handover:', err);
+      showToast('Lỗi khi ký xác nhận biên bản', 'error');
+    }
   };
 
   // Open drawer to start a new handover
@@ -101,129 +216,56 @@ export default function ManagerHandoversPage() {
   };
 
   // Submit successful handover flow
-  const submitHandover = () => {
+  const submitHandover = async () => {
     if (!selectedContract) return;
     if (selectedAssets.length === 0) {
       showToast('Vui lòng chọn ít nhất một tài sản để bàn giao!', 'error');
       return;
     }
 
-    const db = getMockDB();
-    const now = new Date();
-    
-    // 1. Map selected assets to the AssetHandover checklist schema
-    const checklist = selectedAssets.map(asset => ({
-      item: asset.name,
-      condition: asset.condition,
-      checked: true,
-      quantity: asset.quantity
-    }));
+    try {
+      const headers = await getAuthHeaders();
+      const now = new Date();
+      const nextId = `BBBG-${100 + records.length + 1}`;
 
-    // 2. Create asset handover record
-    const nextId = `AHO-${4000 + (db.asset_handovers?.length || 0) + 1}`;
-    const newHandover: AssetHandover = {
-      id: nextId,
-      customer_id: selectedContract.customer_id,
-      customer_name: selectedContract.customer_name,
-      room_id: selectedContract.room_id,
-      room_name: selectedContract.room_name,
-      handover_date: now.toISOString().split('T')[0],
-      checklist: checklist,
-      customer_signed: false, // Starts as unsigned, to be signed by customer
-      manager_signed: true,  // Signed by manager performing it
-      signature_ip: '192.168.1.12', // Representative IP
-      signature_timestamp: now.toISOString(),
-      status: 'partial', // Signed by manager, pending customer
-      created_at: now.toISOString(),
-      note: handoverNotes || undefined
-    };
-    
-    db.asset_handovers = [newHandover, ...(db.asset_handovers || [])];
+      const handoverData = {
+        id: nextId,
+        contract_id: selectedContract.id,
+        handover_time: now.toISOString(),
+        customer_confirmed: false, // Starts as unsigned, to be signed by customer
+        staff_confirmed: true,    // Signed by manager performing it
+        note: handoverNotes || '',
+        staff_id: 'e002e002-e002-e002-e002-e002e002e002' // manager UUID
+      };
 
-    // 3. Update status and locations of the selected assets in managed_assets
-    if (db.managed_assets) {
-      db.managed_assets = db.managed_assets.map((asset: ManagedAsset) => {
-        const match = selectedAssets.find(sa => sa.assetId === asset.id);
-        if (match) {
-          const logEntry = {
-            from: asset.current_location || 'Kho',
-            to: selectedContract.room_name,
-            date: now.toISOString().split('T')[0],
-            reason: `Bàn giao theo biên bản ${nextId}`,
-            by: 'Trần Kim Yến (Quản lý)'
-          };
-          return {
-            ...asset,
-            status: 'in_use' as const,
-            location_type: 'room' as const,
-            current_location: selectedContract.room_name,
-            transfer_history: [...(asset.transfer_history || []), logEntry]
-          };
-        }
-        return asset;
+      const detailsList = selectedAssets.map(asset => ({
+        serial_number: asset.serialNumber,
+        quantity: asset.quantity,
+        condition: asset.condition,
+        note: ''
+      }));
+
+      const res = await fetch(`${API_BASE}/handovers`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          ...handoverData,
+          detailsList
+        })
       });
+
+      const result = await res.json();
+      if (result.success) {
+        await loadData();
+        setHandoverDrawerOpen(false);
+        showToast('Bàn giao tài sản thành công! Thiết bị đã được xuất kho và chuyển đến phòng.', 'success');
+      } else {
+        showToast(result.message || 'Bàn giao thất bại', 'error');
+      }
+    } catch (err) {
+      console.error('Error submitting handover:', err);
+      showToast('Lỗi kết nối máy chủ', 'error');
     }
-
-    // 4. Update room status to 'occupied'
-    if (db.rooms) {
-      db.rooms = db.rooms.map((r: Room) => {
-        if (r.id === selectedContract.room_id) {
-          const isBed = selectedContract.deposit_type === 'bed';
-          const nextOccupants = isBed ? Math.min(r.capacity, r.current_occupants + 1) : r.capacity;
-          return {
-            ...r,
-            status: 'occupied' as const,
-            current_occupants: nextOccupants
-          };
-        }
-        return r;
-      });
-    }
-
-    // 5. Update bed status if bed-level
-    if (selectedContract.deposit_type === 'bed' && selectedContract.bed_name && db.beds) {
-      db.beds = db.beds.map((b: Bed) => {
-        if (b.room_id === selectedContract.room_id && b.name === selectedContract.bed_name) {
-          return { ...b, status: 'occupied' as const };
-        }
-        return b;
-      });
-    }
-
-    // 6. Update renting room name in customer profile
-    const displayRoomText = selectedContract.bed_name 
-      ? `${selectedContract.room_name} (${selectedContract.bed_name})`
-      : selectedContract.room_name;
-
-    if (db.profiles) {
-      db.profiles = db.profiles.map((p: Profile) => {
-        if (p.id === selectedContract.customer_id) {
-          return {
-            ...p,
-            renting_room_name: displayRoomText
-          };
-        }
-        return p;
-      });
-    }
-
-    // 7. Update in customer list (MOCK_CUSTOMERS/customers)
-    if (db.customers) {
-      db.customers = db.customers.map((c: any) => {
-        if (c.id === selectedContract.customer_id) {
-          return {
-            ...c,
-            renting_room_name: displayRoomText
-          };
-        }
-        return c;
-      });
-    }
-
-    saveMockDB(db);
-    loadData();
-    setHandoverDrawerOpen(false);
-    showToast('Bàn giao tài sản thành công! Thiết bị đã được xuất kho và chuyển đến phòng.', 'success');
   };
 
 
