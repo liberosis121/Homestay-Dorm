@@ -11,6 +11,27 @@ const getHeaders = () => {
   };
 };
 
+export interface AdminServiceRecord {
+  id: string;
+  name: string;
+  service_type: string;
+  description?: string | null;
+  unit?: string | null;
+  price?: number | null;
+  billing_cycle?: string | null;
+  status?: string | null;
+}
+
+export interface AdminServicePayload {
+  name?: string;
+  service_type?: string;
+  description?: string;
+  unit?: string;
+  price?: number;
+  billing_cycle?: string;
+  status?: string;
+}
+
 // ─── CUSTOMERS API ───────────────────────────────────────────────────
 export const fetchAdminCustomers = async () => {
   const res = await fetch(`${API}/api/admin/customers`, {
@@ -262,7 +283,7 @@ export const updateBedApi = async (id: string, bed: any) => {
 };
 
 // ─── SERVICES API (UC29) ─────────────────────────────────────────────
-export const fetchAdminServices = async () => {
+export const fetchAdminServices = async (): Promise<AdminServiceRecord[]> => {
   const res = await fetch(`${API}/api/admin/services`, {
     headers: getHeaders()
   });
@@ -271,7 +292,7 @@ export const fetchAdminServices = async () => {
   return result.data;
 };
 
-export const createServiceApi = async (svc: any) => {
+export const createServiceApi = async (svc: AdminServicePayload): Promise<AdminServiceRecord> => {
   const res = await fetch(`${API}/api/admin/services`, {
     method: 'POST',
     headers: getHeaders(),
@@ -282,7 +303,7 @@ export const createServiceApi = async (svc: any) => {
   return result.data;
 };
 
-export const updateServiceApi = async (id: string, svc: any) => {
+export const updateServiceApi = async (id: string, svc: AdminServicePayload): Promise<AdminServiceRecord> => {
   const res = await fetch(`${API}/api/admin/services/${id}`, {
     method: 'PUT',
     headers: getHeaders(),

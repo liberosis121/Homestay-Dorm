@@ -5,6 +5,7 @@ import {
   createServiceApi,
   updateServiceApi,
 } from './services/admin.service';
+import type { AdminServicePayload, AdminServiceRecord } from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -18,8 +19,9 @@ const A = {
   textMuted: '#4e453c',   // Soft Wood / Muted Text
 };
 
-type BillingCycle = 'monthly' | 'per_usage' | 'one_time';
-type ServiceType = 'utility' | 'amenity' | 'extra';
+type BillingCycle = 'monthly' | 'per_use' | 'per_kwh' | 'per_m3';
+type ServiceType = 'essential' | 'utility' | 'convenience' | 'premium';
+type ServiceStatus = 'available' | 'inactive' | 'coming_soon';
 
 interface ServiceItem {
   id: string;
@@ -29,26 +31,101 @@ interface ServiceItem {
   unit: string;
   price: number;
   billingCycle: BillingCycle;
+  status: ServiceStatus;
   isActive: boolean;
 }
 
 const TYPE_LABEL: Record<ServiceType, { label: string; cls: string }> = {
-  utility:  { label: 'Tiện ích',   cls: 'bg-blue-50 text-blue-700' },
-  amenity:  { label: 'Tiện nghi',  cls: 'bg-purple-50 text-purple-700' },
-  extra:    { label: 'Bổ sung',    cls: 'bg-amber-50 text-amber-700' },
+  essential:   { label: 'Thiết yếu', cls: 'bg-sky-50 text-sky-700' },
+  utility:     { label: 'Tiện ích',  cls: 'bg-blue-50 text-blue-700' },
+  convenience: { label: 'Tiện nghi', cls: 'bg-amber-50 text-amber-700' },
+  premium:     { label: 'Cao cấp',   cls: 'bg-purple-50 text-purple-700' },
 };
 
 const CYCLE_LABEL: Record<BillingCycle, string> = {
-  monthly:    'Hàng tháng',
-  per_usage:  'Theo số lượng',
-  one_time:   'Một lần',
+  monthly: 'Hàng tháng',
+  per_use: 'Theo lần',
+  per_kwh: 'Theo kWh',
+  per_m3: 'Theo m³',
 };
 
-// Coerce giá trị tự do từ DB về đúng enum của UI
-const toUiType = (t: string): ServiceType =>
-  t === 'utility' || t === 'amenity' || t === 'extra' ? t : 'extra';
-const toUiCycle = (c: string): BillingCycle =>
-  c === 'monthly' || c === 'per_usage' || c === 'one_time' ? c : 'monthly';
+const SERVICE_TYPE_OPTIONS: { value: ServiceType; label: string }[] = [
+  { value: 'essential', label: TYPE_LABEL.essential.label },
+  { value: 'utility', label: TYPE_LABEL.utility.label },
+  { value: 'convenience', label: TYPE_LABEL.convenience.label },
+  { value: 'premium', label: TYPE_LABEL.premium.label },
+];
+
+const BILLING_CYCLE_OPTIONS: { value: BillingCycle; label: string }[] = [
+  { value: 'monthly', label: CYCLE_LABEL.monthly },
+  { value: 'per_use', label: CYCLE_LABEL.per_use },
+  { value: 'per_kwh', label: CYCLE_LABEL.per_kwh },
+  { value: 'per_m3', label: CYCLE_LABEL.per_m3 },
+];
+
+const SERVICE_STATUS_OPTIONS: { value: ServiceStatus; label: string }[] = [
+  { value: 'available', label: 'Đang kích hoạt' },
+  { value: 'inactive', label: 'Đã tắt' },
+  { value: 'coming_soon', label: 'Sắp ra mắt' },
+];
+
+type ServiceFormErrors = Partial<Record<'name' | 'type' | 'unit' | 'price' | 'billingCycle' | 'status', string>>;
+
+const toUiType = (value: string): ServiceType => {
+  if (value === 'essential' || value === 'utility' || value === 'convenience' || value === 'premium') {
+    return value;
+  }
+  return 'convenience';
+};
+
+const toUiCycle = (value: string): BillingCycle => {
+  if (value === 'monthly' || value === 'per_use' || value === 'per_kwh' || value === 'per_m3') {
+    return value;
+  }
+  return 'monthly';
+};
+
+const toUiStatus = (value: string): ServiceStatus => {
+  if (value === 'available' || value === 'inactive' || value === 'coming_soon') {
+    return value;
+  }
+  return 'inactive';
+};
+
+const getServiceIcon = (service: ServiceItem) => {
+  const name = service.name.toLowerCase();
+  if (name.includes('điện')) return 'bolt';
+  if (name.includes('nước')) return 'water_drop';
+  if (name.includes('wifi') || name.includes('internet')) return 'wifi';
+  if (name.includes('giặt')) return 'local_laundry_service';
+  if (name.includes('xe')) return 'directions_bike';
+  if (name.includes('vệ sinh')) return 'cleaning_services';
+  if (service.type === 'essential') return 'verified';
+  if (service.type === 'premium') return 'workspace_premium';
+  if (service.type === 'utility') return 'build_circle';
+  return 'miscellaneous_services';
+};
+
+const validateServiceForm = (form: Partial<ServiceItem>): ServiceFormErrors => {
+  const errors: ServiceFormErrors = {};
+  if (!form.name?.trim()) errors.name = 'Vui lòng nhập tên dịch vụ.';
+  if (!form.type) errors.type = 'Vui lòng chọn loại dịch vụ.';
+  if (!form.unit?.trim()) errors.unit = 'Vui lòng nhập đơn vị tính.';
+  if (form.price === undefined || form.price < 0) errors.price = 'Đơn giá không được âm.';
+  if (!form.billingCycle) errors.billingCycle = 'Vui lòng chọn chu kỳ tính phí.';
+  if (!form.status) errors.status = 'Vui lòng chọn trạng thái dịch vụ.';
+  return errors;
+};
+
+const getServiceStatusMeta = (status: ServiceStatus) => {
+  if (status === 'available') return { label: 'Đang kích hoạt', cls: 'bg-emerald-50 text-emerald-700' };
+  if (status === 'coming_soon') return { label: 'Sắp ra mắt', cls: 'bg-amber-50 text-amber-700' };
+  return { label: 'Đã tắt', cls: 'bg-gray-100 text-gray-600' };
+};
+
+const getErrorMessage = (err: unknown, fallback: string) => {
+  return err instanceof Error ? err.message : fallback;
+};
 
 export default function AdminServicesPage() {
   const formatNumber = (num: number | undefined) => {
@@ -61,10 +138,11 @@ export default function AdminServicesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [filterActive, setFilterActive] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<ServiceItem>>({});
+  const [formErrors, setFormErrors] = useState<ServiceFormErrors>({});
   const [confirmStatusService, setConfirmStatusService] = useState<ServiceItem | null>(null);
 
   // DB service: {id,name,service_type,description,unit,price,billing_cycle,status}
@@ -74,19 +152,20 @@ export default function AdminServicesPage() {
       setIsLoading(true);
       setLoadError(null);
       const data = await fetchAdminServices();
-      const mapped: ServiceItem[] = (data || []).map((s: any) => ({
+      const mapped: ServiceItem[] = (data || []).map((s: AdminServiceRecord) => ({
         id: s.id,
         name: s.name ?? '',
-        type: toUiType(s.service_type),
+        type: toUiType(s.service_type ?? ''),
         description: s.description ?? '',
         unit: s.unit ?? '',
         price: s.price ?? 0,
-        billingCycle: toUiCycle(s.billing_cycle),
+        billingCycle: toUiCycle(s.billing_cycle ?? ''),
+        status: toUiStatus(s.status ?? ''),
         isActive: s.status === 'available',
       }));
       setServices(mapped);
-    } catch (err: any) {
-      setLoadError(err.message || 'Lỗi khi tải danh sách dịch vụ');
+    } catch (err: unknown) {
+      setLoadError(getErrorMessage(err, 'Lỗi khi tải danh sách dịch vụ'));
     } finally {
       setIsLoading(false);
     }
@@ -103,8 +182,8 @@ export default function AdminServicesPage() {
     return [
       { icon: 'electrical_services', label: 'Tổng dịch vụ', val: total },
       { icon: 'toggle_on', label: 'Đang kích hoạt', val: active, iconCls: 'bg-emerald-50 text-emerald-700' },
-      { icon: 'water_drop', label: 'Dịch vụ tiện ích', val: byType('utility'), iconCls: 'bg-blue-50 text-blue-700' },
-      { icon: 'star', label: 'Dịch vụ bổ sung', val: byType('extra'), iconCls: 'bg-amber-50 text-amber-700' },
+      { icon: 'verified', label: 'Dịch vụ thiết yếu', val: byType('essential'), iconCls: 'bg-sky-50 text-sky-700' },
+      { icon: 'build_circle', label: 'Dịch vụ tiện ích', val: byType('utility'), iconCls: 'bg-blue-50 text-blue-700' },
     ];
   }, [services]);
 
@@ -112,32 +191,37 @@ export default function AdminServicesPage() {
     const q = search.toLowerCase();
     const matchQ = !q || s.name.toLowerCase().includes(q);
     const matchType = !filterType || s.type === filterType;
-    const matchActive = !filterActive || (filterActive === 'active' ? s.isActive : !s.isActive);
-    return matchQ && matchType && matchActive;
-  }), [services, search, filterType, filterActive]);
+    const matchStatus = !filterStatus || s.status === filterStatus;
+    return matchQ && matchType && matchStatus;
+  }), [services, search, filterType, filterStatus]);
 
   const openAdd = () => {
     setModalMode('add');
-    setForm({ name: '', type: 'utility', description: '', unit: 'tháng', price: 0, billingCycle: 'monthly', isActive: true });
+    setForm({ name: '', type: 'utility', description: '', unit: 'tháng', price: 0, billingCycle: 'monthly', status: 'available', isActive: true });
+    setFormErrors({});
     setShowModal(true);
   };
 
   const openEdit = (s: ServiceItem) => {
     setModalMode('edit');
     setForm({ ...s });
+    setFormErrors({});
     setShowModal(true);
   };
 
   const saveForm = async () => {
-    if (!form.name) return;
-    const payload = {
-      name: form.name,
+    const errors = validateServiceForm(form);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const payload: AdminServicePayload = {
+      name: form.name?.trim(),
       service_type: form.type ?? 'utility',
       description: form.description ?? '',
-      unit: form.unit ?? '',
+      unit: form.unit?.trim() ?? '',
       price: form.price ?? 0,
       billing_cycle: form.billingCycle ?? 'monthly',
-      status: form.isActive === false ? 'inactive' : 'available',
+      status: form.status ?? 'available',
     };
     try {
       if (modalMode === 'add') {
@@ -147,8 +231,8 @@ export default function AdminServicesPage() {
       }
       setShowModal(false);
       await loadServices();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi khi lưu dịch vụ');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Lỗi khi lưu dịch vụ'));
     }
   };
 
@@ -159,15 +243,9 @@ export default function AdminServicesPage() {
       await updateServiceApi(confirmStatusService.id, { status: nextStatus });
       setConfirmStatusService(null);
       await loadServices();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi khi đổi trạng thái dịch vụ');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Lỗi khi đổi trạng thái dịch vụ'));
     }
-  };
-
-  const SERVICE_ICONS: Record<string, string> = {
-    'Điện': 'bolt', 'Nước': 'water_drop', 'Internet': 'wifi', 'Gửi xe máy': 'two_wheeler',
-    'Giặt là': 'local_laundry_service', 'Vệ sinh phòng': 'cleaning_services',
-    'Tủ lạnh riêng': 'kitchen', 'Máy giặt riêng': 'local_laundry_service',
   };
 
   return (
@@ -206,9 +284,9 @@ export default function AdminServicesPage() {
       </section>
 
       {/* Filter */}
-      <section className="rounded-xl p-4 flex flex-wrap items-center gap-3"
+      <section className="rounded-xl p-4 grid grid-cols-1 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto] items-center gap-3"
         style={{ background: A.surface, border: `1px solid ${A.border}` }}>
-        <div className="flex-1 min-w-[200px] relative">
+        <div className="relative">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px]"
             style={{ color: A.textMuted }}>search</span>
           <input placeholder="Tìm theo tên dịch vụ..."
@@ -221,28 +299,25 @@ export default function AdminServicesPage() {
           onChange={setFilterType}
           options={[
             { value: "", label: "Tất cả loại" },
-            { value: "utility", label: "Tiện ích" },
-            { value: "amenity", label: "Tiện nghi" },
-            { value: "extra", label: "Bổ sung" },
+            ...SERVICE_TYPE_OPTIONS,
           ]}
           theme="sale"
           placeholder="Tất cả loại"
-          triggerClassName="!py-2 min-w-[150px]"
+          triggerClassName="!py-2"
         />
         <CustomSelect
-          value={filterActive}
-          onChange={setFilterActive}
+          value={filterStatus}
+          onChange={setFilterStatus}
           options={[
             { value: "", label: "Tất cả trạng thái" },
-            { value: "active", label: "Đang kích hoạt" },
-            { value: "inactive", label: "Đã tắt" },
+            ...SERVICE_STATUS_OPTIONS,
           ]}
           theme="sale"
           placeholder="Tất cả trạng thái"
-          triggerClassName="!py-2 min-w-[150px]"
+          triggerClassName="!py-2"
         />
-        <button onClick={() => { setSearch(''); setFilterType(''); setFilterActive(''); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
+        <button onClick={() => { setSearch(''); setFilterType(''); setFilterStatus(''); }}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}>
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           Làm mới
@@ -287,42 +362,46 @@ export default function AdminServicesPage() {
           <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
         </div>
       ) : (
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map(s => (
-            <div key={s.id}
-              className="rounded-xl p-5 transition-all group hover:shadow-md"
-              style={{
-                background: A.surface,
-                border: `1px solid ${s.isActive ? A.border : '#e5e7eb'}`,
-                opacity: s.isActive ? 1 : 0.7,
-              }}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg" style={{ background: A.badgeBg, color: A.accent }}>
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {filtered.map(s => {
+            const statusMeta = getServiceStatusMeta(s.status);
+            return (
+              <div key={s.id}
+                className="rounded-xl p-5 transition-all group hover:shadow-md min-h-[232px] flex flex-col"
+                style={{
+                  background: A.surface,
+                  border: `1px solid ${s.isActive ? A.border : '#e5e7eb'}`,
+                  opacity: s.status === 'inactive' ? 0.7 : 1,
+                }}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="p-2 rounded-lg shrink-0" style={{ background: A.badgeBg, color: A.accent }}>
                     <span className="material-symbols-outlined text-xl">
-                      {SERVICE_ICONS[s.name] || 'miscellaneous_services'}
+                      {getServiceIcon(s)}
                     </span>
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold" style={{ color: A.primary }}>{s.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold leading-snug break-words" style={{ color: A.primary }}>{s.name}</h3>
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-0.5 ${TYPE_LABEL[s.type].cls}`}>
                       {TYPE_LABEL[s.type].label}
                     </span>
                   </div>
                 </div>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
+                  className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${statusMeta.cls}`}
                 >
-                  {s.isActive ? 'Đang kích hoạt' : 'Đã tắt'}
+                  {statusMeta.label}
                 </span>
               </div>
-              <p className="text-xs mb-3" style={{ color: A.textMuted }}>{s.description}</p>
-              <div className="flex items-center justify-between">
-                <div>
+              <p className="text-xs leading-relaxed mb-4 flex-1 break-words" style={{ color: A.textMuted }}>
+                {s.description || 'Chưa có mô tả cho dịch vụ này.'}
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div className="min-w-0">
                   <span className="text-lg font-bold" style={{ color: A.primary }}>
                     {s.price.toLocaleString('vi-VN')}đ
                   </span>
-                  <span className="text-xs ml-1" style={{ color: A.textMuted }}>/{s.unit}</span>
+                  <span className="text-xs ml-1 break-words" style={{ color: A.textMuted }}>/{s.unit || 'đơn vị'}</span>
                 </div>
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{ background: A.bg, color: A.textMuted, border: `1px solid ${A.border}` }}>
@@ -353,7 +432,8 @@ export default function AdminServicesPage() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </section>
       )}
 
@@ -376,8 +456,9 @@ export default function AdminServicesPage() {
               <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên dịch vụ</label>
               <input value={form.name || ''} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nhập tên dịch vụ..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${formErrors.name ? 'border-red-400' : 'border-[#d1c4b9]'}`}
               />
+              {formErrors.name && <p className="text-xs text-red-600 mt-1">{formErrors.name}</p>}
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Mô tả</label>
@@ -387,34 +468,39 @@ export default function AdminServicesPage() {
                 className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Loại dịch vụ</label>
                 <CustomSelect
                   value={form.type || 'utility'}
                   onChange={val => setForm(prev => ({ ...prev, type: val as ServiceType }))}
-                  options={[
-                    { value: "utility", label: "Tiện ích" },
-                    { value: "amenity", label: "Tiện nghi" },
-                    { value: "extra", label: "Bổ sung" }
-                  ]}
+                  options={SERVICE_TYPE_OPTIONS}
                   theme="sale"
-                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                  triggerClassName={`w-full !py-2.5 bg-[#fff8f3] ${formErrors.type ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.type && <p className="text-xs text-red-600 mt-1">{formErrors.type}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chu kỳ</label>
                 <CustomSelect
                   value={form.billingCycle || 'monthly'}
                   onChange={val => setForm(prev => ({ ...prev, billingCycle: val as BillingCycle }))}
-                  options={[
-                    { value: "monthly", label: "Hàng tháng" },
-                    { value: "per_usage", label: "Theo số lượng" },
-                    { value: "one_time", label: "Một lần" }
-                  ]}
+                  options={BILLING_CYCLE_OPTIONS}
                   theme="sale"
-                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                  triggerClassName={`w-full !py-2.5 bg-[#fff8f3] ${formErrors.billingCycle ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.billingCycle && <p className="text-xs text-red-600 mt-1">{formErrors.billingCycle}</p>}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
+                <CustomSelect
+                  value={form.status || 'available'}
+                  onChange={val => setForm(prev => ({ ...prev, status: val as ServiceStatus }))}
+                  options={SERVICE_STATUS_OPTIONS}
+                  theme="sale"
+                  triggerClassName={`w-full !py-2.5 bg-[#fff8f3] ${formErrors.status ? 'border-red-400' : 'border-[#d1c4b9]'}`}
+                />
+                {formErrors.status && <p className="text-xs text-red-600 mt-1">{formErrors.status}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đơn giá (đ)</label>
@@ -426,24 +512,19 @@ export default function AdminServicesPage() {
                     const num = clean ? parseInt(clean, 10) : 0;
                     setForm(prev => ({ ...prev, price: num }));
                   }}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${formErrors.price ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.price && <p className="text-xs text-red-600 mt-1">{formErrors.price}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đơn vị</label>
-                <CustomSelect
-                  value={form.unit || 'tháng'}
-                  onChange={val => setForm(prev => ({ ...prev, unit: val }))}
-                  options={[
-                    { value: "tháng", label: "tháng" },
-                    { value: "kWh", label: "kWh" },
-                    { value: "m³", label: "m³" },
-                    { value: "kg", label: "kg" },
-                    { value: "lần", label: "lần" }
-                  ]}
-                  theme="sale"
-                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                <input
+                  value={form.unit || ''}
+                  onChange={e => setForm(prev => ({ ...prev, unit: e.target.value }))}
+                  placeholder="VD: tháng, kWh, m³, phòng/tháng..."
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] ${formErrors.unit ? 'border-red-400' : 'border-[#d1c4b9]'}`}
                 />
+                {formErrors.unit && <p className="text-xs text-red-600 mt-1">{formErrors.unit}</p>}
               </div>
             </div>
             <div className="flex gap-3 pt-1">
@@ -518,15 +599,21 @@ export default function AdminServicesPage() {
                 Bạn có chắc chắn muốn {confirmStatusService.isActive ? "ngưng hoạt động" : "kích hoạt lại"} dịch vụ này không?
               </p>
               
-              <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
-                <div className="flex justify-between items-center gap-2">
+                <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
                   <span className="font-semibold text-gray-500">Dịch vụ:</span>
-                  <span className="font-bold text-gray-900">{confirmStatusService.name}</span>
+                  <span className="font-bold text-gray-900 text-right break-words">{confirmStatusService.name}</span>
                 </div>
-                <div className="flex justify-between items-center gap-4">
+                <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
                   <span className="font-semibold text-gray-500">Mã dịch vụ:</span>
-                  <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmStatusService.id}>
+                  <span className="justify-self-end font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-full truncate" title={confirmStatusService.id}>
                     {confirmStatusService.id}
+                  </span>
+                </div>
+                <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                  <span className="font-semibold text-gray-500">Trạng thái:</span>
+                  <span className="font-semibold text-gray-900 text-right">
+                    {getServiceStatusMeta(confirmStatusService.status).label}
                   </span>
                 </div>
               </div>
