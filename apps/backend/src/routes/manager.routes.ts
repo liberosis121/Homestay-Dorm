@@ -251,7 +251,7 @@ router.patch('/residency/:id/status', async (req, res) => {
 router.get('/rooms', async (req, res) => {
   try {
     const branch_id = req.query.branch_id as string;
-    const data = await roomStatusService.getRooms(branch_id);
+    const data = await roomStatusService.getRooms(branch_id, req.user?.id);
     sendSuccess(res, data, 'Fetched rooms successfully');
   } catch (err) {
     sendError(res, err);

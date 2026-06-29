@@ -14,11 +14,23 @@ export interface Room {
 }
 
 export const roomStatusService = {
-  getRooms: async (branchId?: string): Promise<Room[]> => {
+  getRooms: async (branchId?: string, managerId?: string): Promise<Room[]> => {
     let query = supabase.from('rooms').select('*');
+    
     if (branchId) {
       query = query.eq('branch_id', branchId);
+    } else if (managerId) {
+      const { data: branch } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('manager_id', managerId)
+        .maybeSingle();
+
+      if (branch) {
+        query = query.eq('branch_id', branch.id);
+      }
     }
+    
     const { data, error } = await query;
     if (error) throw error;
     return (data as Room[]) || [];
