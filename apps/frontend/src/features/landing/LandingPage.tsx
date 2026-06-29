@@ -3,64 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useRoomSearchStore } from '../rooms/store/useRoomSearchStore';
 import heroImage from '../../assets/hero.jpg';
-import roomStudio from '../../assets/room-studio.jpg';
-import roomTwin from '../../assets/room-twin.jpg';
-import roomDorm from '../../assets/room-dorm.jpg';
-import roomSingle from '../../assets/room-single.jpg';
+
 import RoomCard from '../../components/ui/RoomCard';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import servicesImage from '../../assets/homestay-services.png';
-
-
-const featuredRooms = [
-  {
-    id: 'r-2',
-    title: 'Phòng Studio Quận 1',
-    image: roomStudio,
-    tag: 'Studio',
-    price: '5.500.000đ',
-    amenities: [
-      { icon: 'ac_unit', text: 'Điều hòa' },
-      { icon: 'wc', text: 'WC riêng' }
-    ]
-  },
-  {
-    id: 'r-4',
-    title: 'Phòng Twin Quận 7',
-    image: roomTwin,
-    tag: 'Phòng đôi',
-    price: '3.200.000đ',
-    amenities: [
-      { icon: 'ac_unit', text: 'Điều hòa' },
-      { icon: 'wifi', text: 'Wifi' }
-    ]
-  },
-  {
-    id: 'r-3',
-    title: 'KTX Thủ Đức',
-    image: roomDorm,
-    tag: 'KTX 4 Giường',
-    price: '1.800.000đ',
-    amenities: [
-      { icon: 'cleaning_services', text: 'Dọn dẹp' },
-      { icon: 'wc', text: 'WC riêng' }
-    ]
-  },
-  {
-    id: 'r-6',
-    title: 'Luxury Single Quận 7',
-    image: roomSingle,
-    tag: 'Phòng đơn',
-    price: '4.000.000đ',
-    amenities: [
-      { icon: 'balcony', text: 'Ban công' },
-      { icon: 'ac_unit', text: 'Điều hòa' }
-    ]
-  }
-];
+import { getRoomsApi, Room } from '../rooms/rooms.api';
 
 export default function LandingPage() {
   const { user } = useAuthStore();
@@ -72,6 +22,7 @@ export default function LandingPage() {
   const [localRoomType, setLocalRoomType] = useState('Loại phòng');
   const [localGender, setLocalGender] = useState('Giới tính');
   const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   const handleRegisterClick = (e: React.MouseEvent, roomId: string) => {
     e.preventDefault();
@@ -120,6 +71,15 @@ export default function LandingPage() {
     };
 
     window.addEventListener('scroll', handleScroll);
+
+    // Tải danh sách phòng tiêu biểu từ backend
+    getRoomsApi()
+      .then((res) => {
+        setRooms(res.slice(0, 4));
+      })
+      .catch((err) => {
+        console.error('Không thể tải phòng tiêu biểu:', err);
+      });
 
     // Simple Fade-in Animation for Hero
     const observerOptions = { threshold: 0.1 };
@@ -298,17 +258,38 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
             
-            {featuredRooms.map((room, index) => (
-              <RoomCard
-                key={index}
-                title={room.title}
-                image={room.image}
-                tag={room.tag}
-                price={room.price}
-                amenities={room.amenities}
-                onRegisterClick={(e) => handleRegisterClick(e, room.id)}
-              />
-            ))}
+            {rooms.map((room, index) => {
+              // Convert danh sách amenities dạng text sang dạng object icon + text cho RoomCard
+              const amenities = (room.amenities || []).map((name) => {
+                let icon = 'eco';
+                const lower = name.toLowerCase();
+                if (lower.includes('điều hòa') || lower.includes('ac') || lower.includes('lạnh')) icon = 'ac_unit';
+                else if (lower.includes('wifi') || lower.includes('mạng') || lower.includes('internet')) icon = 'wifi';
+                else if (lower.includes('vệ sinh') || lower.includes('wc')) icon = 'wc';
+                else if (lower.includes('giặt') || lower.includes('sấy')) icon = 'local_laundry_service';
+                else if (lower.includes('dọn dẹp') || lower.includes('vệ sinh')) icon = 'cleaning_services';
+                return { icon, text: name };
+              });
+
+              // Nếu chưa có amenities nào trong DB, gán mock defaults dựa trên loại phòng
+              const finalAmenities = amenities.length > 0 ? amenities : (
+                room.room_type.toLowerCase() === 'dorm' 
+                  ? [{ icon: 'wifi', text: 'Wifi miễn phí' }, { icon: 'wc', text: 'WC riêng' }]
+                  : [{ icon: 'ac_unit', text: 'Điều hòa' }, { icon: 'wifi', text: 'Wifi miễn phí' }]
+              );
+
+              return (
+                <RoomCard
+                  key={index}
+                  title={room.name}
+                  image={room.image_url}
+                  tag={room.room_type}
+                  price={`${room.price.toLocaleString('vi-VN')}đ`}
+                  amenities={finalAmenities}
+                  onRegisterClick={(e) => handleRegisterClick(e, room.id)}
+                />
+              );
+            })}
 
           </div>
         </section>
