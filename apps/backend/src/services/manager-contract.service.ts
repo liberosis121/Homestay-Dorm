@@ -1,4 +1,4 @@
-import { managerContractRepo, CreateContractDto } from '../repositories/manager-contract.repo';
+import { managerContractRepo } from '../repositories/manager-contract.repo';
 
 export const managerContractService = {
   getContracts: async (filters?: { customer_id?: string; status?: string }) => {
@@ -9,8 +9,7 @@ export const managerContractService = {
     return await managerContractRepo.findById(id);
   },
 
-  createContract: async (contract: CreateContractDto) => {
-    // Generate standard contract code if not provided
+  createContract: async (contract: any) => {
     if (!contract.contract_code) {
       const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
       contract.contract_code = `HD-2026-${uniqueSuffix}`;
@@ -21,5 +20,9 @@ export const managerContractService = {
 
   updateContractStatus: async (id: string, status: 'active' | 'expired' | 'terminated') => {
     return await managerContractRepo.update(id, { status });
+  },
+
+  updateContract: async (id: string, updates: any) => {
+    return await managerContractRepo.update(id, updates);
   }
 };

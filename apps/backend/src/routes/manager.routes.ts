@@ -79,6 +79,16 @@ router.patch('/contracts/:id/status', async (req, res) => {
   }
 });
 
+router.put('/contracts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await managerContractService.updateContract(id, req.body);
+    sendSuccess(res, data, 'Updated contract successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 // ==========================================
 // 3. HANDOVERS
 // ==========================================

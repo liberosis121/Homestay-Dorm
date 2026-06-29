@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { getMockDB, saveMockDB, ManagerContract, Room, Profile, Bed, TenantMember } from '../../lib/supabaseClient';
+import { ManagerContract } from '../../lib/supabaseClient';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -36,15 +36,80 @@ export default function ManagerContractsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const db = getMockDB();
-    // Default contracts fallback if not exists in localstorage
-    if (!db.contracts) {
-      db.contracts = generateDefaultContracts();
-      saveMockDB(db);
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
     }
-    setContracts(db.contracts || []);
-    setTimeout(() => setIsLoading(false), 300);
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchContracts = async () => {
+    setIsLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/contracts`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        setContracts(result.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching contracts:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContracts();
   }, []);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -133,80 +198,38 @@ export default function ManagerContractsPage() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selected || !validateForm()) return;
 
-    const db = getMockDB();
-    const updatedStatus = editForm.status!;
-    const previousStatus = selected.status;
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/contracts/${selected.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(editForm)
+      });
+      const result = await res.json();
+      if (result.success) {
+        const previousStatus = selected.status;
+        const updatedStatus = editForm.status!;
+        let syncMessage = '';
+        if ((updatedStatus === 'terminated' || updatedStatus === 'expired') && previousStatus === 'active') {
+          syncMessage = ' và đã tự động cập nhật sơ đồ phòng & giải phóng vị trí';
+        }
 
-    // 1. Update contract details
-    const updatedContracts = db.contracts.map((c: ManagerContract) => 
-      c.id === selected.id ? { ...c, ...editForm } : c
-    );
-    db.contracts = updatedContracts;
-
-    let syncMessage = '';
-
-    // 2. Perform synchronization if status changes to terminated or expired
-    if ((updatedStatus === 'terminated' || updatedStatus === 'expired') && previousStatus === 'active') {
-      // Release room/bed
-      if (db.rooms) {
-        db.rooms = db.rooms.map((r: Room) => {
-          if (r.id === selected.room_id) {
-            if (selected.deposit_type === 'room') {
-              return { ...r, status: 'available', current_occupants: 0 };
-            } else {
-              // Bed level lease - decrement occupants
-              const nextOccupants = Math.max(0, r.current_occupants - 1);
-              return { ...r, current_occupants: nextOccupants, status: nextOccupants === 0 ? 'available' : 'partial' };
-            }
-          }
-          return r;
-        });
+        // Fetch refreshed list to align with backend joins
+        await fetchContracts();
+        
+        setIsEditing(false);
+        setDrawerOpen(false);
+        showToast(`Cập nhật hợp đồng ${selected.contract_code} thành công${syncMessage}!`);
+      } else {
+        showToast(result.message || 'Cập nhật thất bại', 'error');
       }
-
-      // Update specific bed status to 'available'
-      if (selected.deposit_type === 'bed' && selected.bed_name && db.beds) {
-        db.beds = db.beds.map((b: Bed) => {
-          if (b.room_id === selected.room_id && b.name === selected.bed_name) {
-            return { ...b, status: 'available' };
-          }
-          return b;
-        });
-      }
-
-      // Remove renting room name in customer profile
-      if (db.profiles) {
-        db.profiles = db.profiles.map((p: Profile) => {
-          if (p.id === selected.customer_id) {
-            return { ...p, renting_room_name: undefined };
-          }
-          return p;
-        });
-      }
-
-      // Also update matching records in MOCK_CUSTOMERS if any
-      if (db.customers) {
-        db.customers = db.customers.map((c: any) => {
-          if (c.id === selected.customer_id) {
-            return { ...c, renting_room_name: undefined };
-          }
-          return c;
-        });
-      }
-
-      syncMessage = ' và đã tự động cập nhật sơ đồ phòng & giải phóng vị trí';
+    } catch (err) {
+      console.error('Error saving contract:', err);
+      showToast('Lỗi kết nối máy chủ', 'error');
     }
-
-    saveMockDB(db);
-    setContracts(updatedContracts);
-    
-    // Refresh selected state
-    const freshSelected = updatedContracts.find((c: ManagerContract) => c.id === selected.id);
-    setSelected(freshSelected || null);
-    setIsEditing(false);
-    showToast(`Cập nhật hợp đồng ${selected.contract_code} thành công${syncMessage}!`);
   };
 
   return (
@@ -969,121 +992,4 @@ export default function ManagerContractsPage() {
   );
 }
 
-// ─── Default seed data generator fallback ───
-function generateDefaultContracts(): ManagerContract[] {
-  const names = [
-    'Nguyễn Hoàng Nam', 'Trần Thị Mai Anh', 'Lê Văn Phúc', 'Phạm Thị Hương',
-    'Hoàng Minh Tuấn', 'Đinh Thị Lan', 'Vũ Quang Huy', 'Bùi Thị Thanh Hoa',
-    'Ngô Văn Tâm', 'Lý Thu Ngân', 'Đặng Quốc Hưng', 'Trương Minh Khoa'
-  ];
-  const rooms = [
-    { id: 'r-1', name: 'Phòng 101 (Nam)', price: 1500000 },
-    { id: 'r-2', name: 'Phòng 102 (Nữ)', price: 2000000 },
-    { id: 'r-3', name: 'Phòng 201 (Nam)', price: 900000 },
-    { id: 'r-4', name: 'Phòng 202 (Nữ)', price: 1200000 },
-    { id: 'r-5', name: 'Phòng 103 (Nam)', price: 1600000 },
-    { id: 'r-6', name: 'Phòng 203 (Nữ)', price: 2500005 }
-  ];
-  const statuses: ManagerContract['status'][] = ['active', 'active', 'expired', 'terminated', 'active', 'expired', 'active', 'terminated', 'active', 'active', 'expired', 'active'];
-  const bedNames = ['Giường A1', 'Giường A2', 'Giường G1', 'Giường G2', 'Giường B1', 'Giường B2'];
 
-  const roomDetailsMap: Record<string, { floor: number; type: string }> = {
-    'r-1': { floor: 1, type: 'Dorm' },
-    'r-2': { floor: 1, type: 'Studio' },
-    'r-3': { floor: 2, type: 'Dorm' },
-    'r-4': { floor: 2, type: 'Twin' },
-    'r-5': { floor: 1, type: 'Dorm' },
-    'r-6': { floor: 2, type: 'Studio' }
-  };
-
-  const list: ManagerContract[] = [];
-  for (let i = 0; i < names.length; i++) {
-    const name = names[i];
-    const room = rooms[i % rooms.length];
-    const isBed = i % 2 === 0;
-    const status = statuses[i];
-    
-    const startYear = status === 'expired' || status === 'terminated' ? 2024 : 2025;
-    const endYear = startYear + 1;
-    const startDate = `${startYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
-    const endDate = `${endYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
-
-    let tenantsList: TenantMember[] | undefined = undefined;
-    const selfPhone = `090${(i * 1357924) % 9000000 + 1000000}`;
-    const selfCccd = `079203${String(100000 + i * 1234).padStart(6, '0')}`;
-
-    if (name === 'Ngô Văn Tâm') {
-      tenantsList = [
-        {
-          name: 'Ngô Văn Tâm',
-          cccd: selfCccd,
-          phone: selfPhone,
-          role: 'representative'
-        },
-        {
-          name: 'Lê Hoàng Long',
-          cccd: '079203112233',
-          phone: '0912445566',
-          role: 'member'
-        },
-        {
-          name: 'Trần Minh Quân',
-          cccd: '079203445566',
-          phone: '0987334455',
-          role: 'member'
-        }
-      ];
-    } else if (name === 'Nguyễn Hoàng Nam') {
-      tenantsList = [
-        {
-          name: 'Nguyễn Hoàng Nam',
-          cccd: selfCccd,
-          phone: selfPhone,
-          role: 'representative'
-        },
-        {
-          name: 'Phan Văn Đức',
-          cccd: '079203778899',
-          phone: '0909112233',
-          role: 'member'
-        }
-      ];
-    }
-
-    list.push({
-      id: `CON-${7000 + i}`,
-      contract_code: `HD-2026-${String(100 + i)}`,
-      customer_id: `u-mock-cust-${200 + i}`,
-      customer_name: name,
-      customer_phone: selfPhone,
-      customer_cccd: selfCccd,
-      customer_address: `Số ${i * 12 + 1} Đường Lê Lợi, Quận ${i % 3 + 1}, TP.HCM`,
-      room_id: room.id,
-      room_name: room.name,
-      deposit_type: isBed ? 'bed' : 'room',
-      bed_name: isBed ? bedNames[i % bedNames.length] : undefined,
-      branch_name: i % 2 === 0 ? 'Chi nhánh Quận 1' : 'Chi nhánh Thủ Đức (Khu ĐHQG)',
-      rent_amount: room.price,
-      deposit_amount: room.price * 2,
-      service_fee: 150000 + (i % 3) * 50000,
-      start_date: startDate,
-      end_date: endDate,
-      duration: '12 tháng',
-      status: status,
-      terms: `Bên A đồng ý cho bên B thuê 01 vị trí ${isBed ? `giường (${bedNames[i % bedNames.length]})` : 'phòng'} tại ${room.name}. Tài sản bàn giao bao gồm các trang thiết bị cơ bản phục vụ sinh hoạt cá nhân.`,
-      payment_policy: `Tiền thuê đóng định kỳ vào từ ngày 01 đến ngày 05 hàng tháng. Chậm thanh toán quá 3 ngày sẽ chịu phạt theo quy định.`,
-      termination_policy: `Bên B cần báo trước 30 ngày nếu có ý định trả phòng trước hạn. Hoàn trả phòng sạch sẽ, bàn giao đầy đủ trang thiết bị như ban đầu để nhận lại tiền đặt cọc.`,
-      manager_name: 'Trần Kim Yến',
-      manager_phone: '0907654321',
-      created_at: new Date(startYear, i % 12, 5).toISOString(),
-      deposit_code: `DEP-${1000 + i}`,
-      sale_staff_name: ['Nguyễn Thị Trúc Hằng', 'Phan Thanh Tùng', 'Vũ Thị Hạnh'][i % 3],
-      payment_cycle: ['1_month', '3_months', '6_months'][i % 3] as '1_month' | '3_months' | '6_months',
-      contract_type: i % 2 === 0 ? 'long_term' : 'short_term',
-      room_type: roomDetailsMap[room.id]?.type || 'Dorm',
-      floor_number: roomDetailsMap[room.id]?.floor || 1,
-      tenants: tenantsList
-    });
-  }
-  return list;
-}
