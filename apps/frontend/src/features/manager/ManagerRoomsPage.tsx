@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMockDB, saveMockDB, Room } from '../../lib/supabaseClient';
+import { Room } from '../../lib/supabaseClient';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -26,28 +26,76 @@ export default function ManagerRoomsPage() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
+
   useEffect(() => {
-    const db = getMockDB();
-    setRooms(db.rooms || []);
+    const fetchRooms = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API_BASE}/rooms`, { headers });
+        const result = await res.json();
+        if (result.success) {
+          const mapped = result.data.map((r: any) => ({
+            ...r,
+            capacity: r.max_occupants ?? r.capacity ?? 4,
+            has_ac: r.has_ac ?? true,
+            has_private_wc: r.has_private_wc ?? true,
+            price: Number(r.price) || 0
+          }));
+          setRooms(mapped);
+        }
+      } catch (err) {
+        console.error('Error fetching rooms:', err);
+      }
+    };
+    fetchRooms();
   }, []);
 
   const floorRooms = rooms.filter(r => r.floor === selectedFloor);
   const summary: Record<string, number> = { available: 0, occupied: 0, deposited: 0, maintenance: 0, partial: 0 };
   rooms.forEach(r => { if (summary[r.status] !== undefined) summary[r.status]++; });
 
-  const changeRoomStatus = (roomId: string, newStatus: RoomStatus) => {
-    const db = getMockDB();
-    const updated = db.rooms.map((r: Room) => {
-      if (r.id === roomId) {
-        const u = { ...r, status: newStatus };
-        if (selectedRoom?.id === roomId) setSelectedRoom(u);
-        return u;
+  const changeRoomStatus = async (roomId: string, newStatus: RoomStatus) => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/rooms/${roomId}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: newStatus })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setRooms(prev => prev.map((r: Room) => {
+          if (r.id === roomId) {
+            const u = { ...r, status: newStatus };
+            if (selectedRoom?.id === roomId) setSelectedRoom(u);
+            return u;
+          }
+          return r;
+         }));
       }
-      return r;
-    });
-    db.rooms = updated;
-    saveMockDB(db);
-    setRooms(updated);
+    } catch (err) {
+      console.error('Error updating room status:', err);
+    }
   };
 
   return (
