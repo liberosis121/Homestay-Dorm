@@ -288,7 +288,7 @@ function DashboardLayout() {
       {/* ----------------------------------------------------
           SIDEBAR (Desktop)
          ---------------------------------------------------- */}
-      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col flex-shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
+      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
         <div className="p-6 border-b border-[#d1c4b9] flex items-center gap-3">
           <div className="p-2 bg-[#4a6549]/10 rounded-xl text-[#4a6549] border border-[#4a6549]/20 flex items-center justify-center shrink-0">
             <span 
@@ -604,7 +604,7 @@ function DashboardDispatcher() {
 function PlaceholderPage() {
   const location = useLocation();
   return (
-    <div className="min-h-[450px] flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
+    <div className="min-h-112.5 flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
       <div className="p-5 bg-[#6f583c]/10 rounded-2xl text-[#6f583c] border border-[#6f583c]/20 mb-6 flex items-center justify-center">
         <Compass className="w-12 h-12" />
       </div>

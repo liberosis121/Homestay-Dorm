@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, FileText, Printer, Download, CreditCard,
@@ -6,6 +6,8 @@ import {
   FileSignature, CheckCircle2, ClipboardList
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import { useAuthStore } from '../../stores/authStore';
+import { fetchMyContracts } from './services/contract.service';
 
 export interface ContractData {
   id: string;
@@ -40,295 +42,96 @@ export interface ContractData {
   managerImage: string;
 }
 
-export const MOCK_CONTRACTS: ContractData[] = [
-  {
-    id: 'c1',
-    contractCode: 'HD-2023-089',
-    signDate: '01/10/2023',
-    startDate: '05/10/2023',
-    endDate: '05/10/2024',
-    duration: '12 tháng',
-    status: 'active',
-    statusLabel: 'Đang hiệu lực',
-    branch: 'Quận 1 - Eco Park',
-    building: 'Tòa A',
-    roomCode: 'A203',
-    bedCode: 'G-02',
-    roomType: 'Dorm 4 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 4500000,
-    depositAmount: 4500000,
-    serviceFee: 250000,
-    terms: 'Bên A đồng ý cho bên B thuê 01 vị trí giường (G-02) tại phòng A203, thuộc chi nhánh HomeStay Dorm Quận 1 - Eco Park. Tài sản bàn giao bao gồm: 01 nệm cao su, 01 tủ đồ có khóa, hệ thống đèn chiếu sáng cá nhân.',
-    paymentPolicy: 'Giá thuê hàng tháng là 4.500.000 VNĐ. Thanh toán từ ngày 01 đến ngày 05 hàng tháng bằng hình thức chuyển khoản hoặc ví điện tử qua ứng dụng. Chậm thanh toán quá 03 ngày chịu phí phạt 5%.',
-    terminationPolicy: 'Bên B cần báo trước 30 ngày nếu có ý định trả phòng trước hạn. Hoàn trả phòng sạch sẽ, bàn giao đầy đủ trang thiết bị như ban đầu để nhận lại tiền đặt cọc cọc.',
-    monthsPassed: 8,
-    totalMonths: 12,
-    remainingDays: 124,
-    managerName: 'Mr. Hoàng Long',
-    managerPhone: '0901234567',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c2',
-    contractCode: 'HD-2022-114',
-    signDate: '15/09/2022',
-    startDate: '20/09/2022',
-    endDate: '20/09/2023',
-    duration: '12 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Bình Thạnh - View Sông',
-    building: 'Block B',
-    roomCode: 'B305',
-    bedCode: 'G-01',
-    roomType: 'Dorm 6 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 3800000,
-    depositAmount: 3800000,
-    serviceFee: 200000,
-    terms: 'Bên A đồng ý cho bên B thuê 01 vị trí giường (G-01) tại phòng B305, thuộc chi nhánh HomeStay Dorm Bình Thạnh. Tài sản bàn giao bao gồm: 01 nệm cao su, 01 tủ đồ có khóa cá nhân.',
-    paymentPolicy: 'Giá thuê hàng tháng là 3.800.000 VNĐ. Thanh toán từ ngày 01 đến ngày 05 hàng tháng qua ví điện tử.',
-    terminationPolicy: 'Kết thúc hợp đồng đúng hạn, hoàn trả trang thiết bị nguyên vẹn để nhận lại 100% tiền cọc.',
-    monthsPassed: 12,
-    totalMonths: 12,
-    remainingDays: 0,
-    managerName: 'Ms. Mai Vy',
-    managerPhone: '0907654321',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c3',
-    contractCode: 'HD-2022-004',
-    signDate: '10/01/2022',
-    startDate: '15/01/2022',
-    endDate: '15/07/2022',
-    duration: '6 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Quận 1 - Eco Park',
-    building: 'Tòa A',
-    roomCode: 'A102',
-    bedCode: 'G-04',
-    roomType: 'Dorm 4 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 4200000,
-    depositAmount: 4200000,
-    serviceFee: 250000,
-    terms: 'Cho thuê vị trí giường G-04 tại phòng A102. Bàn giao đầy đủ nệm, gối, tủ cá nhân.',
-    paymentPolicy: 'Giá thuê hàng tháng là 4.200.000 VNĐ. Thanh toán chuyển khoản ngân hàng.',
-    terminationPolicy: 'Thanh lý hợp đồng đúng hạn, hoàn tất kiểm tra phòng trả cọc.',
-    monthsPassed: 6,
-    totalMonths: 6,
-    remainingDays: 0,
-    managerName: 'Mr. Hoàng Long',
-    managerPhone: '0901234567',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c4',
-    contractCode: 'HD-2021-456',
-    signDate: '01/06/2021',
-    startDate: '05/06/2021',
-    endDate: '05/06/2022',
-    duration: '12 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Thủ Đức - Đại học',
-    building: 'Khu C',
-    roomCode: 'C104',
-    bedCode: 'G-02',
-    roomType: 'Dorm 8 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 3200000,
-    depositAmount: 3200000,
-    serviceFee: 180000,
-    terms: 'Hợp đồng thuê vị trí giường G-02 phòng C104 chi nhánh Thủ Đức.',
-    paymentPolicy: 'Giá thuê hàng tháng là 3.200.000 VNĐ. Thanh toán trực tiếp tại quầy hoặc ứng dụng.',
-    terminationPolicy: 'Trả cọc sau khi bàn giao phòng và trừ chi phí phát sinh nếu có.',
-    monthsPassed: 12,
-    totalMonths: 12,
-    remainingDays: 0,
-    managerName: 'Mr. Quốc Khánh',
-    managerPhone: '0908889999',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c5',
-    contractCode: 'HD-2021-088',
-    signDate: '10/01/2021',
-    startDate: '12/01/2021',
-    endDate: '12/07/2021',
-    duration: '6 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Quận 10 - Sư Vạn Hạnh',
-    building: 'Nhà 2',
-    roomCode: 'P202',
-    bedCode: 'G-03',
-    roomType: 'Dorm 6 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 3900000,
-    depositAmount: 3900000,
-    serviceFee: 220000,
-    terms: 'Hợp đồng thuê vị trí giường G-03 phòng P202 chi nhánh Quận 10.',
-    paymentPolicy: 'Giá thuê hàng tháng là 3.900.000 VNĐ. Thanh toán trực tuyến chuyển khoản.',
-    terminationPolicy: 'Trả cọc sau khi kiểm tra hiện trạng tài sản.',
-    monthsPassed: 6,
-    totalMonths: 6,
-    remainingDays: 0,
-    managerName: 'Ms. Quỳnh Trâm',
-    managerPhone: '0903334444',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c6',
-    contractCode: 'HD-2020-312',
-    signDate: '01/09/2020',
-    startDate: '05/09/2020',
-    endDate: '05/09/2021',
-    duration: '12 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Bình Thạnh - View Sông',
-    building: 'Block B',
-    roomCode: 'B202',
-    bedCode: 'G-04',
-    roomType: 'Dorm 6 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 3800000,
-    depositAmount: 3800000,
-    serviceFee: 200000,
-    terms: 'Hợp đồng thuê giường G-04 phòng B202 chi nhánh Bình Thạnh.',
-    paymentPolicy: 'Thanh toán từ ngày 01 đến ngày 05 qua ví điện tử.',
-    terminationPolicy: 'Thanh lý đúng thời hạn, hoàn cọc 100%.',
-    monthsPassed: 12,
-    totalMonths: 12,
-    remainingDays: 0,
-    managerName: 'Ms. Mai Vy',
-    managerPhone: '0907654321',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c7',
-    contractCode: 'HD-2020-055',
-    signDate: '15/02/2020',
-    startDate: '18/02/2020',
-    endDate: '18/08/2020',
-    duration: '6 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Quận 1 - Eco Park',
-    building: 'Tòa A',
-    roomCode: 'A102',
-    bedCode: 'G-02',
-    roomType: 'Dorm 4 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 4200000,
-    depositAmount: 4200000,
-    serviceFee: 250000,
-    terms: 'Hợp đồng thuê giường G-02 tại A102 chi nhánh Quận 1.',
-    paymentPolicy: 'Thanh toán chuyển khoản từ 01-05 hàng tháng.',
-    terminationPolicy: 'Đã thanh lý đúng hạn, hoàn tất thủ tục.',
-    monthsPassed: 6,
-    totalMonths: 6,
-    remainingDays: 0,
-    managerName: 'Mr. Hoàng Long',
-    managerPhone: '0901234567',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c8',
-    contractCode: 'HD-2019-109',
-    signDate: '01/10/2019',
-    startDate: '05/10/2019',
-    endDate: '05/10/2020',
-    duration: '12 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Quận 1 - Eco Park',
-    building: 'Tòa A',
-    roomCode: 'A301',
-    bedCode: 'G-01',
-    roomType: 'Dorm 4 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 4400000,
-    depositAmount: 4400000,
-    serviceFee: 250000,
-    terms: 'Thuê giường G-01 phòng A301.',
-    paymentPolicy: 'Thanh toán trực tiếp hoặc qua tài khoản ngân hàng.',
-    terminationPolicy: 'Đã hết hạn, hoàn tất bàn giao.',
-    monthsPassed: 12,
-    totalMonths: 12,
-    remainingDays: 0,
-    managerName: 'Mr. Hoàng Long',
-    managerPhone: '0901234567',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c9',
-    contractCode: 'HD-2019-012',
-    signDate: '10/01/2019',
-    startDate: '12/01/2019',
-    endDate: '12/07/2019',
-    duration: '6 tháng',
-    status: 'terminated',
-    statusLabel: 'Đã thanh lý',
-    branch: 'Bình Thạnh - View Sông',
-    building: 'Block B',
-    roomCode: 'B105',
-    bedCode: 'G-06',
-    roomType: 'Dorm 6 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 3700000,
-    depositAmount: 3700000,
-    serviceFee: 200000,
-    terms: 'Hợp đồng thuê giường G-06 phòng B105.',
-    paymentPolicy: 'Thanh toán trực tiếp.',
-    terminationPolicy: 'Thanh lý trước thời hạn do khách hàng chuyển nơi công tác. Đã giải quyết trả cọc 50% theo điều khoản phạt.',
-    monthsPassed: 4,
-    totalMonths: 6,
-    remainingDays: 0,
-    managerName: 'Ms. Mai Vy',
-    managerPhone: '0907654321',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  },
-  {
-    id: 'c10',
-    contractCode: 'HD-2018-095',
-    signDate: '20/08/2018',
-    startDate: '25/08/2018',
-    endDate: '25/08/2019',
-    duration: '12 tháng',
-    status: 'expired',
-    statusLabel: 'Đã hết hạn',
-    branch: 'Quận 10 - Sư Vạn Hạnh',
-    building: 'Nhà 2',
-    roomCode: 'P304',
-    bedCode: 'G-01',
-    roomType: 'Dorm 6 giường',
-    roomImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBLVXY_FnotGU7TRXMadBUOcaZ-W7bEGFRGjsLApApN2TIqoA_yOy6Y4FMjU4k9srb-KkqffbG8B4KIXOz7srtw3AAYTW3JOS8wVS-GBTMmdx98h9pxAJLeuf-AYCaDV9mJ-Dy3s_zoC1UILMEqT784QS42LrFZ2jcc5LZKeKb_qpQypix6X0SW5g_vxn8cKH9nVcKiu7RXYedxF4gsWzcy8AYZ1ToJowKD9zoh8d-Fnr40rC7IAicdN5mc_zyhjpwzpMlrbRe9vA',
-    rentPrice: 3900000,
-    depositAmount: 3900000,
-    serviceFee: 220000,
-    terms: 'Hợp đồng thuê giường G-01 phòng P304.',
-    paymentPolicy: 'Thanh toán trực tuyến.',
-    terminationPolicy: 'Hết hạn hợp đồng, hoàn trả tài sản đầy đủ.',
-    monthsPassed: 12,
-    totalMonths: 12,
-    remainingDays: 0,
-    managerName: 'Ms. Quỳnh Trâm',
-    managerPhone: '0903334444',
-    managerImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAE5ziBZKnLACn0xlPYlC2lhPrFGdbW7Qm9gRN8PSfa0_cCchPKG-GHDo-Ouund7Uc2WOferSpzdbZQrh5KeYFu-oh2srdaDB-YeRwjYvFXM3HTKgJjaaF6XATv_bcjwAE6zgshchZ3-tBWnM18F1cEoxeYdCL7VhCc-BG8_VldY8CvNbOaEZ5mkvvbuLzuMGus_tvlkqJO37yZ33f-PlaYAxe3-HX0Jw2v80zXkmKk57E-7DBCl-7Y-CHjuV-VhNgkbQoVsb1wXQ'
-  }
-];
-
 export default function CustomerContractsPage() {
   const navigate = useNavigate();
-  const [selectedContractId, setSelectedContractId] = useState<string>('c1');
+  const { user } = useAuthStore();
+  const [contractsList, setContractsList] = useState<ContractData[]>([]);
+  const [selectedContractId, setSelectedContractId] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const contract = MOCK_CONTRACTS.find((c) => c.id === selectedContractId) || MOCK_CONTRACTS[0];
+  useEffect(() => {
+    if (user?.email) {
+      setLoading(true);
+      fetchMyContracts(user.email)
+        .then((data) => {
+          setContractsList(data || []);
+          if (data && data.length > 0) {
+            setSelectedContractId(data[0].id);
+          }
+          setError(null);
+        })
+        .catch((err) => {
+          console.error('Error fetching contracts:', err);
+          setError(err.message || 'Không thể kết nối với máy chủ API');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="max-w-container-max mx-auto px-4 md:px-8 py-32 flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin hợp đồng...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-container-max mx-auto px-4 md:px-8 py-16 space-y-6">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </button>
+        <div className="bg-red-50 border border-red-200 rounded-3xl p-8 text-center max-w-xl mx-auto space-y-4 shadow-sm">
+          <AlertCircle className="w-12 h-12 text-red-600 mx-auto" />
+          <h2 className="text-lg font-bold text-red-800">Không thể tải hợp đồng</h2>
+          <p className="text-sm text-red-700">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer shadow-sm"
+          >
+            Thử tải lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (contractsList.length === 0) {
+    return (
+      <div className="max-w-container-max mx-auto px-4 md:px-8 py-16 space-y-6">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </button>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-3xl p-12 text-center max-w-xl mx-auto space-y-4 shadow-sm">
+          <FileText className="w-16 h-16 text-primary/40 mx-auto" />
+          <h2 className="text-xl font-bold text-primary">Không tìm thấy hợp đồng</h2>
+          <p className="text-sm text-on-surface-variant max-w-md mx-auto">
+            Hiện tại bạn chưa có hợp đồng thuê phòng nào được ký kết hoặc kích hoạt trong hệ thống. Vui lòng liên hệ nhân viên Sale để được hỗ trợ làm hợp đồng.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const contract = contractsList.find((c) => c.id === selectedContractId) || contractsList[0];
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -362,7 +165,7 @@ export default function CustomerContractsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 animate-fade-in-up">
+    <div className="max-w-container-max mx-auto px-4 md:px-8 pt-0 pb-8 space-y-6 animate-fade-in-up">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-24 right-6 z-50 bg-[#334537] text-white border border-[#4a5d4e] px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-2.5 animate-slide-in-right">
@@ -411,7 +214,7 @@ export default function CustomerContractsPage() {
             <ArrowLeft className="h-4 w-4" />
             Quay lại
           </button>
-          <h1 className="font-headline-lg text-2xl font-bold text-primary flex items-center gap-2">
+          <h1 className="font-headline-lg text-2xl font-bold text-primary flex items-center gap-2 flex-wrap">
             <FileText className="w-7 h-7 text-primary" />
             Hợp đồng thuê phòng
           </h1>
@@ -426,7 +229,7 @@ export default function CustomerContractsPage() {
           <CustomSelect
             value={selectedContractId}
             onChange={setSelectedContractId}
-            options={MOCK_CONTRACTS.map((c) => ({
+            options={contractsList.map((c) => ({
               value: c.id,
               label: `${c.contractCode} (${c.statusLabel} - ${c.branch})`,
             }))}
@@ -491,7 +294,7 @@ export default function CustomerContractsPage() {
                 alt={contract.roomCode}
                 className="w-full md:w-52 h-36 object-cover rounded-2xl bg-surface-variant border border-outline-variant/50 shadow-sm"
               />
-              <div className="grid grid-cols-2 gap-y-4 gap-x-6 flex-grow">
+              <div className="grid grid-cols-2 gap-y-4 gap-x-6 grow">
                 <div>
                   <p className="text-[10px] text-on-surface-variant uppercase font-semibold">Tên phòng / Mã phòng</p>
                   <p className="text-sm font-bold text-on-surface mt-0.5">{contract.roomCode}</p>
@@ -534,7 +337,7 @@ export default function CustomerContractsPage() {
               </div>
               <div className="p-4 bg-surface rounded-2xl border border-outline-variant/30 hover:border-primary/30 transition">
                 <p className="text-[10px] text-on-surface-variant uppercase font-semibold">Tiền đặt cọc cọc</p>
-                <p className="text-base font-extrabold text-[#735a3a] mt-1">
+                <p className="text-base font-extrabold text-tertiary mt-1">
                   {contract.depositAmount.toLocaleString('vi-VN')} VNĐ
                 </p>
               </div>
@@ -557,7 +360,7 @@ export default function CustomerContractsPage() {
               <span className="text-[10px] text-on-surface-variant italic font-semibold">Văn bản pháp lý có hiệu lực</span>
             </div>
             
-            <div className="bg-surface border border-outline-variant/60 rounded-2xl p-5 h-[350px] overflow-y-auto custom-scrollbar font-body-md text-on-surface leading-relaxed text-sm space-y-4">
+            <div className="bg-surface border border-outline-variant/60 rounded-2xl p-5 h-87.5 overflow-y-auto custom-scrollbar font-body-md text-on-surface leading-relaxed text-sm space-y-4">
               <div className="max-w-prose mx-auto">
                 <h4 className="font-extrabold text-center text-on-surface tracking-wide">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4>
                 <p className="text-center font-bold text-xs text-on-surface-variant mt-0.5">Độc lập - Tự do - Hạnh phúc</p>
@@ -627,7 +430,7 @@ export default function CustomerContractsPage() {
                 </div>
                 
                 {/* Progress bar */}
-                <div className="w-full bg-[#ecefea] h-2.5 rounded-full overflow-hidden">
+                <div className="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
                   <div
                     className="bg-primary h-full rounded-full transition-all duration-500"
                     style={{ width: `${(contract.monthsPassed / contract.totalMonths) * 100}%` }}

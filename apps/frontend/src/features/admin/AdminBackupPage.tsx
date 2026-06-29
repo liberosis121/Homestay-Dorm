@@ -128,7 +128,7 @@ export default function AdminBackupPage() {
         <button
           onClick={startBackup}
           disabled={isCreating}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           style={{ background: A.primary }}>
           <span className="material-symbols-outlined text-[18px]">
             {isCreating ? 'hourglass_top' : 'backup'}
@@ -194,7 +194,7 @@ export default function AdminBackupPage() {
           </span>
         </div>
 
-        <div className="divide-y" style={{ borderColor: A.border }}>
+        <div className="divide-y divide-[#f4ede6]">
           {backups.map(b => (
             <div key={b.id}
               className="px-5 py-4 flex items-center justify-between gap-4 transition-colors"
@@ -210,14 +210,27 @@ export default function AdminBackupPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate font-mono" style={{ color: A.primary }}>{b.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span className="text-xs" style={{ color: A.textMuted }}>{b.date}</span>
-                    <span className="text-xs" style={{ color: A.textMuted }}>•</span>
-                    <span className="text-xs font-medium" style={{ color: A.textMuted }}>{b.size}</span>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium"
+                      style={{ background: A.sidebar, color: A.textMuted }}>
+                      <span className="material-symbols-outlined !text-[13px]" style={{ fontSize: '13px' }}>calendar_today</span>
+                      {b.date}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium"
+                      style={{ background: '#e8ede7', color: '#5f745d' }}>
+                      <span className="material-symbols-outlined !text-[13px]" style={{ fontSize: '13px' }}>save</span>
+                      {b.size}
+                    </span>
                     {b.status === 'success' && (
                       <>
-                        <span className="text-xs" style={{ color: A.textMuted }}>•</span>
-                        <span className="text-xs" style={{ color: A.textMuted }}>{b.tables} bảng · {b.records.toLocaleString()} bản ghi</span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#faf2ec] text-[#6f583c] border border-[#eadacd]">
+                          <span className="material-symbols-outlined !text-[13px]" style={{ fontSize: '13px' }}>table_chart</span>
+                          {b.tables} bảng
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#faf2ec] text-[#6f583c] border border-[#eadacd]">
+                          <span className="material-symbols-outlined !text-[13px]" style={{ fontSize: '13px' }}>database</span>
+                          {b.records.toLocaleString()} bản ghi
+                        </span>
                       </>
                     )}
                   </div>
@@ -236,18 +249,16 @@ export default function AdminBackupPage() {
                   {b.type === 'full' ? 'Toàn bộ' : 'Gia tăng'}
                 </span>
                 {b.status === 'success' && (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     <button
                       onClick={() => downloadBackup(b)}
-                      className="p-1.5 rounded-full transition-colors hover:opacity-70"
-                      style={{ color: A.accent }}
+                      className="p-2 rounded-lg bg-[#e8ede7] text-[#5f745d] border border-[#d8e2d6] hover:bg-[#5f745d] hover:text-white transition-all duration-200 hover:scale-[1.05] active:scale-95 flex items-center justify-center cursor-pointer shadow-sm"
                       title="Tải xuống">
                       <span className="material-symbols-outlined text-[18px]">download</span>
                     </button>
                     <button
                       onClick={() => setConfirmRestore(b)}
-                      className="p-1.5 rounded-full transition-colors hover:opacity-70"
-                      style={{ color: A.textMuted }}
+                      className="p-2 rounded-lg bg-[#faf2ec] text-[#6f583c] border border-[#eadacd] hover:bg-[#6f583c] hover:text-white transition-all duration-200 hover:scale-[1.05] active:scale-95 flex items-center justify-center cursor-pointer shadow-sm"
                       title="Khôi phục từ bản này">
                       <span className="material-symbols-outlined text-[18px]">restore</span>
                     </button>
@@ -294,9 +305,9 @@ export default function AdminBackupPage() {
 
       {/* Confirm Restore Modal */}
       {confirmRestore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
           onClick={e => { if (e.target === e.currentTarget) setConfirmRestore(null); }}>
-          <div className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5 border border-[#d1c4b9]"
+          <div className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5 border border-[#d1c4b9] animate-fade-in"
             style={{ background: A.surface }}>
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-amber-50">
@@ -307,27 +318,36 @@ export default function AdminBackupPage() {
                 <p className="text-xs mt-0.5" style={{ color: A.textMuted }}>Hành động này không thể hoàn tác</p>
               </div>
             </div>
-            <div className="p-4 rounded-lg" style={{ background: A.bg, border: `1px solid ${A.border}` }}>
-              <p className="text-xs font-semibold uppercase mb-1" style={{ color: A.textMuted }}>Bản sao lưu sẽ khôi phục</p>
+            <div className="p-4 rounded-lg animate-pulse-subtle" style={{ background: A.bg, border: `1px solid ${A.border}` }}>
+              <p className="text-xs font-semibold uppercase mb-1.5" style={{ color: A.textMuted }}>Bản sao lưu sẽ khôi phục</p>
               <p className="text-sm font-mono font-semibold" style={{ color: A.primary }}>{confirmRestore.name}</p>
-              <p className="text-xs mt-1" style={{ color: A.textMuted }}>{confirmRestore.date} · {confirmRestore.size}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
+                  <span className="material-symbols-outlined !text-[13px]" style={{ fontSize: '13px' }}>calendar_today</span>
+                  {confirmRestore.date}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200">
+                  <span className="material-symbols-outlined !text-[13px]" style={{ fontSize: '13px' }}>save</span>
+                  {confirmRestore.size}
+                </span>
+              </div>
             </div>
-            <p className="text-sm" style={{ color: A.textMuted }}>
-              Toàn bộ dữ liệu hiện tại sẽ bị <strong>ghi đè</strong> bởi dữ liệu từ bản sao lưu này.
+            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
+              Toàn bộ dữ liệu hiện tại sẽ bị <strong className="text-red-600">ghi đè</strong> bởi dữ liệu từ bản sao lưu này.
               Hệ thống sẽ khởi động lại sau khi hoàn tất.
             </p>
             {restoring ? (
-              <div className="flex items-center gap-3 p-4 rounded-lg" style={{ background: A.badgeBg }}>
-                <span className="material-symbols-outlined animate-spin" style={{ color: A.accent }}>settings</span>
-                <p className="text-sm font-medium" style={{ color: A.accent }}>Đang khôi phục dữ liệu...</p>
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200">
+                <span className="material-symbols-outlined animate-spin text-amber-600">hourglass_empty</span>
+                <p className="text-sm font-semibold text-amber-800">Đang khôi phục dữ liệu...</p>
               </div>
             ) : (
               <div className="flex gap-3">
                 <button onClick={() => setConfirmRestore(null)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-gray-50 active:scale-95 cursor-pointer"
                   style={{ borderColor: A.border, color: A.textMuted }}>Hủy bỏ</button>
                 <button onClick={doRestore}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700">
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer">
                   Xác nhận khôi phục
                 </button>
               </div>

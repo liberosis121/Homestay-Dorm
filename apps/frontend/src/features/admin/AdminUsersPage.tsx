@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { getMockDB } from "../../lib/supabaseClient";
+import { fetchAdminCustomers, toggleCustomerLockApi } from "./services/admin.service";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 // ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
 const A = {
@@ -62,33 +63,46 @@ export default function AdminUsersPage() {
   );
   const [showAddModal, setShowAddModal] = useState(false);
   const [confirmLockCustomer, setConfirmLockCustomer] = useState<CustomerRow | null>(null);
+  const [isConfirmHover, setIsConfirmHover] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
-  // Load from mock DB
+  const rentOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "renting", label: "Đang thuê" },
+    { value: "not_renting", label: "Chưa thuê" },
+    { value: "pending", label: "Chờ duyệt" },
+    { value: "checked_out", label: "Đã trả phòng" }
+  ];
+
+  const acctOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "active", label: "Hoạt động" },
+    { value: "locked", label: "Bị khóa" }
+  ];
+
+  // Load from database
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      const db = getMockDB();
-      const rows: CustomerRow[] = (db.customers || []).map(
-        (c: any, idx: number) => ({
-          id: `KH-${String(idx + 1).padStart(3, "0")}`,
-          full_name: c.full_name || "Khách hàng",
-          email: c.email || "",
-          phone: c.phone || "09x xxx xxxx",
-          renting_room_name: c.renting_room_name,
-          status: c.renting_room_name ? "renting" : "not_renting",
-          accountStatus: "active",
-          joinDate: c.created_at
-            ? new Date(c.created_at).toLocaleDateString("vi-VN")
-            : "01/01/2024",
-          note: "",
-        }),
-      );
-      // Add mock locked account for demo
-      if (rows.length > 2) rows[2].accountStatus = "locked";
-      setCustomers(rows);
-      setIsLoading(false);
-    }, 450);
-    return () => clearTimeout(timer);
+    let active = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const rows = await fetchAdminCustomers();
+        if (active) {
+          setCustomers(rows);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải khách hàng:", err);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const kpis = useMemo(() => {
@@ -145,23 +159,43 @@ export default function AdminUsersPage() {
     });
   }, [customers, search, filterRent, filterAcct]);
 
-  const confirmToggleLock = () => {
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterRent, filterAcct]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  }, [filtered]);
+
+  const displayedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  const confirmToggleLock = async () => {
     if (!confirmLockCustomer) return;
-    const nextStatus =
-      confirmLockCustomer.accountStatus === "active" ? "locked" : "active";
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.id === confirmLockCustomer.id
-          ? { ...c, accountStatus: nextStatus }
-          : c,
-      ),
-    );
-    if (selectedCustomer?.id === confirmLockCustomer.id) {
-      setSelectedCustomer((prev) =>
-        prev ? { ...prev, accountStatus: nextStatus } : null,
+    try {
+      const res = await toggleCustomerLockApi(confirmLockCustomer.id);
+      const nextStatus = res.accountStatus;
+      setCustomers((prev) =>
+        prev.map((c) =>
+          c.id === confirmLockCustomer.id
+            ? { ...c, accountStatus: nextStatus }
+            : c
+        )
       );
+      if (selectedCustomer?.id === confirmLockCustomer.id) {
+        setSelectedCustomer((prev) =>
+          prev ? { ...prev, accountStatus: nextStatus } : null
+        );
+      }
+    } catch (err) {
+      console.error("Lỗi khi thay đổi khóa:", err);
+      alert("Không thể thay đổi trạng thái khóa tài khoản!");
+    } finally {
+      setConfirmLockCustomer(null);
     }
-    setConfirmLockCustomer(null);
   };
 
   const formatCurrency = (amount: number) =>
@@ -169,54 +203,7 @@ export default function AdminUsersPage() {
 
   const invoiceItems = useMemo(() => {
     if (!selectedCustomer) return [];
-
-    const db = getMockDB() as any;
-    const normalize = (value: string | undefined) =>
-      (value || "").toLowerCase().trim();
-    const matchByName = (value: string | undefined) =>
-      normalize(value) === normalize(selectedCustomer.full_name);
-    const toDateValue = (value?: string) =>
-      value ? new Date(value.replace(" ", "T")).getTime() : 0;
-
-    const depositItems = (db.deposit_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Đặt cọc",
-        room: inv.room_name,
-        amount: inv.amount,
-        status: inv.status,
-        dateLabel: inv.created_at,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    const checkinItems = (db.checkin_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Nhận phòng",
-        room: inv.room_name,
-        amount: inv.total,
-        status: inv.status,
-        dateLabel: inv.created_at,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    const monthlyItems = (db.monthly_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Định kỳ",
-        room: inv.room_name,
-        amount: inv.total,
-        status: inv.status,
-        dateLabel: `Kỳ ${inv.period}`,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    return [...depositItems, ...checkinItems, ...monthlyItems].sort(
-      (a, b) => b.sortValue - a.sortValue,
-    );
+    return (selectedCustomer as any).invoices || [];
   }, [selectedCustomer]);
 
   const invoiceStatusMap: Record<string, { label: string; cls: string }> = {
@@ -249,8 +236,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow transition-all hover:opacity-90 active:scale-95"
-            style={{ background: A.primary }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">
               person_add
@@ -337,43 +323,29 @@ export default function AdminUsersPage() {
             onBlur={(e) => (e.currentTarget.style.borderColor = A.border)}
           />
         </div>
-        <select
+        <CustomSelect
           value={filterRent}
-          onChange={(e) => setFilterRent(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Trạng thái thuê</option>
-          <option value="renting">Đang thuê</option>
-          <option value="not_renting">Chưa thuê</option>
-          <option value="pending">Chờ duyệt</option>
-          <option value="checked_out">Đã trả phòng</option>
-        </select>
-        <select
+          onChange={setFilterRent}
+          options={rentOptions}
+          placeholder="Trạng thái thuê"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[180px]"
+        />
+        <CustomSelect
           value={filterAcct}
-          onChange={(e) => setFilterAcct(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Trạng thái tài khoản</option>
-          <option value="active">Hoạt động</option>
-          <option value="locked">Bị khóa</option>
-        </select>
+          onChange={setFilterAcct}
+          options={acctOptions}
+          placeholder="Trạng thái tài khoản"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[190px]"
+        />
         <button
           onClick={() => {
             setSearch("");
             setFilterRent("");
             setFilterAcct("");
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
@@ -410,7 +382,7 @@ export default function AdminUsersPage() {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
                     style={{ color: A.textMuted }}
                   >
                     {h}
@@ -472,7 +444,7 @@ export default function AdminUsersPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((c, i) => {
+                displayedCustomers.map((c, i) => {
                   const rentInfo = STATUS_MAP[c.status];
                   const acctInfo = ACCT_MAP[c.accountStatus];
                   return (
@@ -498,8 +470,9 @@ export default function AdminUsersPage() {
                       <td
                         className="px-5 py-3 text-sm font-medium"
                         style={{ color: A.textMuted }}
+                        title={c.id}
                       >
-                        {c.id}
+                        {c.id.substring(0, 8)}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -562,7 +535,7 @@ export default function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -611,23 +584,28 @@ export default function AdminUsersPage() {
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}
         >
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {customers.length} khách hàng
+            Hiển thị {filtered.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} -{" "}
+            {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} trong số{" "}
+            {filtered.length} khách hàng
           </p>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3].map((n) => (
-              <button
-                key={n}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors"
-                style={
-                  n === 1
-                    ? { background: A.primary, color: "#fff" }
-                    : { color: A.textPrimary }
-                }
-              >
-                {n}
-              </button>
-            ))}
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCurrentPage(n)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors"
+                  style={
+                    n === currentPage
+                      ? { background: A.primary, color: "#fff" }
+                      : { color: A.textPrimary }
+                  }
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -681,14 +659,20 @@ export default function AdminUsersPage() {
                   >
                     {selectedCustomer.full_name}
                   </h3>
-                  <p className="text-sm" style={{ color: A.textMuted }}>
-                    Mã: {selectedCustomer.id} •{" "}
+                  <p className="text-xs break-all mt-1" style={{ color: A.textMuted }} title={selectedCustomer.id}>
+                    Mã: {selectedCustomer.id.substring(0, 8)}
+                  </p>
+                  <div className="mt-2 flex justify-center">
                     <span
-                      className={ACCT_MAP[selectedCustomer.accountStatus].text}
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        selectedCustomer.accountStatus === "active"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-red-50 text-red-700 border border-red-200"
+                      }`}
                     >
                       {ACCT_MAP[selectedCustomer.accountStatus].label}
                     </span>
-                  </p>
+                  </div>
                 </div>
               </div>
 
@@ -723,58 +707,64 @@ export default function AdminUsersPage() {
               {/* Tab Content */}
               {drawerTab === "info" && (
                 <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                  <div
+                    className="rounded-xl p-4 space-y-4"
+                    style={{
+                      background: A.sidebar,
+                      border: `1px solid ${A.border}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Email
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.email || "Chưa cập nhật"}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Điện thoại
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.phone}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Ngày tạo tài khoản
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.joinDate}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Trạng thái
-                      </p>
+                      </span>
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-0.5 ${STATUS_MAP[selectedCustomer.status].cls}`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_MAP[selectedCustomer.status].cls}`}
                       >
                         {STATUS_MAP[selectedCustomer.status].label}
                       </span>
@@ -814,7 +804,7 @@ export default function AdminUsersPage() {
               {drawerTab === "history" && (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm" style={{ color: A.textMuted }}>
-                    Lịch sử các hợp đồng thuê phòng của khách hàng.
+                    Lịch sử các hợp đồng thuê phòng của khách hàng
                   </p>
                   {selectedCustomer.renting_room_name ? (
                     <div
@@ -859,7 +849,7 @@ export default function AdminUsersPage() {
               {drawerTab === "invoice" && (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm" style={{ color: A.textMuted }}>
-                    Danh sách hóa đơn của khách hàng.
+                    Danh sách hóa đơn của khách hàng
                   </p>
                   {invoiceItems.length === 0 ? (
                     <p
@@ -869,7 +859,7 @@ export default function AdminUsersPage() {
                       Chưa có hóa đơn cho khách hàng này.
                     </p>
                   ) : (
-                    invoiceItems.map((inv) => {
+                    invoiceItems.map((inv: any) => {
                       const status = invoiceStatusMap[inv.status] || {
                         label: "Không xác định",
                         cls: "bg-gray-100 text-gray-600",
@@ -903,12 +893,10 @@ export default function AdminUsersPage() {
                             >
                               {inv.id}
                             </p>
-                            <p
-                              className="text-xs"
-                              style={{ color: A.textMuted }}
-                            >
-                              {inv.room || "Chưa có phòng"} • {inv.dateLabel}
-                            </p>
+                            <div className="flex flex-col gap-0.5 mt-1 text-xs" style={{ color: A.textMuted }}>
+                              <p>Phòng: <span className="font-medium" style={{ color: A.textPrimary }}>{inv.room || "Chưa có phòng"}</span></p>
+                              <p>Thanh toán: <span className="font-medium" style={{ color: A.textPrimary }}>{inv.dateLabel}</span></p>
+                            </div>
                           </div>
                           <div
                             className="text-sm font-semibold"
@@ -944,7 +932,10 @@ export default function AdminUsersPage() {
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
                 Thêm khách hàng mới
               </h2>
-              <button onClick={() => setShowAddModal(false)}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-full hover:bg-[#d1c4b9]/30 transition-all active:scale-95 flex items-center justify-center"
+              >
                 <span
                   className="material-symbols-outlined"
                   style={{ color: A.textMuted }}
@@ -964,27 +955,21 @@ export default function AdminUsersPage() {
                 <input
                   type={label === "Mật khẩu" ? "password" : "text"}
                   placeholder={`Nhập ${label.toLowerCase()}...`}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.bg,
-                    color: A.textPrimary,
-                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
             ))}
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-black/5 active:scale-95 cursor-pointer"
                 style={{ borderColor: A.border, color: A.textMuted }}
               >
                 Hủy
               </button>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
               >
                 Tạo tài khoản
               </button>
@@ -997,10 +982,7 @@ export default function AdminUsersPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{
-            background:
-              confirmLockCustomer.accountStatus === "active"
-                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for lock
-                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for unlock
+            background: "rgba(0, 0, 0, 0.4)",
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmLockCustomer(null);
@@ -1049,42 +1031,47 @@ export default function AdminUsersPage() {
               </h3>
             </div>
             
-            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
-              {confirmLockCustomer.accountStatus === "active" ? (
-                <>
-                  Bạn có chắc muốn <strong>khóa tài khoản</strong> của khách hàng{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockCustomer.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockCustomer.id}) không? Khách hàng này sẽ không thể đăng nhập vào hệ thống.
-                </>
-              ) : (
-                <>
-                  Bạn có chắc muốn <strong>mở khóa tài khoản</strong> của khách hàng{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockCustomer.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockCustomer.id}) không?
-                </>
+            <div className="flex flex-col gap-3.5 py-1 text-sm text-[#4e453c]">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn {confirmLockCustomer.accountStatus === "active" ? "khóa" : "mở khóa"} tài khoản của khách hàng này không?
+              </p>
+              <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold text-gray-500">Khách hàng:</span>
+                  <span className="font-bold text-gray-900">{confirmLockCustomer.full_name}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-semibold text-gray-500">Mã KH:</span>
+                  <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmLockCustomer.id}>
+                    {confirmLockCustomer.id.substring(0, 8)}
+                  </span>
+                </div>
+              </div>
+              {confirmLockCustomer.accountStatus === "active" && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+                  <span>Khách hàng này sẽ không thể đăng nhập vào hệ thống sau khi tài khoản bị khóa.</span>
+                </div>
               )}
-            </p>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setConfirmLockCustomer(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: A.border, color: A.textMuted }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 onClick={confirmToggleLock}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                onMouseEnter={() => setIsConfirmHover(true)}
+                onMouseLeave={() => setIsConfirmHover(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
                 style={{
                   background:
                     confirmLockCustomer.accountStatus === "active"
-                      ? "#dc2626"
-                      : "#10b981",
+                      ? (isConfirmHover ? "#b91c1c" : "#dc2626")
+                      : (isConfirmHover ? "#059669" : "#10b981"),
                 }}
               >
                 {confirmLockCustomer.accountStatus === "active"

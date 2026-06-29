@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { getMockDB, saveMockDB, Service, ServiceSubscription, ConsumptionRecord } from '../../../lib/supabaseClient';
+import { Service, ServiceSubscription, ConsumptionRecord } from '../../../lib/supabaseClient';
+import { fetchMyServices, registerServiceApi, cancelServiceApi } from '../services/service-registration.service';
 
 interface ServiceFilters {
   categories: ('essential' | 'utility' | 'convenience' | 'premium')[];
@@ -17,19 +18,21 @@ interface CustomerServicesState {
   registrationModal: { open: boolean; service: Service | null };
   detailModal: { open: boolean; service: Service | null };
   cancelConfirm: { open: boolean; subscriptionId: string | null };
+  isLoading: boolean;
+  error: string | null;
 
-  loadData: (customerId: string) => void;
+  loadData: (email: string) => Promise<void>;
   setActiveTab: (tab: 'catalog' | 'active' | 'consumption') => void;
   setFilters: (filters: Partial<ServiceFilters>) => void;
   clearFilters: () => void;
   openRegistration: (service: Service) => void;
   closeRegistration: () => void;
-  confirmRegistration: (serviceId: string, customerId: string) => void;
+  confirmRegistration: (serviceId: string, email: string) => Promise<void>;
   openDetail: (service: Service) => void;
   closeDetail: () => void;
   openCancelConfirm: (subscriptionId: string) => void;
   closeCancelConfirm: () => void;
-  confirmCancel: (customerId: string) => void;
+  confirmCancel: (email: string) => Promise<void>;
 }
 
 const DEFAULT_FILTERS: ServiceFilters = {
@@ -44,26 +47,29 @@ export const useCustomerServicesStore = create<CustomerServicesState>((set, get)
   subscriptions: [],
   consumptionRecords: [],
   filters: DEFAULT_FILTERS,
-  activeTab: 'catalog',
+  activeTab: 'active',
   registrationModal: { open: false, service: null },
   detailModal: { open: false, service: null },
   cancelConfirm: { open: false, subscriptionId: null },
+  isLoading: false,
+  error: null,
 
-  loadData: (customerId: string) => {
-    const db = getMockDB();
-    const services: Service[] = db.services || [];
-    // Only load user-specific data when we have a real customer ID
-    const subscriptions: ServiceSubscription[] = customerId
-      ? (db.service_subscriptions || []).filter(
-          (s: ServiceSubscription) => s.customer_id === customerId
-        )
-      : [];
-    const consumptionRecords: ConsumptionRecord[] = customerId
-      ? (db.consumption_records || []).filter(
-          (r: ConsumptionRecord) => r.customer_id === customerId
-        )
-      : [];
-    set({ services, subscriptions, consumptionRecords });
+  loadData: async (email: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await fetchMyServices(email);
+      set({
+        services: data.services || [],
+        subscriptions: data.subscriptions || [],
+        consumptionRecords: data.consumptionRecords || [],
+        isLoading: false
+      });
+    } catch (err: any) {
+      set({ 
+        error: err.message || 'Lỗi khi tải thông tin dịch vụ', 
+        isLoading: false 
+      });
+    }
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -79,27 +85,16 @@ export const useCustomerServicesStore = create<CustomerServicesState>((set, get)
   closeRegistration: () =>
     set({ registrationModal: { open: false, service: null } }),
 
-  confirmRegistration: (serviceId: string, customerId: string) => {
-    const { services } = get();
-    const service = services.find((s) => s.id === serviceId);
-    if (!service) return;
-
-    const db = getMockDB();
-    const newSub: ServiceSubscription = {
-      id: `ss-${Date.now()}`,
-      customer_id: customerId,
-      service_id: serviceId,
-      service_name: service.name,
-      registered_date: new Date().toISOString().split('T')[0],
-      monthly_cost: service.billing_cycle === 'monthly' ? service.unit_price : Math.round(service.unit_price * 10),
-      status: 'active',
-    };
-    db.service_subscriptions = [...(db.service_subscriptions || []), newSub];
-    saveMockDB(db);
-    set((state) => ({
-      subscriptions: [...state.subscriptions, newSub],
-      registrationModal: { open: false, service: null },
-    }));
+  confirmRegistration: async (serviceId: string, email: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await registerServiceApi(email, serviceId);
+      set({ registrationModal: { open: false, service: null } });
+      await get().loadData(email);
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi khi đăng ký dịch vụ', isLoading: false });
+      throw err;
+    }
   },
 
   openDetail: (service) =>
@@ -114,21 +109,24 @@ export const useCustomerServicesStore = create<CustomerServicesState>((set, get)
   closeCancelConfirm: () =>
     set({ cancelConfirm: { open: false, subscriptionId: null } }),
 
-  confirmCancel: (customerId: string) => {
+  confirmCancel: async (email: string) => {
     const { cancelConfirm } = get();
     if (!cancelConfirm.subscriptionId) return;
-    const db = getMockDB();
-    db.service_subscriptions = (db.service_subscriptions || []).map((s: ServiceSubscription) =>
-      s.id === cancelConfirm.subscriptionId ? { ...s, status: 'cancelled' } : s
-    );
-    saveMockDB(db);
-    set((state) => ({
-      subscriptions: state.subscriptions.map((s) =>
-        s.id === cancelConfirm.subscriptionId ? { ...s, status: 'cancelled' as const } : s
-      ),
-      cancelConfirm: { open: false, subscriptionId: null },
-    }));
-    // reload
-    get().loadData(customerId);
+
+    set({ isLoading: true, error: null });
+    try {
+      // The subscriptionId format is `${contract_id}-${service_id}`.
+      // We extract the service_id from it:
+      const parts = cancelConfirm.subscriptionId.split('-');
+      // serviceId will be the last parts, e.g. "DV-003"
+      const serviceId = parts.slice(1).join('-');
+
+      await cancelServiceApi(email, serviceId);
+      set({ cancelConfirm: { open: false, subscriptionId: null } });
+      await get().loadData(email);
+    } catch (err: any) {
+      set({ error: err.message || 'Lỗi khi hủy đăng ký dịch vụ', isLoading: false });
+      throw err;
+    }
   },
 }));

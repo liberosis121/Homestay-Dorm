@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon --watch src -e ts,json --exec ts-node src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",

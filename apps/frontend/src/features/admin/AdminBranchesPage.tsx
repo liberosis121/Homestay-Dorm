@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 const A = {
   bg: "#fff8f3", // Sand background
@@ -258,6 +259,14 @@ export default function AdminBranchesPage() {
     );
   }, [form.district]);
 
+  const managerFormOptions = useMemo(() => {
+    if (managerOptions.length === 0) return [];
+    return managerOptions.map((opt) => ({
+      value: opt.full_name,
+      label: opt.full_name,
+    }));
+  }, [managerOptions]);
+
   return (
     <div
       className="space-y-6 animate-fade-in-up"
@@ -279,8 +288,7 @@ export default function AdminBranchesPage() {
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">
             add_business
@@ -345,26 +353,24 @@ export default function AdminBranchesPage() {
             }}
           />
         </div>
-        <select
+        <CustomSelect
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="active">Đang hoạt động</option>
-          <option value="inactive">Tạm dừng</option>
-        </select>
+          onChange={setFilterStatus}
+          options={[
+            { value: "", label: "Tất cả trạng thái" },
+            { value: "active", label: "Đang hoạt động" },
+            { value: "inactive", label: "Tạm dừng" },
+          ]}
+          theme="sale"
+          placeholder="Tất cả trạng thái"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
         <button
           onClick={() => {
             setSearch("");
             setFilterStatus("");
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
@@ -423,7 +429,7 @@ export default function AdminBranchesPage() {
             return (
               <div
                 key={b.id}
-                className="rounded-xl p-5 cursor-pointer transition-all group hover:shadow-md"
+                className="rounded-xl p-5 transition-all hover:shadow-md"
                 style={{
                   background: A.surface,
                   border: `1px solid ${A.border}`,
@@ -495,16 +501,17 @@ export default function AdminBranchesPage() {
                     </span>
                     {b.manager}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         openEdit(b);
                       }}
-                      className="p-1.5 rounded-full"
+                      className="p-1.5 rounded-full transition-all hover:bg-[#e8ede7] hover:text-[#5f745d] active:scale-90 cursor-pointer"
                       style={{ color: A.accent }}
+                      title="Sửa"
                     >
-                      <span className="material-symbols-outlined text-[18px]">
+                      <span className="material-symbols-outlined text-[18px] block">
                         edit
                       </span>
                     </button>
@@ -513,9 +520,14 @@ export default function AdminBranchesPage() {
                         e.stopPropagation();
                         toggleBranchStatus(b);
                       }}
-                      className={`p-1.5 rounded-full ${b.status === "active" ? "text-red-600" : "text-emerald-600"}`}
+                      className={`p-1.5 rounded-full transition-all active:scale-90 cursor-pointer ${
+                        b.status === "active"
+                          ? "text-red-600 hover:bg-red-50 hover:text-red-700"
+                          : "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                      }`}
+                      title={b.status === "active" ? "Ngưng hoạt động" : "Kích hoạt"}
                     >
-                      <span className="material-symbols-outlined text-[18px]">
+                      <span className="material-symbols-outlined text-[18px] block">
                         {b.status === "active" ? "toggle_off" : "toggle_on"}
                       </span>
                     </button>
@@ -546,9 +558,12 @@ export default function AdminBranchesPage() {
                   ? "Thêm chi nhánh mới"
                   : "Sửa thông tin chi nhánh"}
               </h2>
-              <button onClick={() => setShowModal(false)}>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1 rounded-full hover:bg-gray-100 active:scale-90 transition-all cursor-pointer"
+              >
                 <span
-                  className="material-symbols-outlined"
+                  className="material-symbols-outlined block"
                   style={{ color: A.textMuted }}
                 >
                   close
@@ -559,8 +574,7 @@ export default function AdminBranchesPage() {
               <>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Tên chi nhánh
                   </label>
@@ -571,18 +585,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, name: e.target.value }))
                     }
                     placeholder="Nhập tên chi nhánh..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Địa chỉ
                   </label>
@@ -593,18 +601,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, address: e.target.value }))
                     }
                     placeholder="Nhập địa chỉ..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Số điện thoại
                   </label>
@@ -615,12 +617,7 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, phone: e.target.value }))
                     }
                     placeholder="Nhập số điện thoại..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
               </>
@@ -628,8 +625,7 @@ export default function AdminBranchesPage() {
               <>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Tên chi nhánh
                   </label>
@@ -640,18 +636,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, name: e.target.value }))
                     }
                     placeholder="Nhập tên chi nhánh..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Địa chỉ
                   </label>
@@ -662,18 +652,12 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, address: e.target.value }))
                     }
                     placeholder="Nhập địa chỉ..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Số điện thoại
                   </label>
@@ -684,62 +668,44 @@ export default function AdminBranchesPage() {
                       setForm((prev) => ({ ...prev, phone: e.target.value }))
                     }
                     placeholder="Nhập số điện thoại..."
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                   />
                 </div>
                 <div>
                   <label
-                    className="block text-xs font-semibold mb-1 uppercase"
-                    style={{ color: A.textMuted }}
+                    className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
                   >
                     Quản lý phụ trách
                   </label>
-                  <select
+                  <CustomSelect
                     value={form.manager || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, manager: e.target.value }))
+                    onChange={(val) =>
+                      setForm((prev) => ({ ...prev, manager: val }))
                     }
+                    options={managerFormOptions}
                     disabled={managerOptions.length === 0}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{
-                      border: `1px solid ${A.border}`,
-                      background: A.bg,
-                      color: A.textPrimary,
-                    }}
-                  >
-                    {managerOptions.length === 0 ? (
-                      <option value="">Chưa có quản lý phù hợp</option>
-                    ) : (
-                      <>
-                        <option value="">Chọn quản lý...</option>
-                        {managerOptions.map((opt) => (
-                          <option key={opt.id} value={opt.full_name}>
-                            {opt.full_name}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
+                    placeholder={
+                      managerOptions.length === 0
+                        ? "Chưa có quản lý phù hợp"
+                        : "Chọn quản lý..."
+                    }
+                    theme="sale"
+                    triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
+                  />
                 </div>
               </>
             )}
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-gray-50 hover:border-[#6f583c] hover:text-[#6f583c] hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
                 style={{ borderColor: A.border, color: A.textMuted }}
               >
                 Hủy
               </button>
               <button
                 onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all bg-[#6f583c] hover:bg-[#54422c] hover:scale-[1.01] active:scale-[0.98] shadow-sm hover:shadow cursor-pointer"
               >
                 {modalMode === "add" ? "Thêm chi nhánh" : "Lưu thay đổi"}
               </button>
@@ -752,10 +718,7 @@ export default function AdminBranchesPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{
-            background:
-              confirmStatusBranch.status === "active"
-                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for deactivation
-                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for activation
+            background: "rgba(0, 0, 0, 0.4)",
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmStatusBranch(null);
@@ -804,37 +767,42 @@ export default function AdminBranchesPage() {
               </h3>
             </div>
             
-            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
-              {confirmStatusBranch.status === "active" ? (
-                <>
-                  Bạn có chắc muốn <strong>ngưng hoạt động</strong> chi nhánh{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmStatusBranch.name}
-                  </span>{" "}
-                  không? Mọi hoạt động của chi nhánh này sẽ bị tạm dừng.
-                </>
-              ) : (
-                <>
-                  Bạn có chắc muốn <strong>kích hoạt lại</strong> chi nhánh{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmStatusBranch.name}
-                  </span>{" "}
-                  không?
-                </>
+            <div className="flex flex-col gap-3.5 py-1 text-sm text-[#4e453c]">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn {confirmStatusBranch.status === "active" ? "ngưng hoạt động" : "kích hoạt lại"} chi nhánh này không?
+              </p>
+              
+              <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold text-gray-500">Chi nhánh:</span>
+                  <span className="font-bold text-gray-900">{confirmStatusBranch.name}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-semibold text-gray-500">Mã chi nhánh:</span>
+                  <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmStatusBranch.id}>
+                    {confirmStatusBranch.id}
+                  </span>
+                </div>
+              </div>
+
+              {confirmStatusBranch.status === "active" && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+                  <span>Mọi hoạt động của chi nhánh này sẽ bị tạm dừng cho đến khi được kích hoạt lại.</span>
+                </div>
               )}
-            </p>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setConfirmStatusBranch(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: A.border, color: A.textMuted }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 onClick={confirmToggleStatus}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:brightness-95 active:scale-[0.98] hover:scale-[1.01] transition-all cursor-pointer"
                 style={{
                   background:
                     confirmStatusBranch.status === "active"

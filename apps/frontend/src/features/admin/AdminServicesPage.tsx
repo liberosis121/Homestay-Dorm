@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -50,6 +51,11 @@ const MOCK_SERVICES: ServiceItem[] = [
 ];
 
 export default function AdminServicesPage() {
+  const formatNumber = (num: number | undefined) => {
+    if (num === undefined || num === null) return "";
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
   const [services, setServices] = useState<ServiceItem[]>(MOCK_SERVICES);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -140,8 +146,8 @@ export default function AdminServicesPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}>
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
+        >
           <span className="material-symbols-outlined text-[18px]">add_circle</span>
           Thêm dịch vụ
         </button>
@@ -175,23 +181,33 @@ export default function AdminServicesPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả loại</option>
-          <option value="utility">Tiện ích</option>
-          <option value="amenity">Tiện nghi</option>
-          <option value="extra">Bổ sung</option>
-        </select>
-        <select value={filterActive} onChange={e => setFilterActive(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="active">Đang kích hoạt</option>
-          <option value="inactive">Đã tắt</option>
-        </select>
+        <CustomSelect
+          value={filterType}
+          onChange={setFilterType}
+          options={[
+            { value: "", label: "Tất cả loại" },
+            { value: "utility", label: "Tiện ích" },
+            { value: "amenity", label: "Tiện nghi" },
+            { value: "extra", label: "Bổ sung" },
+          ]}
+          theme="sale"
+          placeholder="Tất cả loại"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
+        <CustomSelect
+          value={filterActive}
+          onChange={setFilterActive}
+          options={[
+            { value: "", label: "Tất cả trạng thái" },
+            { value: "active", label: "Đang kích hoạt" },
+            { value: "inactive", label: "Đã tắt" },
+          ]}
+          theme="sale"
+          placeholder="Tất cả trạng thái"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
         <button onClick={() => { setSearch(''); setFilterType(''); setFilterActive(''); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}>
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           Làm mới
@@ -270,21 +286,25 @@ export default function AdminServicesPage() {
                   {CYCLE_LABEL[s.billingCycle]}
                 </span>
               </div>
-              <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+              <div className="flex gap-1 mt-3 transition-opacity justify-end">
                 <button onClick={e => { e.stopPropagation(); openEdit(s); }}
-                  className="p-1.5 rounded-full hover:opacity-85" style={{ color: A.accent }}
+                  className="p-1.5 rounded-full transition-all hover:bg-[#e8ede7] hover:text-[#5f745d] active:scale-90 cursor-pointer" style={{ color: A.accent }}
                   title="Sửa dịch vụ">
-                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                  <span className="material-symbols-outlined text-[18px] block">edit</span>
                 </button>
                 <button
                   onClick={e => {
                     e.stopPropagation();
                     setConfirmStatusService(s);
                   }}
-                  className={`p-1.5 rounded-full hover:opacity-85 ${s.isActive ? 'text-red-600' : 'text-emerald-600'}`}
+                  className={`p-1.5 rounded-full transition-all active:scale-90 cursor-pointer ${
+                    s.isActive
+                      ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                      : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
+                  }`}
                   title={s.isActive ? 'Tắt dịch vụ' : 'Kích hoạt dịch vụ'}
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[18px] block">
                     {s.isActive ? 'toggle_off' : 'toggle_on'}
                   </span>
                 </button>
@@ -296,8 +316,8 @@ export default function AdminServicesPage() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: `${A.primary}66` }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+          style={{ background: "rgba(0, 0, 0, 0.4)" }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
             style={{ background: A.surface }}>
@@ -305,68 +325,92 @@ export default function AdminServicesPage() {
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
                 {modalMode === 'add' ? 'Thêm dịch vụ mới' : 'Sửa dịch vụ'}
               </h2>
-              <button onClick={() => setShowModal(false)}>
-                <span className="material-symbols-outlined" style={{ color: A.textMuted }}>close</span>
+              <button onClick={() => setShowModal(false)} className="p-1 rounded-full hover:bg-gray-100 active:scale-90 transition-all cursor-pointer">
+                <span className="material-symbols-outlined block" style={{ color: A.textMuted }}>close</span>
               </button>
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tên dịch vụ</label>
+              <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên dịch vụ</label>
               <input value={form.name || ''} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nhập tên dịch vụ..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mô tả</label>
+              <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Mô tả</label>
               <textarea value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Mô tả chi tiết dịch vụ..."
                 rows={3}
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
-                style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] resize-none"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại dịch vụ</label>
-                <select value={form.type || 'utility'} onChange={e => setForm(prev => ({ ...prev, type: e.target.value as ServiceType }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="utility">Tiện ích</option>
-                  <option value="amenity">Tiện nghi</option>
-                  <option value="extra">Bổ sung</option>
-                </select>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Loại dịch vụ</label>
+                <CustomSelect
+                  value={form.type || 'utility'}
+                  onChange={val => setForm(prev => ({ ...prev, type: val as ServiceType }))}
+                  options={[
+                    { value: "utility", label: "Tiện ích" },
+                    { value: "amenity", label: "Tiện nghi" },
+                    { value: "extra", label: "Bổ sung" }
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Chu kỳ</label>
-                <select value={form.billingCycle || 'monthly'} onChange={e => setForm(prev => ({ ...prev, billingCycle: e.target.value as BillingCycle }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}>
-                  <option value="monthly">Hàng tháng</option>
-                  <option value="per_usage">Theo số lượng</option>
-                  <option value="one_time">Một lần</option>
-                </select>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chu kỳ</label>
+                <CustomSelect
+                  value={form.billingCycle || 'monthly'}
+                  onChange={val => setForm(prev => ({ ...prev, billingCycle: val as BillingCycle }))}
+                  options={[
+                    { value: "monthly", label: "Hàng tháng" },
+                    { value: "per_usage", label: "Theo số lượng" },
+                    { value: "one_time", label: "Một lần" }
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Đơn giá (đ)</label>
-                <input type="number" value={form.price || 0} onChange={e => setForm(prev => ({ ...prev, price: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đơn giá (đ)</label>
+                <input
+                  type="text"
+                  value={formatNumber(form.price)}
+                  onChange={e => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    const num = clean ? parseInt(clean, 10) : 0;
+                    setForm(prev => ({ ...prev, price: num }));
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Đơn vị</label>
-                <input value={form.unit || ''} onChange={e => setForm(prev => ({ ...prev, unit: e.target.value }))}
-                  placeholder="kWh, m³, tháng, lần..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đơn vị</label>
+                <CustomSelect
+                  value={form.unit || 'tháng'}
+                  onChange={val => setForm(prev => ({ ...prev, unit: val }))}
+                  options={[
+                    { value: "tháng", label: "tháng" },
+                    { value: "kWh", label: "kWh" },
+                    { value: "m³", label: "m³" },
+                    { value: "kg", label: "kg" },
+                    { value: "lần", label: "lần" }
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
               </div>
             </div>
             <div className="flex gap-3 pt-1">
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-gray-50 hover:border-[#6f583c] hover:text-[#6f583c] hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
                 style={{ borderColor: A.border, color: A.textMuted }}>Hủy</button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}>
-                Thêm dịch vụ
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all bg-[#6f583c] hover:bg-[#54422c] hover:scale-[1.01] active:scale-[0.98] shadow-sm hover:shadow cursor-pointer"
+              >
+                {modalMode === 'add' ? 'Thêm dịch vụ' : 'Lưu thay đổi'}
               </button>
             </div>
           </div>
@@ -377,10 +421,7 @@ export default function AdminServicesPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{
-            background:
-              confirmStatusService.isActive
-                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for turning off
-                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for turning on
+            background: "rgba(0, 0, 0, 0.4)",
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmStatusService(null);
@@ -429,37 +470,42 @@ export default function AdminServicesPage() {
               </h3>
             </div>
             
-            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
-              {confirmStatusService.isActive ? (
-                <>
-                  Bạn có chắc muốn <strong>ngưng hoạt động</strong> dịch vụ{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmStatusService.name}
-                  </span>{" "}
-                  không? Dịch vụ này sẽ không khả dụng để tính phí hoặc đăng ký cho khách hàng nữa.
-                </>
-              ) : (
-                <>
-                  Bạn có chắc muốn <strong>kích hoạt lại</strong> dịch vụ{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmStatusService.name}
-                  </span>{" "}
-                  không?
-                </>
+            <div className="flex flex-col gap-3.5 py-1 text-sm text-[#4e453c]">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn {confirmStatusService.isActive ? "ngưng hoạt động" : "kích hoạt lại"} dịch vụ này không?
+              </p>
+              
+              <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold text-gray-500">Dịch vụ:</span>
+                  <span className="font-bold text-gray-900">{confirmStatusService.name}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-semibold text-gray-500">Mã dịch vụ:</span>
+                  <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmStatusService.id}>
+                    {confirmStatusService.id}
+                  </span>
+                </div>
+              </div>
+
+              {confirmStatusService.isActive && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+                  <span>Dịch vụ này sẽ không khả dụng để tính phí hoặc đăng ký cho khách hàng nữa.</span>
+                </div>
               )}
-            </p>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setConfirmStatusService(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: A.border, color: A.textMuted }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 onClick={confirmToggleStatus}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:brightness-95 active:scale-[0.98] hover:scale-[1.01] transition-all cursor-pointer"
                 style={{
                   background:
                     confirmStatusService.isActive
