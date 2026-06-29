@@ -25,7 +25,7 @@ const CAT_LABELS: Record<ManagedAsset['category'], string> = {
   fixture:     'Cố định',
 };
 
-const LOCATIONS = ['Phòng 101', 'Phòng 102', 'Phòng 201', 'Phòng 202', 'Phòng 301', 'Kho tầng 1', 'Kho tầng 2', 'Xưởng bảo trì'];
+
 
 export default function ManagerAssetsPage() {
   const [assets, setAssets] = useState<ManagedAsset[]>([]);
@@ -37,6 +37,7 @@ export default function ManagerAssetsPage() {
   const [transferReason, setTransferReason] = useState('');
   const [transferBy, setTransferBy] = useState('QL. Minh Đức');
   const [toast, setToast] = useState<string | null>(null);
+  const [destinations, setDestinations] = useState<string[]>(['Kho tầng 1', 'Kho tầng 2', 'Xưởng bảo trì']);
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
@@ -123,8 +124,23 @@ export default function ManagerAssetsPage() {
     }
   };
 
+  const fetchRooms = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/rooms`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        const roomNames = (result.data || []).map((r: any) => r.name);
+        setDestinations(['Kho tầng 1', 'Kho tầng 2', 'Xưởng bảo trì', ...roomNames]);
+      }
+    } catch (err) {
+      console.error('Error fetching rooms for destinations:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAssets();
+    fetchRooms();
   }, []);
 
   const showToast = (msg: string) => {
@@ -398,7 +414,7 @@ export default function ManagerAssetsPage() {
                     onChange={setTransferTarget}
                     options={[
                       { value: '', label: '-- Chọn vị trí đích --' },
-                      ...LOCATIONS.filter(l => l !== selected.current_location).map(l => ({ value: l, label: l }))
+                      ...destinations.filter(l => l !== selected.current_location).map(l => ({ value: l, label: l }))
                     ]}
                     className="w-full"
                     triggerClassName="h-10 !rounded-xl !border-[#E7DED2] !bg-[#FAF9F6] text-[#2C2520] py-2 text-sm font-medium focus:!border-[#5C4632]"
