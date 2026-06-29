@@ -1,36 +1,20 @@
-import { supabase } from '../utils/supabase';
-
-export interface ResidencyCheckUpdate {
-  status: 'pending' | 'approved' | 'rejected';
-  checklist: {
-    valid_documents: boolean;
-    info_matches: boolean;
-    age_verified: boolean;
-    no_violation: boolean;
-  };
-  violation_note?: string;
-  confirmed?: boolean;
-}
+import { residencyInfoRepo, ResidencyInfoDto } from '../repositories/residency-info.repo';
 
 export const residencyService = {
-  getResidencyChecks: async (filters?: { status?: string }) => {
-    let query = supabase.from('residency_checks').select('*');
-    if (filters?.status && filters.status !== 'all') {
-      query = query.eq('status', filters.status);
-    }
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
+  getResidencyChecks: async (filters?: { contract_id?: string; check_result?: string }) => {
+    return await residencyInfoRepo.findAll(filters);
   },
 
-  updateResidencyCheck: async (id: string, updates: ResidencyCheckUpdate) => {
-    const { data, error } = await supabase
-      .from('residency_checks')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  getResidencyCheckById: async (id: number) => {
+    return await residencyInfoRepo.findById(id);
+  },
+
+  createResidencyCheck: async (info: ResidencyInfoDto) => {
+    info.check_result = info.check_result || 'pending';
+    return await residencyInfoRepo.create(info);
+  },
+
+  updateResidencyCheck: async (id: number, updates: Partial<ResidencyInfoDto>) => {
+    return await residencyInfoRepo.update(id, updates);
   }
 };

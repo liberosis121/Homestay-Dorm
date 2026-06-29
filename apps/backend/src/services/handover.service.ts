@@ -1,8 +1,8 @@
-import { handoverRepo, CreateHandoverDto } from '../repositories/handover.repo';
+import { handoverRepo, AssetHandoverDto, HandoverDetailDto } from '../repositories/handover.repo';
 import { assetRepo } from '../repositories/asset.repo';
 
 export const handoverService = {
-  getHandovers: async (filters?: { customer_id?: string; status?: string }) => {
+  getHandovers: async (filters?: { contract_id?: string }) => {
     return await handoverRepo.findAll(filters);
   },
 
@@ -10,39 +10,38 @@ export const handoverService = {
     return await handoverRepo.findById(id);
   },
 
-  createHandover: async (handover: CreateHandoverDto, assetsList?: { assetId: string; name: string }[]) => {
-    // 1. Create the handover record
+  createHandover: async (
+    handover: AssetHandoverDto,
+    detailsList: Omit<HandoverDetailDto, 'handover_id'>[]
+  ) => {
+    // 1. Create the parent handover record
     const createdHandover = await handoverRepo.create(handover);
     
-    // 2. Update status and locations of the selected assets in managed_assets
-    if (assetsList && assetsList.length > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      
-      for (const sa of assetsList) {
-        try {
-          const asset = await assetRepo.findById(sa.assetId);
-          if (asset) {
-            const transferHistory = asset.transfer_history || [];
-            const newHistory = [
-              ...transferHistory,
-              {
-                from: asset.current_location || 'Kho',
-                to: handover.room_name,
-                date: today,
-                reason: handover.note || 'Bàn giao tài sản phòng',
-                by: 'QL. System'
-              }
-            ];
+    // 2. Map and insert details list
+    if (detailsList && detailsList.length > 0) {
+      const detailsToInsert: HandoverDetailDto[] = detailsList.map(detail => ({
+        ...detail,
+        handover_id: handover.id
+      }));
+      await handoverRepo.createDetails(detailsToInsert);
 
-            await assetRepo.update(sa.assetId, {
-              current_location: handover.room_name,
-              location_type: 'room',
-              status: 'in_use',
-              transfer_history: newHistory
+      // 3. Get contract/room details if we need to set asset location.
+      // We will assume location is provided in note or we can fetch a contract if we had contractRepo.
+      // To keep it robust, we'll look for room information or default location updates.
+      // Update each asset's location to room and status to 'in_use'.
+      for (const sa of detailsList) {
+        try {
+          // In new schema, asset is identified by serial_number
+          const asset = await assetRepo.findBySerialNumber(sa.serial_number);
+          if (asset) {
+            // Update location of the asset and status
+            await assetRepo.update(sa.serial_number, {
+              location: handover.note || 'Bàn giao phòng',
+              status: 'in_use'
             });
           }
         } catch (err) {
-          console.error(`Failed to update asset ${sa.assetId} during handover:`, err);
+          console.error(`Failed to update asset ${sa.serial_number} during handover:`, err);
         }
       }
     }
@@ -50,14 +49,13 @@ export const handoverService = {
     return createdHandover;
   },
 
-  signHandover: async (id: string, signatureIp: string) => {
-    const now = new Date().toISOString();
-    return await handoverRepo.update(id, {
-      status: 'signed',
-      customer_signed: true,
-      manager_signed: true,
-      signature_ip: signatureIp,
-      signature_timestamp: now
-    });
+  signHandover: async (id: string, isStaff: boolean) => {
+    const updates: Partial<AssetHandoverDto> = {};
+    if (isStaff) {
+      updates.staff_confirmed = true;
+    } else {
+      updates.customer_confirmed = true;
+    }
+    return await handoverRepo.update(id, updates);
   }
 };
