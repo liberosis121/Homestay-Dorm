@@ -600,7 +600,7 @@ export default function StaffProfilePage() {
                         { value: 'female', label: 'Nữ' },
                         { value: 'other', label: 'Khác' },
                       ]}
-                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3.5 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
+                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
                       dropdownClassName="border-[#d1c4b9]"
                     />
                   </div>
