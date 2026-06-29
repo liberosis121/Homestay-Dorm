@@ -1,28 +1,28 @@
 import { supabase } from '../utils/supabase';
 
-export interface CreateHandoverDto {
-  customer_id: string;
-  customer_name: string;
-  room_id: string;
-  room_name: string;
-  handover_date: string;
-  checklist: { item: string; condition: string; note?: string; checked: boolean; quantity?: number }[];
-  customer_signed?: boolean;
-  manager_signed?: boolean;
-  signature_ip?: string;
-  signature_timestamp?: string;
-  status: 'pending' | 'signed' | 'partial';
+export interface AssetHandoverDto {
+  id: string;
+  contract_id: string;
+  handover_time: string;
+  customer_confirmed: boolean;
+  staff_confirmed: boolean;
+  note?: string;
+  staff_id: string;
+}
+
+export interface HandoverDetailDto {
+  handover_id: string;
+  serial_number: string;
+  quantity: number;
+  condition: string;
   note?: string;
 }
 
 export const handoverRepo = {
-  findAll: async (filters?: { customer_id?: string; status?: string }) => {
+  findAll: async (filters?: { contract_id?: string }) => {
     let query = supabase.from('asset_handovers').select('*');
-    if (filters?.customer_id) {
-      query = query.eq('customer_id', filters.customer_id);
-    }
-    if (filters?.status && filters.status !== 'all') {
-      query = query.eq('status', filters.status);
+    if (filters?.contract_id) {
+      query = query.eq('contract_id', filters.contract_id);
     }
     const { data, error } = await query;
     if (error) throw error;
@@ -30,16 +30,29 @@ export const handoverRepo = {
   },
 
   findById: async (id: string) => {
-    const { data, error } = await supabase
+    // 1. Fetch parent handover
+    const { data: handover, error: handoverErr } = await supabase
       .from('asset_handovers')
       .select('*')
       .eq('id', id)
       .single();
-    if (error) throw error;
-    return data;
+    if (handoverErr) throw handoverErr;
+    if (!handover) return null;
+
+    // 2. Fetch associated details
+    const { data: details, error: detailsErr } = await supabase
+      .from('handover_details')
+      .select('*')
+      .eq('handover_id', id);
+    if (detailsErr) throw detailsErr;
+
+    return {
+      ...handover,
+      details: details || []
+    };
   },
 
-  create: async (handover: CreateHandoverDto) => {
+  create: async (handover: AssetHandoverDto) => {
     const { data, error } = await supabase
       .from('asset_handovers')
       .insert(handover)
@@ -49,7 +62,16 @@ export const handoverRepo = {
     return data;
   },
 
-  update: async (id: string, updates: Partial<CreateHandoverDto>) => {
+  createDetails: async (details: HandoverDetailDto[]) => {
+    const { data, error } = await supabase
+      .from('handover_details')
+      .insert(details)
+      .select();
+    if (error) throw error;
+    return data || [];
+  },
+
+  update: async (id: string, updates: Partial<AssetHandoverDto>) => {
     const { data, error } = await supabase
       .from('asset_handovers')
       .update(updates)

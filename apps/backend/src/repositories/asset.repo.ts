@@ -1,16 +1,14 @@
 import { supabase } from '../utils/supabase';
 
-export interface CreateAssetDto {
+export interface AssetDto {
+  serial_number: string;
   name: string;
-  category: 'furniture' | 'electronics' | 'appliance' | 'fixture';
-  serial_number?: string;
-  current_location: string;
-  location_type: 'room' | 'warehouse' | 'maintenance';
-  status: 'in_use' | 'in_stock' | 'maintenance' | 'retired';
+  category: string;
+  brand?: string;
+  location: string;
+  value: number;
   purchase_date: string;
-  purchase_price: number;
-  depreciation_rate: number;
-  transfer_history?: any[];
+  status: string;
 }
 
 export const assetRepo = {
@@ -24,7 +22,7 @@ export const assetRepo = {
       query = query.eq('status', filters.status);
     }
     if (filters?.location) {
-      query = query.ilike('current_location', `%${filters.location}%`);
+      query = query.ilike('location', `%${filters.location}%`);
     }
 
     const { data, error } = await query;
@@ -32,34 +30,36 @@ export const assetRepo = {
     return data || [];
   },
 
-  findById: async (id: string) => {
+  findBySerialNumber: async (serialNumber: string) => {
     const { data, error } = await supabase
       .from('assets')
       .select('*')
-      .eq('id', id)
+      .eq('serial_number', serialNumber)
       .single();
     if (error) throw error;
     return data;
   },
 
-  create: async (asset: CreateAssetDto) => {
+  // Keep findById as alias for findBySerialNumber if needed, using serial_number as identifier
+  findById: async (id: string) => {
+    return await assetRepo.findBySerialNumber(id);
+  },
+
+  create: async (asset: AssetDto) => {
     const { data, error } = await supabase
       .from('assets')
-      .insert({
-        ...asset,
-        transfer_history: asset.transfer_history || []
-      })
+      .insert(asset)
       .select()
       .single();
     if (error) throw error;
     return data;
   },
 
-  update: async (id: string, updates: Partial<CreateAssetDto>) => {
+  update: async (serialNumber: string, updates: Partial<AssetDto>) => {
     const { data, error } = await supabase
       .from('assets')
       .update(updates)
-      .eq('id', id)
+      .eq('serial_number', serialNumber)
       .select()
       .single();
     if (error) throw error;
