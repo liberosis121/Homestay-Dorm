@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import {
+  fetchAdminRooms,
+  createRoomApi,
+  updateRoomApi,
+  fetchAdminBranches,
+} from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -44,26 +49,9 @@ export default function AdminRoomsPage() {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  const db = getMockDB();
-  const initialRooms: RoomCatalog[] = (db.rooms || []).map((r: any) => ({
-    id: r.id,
-    name: r.name,
-    branch: r.branch || (r.branch_id === 'b-2' ? 'Thủ Đức' : 'Quận 1'),
-    floor: r.floor || 1,
-    capacity: r.capacity || 4,
-    gender_type: r.gender_type || 'mixed',
-    price: r.price || 1500000,
-    status: r.status || 'available',
-    amenities: r.amenities || ['Điều hòa', 'Wifi', 'Tủ lạnh'],
-  }));
-
-  const [rooms, setRooms] = useState<RoomCatalog[]>(initialRooms.length > 0 ? initialRooms : [
-    { id: 'P101', name: 'Phòng 101', branch: 'Quận 1', floor: 1, capacity: 4, gender_type: 'male', price: 1500000, status: 'occupied', amenities: ['Điều hòa', 'Wifi'] },
-    { id: 'P102', name: 'Phòng 102', branch: 'Quận 1', floor: 1, capacity: 4, gender_type: 'female', price: 1500000, status: 'available', amenities: ['Điều hòa', 'Wifi', 'Tủ lạnh'] },
-    { id: 'P201', name: 'Phòng 201', branch: 'Quận 3', floor: 2, capacity: 6, gender_type: 'mixed', price: 1200000, status: 'deposited', amenities: ['Wifi'] },
-    { id: 'P202', name: 'Phòng 202', branch: 'Quận 3', floor: 2, capacity: 2, gender_type: 'female', price: 2000000, status: 'maintenance', amenities: ['Điều hòa', 'Wifi', 'Máy giặt'] },
-  ]);
-  // @ts-ignore
+  const [rooms, setRooms] = useState<RoomCatalog[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -86,12 +74,45 @@ export default function AdminRoomsPage() {
     }
   }, [selected]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
+  // DB room: {id,branch_id,name,max_occupants,floor,room_type,area,amenities,price,status}
+  // UI: capacity ← max_occupants; branch ← tên theo branch_id; gender_type không có trong DB → mặc định 'mixed'.
+  const loadRooms = async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const [dbRooms, dbBranches] = await Promise.all([
+        fetchAdminRooms(),
+        fetchAdminBranches(),
+      ]);
+      const branchList: { id: string; name: string }[] = (dbBranches || []).map(
+        (b: any) => ({
+          id: b.id,
+          name: b.name ?? b.id,
+        }),
+      );
+      setBranches(branchList);
+      const nameById = new Map(branchList.map((b) => [b.id, b.name]));
+      const mapped: RoomCatalog[] = (dbRooms || []).map((r: any) => ({
+        id: r.id,
+        name: r.name ?? '',
+        branch: nameById.get(r.branch_id) ?? r.branch_id ?? '',
+        floor: r.floor ?? 1,
+        capacity: r.max_occupants ?? 0,
+        gender_type: 'mixed',
+        price: r.price ?? 0,
+        status: (r.status ?? 'available') as RoomCatalog['status'],
+        amenities: Array.isArray(r.amenities) ? r.amenities : [],
+      }));
+      setRooms(mapped);
+    } catch (err: any) {
+      setLoadError(err.message || 'Lỗi khi tải danh sách phòng');
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadRooms();
   }, []);
 
   const kpis = useMemo(() => {
@@ -114,47 +135,46 @@ export default function AdminRoomsPage() {
   }), [rooms, search, filterStatus, filterBranch]);
 
   const openAdd = () => {
-    setForm({ name: '', branch: 'Quận 1', floor: 1, capacity: 4, gender_type: 'mixed', price: 1500000, status: 'available', amenities: [] });
+    setForm({ name: '', branch: '', floor: 1, capacity: 4, gender_type: 'mixed', price: 1500000, status: 'available', amenities: [] });
     setShowModal(true);
   };
 
-  const saveForm = () => {
-    const nr = { ...(form as RoomCatalog), id: `P${String(rooms.length + 1).padStart(3, '0')}` };
-    setRooms(prev => [...prev, nr]);
-    setShowModal(false);
+  const saveForm = async () => {
+    // form.branch ở chế độ Add lưu branch_id (chọn từ danh sách chi nhánh thật).
+    if (!form.name || !form.branch) return;
+    const payload = {
+      branch_id: form.branch,
+      name: form.name,
+      max_occupants: form.capacity ?? 0,
+      floor: form.floor ?? 1,
+      room_type: 'dorm', // DB cần room_type; UI hiện không thu thập → mặc định 'dorm'
+      price: form.price ?? 0,
+      status: form.status ?? 'available',
+      amenities: form.amenities ?? [],
+    };
+    try {
+      await createRoomApi(payload);
+      setShowModal(false);
+      await loadRooms();
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi thêm phòng');
+    }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!selected) return;
-    const updatedRoom: RoomCatalog = {
-      ...selected,
-      capacity: editCapacity,
-      price: editPrice,
-      gender_type: editGenderType,
-      status: editStatus as any,
-    };
-    
-    // 1. Update React state
-    setRooms(prev => prev.map(r => r.id === selected.id ? updatedRoom : r));
-    
-    // 2. Save to mock database
-    const currentDb = getMockDB();
-    if (currentDb && currentDb.rooms) {
-      currentDb.rooms = currentDb.rooms.map((r: any) =>
-        r.id === selected.id
-          ? {
-              ...r,
-              capacity: updatedRoom.capacity,
-              price: updatedRoom.price,
-              gender_type: updatedRoom.gender_type === 'mixed' ? 'unisex' : updatedRoom.gender_type,
-              status: updatedRoom.status,
-            }
-          : r
-      );
-      saveMockDB(currentDb);
+    // gender_type không có cột trong DB → không gửi (chỉ lưu max_occupants/price/status).
+    try {
+      await updateRoomApi(selected.id, {
+        max_occupants: editCapacity,
+        price: editPrice,
+        status: editStatus,
+      });
+      setSelected(null);
+      await loadRooms();
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi cập nhật phòng');
     }
-    
-    setSelected(null);
   };
 
   return (
@@ -223,9 +243,7 @@ export default function AdminRoomsPage() {
           onChange={setFilterBranch}
           options={[
             { value: "", label: "Tất cả chi nhánh" },
-            { value: "Quận 1", label: "Quận 1" },
-            { value: "Quận 3", label: "Quận 3" },
-            { value: "Bình Thạnh", label: "Bình Thạnh" },
+            ...branches.map((b) => ({ value: b.name, label: b.name })),
           ]}
           theme="sale"
           placeholder="Tất cả chi nhánh"
@@ -238,6 +256,14 @@ export default function AdminRoomsPage() {
           Làm mới
         </button>
       </section>
+
+      {/* Load error */}
+      {loadError && !isLoading && (
+        <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2 bg-red-50 text-red-700 border border-red-200">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          {loadError}
+        </div>
+      )}
 
       {/* Table */}
       <section className="rounded-xl overflow-hidden"
@@ -493,14 +519,11 @@ export default function AdminRoomsPage() {
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chi nhánh</label>
                 <CustomSelect
-                  value={form.branch || 'Quận 1'}
+                  value={form.branch || ''}
                   onChange={val => setForm(prev => ({ ...prev, branch: val }))}
-                  options={[
-                    { value: "Quận 1", label: "Quận 1" },
-                    { value: "Quận 3", label: "Quận 3" },
-                    { value: "Bình Thạnh", label: "Bình Thạnh" }
-                  ]}
+                  options={branches.map((b) => ({ value: b.id, label: b.name }))}
                   theme="sale"
+                  placeholder="Chọn chi nhánh..."
                   triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
                 />
               </div>

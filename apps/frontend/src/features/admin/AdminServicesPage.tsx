@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import {
+  fetchAdminServices,
+  createServiceApi,
+  updateServiceApi,
+} from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -39,16 +44,11 @@ const CYCLE_LABEL: Record<BillingCycle, string> = {
   one_time:   'Một lần',
 };
 
-const MOCK_SERVICES: ServiceItem[] = [
-  { id: 'SV001', name: 'Điện', type: 'utility', description: 'Tính theo chỉ số điện kế hàng tháng', unit: 'kWh', price: 3500, billingCycle: 'per_usage', isActive: true },
-  { id: 'SV002', name: 'Nước', type: 'utility', description: 'Tính theo chỉ số đồng hồ nước hàng tháng', unit: 'm³', price: 15000, billingCycle: 'per_usage', isActive: true },
-  { id: 'SV003', name: 'Internet', type: 'utility', description: 'Gói cáp quang tốc độ cao, không giới hạn dữ liệu', unit: 'tháng', price: 150000, billingCycle: 'monthly', isActive: true },
-  { id: 'SV004', name: 'Gửi xe máy', type: 'amenity', description: 'Bãi giữ xe có mái che, camera an ninh 24/7', unit: 'tháng', price: 200000, billingCycle: 'monthly', isActive: true },
-  { id: 'SV005', name: 'Giặt là', type: 'amenity', description: 'Dịch vụ giặt sấy lấy trong ngày', unit: 'kg', price: 30000, billingCycle: 'per_usage', isActive: true },
-  { id: 'SV006', name: 'Vệ sinh phòng', type: 'extra', description: 'Dọn phòng chuyên sâu theo yêu cầu', unit: 'lần', price: 100000, billingCycle: 'one_time', isActive: false },
-  { id: 'SV007', name: 'Tủ lạnh riêng', type: 'extra', description: 'Thuê tủ lạnh mini dùng riêng', unit: 'tháng', price: 100000, billingCycle: 'monthly', isActive: true },
-  { id: 'SV008', name: 'Máy giặt riêng', type: 'extra', description: 'Thuê máy giặt cửa trước dùng riêng', unit: 'tháng', price: 150000, billingCycle: 'monthly', isActive: false },
-];
+// Coerce giá trị tự do từ DB về đúng enum của UI
+const toUiType = (t: string): ServiceType =>
+  t === 'utility' || t === 'amenity' || t === 'extra' ? t : 'extra';
+const toUiCycle = (c: string): BillingCycle =>
+  c === 'monthly' || c === 'per_usage' || c === 'one_time' ? c : 'monthly';
 
 export default function AdminServicesPage() {
   const formatNumber = (num: number | undefined) => {
@@ -56,8 +56,9 @@ export default function AdminServicesPage() {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  const [services, setServices] = useState<ServiceItem[]>(MOCK_SERVICES);
+  const [services, setServices] = useState<ServiceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterActive, setFilterActive] = useState('');
@@ -66,12 +67,33 @@ export default function AdminServicesPage() {
   const [form, setForm] = useState<Partial<ServiceItem>>({});
   const [confirmStatusService, setConfirmStatusService] = useState<ServiceItem | null>(null);
 
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
+  // DB service: {id,name,service_type,description,unit,price,billing_cycle,status}
+  // isActive ← status === 'available'
+  const loadServices = async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const data = await fetchAdminServices();
+      const mapped: ServiceItem[] = (data || []).map((s: any) => ({
+        id: s.id,
+        name: s.name ?? '',
+        type: toUiType(s.service_type),
+        description: s.description ?? '',
+        unit: s.unit ?? '',
+        price: s.price ?? 0,
+        billingCycle: toUiCycle(s.billing_cycle),
+        isActive: s.status === 'available',
+      }));
+      setServices(mapped);
+    } catch (err: any) {
+      setLoadError(err.message || 'Lỗi khi tải danh sách dịch vụ');
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadServices();
   }, []);
 
   const kpis = useMemo(() => {
@@ -106,27 +128,40 @@ export default function AdminServicesPage() {
     setShowModal(true);
   };
 
-  const saveForm = () => {
-    if (modalMode === 'add') {
-      const ns: ServiceItem = {
-        ...(form as ServiceItem),
-        id: `SV${String(services.length + 1).padStart(3, '0')}`,
-      };
-      setServices(prev => [...prev, ns]);
-    } else {
-      setServices(prev => prev.map(s => s.id === form.id ? { ...s, ...form } as ServiceItem : s));
+  const saveForm = async () => {
+    if (!form.name) return;
+    const payload = {
+      name: form.name,
+      service_type: form.type ?? 'utility',
+      description: form.description ?? '',
+      unit: form.unit ?? '',
+      price: form.price ?? 0,
+      billing_cycle: form.billingCycle ?? 'monthly',
+      status: form.isActive === false ? 'inactive' : 'available',
+    };
+    try {
+      if (modalMode === 'add') {
+        await createServiceApi(payload);
+      } else if (form.id) {
+        await updateServiceApi(form.id, payload);
+      }
+      setShowModal(false);
+      await loadServices();
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi lưu dịch vụ');
     }
-    setShowModal(false);
   };
 
-  const confirmToggleStatus = () => {
+  const confirmToggleStatus = async () => {
     if (!confirmStatusService) return;
-    setServices(prev =>
-      prev.map(s =>
-        s.id === confirmStatusService.id ? { ...s, isActive: !s.isActive } : s
-      )
-    );
-    setConfirmStatusService(null);
+    const nextStatus = confirmStatusService.isActive ? 'inactive' : 'available';
+    try {
+      await updateServiceApi(confirmStatusService.id, { status: nextStatus });
+      setConfirmStatusService(null);
+      await loadServices();
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi đổi trạng thái dịch vụ');
+    }
   };
 
   const SERVICE_ICONS: Record<string, string> = {
@@ -213,6 +248,14 @@ export default function AdminServicesPage() {
           Làm mới
         </button>
       </section>
+
+      {/* Load error */}
+      {loadError && !isLoading && (
+        <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2 bg-red-50 text-red-700 border border-red-200">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          {loadError}
+        </div>
+      )}
 
       {/* Service Cards Grid */}
       {isLoading ? (

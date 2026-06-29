@@ -1,5 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import CustomSelect from "../../components/ui/CustomSelect";
+import {
+  fetchAdminBranches,
+  createBranchApi,
+  updateBranchApi,
+  fetchAdminRooms,
+} from "./services/admin.service";
 
 const A = {
   bg: "#fff8f3", // Sand background
@@ -27,65 +33,6 @@ interface Branch {
   activeRooms: number;
   status: "active" | "inactive";
 }
-
-const MOCK_BRANCHES: Branch[] = [
-  {
-    id: "CN-001",
-    code: "Q1-01",
-    name: "HomeStay Quận 1",
-    address: "123 Nguyễn Trãi",
-    district: "Quận 1",
-    city: "TP. Hồ Chí Minh",
-    phone: "028 1234 5678",
-    email: "q1@homestay.vn",
-    manager: "Nguyễn Thị Lan",
-    totalRooms: 24,
-    activeRooms: 20,
-    status: "active",
-  },
-  {
-    id: "CN-002",
-    code: "Q3-01",
-    name: "HomeStay Quận 3",
-    address: "45 Võ Văn Tần",
-    district: "Quận 3",
-    city: "TP. Hồ Chí Minh",
-    phone: "028 9876 5432",
-    email: "q3@homestay.vn",
-    manager: "Trần Văn Hùng",
-    totalRooms: 18,
-    activeRooms: 15,
-    status: "active",
-  },
-  {
-    id: "CN-003",
-    code: "BT-01",
-    name: "HomeStay Bình Thạnh",
-    address: "88 Đinh Bộ Lĩnh",
-    district: "Bình Thạnh",
-    city: "TP. Hồ Chí Minh",
-    phone: "028 5555 4444",
-    email: "binhthanh@homestay.vn",
-    manager: "Lê Thị Mai",
-    totalRooms: 12,
-    activeRooms: 8,
-    status: "active",
-  },
-  {
-    id: "CN-004",
-    code: "TD-01",
-    name: "HomeStay Thủ Đức",
-    address: "22 Tô Ngọc Vân",
-    district: "Thủ Đức",
-    city: "TP. Hồ Chí Minh",
-    phone: "028 3333 2222",
-    email: "thuduc@homestay.vn",
-    manager: "Phạm Quốc An",
-    totalRooms: 16,
-    activeRooms: 4,
-    status: "inactive",
-  },
-];
 
 interface BranchEmployee {
   id: string;
@@ -144,8 +91,9 @@ const isManagerRole = (role: string) => {
 };
 
 export default function AdminBranchesPage() {
-  const [branches, setBranches] = useState<Branch[]>(MOCK_BRANCHES);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -155,12 +103,48 @@ export default function AdminBranchesPage() {
     null,
   );
 
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
+  // Tải danh sách chi nhánh thật + tính số phòng theo branch_id từ /admin/rooms.
+  // Lưu ý: DB branches chỉ có {id,name,address,phone,email,status,manager_id};
+  // các trường district/city/code/manager-name không có trong DB → map mặc định.
+  const loadBranches = async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const [dbBranches, dbRooms] = await Promise.all([
+        fetchAdminBranches(),
+        fetchAdminRooms(),
+      ]);
+      const rooms: any[] = dbRooms || [];
+      const mapped: Branch[] = (dbBranches || []).map((b: any) => {
+        const branchRooms = rooms.filter((r) => r.branch_id === b.id);
+        const activeRooms = branchRooms.filter((r) =>
+          ["occupied", "full", "partial"].includes(r.status),
+        ).length;
+        return {
+          id: b.id,
+          code: b.id,
+          name: b.name ?? "",
+          address: b.address ?? "",
+          district: "",
+          city: "",
+          phone: b.phone ?? "",
+          email: b.email ?? "",
+          manager: b.manager_id ?? "",
+          totalRooms: branchRooms.length,
+          activeRooms,
+          status: b.status === "inactive" ? "inactive" : "active",
+        };
+      });
+      setBranches(mapped);
+    } catch (err: any) {
+      setLoadError(err.message || "Lỗi khi tải danh sách chi nhánh");
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadBranches();
   }, []);
 
   const kpis = useMemo(() => {
@@ -214,41 +198,45 @@ export default function AdminBranchesPage() {
     setShowModal(true);
   };
 
-  const saveForm = () => {
+  const saveForm = async () => {
     if (!form.name || !form.address || !form.phone) return;
-    if (modalMode === "add") {
-      const newBranch: Branch = {
-        ...(form as Branch),
-        id: `CN-${String(branches.length + 1).padStart(3, "0")}`,
-        code: `NEW-${branches.length + 1}`,
-        activeRooms: 0,
-      };
-      setBranches((prev) => [...prev, newBranch]);
-    } else {
-      setBranches((prev) =>
-        prev.map((b) => (b.id === form.id ? ({ ...b, ...form } as Branch) : b)),
-      );
+    // Chỉ gửi các field DB thật. KHÔNG gửi manager (UI đang là tên, DB cần manager_id)
+    // để tránh ghi sai dữ liệu — gán quản lý sẽ tích hợp sau qua employees API.
+    const payload = {
+      name: form.name,
+      address: form.address,
+      phone: form.phone,
+      email: form.email ?? "",
+      status: form.status ?? "active",
+    };
+    try {
+      if (modalMode === "add") {
+        await createBranchApi(payload);
+      } else if (form.id) {
+        await updateBranchApi(form.id, payload);
+      }
+      setShowModal(false);
+      await loadBranches();
+    } catch (err: any) {
+      alert(err.message || "Lỗi khi lưu chi nhánh");
     }
-    setShowModal(false);
   };
 
   const toggleBranchStatus = (branch: Branch) => {
     setConfirmStatusBranch(branch);
   };
 
-  const confirmToggleStatus = () => {
+  const confirmToggleStatus = async () => {
     if (!confirmStatusBranch) return;
     const nextStatus =
       confirmStatusBranch.status === "active" ? "inactive" : "active";
-    setBranches((prev) =>
-      prev.map((b) =>
-        b.id === confirmStatusBranch.id ? { ...b, status: nextStatus } : b,
-      ),
-    );
-    if (form?.id === confirmStatusBranch.id) {
-      setForm((prev) => ({ ...prev, status: nextStatus }));
+    try {
+      await updateBranchApi(confirmStatusBranch.id, { status: nextStatus });
+      setConfirmStatusBranch(null);
+      await loadBranches();
+    } catch (err: any) {
+      alert(err.message || "Lỗi khi đổi trạng thái chi nhánh");
     }
-    setConfirmStatusBranch(null);
   };
 
   const managerOptions = useMemo(() => {
@@ -377,6 +365,14 @@ export default function AdminBranchesPage() {
           Làm mới
         </button>
       </section>
+
+      {/* Load error */}
+      {loadError && !isLoading && (
+        <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2 bg-red-50 text-red-700 border border-red-200">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          {loadError}
+        </div>
+      )}
 
       {/* Card Grid */}
       {isLoading ? (
