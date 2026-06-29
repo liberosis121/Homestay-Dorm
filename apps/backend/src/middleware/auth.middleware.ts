@@ -22,6 +22,32 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     }
 
     const token = authHeader.split(' ')[1];
+
+    // Handle mock token for offline development
+    if (token.startsWith('mock-token-')) {
+      const parts = token.split('-');
+      // Format: mock-token-[uuid (5 parts)]-[role]-[email]
+      if (parts.length >= 9) {
+        const userId = parts.slice(2, 7).join('-');
+        const role = parts[7];
+        const email = parts.slice(8).join('-');
+
+        req.user = {
+          id: userId,
+          email: email,
+          user_metadata: {
+            role: role,
+            full_name: role === 'manager' ? 'Trần Thị Quản Lý' : 
+                       role === 'sale' ? 'Nguyễn Văn Sale' : 
+                       role === 'accountant' ? 'Lê Văn Kế Toán' : 
+                       role === 'admin' ? 'Hoàng Admin' : 'User'
+          }
+        } as any;
+        return next();
+      }
+    }
+
+    // Standard Supabase authentication
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 
     if (error || !user) {
