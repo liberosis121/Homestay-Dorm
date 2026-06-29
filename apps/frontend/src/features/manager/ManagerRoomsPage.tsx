@@ -196,7 +196,7 @@ export default function ManagerRoomsPage() {
         </div>
 
         {/* Rooms grid */}
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 22, flex: 1 }}>
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 22, flex: 1, maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
           <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 16 }}>
             Chi nhánh Quận 1 — Tầng {selectedFloor} ({floorRooms.length} phòng)
           </h3>
