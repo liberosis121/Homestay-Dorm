@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { getMockDB, saveMockDB, ResidencyCheck } from '../../lib/supabaseClient';
+import { ResidencyCheck } from '../../lib/supabaseClient';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -52,10 +52,80 @@ export default function ManagerResidencyPage() {
   
   const isReadOnly = selectedMember?.status === 'approved' || selectedMember?.status === 'rejected';
 
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchResidencyChecks = async () => {
+    setIsLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/residency`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        setRecords(result.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching residency:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const db = getMockDB();
-    setRecords(db.residency_checks || []);
-    setTimeout(() => setIsLoading(false), 400);
+    fetchResidencyChecks();
   }, []);
 
   // Group records by room_id + create deposit ref
@@ -128,35 +198,45 @@ export default function ManagerResidencyPage() {
     setMemberResult(null);
   };
 
-  const saveMemberResult = (newStatus: 'approved' | 'rejected') => {
+  const saveMemberResult = async (newStatus: 'approved' | 'rejected') => {
     if (!selectedMember) return;
-    const db = getMockDB();
-    const updated = db.residency_checks.map((r: ResidencyCheck) =>
-      r.id === selectedMember.id
-        ? { ...r, status: newStatus, checklist, violation_note: violationNote }
-        : r
-    );
-    db.residency_checks = updated;
-    saveMockDB(db);
-    setRecords(updated);
-    // Update in selected group too
-    if (selectedGroup) {
-      const updatedMembers = selectedGroup.members.map(m =>
-        m.id === selectedMember.id ? { ...m, status: newStatus, checklist, violation_note: violationNote } : m
-      );
-      const allPending = updatedMembers.every(m => m.status === 'pending');
-      const allConfirmed = updatedMembers.every(m => m.confirmed);
-      const group_status = allPending 
-        ? 'pending' 
-        : (allConfirmed ? 'completed' : 'partial');
-      setSelectedGroup({
-        ...selectedGroup,
-        members: updatedMembers,
-        group_status,
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/residency/${selectedMember.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: newStatus,
+          checklist,
+          violation_note: violationNote
+        })
       });
+      const result = await res.json();
+      if (result.success) {
+        // Refresh residency records
+        await fetchResidencyChecks();
+        
+        setSelectedMember(prev => prev ? { ...prev, status: newStatus, checklist, violation_note: violationNote } : null);
+        setMemberResult(newStatus);
+        
+        // Re-align selectedGroup
+        if (selectedGroup) {
+          const updatedMembers = selectedGroup.members.map(m =>
+            m.id === selectedMember.id ? { ...m, status: newStatus, checklist, violation_note: violationNote } : m
+          );
+          const allPending = updatedMembers.every(m => m.status === 'pending');
+          const allConfirmed = updatedMembers.every(m => m.confirmed);
+          const group_status = allPending ? 'pending' : (allConfirmed ? 'completed' : 'partial');
+          setSelectedGroup({
+            ...selectedGroup,
+            members: updatedMembers,
+            group_status,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error saving member result:', err);
     }
-    setSelectedMember(prev => prev ? { ...prev, status: newStatus, checklist, violation_note: violationNote } : null);
-    setMemberResult(newStatus);
   };
 
   const handleConfirmGroupClick = () => {
@@ -168,56 +248,84 @@ export default function ManagerResidencyPage() {
     }
   };
 
-  const handleCancelDeposit = () => {
+  const handleCancelDeposit = async () => {
     if (!selectedGroup) return;
-    const db = getMockDB();
-    
-    // 1. Remove all members of this group from residency_checks so it doesn't show in the table anymore
-    const updatedChecks = db.residency_checks.filter((r: ResidencyCheck) => 
-      r.room_id !== selectedGroup.room_id
-    );
-    db.residency_checks = updatedChecks;
-    
-    // 2. Find and update the corresponding ManagerDeposit status to 'rejected'
-    if (db.manager_deposits) {
-      db.manager_deposits = db.manager_deposits.map((d: any) => 
-        d.id === selectedGroup.deposit_ref ? { ...d, status: 'rejected' } : d
-      );
+    try {
+      const headers = await getAuthHeaders();
+      // 1. Update the deposit status to 'rejected'
+      await fetch(`${API_BASE}/deposits/${selectedGroup.deposit_ref}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: 'rejected',
+          reviewer_note: 'Từ chối kiểm tra điều kiện lưu trú'
+        })
+      });
+
+      // 2. Also update all residency checks in this group to 'rejected'
+      await Promise.all(selectedGroup.members.map(async (m) => {
+        return fetch(`${API_BASE}/residency/${m.id}/status`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            status: 'rejected',
+            violation_note: 'Hủy phiếu đặt cọc'
+          })
+        });
+      }));
+
+      // 3. Refresh data
+      await fetchResidencyChecks();
+      
+      setShowRejectedWarningModal(false);
+      setSelectedGroup(null);
+      setSelectedMember(null);
+    } catch (err) {
+      console.error('Error cancelling deposit:', err);
     }
-    
-    saveMockDB(db);
-    setRecords(updatedChecks);
-    
-    // 3. Reset states to close everything
-    setShowRejectedWarningModal(false);
-    setSelectedGroup(null);
-    setSelectedMember(null);
   };
 
-  const handleConfirmGroup = () => {
+  const handleConfirmGroup = async () => {
     if (!selectedGroup) return;
-    const db = getMockDB();
-    
-    // Set confirmed = true for all members of this group
-    const updatedChecks = db.residency_checks.map((r: ResidencyCheck) => 
-      r.room_id === selectedGroup.room_id ? { ...r, confirmed: true } : r
-    );
-    db.residency_checks = updatedChecks;
-    
-    // Update ManagerDeposit status to 'approved' if confirmed
-    if (db.manager_deposits) {
-      db.manager_deposits = db.manager_deposits.map((d: any) => 
-        d.id === selectedGroup.deposit_ref ? { ...d, status: 'approved' } : d
-      );
+    try {
+      const headers = await getAuthHeaders();
+      // 1. Update all members to approved status
+      await Promise.all(selectedGroup.members.map(async (m) => {
+        return fetch(`${API_BASE}/residency/${m.id}/status`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            status: 'approved',
+            checklist: {
+              valid_documents: true,
+              info_matches: true,
+              age_verified: true,
+              no_violation: true
+            }
+          })
+        });
+      }));
+
+      // 2. Update deposit status to 'paid' (approved)
+      await fetch(`${API_BASE}/deposits/${selectedGroup.deposit_ref}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: 'paid',
+          reviewer_note: 'Đạt điều kiện lưu trú'
+        })
+      });
+
+      // 3. Refresh data
+      await fetchResidencyChecks();
+
+      setConfirmingGroup(false);
+      setShowRejectedWarningModal(false);
+      setSelectedGroup(null);
+      setSelectedMember(null);
+    } catch (err) {
+      console.error('Error confirming group:', err);
     }
-    
-    saveMockDB(db);
-    setRecords(updatedChecks);
-    
-    setConfirmingGroup(false);
-    setShowRejectedWarningModal(false);
-    setSelectedGroup(null);
-    setSelectedMember(null);
   };
 
   const eligibleMembers = selectedGroup?.members.filter(m => m.status === 'approved') || [];

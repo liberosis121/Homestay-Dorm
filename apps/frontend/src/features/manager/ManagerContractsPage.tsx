@@ -10,14 +10,14 @@ const T = {
 };
 
 const STATUS_CFG: Record<ManagerContract['status'], { label: string; bg: string; text: string; icon: string }> = {
-  active:     { label: 'Đang hiệu lực', bg: T.sageBg,  text: T.sage,  icon: 'verified' },
-  expired:    { label: 'Đã hết hạn',    bg: T.primaryLight, text: T.textMuted, icon: 'schedule' },
-  terminated: { label: 'Đã thanh lý',   bg: T.redBg,   text: T.red,   icon: 'cancel' },
+  active: { label: 'Đang hiệu lực', bg: T.sageBg, text: T.sage, icon: 'verified' },
+  expired: { label: 'Đã hết hạn', bg: T.primaryLight, text: T.textMuted, icon: 'schedule' },
+  terminated: { label: 'Đã thanh lý', bg: T.redBg, text: T.red, icon: 'cancel' },
 };
 
 const DEPOSIT_TYPE_CONFIG = {
   room: { label: 'Cả phòng', icon: 'meeting_room', bg: T.blueBg, text: T.blue },
-  bed:  { label: 'Giường lẻ', icon: 'bed',          bg: T.sageBg, text: T.sage },
+  bed: { label: 'Giường lẻ', icon: 'bed', bg: T.sageBg, text: T.sage },
 };
 
 export default function ManagerContractsPage() {
@@ -25,12 +25,12 @@ export default function ManagerContractsPage() {
   const [selected, setSelected] = useState<ManagerContract | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
-  
+
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ManagerContract>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -60,7 +60,7 @@ export default function ManagerContractsPage() {
           const email = mockUser.email.toLowerCase();
           let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
           let role = mockUser.role || 'manager';
-          
+
           if (email.includes('manager')) {
             uid = 'e002e002-e002-e002-e002-e002e002e002';
             role = 'manager';
@@ -74,7 +74,7 @@ export default function ManagerContractsPage() {
             uid = 'e004e004-e004-e004-e004-e004e004e004';
             role = 'admin';
           }
-          
+
           let emailVal = mockUser.email;
           if (emailVal.includes('@homestay.com')) {
             emailVal = emailVal.replace('.com', '.vn');
@@ -219,7 +219,7 @@ export default function ManagerContractsPage() {
 
         // Fetch refreshed list to align with backend joins
         await fetchContracts();
-        
+
         setIsEditing(false);
         setDrawerOpen(false);
         showToast(`Cập nhật hợp đồng ${selected.contract_code} thành công${syncMessage}!`);
@@ -303,7 +303,7 @@ export default function ManagerContractsPage() {
       {/* ── Filter & Search Bar ── */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: '14px 18px', boxShadow: '0 2px 8px rgba(111,88,60,0.02)' }}
         className="flex flex-wrap items-center gap-3">
-        
+
         {/* Search input */}
         <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 220 }}>
           <span className="material-symbols-outlined"
@@ -424,13 +424,13 @@ export default function ManagerContractsPage() {
               ) : filteredContracts.map(c => {
                 const statusMeta = STATUS_CFG[c.status] || STATUS_CFG.active;
                 const typeCfg = DEPOSIT_TYPE_CONFIG[c.deposit_type];
-                
+
                 return (
                   <tr key={c.id}
                     onClick={() => handleOpenDrawer(c)}
                     style={{ borderBottom: `1px solid ${T.border}`, transition: 'background 0.15s', cursor: 'pointer' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150">
-                    
+
                     {/* Mã hợp đồng */}
                     <td style={{ padding: '13px 16px 13px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                       {c.contract_code}
@@ -502,7 +502,7 @@ export default function ManagerContractsPage() {
                         borderRadius: 9999, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: T.primary, cursor: 'pointer', whiteSpace: 'nowrap',
                         transition: 'all 0.15s ease-in-out'
                       }}
-                      className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
+                        className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
                     </td>
                   </tr>
                 );
@@ -574,7 +574,7 @@ export default function ManagerContractsPage() {
 
             {/* Drawer Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
-              
+
               {!isEditing ? (
                 // ─── CHẾ ĐỘ XEM CHI TIẾT ───
                 <>
@@ -710,25 +710,7 @@ export default function ManagerContractsPage() {
                     </div>
                   </div>
 
-                  {/* Legal Policies */}
-                  <div className="space-y-4">
-                    <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Các điều khoản hợp đồng & Quy định</h4>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Điều khoản chung:</p>
-                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.terms}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Quy định thanh toán:</p>
-                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.payment_policy}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Chính sách thanh lý & hoàn cọc:</p>
-                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.termination_policy}</p>
-                      </div>
-                    </div>
-                  </div>
+
                 </>
               ) : (
                 // ─── CHẾ ĐỘ CHỈNH SỬA (FORM EDIT) ───
@@ -892,60 +874,6 @@ export default function ManagerContractsPage() {
                       className={errors.service_fee ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
                     />
                     {errors.service_fee && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.service_fee}</p>}
-                  </div>
-
-                  {/* Textarea terms */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                      Điều khoản chung của hợp đồng
-                    </label>
-                    <textarea
-                      value={editForm.terms}
-                      onChange={e => handleInputChange('terms', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
-                        background: T.surface, transition: 'all 0.15s'
-                      }}
-                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
-                    />
-                  </div>
-
-                  {/* Textarea payments */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                      Quy định đóng tiền & thanh toán
-                    </label>
-                    <textarea
-                      value={editForm.payment_policy}
-                      onChange={e => handleInputChange('payment_policy', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
-                        background: T.surface, transition: 'all 0.15s'
-                      }}
-                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
-                    />
-                  </div>
-
-                  {/* Textarea termination */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                      Quy định trả phòng & thanh lý cọc
-                    </label>
-                    <textarea
-                      value={editForm.termination_policy}
-                      onChange={e => handleInputChange('termination_policy', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
-                        background: T.surface, transition: 'all 0.15s'
-                      }}
-                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
-                    />
                   </div>
                 </div>
               )}
