@@ -22,33 +22,36 @@ export async function generateNextId(
   table: string,
   idColumn: string = 'id'
 ): Promise<string> {
-  // Bước 1: Query tất cả ID có prefix này trong bảng, sắp xếp giảm dần → lấy cái lớn nhất
-  // LIKE 'DKT-%' = lọc những ID bắt đầu bằng 'DKT-'
+  // Bước 1: Lấy TẤT CẢ ID có prefix này trong bảng
+  // Lý do không dùng ORDER BY string: string sort cho kết quả sai khi số > 9
+  // Ví dụ: 'DKT-9' > 'DKT-10' theo string sort vì '9' > '1'
   const { data, error } = await supabase
     .from(table)
     .select(idColumn)
-    .like(idColumn, `${prefix}-%`)   // Chỉ lấy ID của prefix này (không lẫn với PDC hay LXM)
-    .order(idColumn, { ascending: false }) // Sắp xếp Z→A (giảm dần) → phần tử đầu tiên là ID lớn nhất
-    .limit(1);                        // Chỉ cần 1 bản ghi (lớn nhất) → tối ưu hiệu suất
+    .like(idColumn, `${prefix}-%`); // Chỉ lấy ID của prefix này (không lẫn với PDC hay LXM)
 
   if (error) {
     throw new Error(`[ID Generator] Không thể query bảng "${table}": ${error.message}`);
   }
 
-  // Bước 2: Tính số thứ tự tiếp theo
-  let nextNumber = 1; // Mặc định bắt đầu từ 1 nếu chưa có bản ghi nào
+  // Bước 2: Tìm số lớn nhất bằng cách so sánh kiểu số (numeric), không phải kiểu chuỗi
+  let maxNumber = 0;
 
   if (data && data.length > 0) {
-    const latestId: string = (data[0] as unknown as Record<string, string>)[idColumn]; // Ví dụ: "DKT-002"
-    // Tách phần số ra: "DKT-002".split('-')[1] → "002" → parseInt("002") → 2
-    const latestNumber = parseInt(latestId.split('-')[1], 10);
-    if (!isNaN(latestNumber)) {
-      nextNumber = latestNumber + 1; // 2 + 1 = 3
+    for (const row of data) {
+      const id: string = (row as unknown as Record<string, string>)[idColumn];
+      const parts = id.split('-');
+      // ID format: PREFIX-NNN → parts[1] là phần số
+      const num = parseInt(parts[1], 10);
+      if (!isNaN(num) && num > maxNumber) {
+        maxNumber = num;
+      }
     }
   }
 
   // Bước 3: Ghép lại thành ID mới với zero-padding 3 chữ số
   // String(3) → '3' → padStart(3, '0') → '003'
+  const nextNumber = maxNumber + 1;
   const paddedNumber = String(nextNumber).padStart(3, '0');
   return `${prefix}-${paddedNumber}`; // → 'DKT-003'
 }

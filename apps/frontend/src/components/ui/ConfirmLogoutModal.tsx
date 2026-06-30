@@ -8,12 +8,9 @@ export default function ConfirmLogoutModal() {
 
   if (!isLogoutConfirmOpen) return null;
 
-  const handleConfirmLogout = () => {
-    // 3. Hệ thống hủy phiên làm việc (session) hiện tại của người dùng.
-    // 4. Hệ thống xóa dữ liệu phiên làm việc được lưu tạm (cache/cookie) inside store.
-    logout();
-    
-    // 5. Hệ thống điều hướng người dùng về màn hình đăng nhập.
+  const handleConfirmLogout = async () => {
+    // logout() goi API backend de vo hieu hoa session, sau do xoa token local
+    await logout();
     navigate('/login');
   };
 
