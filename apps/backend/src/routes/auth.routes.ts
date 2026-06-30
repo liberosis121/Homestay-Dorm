@@ -23,11 +23,14 @@ const router = Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, fullName, phone } = req.body;
+    // FE (authStore.register → registerApi) gửi body snake_case: { email, full_name, phone, password }.
+    // Nhận cả full_name lẫn fullName để tương thích ngược.
+    const { email, password, phone } = req.body;
+    const full_name = req.body.full_name ?? req.body.fullName;
 
     // 1. Kiểm tra tính hợp lệ thô của dữ liệu đầu vào (Validation)
-    if (!email || !password || !fullName || !phone) {
-      return sendError(res, null, 'Vui lòng cung cấp đầy đủ thông tin: email, password, fullName, phone.', 400);
+    if (!email || !password || !full_name || !phone) {
+      return sendError(res, null, 'Vui lòng cung cấp đầy đủ thông tin: email, password, full_name, phone.', 400);
     }
 
     if (password.length < 6) {
@@ -35,7 +38,7 @@ router.post('/register', async (req, res) => {
     }
 
     // 2. Chuyển tiếp dữ liệu đến tầng Service để xử lý logic nghiệp vụ
-    const result = await authService.register(email, password, fullName, phone);
+    const result = await authService.register(email, password, full_name, phone);
 
     // 3. Trả về response thành công (HTTP Status 201 Created)
     return sendSuccess(res, result, 'Đăng ký tài khoản mới thành công!', 201);

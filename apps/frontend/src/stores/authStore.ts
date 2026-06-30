@@ -44,7 +44,7 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: false,
   error: null,
@@ -93,23 +93,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null });
     try {
       const payload: RegisterPayload = { email, full_name: fullName, phone, password };
-      const result = await registerApi(payload);
+      // Backend /auth/register chỉ TẠO tài khoản, KHÔNG trả về session.
+      await registerApi(payload);
 
-      // Sau khi đăng ký thành công, tự động đăng nhập luôn (lưu token)
-      localStorage.setItem('access_token', result.data.session.access_token);
-      localStorage.setItem('refresh_token', result.data.session.refresh_token);
-
-      const userProfile: UserProfile = {
-        id: result.data.user.id,
-        email: result.data.user.email,
-        role: result.data.profile.role,
-        full_name: result.data.profile.full_name,
-        phone: result.data.profile.phone,
-      };
-      localStorage.setItem('user_profile', JSON.stringify(userProfile));
-
-      set({ user: userProfile, loading: false, error: null });
-      return true;
+      // Đăng ký xong → đăng nhập luôn để lấy session (tái dùng login đã hoạt động).
+      // Lưu ý: nếu Supabase bật xác nhận email, signInWithPassword sẽ fail tới khi
+      // email được confirm → login() sẽ set error tương ứng và trả về false.
+      const loggedIn = await get().login(email, password);
+      return loggedIn;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Đăng ký thất bại. Email có thể đã được sử dụng.';
       set({ error: message, loading: false });
