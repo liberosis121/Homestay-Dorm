@@ -66,6 +66,9 @@ export const refundRepo = {
 
         mappedContract = {
           ...contract,
+          deposit_amount: req?.deposit_amount || contract.rent_price || 0,
+          room_id: req?.room_id || '',
+          bed_id: req?.bed_id || '',
           customer_name: customer?.full_name || 'Khách hàng',
           customer_phone: customer?.phone || '',
           rooms: room ? {
@@ -156,12 +159,16 @@ export const refundRepo = {
 
           mappedContract = {
             ...contract,
+            deposit_amount: depReq?.deposit_amount || contract.rent_price || 0,
+            room_id: depReq?.room_id || '',
+            bed_id: depReq?.bed_id || '',
             customer_name: customer?.full_name || 'Khách hàng',
             rooms: room ? {
               id: room.id,
               name: room.name
             } : null,
             profiles: customer ? {
+              id: customer.cccd,
               full_name: customer.full_name
             } : null
           };
@@ -186,7 +193,7 @@ export const refundRepo = {
   /**
    * Tao ban doi soat hoan coc moi va cap nhat trang thai checkout sang 'reconciled'.
    */
-  createRefundReconciliation: async (reconciliationData: any, checkoutId: string) => {
+  createRefundReconciliation: async (reconciliationData: any) => {
     const { data: reconciliation, error: recError } = await supabase
       .from('refund_reconciliations')
       .insert(reconciliationData)
@@ -197,16 +204,18 @@ export const refundRepo = {
       throw new Error(`[RefundRepo] Loi khi tao ban doi soat: ${recError.message}`);
     }
 
-    // Cap nhat trang thai checkouts sang reconciled
+    return reconciliation;
+  },
+
+  updateCheckoutStatus: async (checkoutId: string, status: string) => {
     const { error: checkoutError } = await supabase
       .from('checkouts')
-      .update({ status: 'reconciled' })
+      .update({ status })
       .eq('id', checkoutId);
 
     if (checkoutError) {
       throw new Error(`[RefundRepo] Loi khi cap nhat trang thai checkout: ${checkoutError.message}`);
     }
 
-    return reconciliation;
   }
 };

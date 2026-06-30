@@ -130,7 +130,7 @@ export const payoutRepo = {
    * 2. Cap nhat trang thai hop dong lien quan sang 'expired'.
    * 3. Giai phong phong/giuong (cap nhat status room sang 'available' hoac bed sang 'available').
    */
-  confirmPayout: async (invoiceId: string, accountDetails: string) => {
+  confirmPayout: async (invoiceId: string, accountDetails: string, paymentMethod?: 'transfer' | 'cash') => {
     // 1. Lay thong tin record de tim hop dong va phong/giuong tuong ung
     const { data: invoice, error: getError } = await supabase
       .from('invoices')
@@ -142,18 +142,52 @@ export const payoutRepo = {
       throw new Error(`[PayoutRepo] Khong tim thay hoa don hoan coc ID=${invoiceId}: ${getError?.message}`);
     }
 
+    if (invoice.invoice_type !== 'refund') {
+      throw new Error(`[PayoutRepo] Hoa don ID=${invoiceId} khong phai phieu chi hoan coc.`);
+    }
+
+    if (invoice.status === 'paid') {
+      return {
+        ...invoice,
+        status: 'paid',
+        payout_status: 'completed'
+      };
+    }
+
+    if (!invoice.reconciliation_id) {
+      throw new Error(`[PayoutRepo] Hoa don hoan coc ID=${invoiceId} chua lien ket voi ban doi soat.`);
+    }
+
     // Resolve contract and deposit details manually
-    const { data: rec } = invoice.reconciliation_id
-      ? await supabase.from('refund_reconciliations').select('checkout_id').eq('id', invoice.reconciliation_id).maybeSingle()
-      : { data: null };
+    const { data: rec, error: recError } = await supabase
+      .from('refund_reconciliations')
+      .select('id, checkout_id')
+      .eq('id', invoice.reconciliation_id)
+      .maybeSingle();
 
-    const { data: checkout } = rec?.checkout_id
-      ? await supabase.from('checkouts').select('contract_id').eq('id', rec.checkout_id).maybeSingle()
-      : { data: null };
+    if (recError || !rec?.checkout_id) {
+      throw new Error(`[PayoutRepo] Khong tim thay ban doi soat cho hoa don ID=${invoiceId}: ${recError?.message || 'missing checkout_id'}`);
+    }
 
-    const { data: contract } = checkout?.contract_id
-      ? await supabase.from('contracts').select('id, deposit_id').eq('id', checkout.contract_id).maybeSingle()
-      : { data: null };
+    const { data: checkout, error: checkoutFetchError } = await supabase
+      .from('checkouts')
+      .select('id, contract_id')
+      .eq('id', rec.checkout_id)
+      .maybeSingle();
+
+    if (checkoutFetchError || !checkout?.contract_id) {
+      throw new Error(`[PayoutRepo] Khong tim thay yeu cau tra phong cho doi soat ID=${rec.id}: ${checkoutFetchError?.message || 'missing contract_id'}`);
+    }
+
+    const { data: contract, error: contractFetchError } = await supabase
+      .from('contracts')
+      .select('id, deposit_id')
+      .eq('id', checkout.contract_id)
+      .maybeSingle();
+
+    if (contractFetchError || !contract?.id) {
+      throw new Error(`[PayoutRepo] Khong tim thay hop dong cho yeu cau tra phong ID=${checkout.id}: ${contractFetchError?.message || 'missing contract'}`);
+    }
 
     const contractId = contract?.id;
     let roomId = null;
@@ -176,7 +210,7 @@ export const payoutRepo = {
       .from('invoices')
       .update({
         status: 'paid',
-        payment_method: 'transfer',
+        payment_method: paymentMethod || (accountDetails === 'Tien mat' ? 'cash' : 'transfer'),
         payment_time: new Date().toISOString()
       })
       .eq('id', invoiceId)
@@ -187,11 +221,29 @@ export const payoutRepo = {
       throw new Error(`[PayoutRepo] Loi khi cap nhat trang thai hoa don hoan coc: ${updateError.message}`);
     }
 
+    const { error: recUpdateError } = await supabase
+      .from('refund_reconciliations')
+      .update({ status: 'paid' })
+      .eq('id', rec.id);
+
+    if (recUpdateError) {
+      throw new Error(`[PayoutRepo] Loi khi cap nhat trang thai doi soat ID=${rec.id}: ${recUpdateError.message}`);
+    }
+
+    const { error: checkoutUpdateError } = await supabase
+      .from('checkouts')
+      .update({ status: 'completed' })
+      .eq('id', checkout.id);
+
+    if (checkoutUpdateError) {
+      throw new Error(`[PayoutRepo] Loi khi cap nhat trang thai tra phong ID=${checkout.id}: ${checkoutUpdateError.message}`);
+    }
+
     // 3. Cap nhat hop dong sang expired
     if (contractId) {
       const { error: contractError } = await supabase
         .from('contracts')
-        .update({ status: 'expired' })
+        .update({ status: 'terminated' })
         .eq('id', contractId);
 
       if (contractError) {
@@ -222,6 +274,13 @@ export const payoutRepo = {
       }
     }
 
-    return updatedInvoice;
+    return {
+      ...updatedInvoice,
+      payout_status: 'completed',
+      reconciliation_id: rec.id,
+      contract_id: contractId,
+      room_id: roomId,
+      bed_id: bedId
+    };
   }
 };

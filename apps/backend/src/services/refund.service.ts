@@ -35,6 +35,36 @@ export const refundService = {
       throw new Error('Cac truong bat buoc: checkoutId, contractId, originalDeposit');
     }
 
+    const { data: checkout, error: checkoutError } = await supabase
+      .from('checkouts')
+      .select('id, contract_id, status')
+      .eq('id', data.checkoutId)
+      .maybeSingle();
+
+    if (checkoutError || !checkout) {
+      throw new Error(`[RefundService] Khong tim thay yeu cau tra phong ID=${data.checkoutId}: ${checkoutError?.message || 'missing checkout'}`);
+    }
+
+    if (checkout.contract_id !== data.contractId) {
+      throw new Error(`[RefundService] Hop dong ${data.contractId} khong khop voi yeu cau tra phong ${data.checkoutId}.`);
+    }
+
+    const { data: existingReconciliations, error: existingError } = await supabase
+      .from('refund_reconciliations')
+      .select('id')
+      .eq('checkout_id', data.checkoutId)
+      .limit(1);
+
+    if (existingError) {
+      throw new Error(`[RefundService] Loi khi kiem tra doi soat ton tai: ${existingError.message}`);
+    }
+
+    if (existingReconciliations && existingReconciliations.length > 0) {
+      const duplicateError: any = new Error(`Yeu cau tra phong ${data.checkoutId} da co ban doi soat ${existingReconciliations[0].id}.`);
+      duplicateError.status = 409;
+      throw duplicateError;
+    }
+
     const reconciliationId = 'REF-' + Math.floor(100000 + Math.random() * 900000);
     const reconciliationData = {
       id: reconciliationId,
@@ -50,7 +80,7 @@ export const refundService = {
       staff_id: data.staffId
     };
 
-    const reconciliation = await refundRepo.createRefundReconciliation(reconciliationData, data.checkoutId);
+    const reconciliation = await refundRepo.createRefundReconciliation(reconciliationData);
 
     // Tu dong tao luon mot hoa don hoan coc (invoices) o trang thai pending neu so tien hoan duong (> 0)
     if (data.finalRefund > 0) {
@@ -69,7 +99,8 @@ export const refundService = {
         });
 
       if (payoutError) {
-        console.error(`[RefundService] Loi khi tao phieu chi tu dong: ${payoutError.message}`);
+        await supabase.from('refund_reconciliations').delete().eq('id', reconciliation.id);
+        throw new Error(`[RefundService] Loi khi tao phieu chi tu dong: ${payoutError.message}`);
       }
     }
 
@@ -91,9 +122,12 @@ export const refundService = {
         });
 
       if (debtInvError) {
-        console.error(`[RefundService] Loi khi tao hoa don thu no: ${debtInvError.message}`);
+        await supabase.from('refund_reconciliations').delete().eq('id', reconciliation.id);
+        throw new Error(`[RefundService] Loi khi tao hoa don thu no: ${debtInvError.message}`);
       }
     }
+
+    await refundRepo.updateCheckoutStatus(data.checkoutId, 'reconciled');
 
     return reconciliation;
   }

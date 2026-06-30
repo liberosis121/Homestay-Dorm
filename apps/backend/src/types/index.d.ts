@@ -7,6 +7,7 @@ import { User } from '@supabase/supabase-js';
 // Kiểu dữ liệu profile lấy từ bảng `profiles` trong database
 // Dấu `?` nghĩa là optional (có thể có hoặc không)
 export interface Profile {
+  email?: string;
   id: string;          // UUID của user trong Supabase Auth
   role: string;        // 'customer' | 'sale' | 'manager' | 'accountant' | 'admin'
   full_name?: string;

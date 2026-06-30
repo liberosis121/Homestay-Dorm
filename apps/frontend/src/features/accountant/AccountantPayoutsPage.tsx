@@ -7,6 +7,12 @@ import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
 
+const normalizePayoutStatus = (status?: string): PayoutRecord['status'] => {
+  if (status === 'paid' || status === 'completed') return 'completed';
+  if (status === 'processing') return 'processing';
+  return 'pending';
+};
+
 export default function AccountantPayoutsPage() {
   const { user } = useAuthStore();
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
@@ -40,7 +46,7 @@ export default function AccountantPayoutsPage() {
           const rec = p.refund_reconciliations || {};
           const checkout = rec.checkouts || {};
           const contract = checkout.contracts || {};
-          const customer_name = contract.profiles?.full_name || 'Khách hàng';
+          const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
           return {
             id: p.id,
             refund_id: rec.id || p.reconciliation_id,
@@ -49,10 +55,11 @@ export default function AccountantPayoutsPage() {
             bank_account: p.account_details || '',
             bank_name: '',
             account_holder: customer_name.toUpperCase(),
-            amount: rec.final_refund || 0,
-            payment_method: p.payout_method || 'transfer',
-            status: p.status || 'pending',
-            created_at: p.paid_at || new Date().toISOString()
+            amount: Number(p.amount ?? rec.final_refund ?? 0),
+            payment_method: p.payment_method || p.payout_method || 'transfer',
+            status: normalizePayoutStatus(p.status || p.payout_status),
+            paid_at: p.payment_time,
+            created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString()
           };
         });
 
@@ -62,15 +69,18 @@ export default function AccountantPayoutsPage() {
           return {
             id: rec.id,
             customer_id: contract.customer_id || '',
-            customer_name: contract.profiles?.full_name || 'Khách hàng',
-            room_id: contract.room_id || '',
+            customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
+            room_id: contract.rooms?.id || contract.room_id || '',
             room_name: contract.rooms?.name || 'Phòng',
-            deposit_original: rec.original_deposit || 1500000,
-            status: rec.status || 'confirmed',
+            checkout_date: checkout.request_date || rec.reconciliation_date || '',
+            deposit_original: Number(rec.original_deposit || 0),
+            damage_deductions: [],
+            debt_deductions: 0,
+            status: rec.status === 'paid' ? 'paid' : 'confirmed',
             created_at: rec.reconciliation_date || new Date().toISOString(),
             type: 'checkout' as const,
-            refund_amount: rec.final_refund,
-            total_deductions: rec.total_deductions
+            refund_amount: Number(rec.final_refund || 0),
+            total_deductions: Number(rec.total_deductions || 0)
           };
         });
 
@@ -112,7 +122,7 @@ export default function AccountantPayoutsPage() {
     const details = payMethod === 'transfer' ? `${bankName} - ${bankAccount} - ${accountHolder}` : 'Tiền mặt';
 
     try {
-      await accountantService.confirmPayout(email, activePayout.id, details);
+      await accountantService.confirmPayout(email, activePayout.id, details, payMethod);
 
       if (activePayout.amount >= 0) {
         alert('Xác nhận xử lý hoàn cọc thành công!');
@@ -128,7 +138,7 @@ export default function AccountantPayoutsPage() {
         const rec = p.refund_reconciliations || {};
         const checkout = rec.checkouts || {};
         const contract = checkout.contracts || {};
-        const customer_name = contract.profiles?.full_name || 'Khách hàng';
+        const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
         return {
           id: p.id,
           refund_id: rec.id || p.reconciliation_id,
@@ -137,10 +147,11 @@ export default function AccountantPayoutsPage() {
           bank_account: p.account_details || '',
           bank_name: '',
           account_holder: customer_name.toUpperCase(),
-          amount: rec.final_refund || 0,
-          payment_method: p.payout_method || 'transfer',
-          status: p.status || 'pending',
-          created_at: p.paid_at || new Date().toISOString()
+          amount: Number(p.amount ?? rec.final_refund ?? 0),
+          payment_method: p.payment_method || p.payout_method || 'transfer',
+          status: normalizePayoutStatus(p.status || p.payout_status),
+          paid_at: p.payment_time,
+          created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString()
         };
       });
 
@@ -150,15 +161,18 @@ export default function AccountantPayoutsPage() {
         return {
           id: rec.id,
           customer_id: contract.customer_id || '',
-          customer_name: contract.profiles?.full_name || 'Khách hàng',
-          room_id: contract.room_id || '',
+          customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
+          room_id: contract.rooms?.id || contract.room_id || '',
           room_name: contract.rooms?.name || 'Phòng',
-          deposit_original: rec.original_deposit || 1500000,
-          status: rec.status || 'confirmed',
+          checkout_date: checkout.request_date || rec.reconciliation_date || '',
+          deposit_original: Number(rec.original_deposit || 0),
+          damage_deductions: [],
+          debt_deductions: 0,
+          status: rec.status === 'paid' ? 'paid' : 'confirmed',
           created_at: rec.reconciliation_date || new Date().toISOString(),
           type: 'checkout' as const,
-          refund_amount: rec.final_refund,
-          total_deductions: rec.total_deductions
+          refund_amount: Number(rec.final_refund || 0),
+          total_deductions: Number(rec.total_deductions || 0)
         };
       });
 
@@ -167,6 +181,13 @@ export default function AccountantPayoutsPage() {
     } catch (err: any) {
       console.warn('[AccountantPayouts] Live API failed, falling back to mock:', err);
       const db = getMockDB();
+      const mockHasPayout = (db.payout_records || []).some((p: PayoutRecord) => p.id === activePayout.id);
+
+      if (!mockHasPayout) {
+        alert(err?.message || 'Không thể xác nhận chi tiền trên dữ liệu hiện tại.');
+        return;
+      }
+
       const updatedPayouts = db.payout_records.map((p: PayoutRecord) => {
         if (p.id === activePayout.id) {
           return {

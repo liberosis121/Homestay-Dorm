@@ -29,7 +29,7 @@ import { Profile } from '../types';
 export async function getProfileByUserId(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, role, full_name, phone, avatar_url, created_at')
+    .select('id, email, role, full_name, phone, avatar_url, created_at')
     .eq('id', userId)  // Lọc theo UUID → chỉ ra đúng 1 bản ghi
     .single();         // Trả về object (không phải array), lỗi nếu không tìm thấy
 
@@ -119,7 +119,7 @@ export async function getCustomerByUserId(userId: string) {
     .from('khach_hang')
     .select(`
       *,
-      profiles!inner(id, role, full_name, phone)
+      profiles!inner(id, email, role, full_name, phone)
     `)
     .eq('user_id', userId)
     .single();
@@ -150,7 +150,7 @@ export async function getStaffByUserId(userId: string) {
     .from('nhan_vien')
     .select(`
       *,
-      profiles!inner(id, role, full_name, phone)
+      profiles!inner(id, email, role, full_name, phone)
     `)
     .eq('id', userId)  // nhan_vien.id = profiles.id = auth user UUID (khong co cot user_id trong nhan_vien)
     .single();
@@ -158,6 +158,19 @@ export async function getStaffByUserId(userId: string) {
   if (error) {
     if (error.code === 'PGRST116') return null;
     throw new Error(`[ProfileRepo] Lỗi khi tìm nhân viên theo userId=${userId}: ${error.message}`);
+  }
+
+  if (data?.branch_id) {
+    const { data: branch } = await supabase
+      .from('branches')
+      .select('name')
+      .eq('id', data.branch_id)
+      .maybeSingle();
+
+    return {
+      ...data,
+      branch_name: branch?.name || data.branch_id,
+    };
   }
 
   return data;
@@ -224,9 +237,24 @@ export const profileRepo = {
         console.error('Error fetching nhan_vien record:', employeeErr);
       }
       if (employee) {
+        let branchName = employee.branch_id;
+        if (employee.branch_id) {
+          const { data: branch, error: branchErr } = await supabase
+            .from('branches')
+            .select('name')
+            .eq('id', employee.branch_id)
+            .maybeSingle();
+
+          if (branchErr) {
+            console.error('Error fetching branch record:', branchErr);
+          }
+          branchName = branch?.name || employee.branch_id;
+        }
+
         return {
           ...profile,
           ...employee,
+          branch_name: branchName,
           type: 'employee'
         };
       }
