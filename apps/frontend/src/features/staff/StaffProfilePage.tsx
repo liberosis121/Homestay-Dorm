@@ -240,29 +240,11 @@ export default function StaffProfilePage() {
       if (mockUserStr) {
         const mockUser = JSON.parse(mockUserStr);
         if (mockUser && mockUser.email) {
-          const email = mockUser.email.toLowerCase();
-          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
-          let role = mockUser.role || 'manager';
-
-          if (email.includes('manager')) {
-            uid = 'e002e002-e002-e002-e002-e002e002e002';
-            role = 'manager';
-          } else if (email.includes('sale')) {
-            uid = 'e001e001-e001-e001-e001-e001e001e001';
-            role = 'sale';
-          } else if (email.includes('accountant') || email.includes('ketoan')) {
-            uid = 'e003e003-e003-e003-e003-e003e003e003';
-            role = 'accountant';
-          } else if (email.includes('admin')) {
-            uid = 'e004e004-e004-e004-e004-e004e004e004';
-            role = 'admin';
-          }
-
           let emailVal = mockUser.email;
           if (emailVal.includes('@homestay.com')) {
             emailVal = emailVal.replace('.com', '.vn');
           }
-          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          const mockToken = `mock-token-${emailVal}`;
           return {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${mockToken}`
@@ -275,32 +257,50 @@ export default function StaffProfilePage() {
     return { 'Content-Type': 'application/json' };
   };
 
+  const normalizeGender = (gender?: string) => {
+    if (!gender) return 'female';
+    if (gender === 'Nam') return 'male';
+    if (gender === 'Nữ') return 'female';
+    if (gender === 'Khác') return 'other';
+    return gender;
+  };
+
   const fetchProfile = async () => {
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`${API_BASE}/auth/me`, { headers });
       const result = await res.json();
       if (result.success && result.data) {
-        const profileData = result.data;
+        const rawProfile = result.data;
+        const profileData = {
+          ...rawProfile,
+          ...(rawProfile.details || {}),
+          full_name: rawProfile.full_name || rawProfile.details?.full_name,
+          email: rawProfile.email || rawProfile.details?.email || rawProfile.details?.profiles?.email,
+          phone: rawProfile.phone || rawProfile.details?.phone,
+          role: rawProfile.role || rawProfile.details?.role || rawProfile.details?.profiles?.role,
+        };
         const mappedData = {
           full_name: profileData.full_name || '',
           email: profileData.email || '',
           phone: profileData.phone || '',
           cccd: profileData.cccd || '',
           dob: profileData.dob || '',
-          gender: profileData.gender || 'female',
+          gender: normalizeGender(profileData.gender),
           issue_date: profileData.issue_date || '',
           issue_place: profileData.issue_place || '',
           nationality: profileData.nationality || 'Việt Nam',
           permanent_address: profileData.permanent_address || profileData.address || '',
           department: profileData.department || roleInfo.dept,
           position: profileData.position || roleInfo.label,
-          branch: profileData.branch_id || 'Chi nhánh Quận 1',
+          branch: profileData.branch_name || profileData.branch_id || 'Chi nhánh Quận 1',
           employee_code: profileData.employee_code || 'NV-' + (profileData.id || '001').toUpperCase().slice(-3),
           start_date: profileData.join_date || (profileData.created_at ? profileData.created_at.slice(0, 10) : ''),
         };
         setFormData(mappedData);
         setInitialData(mappedData);
+      } else {
+        console.error(result.message || 'Failed to fetch profile');
       }
     } catch (err) {
       console.error('Error fetching profile:', err);

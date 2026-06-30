@@ -194,11 +194,16 @@ export const accountantService = {
     return result.data;
   },
 
-  confirmPayout: async (email: string, payoutId: string, accountDetails: string) => {
+  confirmPayout: async (
+    email: string,
+    payoutId: string,
+    accountDetails: string,
+    paymentMethod: 'transfer' | 'cash'
+  ) => {
     const res = await fetch(`${API}/api/accountant/payouts/${payoutId}/confirm`, {
       method: 'POST',
       headers: getHeaders(email),
-      body: JSON.stringify({ accountDetails })
+      body: JSON.stringify({ accountDetails, paymentMethod })
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

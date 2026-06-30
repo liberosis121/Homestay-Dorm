@@ -50,7 +50,12 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
     if (token.startsWith('mock-token-')) {
       // Token cầu nối: phần còn lại sau prefix chính là email đăng nhập.
-      let email = token.replace('mock-token-', '');
+      const tokenPayload = token.replace('mock-token-', '');
+      const emailPart = tokenPayload
+        .split('-')
+        .reverse()
+        .find(part => part.includes('@'));
+      let email = emailPart || tokenPayload;
       if (email.endsWith('@homestay.com')) {
         email = email.replace('@homestay.com', '@homestay.vn');
       }

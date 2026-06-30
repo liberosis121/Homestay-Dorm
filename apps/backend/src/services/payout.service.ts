@@ -11,10 +11,10 @@ export const payoutService = {
   /**
    * Xac nhan chi tra hoan coc.
    */
-  confirmPayout: async (payoutId: string, accountDetails: string) => {
+  confirmPayout: async (payoutId: string, accountDetails: string, paymentMethod?: 'transfer' | 'cash') => {
     if (!payoutId) {
       throw new Error('Yeu cau payoutId');
     }
-    return await payoutRepo.confirmPayout(payoutId, accountDetails);
+    return await payoutRepo.confirmPayout(payoutId, accountDetails, paymentMethod);
   }
 };

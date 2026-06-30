@@ -285,9 +285,9 @@ router.get('/payouts', async (req, res) => {
 router.post('/payouts/:id/confirm', async (req, res) => {
   try {
     const payoutId = req.params.id;
-    const { accountDetails } = req.body;
+    const { accountDetails, paymentMethod } = req.body;
 
-    const data = await payoutService.confirmPayout(payoutId, accountDetails);
+    const data = await payoutService.confirmPayout(payoutId, accountDetails, paymentMethod);
     return sendSuccess(res, data, 'Xac nhan chi tien va thanh ly hop dong thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi xac nhan chi tien.');
