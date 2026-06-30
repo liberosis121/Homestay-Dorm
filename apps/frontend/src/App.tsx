@@ -199,7 +199,7 @@ function DashboardLayout() {
     switch (user.role) {
       case 'admin':
         return [
-          { path: '/', label: 'Tổng quan hệ thống', icon: Home },
+          { path: '/admin/dashboard', label: 'Tổng quan hệ thống', icon: Home },
           { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
           { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
           { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
@@ -491,6 +491,7 @@ function DashboardLayout() {
             {user.role === 'accountant' && <Route path="/accountant/refunds" element={<AccountantRefundsPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/payouts" element={<AccountantPayoutsPage />} />}
             {/* Admin Routes (UC25-UC32) */}
+            {user.role === 'admin' && <Route path="/admin/dashboard" element={<AdminDashboardPage />} />}
             {user.role === 'admin' && <Route path="/admin/users" element={<AdminUsersPage />} />}
             {user.role === 'admin' && <Route path="/admin/employees" element={<AdminEmployeesPage />} />}
             {user.role === 'admin' && <Route path="/admin/branches" element={<AdminBranchesPage />} />}
@@ -523,7 +524,7 @@ function DashboardDispatcher() {
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
   if (user.role === 'accountant') return <Navigate to="/accountant/dashboard" replace />;
   if (user.role === 'manager') return <Navigate to="/manager/dashboard" replace />;
-  if (user.role === 'admin') return <AdminDashboardPage />;
+  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
 
   const cards = [
     { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },
