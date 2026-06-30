@@ -21,6 +21,8 @@ import leaseRegistrationRoutes from './lease-registration.routes';
 import viewingScheduleRoutes from './viewing-schedule.routes';
 import customerDepositRoutes from './customer-deposit.routes';
 import accountantRoutes from './accountant.routes';
+import managerRoutes from './manager.routes';
+import { requireAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -45,6 +47,7 @@ router.use('/viewing-schedules', viewingScheduleRoutes);
 router.use('/deposit-requests', customerDepositRoutes);
 router.use('/accountant', accountantRoutes);
 router.use('/staff/customers', customerLookupRoutes);
+router.use('/manager', requireAuth, managerRoutes);
 router.use('/', roomRoutes);
 
 export default router;

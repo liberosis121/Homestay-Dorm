@@ -133,11 +133,10 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Nhập lại mật khẩu mới"
-                    className={`w-full bg-[#faf2ec] border rounded-full py-3.5 px-6 pr-12 text-sm focus:outline-none focus:ring-2 text-[#1e1b17] transition-all ${
-                      confirmPassword && confirmPassword !== newPassword
-                        ? 'border-error focus:ring-error/20 focus:border-error'
-                        : 'border-[#d1c4b9] focus:border-[#6f583c] focus:ring-[#6f583c]/20'
-                    }`}
+                    className={`w-full bg-[#faf2ec] border rounded-full py-3.5 px-6 pr-12 text-sm focus:outline-none focus:ring-2 text-[#1e1b17] transition-all ${confirmPassword && confirmPassword !== newPassword
+                      ? 'border-error focus:ring-error/20 focus:border-error'
+                      : 'border-[#d1c4b9] focus:border-[#6f583c] focus:ring-[#6f583c]/20'
+                      }`}
                   />
                   <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4e453c] hover:text-[#1e1b17] cursor-pointer">
                     {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -220,28 +219,96 @@ export default function StaffProfilePage() {
 
   const roleInfo = user ? getRoleDisplayInfo(user.role) : getRoleDisplayInfo('sale');
 
-  useEffect(() => {
-    if (user) {
-      const defaultData = {
-        full_name: user.full_name || '',
-        email: user.email || '',
-        phone: user.phone || '0912345678',
-        cccd: '012987654321',
-        dob: '1995-03-15',
-        gender: 'female',
-        issue_date: '2015-06-20',
-        issue_place: 'Cục CSQLHC về TTXH',
-        nationality: 'Việt Nam',
-        permanent_address: '45 Đường Nguyễn Huệ, Quận 1, TP.HCM',
-        department: roleInfo.dept,
-        position: roleInfo.label,
-        branch: 'Chi nhánh Quận 1',
-        employee_code: 'NV-' + (user.id || '001').toUpperCase().slice(-3),
-        start_date: '2023-01-10',
-      };
-      setFormData(defaultData);
-      setInitialData(defaultData);
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
     }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/auth/me`, { headers });
+      const result = await res.json();
+      if (result.success && result.data) {
+        const profileData = result.data;
+        const mappedData = {
+          full_name: profileData.full_name || '',
+          email: profileData.email || '',
+          phone: profileData.phone || '',
+          cccd: profileData.cccd || '',
+          dob: profileData.dob || '',
+          gender: profileData.gender || 'female',
+          issue_date: profileData.issue_date || '',
+          issue_place: profileData.issue_place || '',
+          nationality: profileData.nationality || 'Việt Nam',
+          permanent_address: profileData.permanent_address || profileData.address || '',
+          department: profileData.department || roleInfo.dept,
+          position: profileData.position || roleInfo.label,
+          branch: profileData.branch_id || 'Chi nhánh Quận 1',
+          employee_code: profileData.employee_code || 'NV-' + (profileData.id || '001').toUpperCase().slice(-3),
+          start_date: profileData.join_date || (profileData.created_at ? profileData.created_at.slice(0, 10) : ''),
+        };
+        setFormData(mappedData);
+        setInitialData(mappedData);
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, [user]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -255,17 +322,40 @@ export default function StaffProfilePage() {
     if (initialData) setFormData(initialData);
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!isDirty) return;
     setIsSaving(true);
     setSaveSuccess(false);
-    setTimeout(() => {
+    try {
+      const headers = await getAuthHeaders();
+      const updateData = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        dob: formData.dob || null,
+        gender: formData.gender,
+        join_date: formData.start_date || null
+      };
+
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(updateData)
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        setSaveSuccess(true);
+        setInitialData(formData);
+        setIsEditing(false);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        console.error(result.message);
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+    } finally {
       setIsSaving(false);
-      setSaveSuccess(true);
-      setInitialData(formData);
-      setIsEditing(false);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+    }
   };
 
   // ── Settings State ────────────────────────────────────────────────────────
@@ -358,22 +448,20 @@ export default function StaffProfilePage() {
           <div className="flex gap-2 bg-[#faf2ec] border border-[#d1c4b9] rounded-full p-1 shrink-0">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'profile'
-                  ? 'bg-[#6f583c] text-white shadow-md'
-                  : 'text-[#4e453c] hover:text-[#1e1b17]'
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${activeTab === 'profile'
+                ? 'bg-[#6f583c] text-white shadow-md'
+                : 'text-[#4e453c] hover:text-[#1e1b17]'
+                }`}
             >
               <User className="w-4 h-4" />
               Hồ sơ
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'settings'
-                  ? 'bg-[#6f583c] text-white shadow-md'
-                  : 'text-[#4e453c] hover:text-[#1e1b17]'
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${activeTab === 'settings'
+                ? 'bg-[#6f583c] text-white shadow-md'
+                : 'text-[#4e453c] hover:text-[#1e1b17]'
+                }`}
             >
               <Shield className="w-4 h-4" />
               Cài đặt
@@ -456,11 +544,10 @@ export default function StaffProfilePage() {
                       setIsEditing(true);
                     }
                   }}
-                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm cursor-pointer border ${
-                    isEditing
-                      ? 'bg-[#faf2ec] hover:bg-[#f4ede6] text-[#4e453c] border-[#d1c4b9]'
-                      : 'bg-[#6f583c]/10 hover:bg-[#6f583c]/20 text-[#6f583c] border-[#6f583c]/20'
-                  }`}
+                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm cursor-pointer border ${isEditing
+                    ? 'bg-[#faf2ec] hover:bg-[#f4ede6] text-[#4e453c] border-[#d1c4b9]'
+                    : 'bg-[#6f583c]/10 hover:bg-[#6f583c]/20 text-[#6f583c] border-[#6f583c]/20'
+                    }`}
                 >
                   {isEditing ? (
                     <>Hủy chỉnh sửa</>
@@ -513,7 +600,7 @@ export default function StaffProfilePage() {
                         { value: 'female', label: 'Nữ' },
                         { value: 'other', label: 'Khác' },
                       ]}
-                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3.5 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
+                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
                       dropdownClassName="border-[#d1c4b9]"
                     />
                   </div>
@@ -521,15 +608,7 @@ export default function StaffProfilePage() {
                   <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" />
                   <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} />
 
-                  <InputField label="Số CCCD / Passport *" name="cccd" value={formData.cccd} />
-                  <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} />
 
-                  <div className="md:col-span-2">
-                    <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} />
-                  </div>
                 </div>
               </div>
 

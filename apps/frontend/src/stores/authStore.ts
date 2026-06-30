@@ -64,13 +64,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem('access_token', result.data.session.access_token);
       localStorage.setItem('refresh_token', result.data.session.refresh_token);
 
-      // Ghep thong tin user tu response de luu vao store
+      // Ghep thong tin user tu response de luu vao store.
+      // Backend (authService.login) tra ve tat ca thong tin trong `data.user`
+      // (id, email, role, full_name, phone, avatar_url) — KHONG co key `data.profile`.
+      const u = result.data.user as any;
       const userProfile: UserProfile = {
-        id: result.data.user.id,
-        email: result.data.user.email,
-        role: result.data.profile.role,
-        full_name: result.data.profile.full_name,
-        phone: result.data.profile.phone,
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        full_name: u.full_name,
+        phone: u.phone,
+        avatar_url: u.avatar_url,
       };
       localStorage.setItem('user_profile', JSON.stringify(userProfile));
 
