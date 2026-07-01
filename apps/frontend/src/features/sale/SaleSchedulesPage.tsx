@@ -8,7 +8,7 @@ import ScheduleStatusBadge from './components/ScheduleStatusBadge';
 import ScheduleCalendar from './components/ScheduleCalendar';
 import CreateFromRegistrationModal from './components/CreateFromRegistrationModal';
 import { useAuthStore } from '../../stores/authStore';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getRoomsApi } from '../rooms/rooms.api';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
@@ -75,7 +75,7 @@ const SaleSchedulesPage: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 5, 2)); // Anchored to June 2026
   const [rooms, setRooms] = useState<MockRoom[]>([]);
   const [branches, setBranches] = useState<MockBranch[]>([]);
-  const [customers, setCustomers] = useState<MockProfile[]>([]);
+  const [customers] = useState<MockProfile[]>([]);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [confirmCompleteId, setConfirmCompleteId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState('');
@@ -102,13 +102,26 @@ const SaleSchedulesPage: React.FC = () => {
   }, [schedules, filters.selectedBranch, filters.selectedStatus, filters.searchQuery]);
   const selectedSchedule = selectedScheduleId ? getScheduleById(selectedScheduleId) : null;
 
-  // Tải lịch xem phòng THẬT từ API; dữ liệu cho modal tạo lịch (demo) vẫn lấy từ MockDB.
+  // Tải lịch xem phòng THẬT từ API; dữ liệu cho modal tạo lịch cũng lấy từ API rooms.
   useEffect(() => {
     loadSchedules();
-    const db = getMockDB();
-    setRooms(db.rooms || []);
-    setBranches(db.branches || []);
-    setCustomers((db.profiles || []).filter((p: MockProfile) => p.role === 'customer'));
+    // Load danh sách phòng từ API thật cho dropdown tạo lịch hẹn
+    getRoomsApi().then(roomList => {
+      setRooms(roomList.map(r => ({
+        id: r.id,
+        name: r.name,
+        branch_id: r.branch_id,
+        room_type: r.room_type,
+      })));
+      // Extract branches từ rooms (mỏi phòng có branches nếu API join)
+      const branchMap = new Map<string, MockBranch>();
+      roomList.forEach(r => {
+        if (r.branches && !branchMap.has(r.branch_id)) {
+          branchMap.set(r.branch_id, { id: r.branch_id, name: r.branches.name });
+        }
+      });
+      setBranches(Array.from(branchMap.values()));
+    }).catch(err => console.error('Lỗi khi tải danh sách phòng:', err));
   }, [loadSchedules]);
 
   const handleMonthChange = (dir: 'prev' | 'next') => {

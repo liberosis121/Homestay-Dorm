@@ -1,33 +1,15 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import apiClient from '../../../lib/api.client';
 
-const getHeaders = (email: string) => {
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer mock-token-${email}`
-  };
-};
+// Note: apiClient baseURL đã là http://localhost:3001/api và tự động gắn Bearer token thật.
 
 export const customerLookupService = {
-  fetchCustomers: async (email: string) => {
-    const res = await fetch(`${API}/api/staff/customers`, {
-      headers: getHeaders(email)
-    });
-    if (!res.ok) throw new Error('Không thể tải danh sách khách hàng từ server');
-    const result = await res.json();
-    return result.data;
+  fetchCustomers: async (_email?: string) => {
+    const res = await apiClient.get('/staff/customers');
+    return (res.data as any).data || [];
   },
 
-  updateCustomerNote: async (email: string, customerId: string, note: string) => {
-    const res = await fetch(`${API}/api/staff/customers/${customerId}/note`, {
-      method: 'PUT',
-      headers: getHeaders(email),
-      body: JSON.stringify({ note })
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Lỗi khi cập nhật ghi chú khách hàng');
-    }
-    const result = await res.json();
-    return result.data;
+  updateCustomerNote: async (_email: string, customerId: string, note: string) => {
+    const res = await apiClient.put(`/staff/customers/${customerId}/note`, { note });
+    return (res.data as any).data;
   }
 };
