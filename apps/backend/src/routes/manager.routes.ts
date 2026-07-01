@@ -106,6 +106,9 @@ router.get('/handovers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const data = await handoverService.getHandoverById(id);
+    if (!data) {
+      return sendError(res, null, `Không tìm thấy biên bản bàn giao với ID: ${id}`, 404);
+    }
     sendSuccess(res, data, 'Fetched handover details successfully');
   } catch (err) {
     sendError(res, err);

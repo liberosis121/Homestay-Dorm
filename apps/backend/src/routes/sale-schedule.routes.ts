@@ -48,6 +48,11 @@ router.get('/schedules/:id', async (req: Request, res: Response) => {
 
 router.post('/schedules', async (req: Request, res: Response) => {
   try {
+    const { registration_id, room_id, scheduled_time } = req.body;
+    // Validate required fields before calling service to return 400 not 500
+    if (!registration_id || !room_id || !scheduled_time) {
+      return res.status(400).json({ success: false, message: 'Phiếu đăng ký, phòng và thời gian hẹn là bắt buộc' });
+    }
     const data = await saleScheduleService.createSchedule({
       ...req.body,
       staff_id: req.body.staff_id || req.user!.id
