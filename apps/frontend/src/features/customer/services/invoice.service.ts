@@ -1,41 +1,13 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import apiClient from '../../../lib/api.client';
 
-export const fetchMyInvoices = async (email: string) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/invoices/my-invoices`, {
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    }
-  });
+// Note: apiClient baseURL đã là http://localhost:3001/api và tự động gắn Bearer token từ localStorage.
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi tải hóa đơn từ server');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const fetchMyInvoices = async (_email?: string) => {
+  const res = await apiClient.get('/invoices/my-invoices');
+  return (res.data as any).data || [];
 };
 
-export const payInvoiceApi = async (email: string, invoiceId: string, paymentMethod: string) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/invoices/${invoiceId}/pay`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    },
-    body: JSON.stringify({ paymentMethod })
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi thanh toán hóa đơn');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const payInvoiceApi = async (_email: string, invoiceId: string, paymentMethod: string) => {
+  const res = await apiClient.post(`/invoices/${invoiceId}/pay`, { paymentMethod });
+  return (res.data as any).data;
 };

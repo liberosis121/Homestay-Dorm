@@ -1,62 +1,18 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import apiClient from '../../../lib/api.client';
 
-export const fetchMyServices = async (email: string) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/service-registrations/my-services`, {
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    }
-  });
+// Note: apiClient baseURL đã là http://localhost:3001/api và tự động gắn Bearer token thật.
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi tải thông tin dịch vụ');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const fetchMyServices = async (_email?: string) => {
+  const res = await apiClient.get('/service-registrations/my-services');
+  return (res.data as any).data || [];
 };
 
-export const registerServiceApi = async (email: string, serviceId: string) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/service-registrations/register`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    },
-    body: JSON.stringify({ serviceId })
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi đăng ký dịch vụ');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const registerServiceApi = async (_email: string, serviceId: string) => {
+  const res = await apiClient.post('/service-registrations/register', { serviceId });
+  return (res.data as any).data;
 };
 
-export const cancelServiceApi = async (email: string, serviceId: string) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/service-registrations/cancel`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    },
-    body: JSON.stringify({ serviceId })
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi hủy đăng ký dịch vụ');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const cancelServiceApi = async (_email: string, serviceId: string) => {
+  const res = await apiClient.post('/service-registrations/cancel', { serviceId });
+  return (res.data as any).data;
 };

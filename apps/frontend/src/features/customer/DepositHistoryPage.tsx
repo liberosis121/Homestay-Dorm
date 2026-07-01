@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarCheck, CheckCircle, Clock, CreditCard, Receipt, Search, XCircle } from 'lucide-react';
-import { CustomerDepositRequest, getMockDB, saveMockDB, ManagerDeposit } from '../../lib/supabaseClient';
+import { CustomerDepositRequest, ManagerDeposit } from '../../lib/supabaseClient';
+import { getMyDepositsApi } from './deposit.api';
+import { fetchMyInvoices, payInvoiceApi } from './services/invoice.service';
 import { useAuthStore } from '../../stores/authStore';
 import PaymentDialog from './components/PaymentDialog';
 import { Invoice } from './store/useInvoiceStore';
@@ -107,13 +109,13 @@ const formatDate = (value: string) => new Date(value).toLocaleDateString('vi-VN'
 export default function DepositHistoryPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [requests, setRequests] = useState<CustomerDepositRequest[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [managerDeposits, setManagerDeposits] = useState<ManagerDeposit[]>([]);
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Payment dialog states
-  const [selectedRequest, setSelectedRequest] = useState<CustomerDepositRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   useEffect(() => {
@@ -121,16 +123,19 @@ export default function DepositHistoryPage() {
       navigate('/login');
       return;
     }
-    setIsLoading(true);
-    setTimeout(() => {
-      const db = getMockDB();
-      const list = (db.customer_deposit_requests || [])
-        .filter((r: CustomerDepositRequest) => r.customer_id === user.id)
-        .sort((a: CustomerDepositRequest, b: CustomerDepositRequest) => b.created_at.localeCompare(a.created_at));
-      setRequests(list);
-      setManagerDeposits(db.manager_deposits || []);
-      setIsLoading(false);
-    }, 500);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const deposits = await getMyDepositsApi();
+        setRequests(deposits);
+        setManagerDeposits([]); // Không cần dùng mock manager_deposits nữa
+      } catch (err) {
+        console.error('Lỗi khi tải lịch sử đặt cọc:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
   }, [user, navigate]);
 
   // Map deposit request to Invoice type for PaymentDialog
@@ -156,44 +161,34 @@ export default function DepositHistoryPage() {
     };
   }, [selectedRequest]);
 
-  const handlePaymentSuccess = (method: 'qr' | 'wallet' | 'card', proofImgUrl?: string) => {
+  const handlePaymentSuccess = async (method: 'qr' | 'wallet' | 'card') => {
     if (!selectedRequest || !user) return;
-    const db = getMockDB();
-    
-    // Create new manager deposit proof record
-    const newMgrDep: ManagerDeposit = {
-      id: `MGR-DEP-${Date.now()}`,
-      customer_id: user.id,
-      customer_name: user.full_name || 'Nguyễn Văn Nam (Khách mới)',
-      customer_phone: user.phone || '0977889900',
-      room_id: selectedRequest.room_id,
-      room_name: selectedRequest.room_name,
-      deposit_type: 'room',
-      amount: selectedRequest.deposit_amount,
-      deposit_date: new Date().toISOString().split('T')[0],
-      bill_image_url: proofImgUrl || 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80',
-      bank_name: method === 'card' ? 'Thẻ Ngân hàng' : method === 'wallet' ? 'Ví điện tử' : 'Vietcombank',
-      account_number: method === 'card' ? '1234567812345678' : '1012345678',
-      status: 'pending',
-      created_at: new Date().toISOString(),
-    };
+    setIsLoading(true);
+    try {
+      // 1. Tải danh sách hóa đơn để đối chiếu
+      const invoices = await fetchMyInvoices(user.email!);
+      // Tìm hóa đơn đặt cọc tương ứng
+      const invoice = invoices.find((inv: any) => 
+        inv.deposit_id === selectedRequest.id || 
+        inv.id === `HDTT-DEP-${selectedRequest.id}`
+      );
+      
+      const invoiceId = invoice?.id || `HDTT-DEP-${selectedRequest.id}`;
+      const paymentMethodName = method === 'card' ? 'Thẻ tín dụng' : method === 'wallet' ? 'Ví điện tử' : 'Chuyển khoản ngân hàng';
 
-    const updatedMgrDeps = [newMgrDep, ...(db.manager_deposits || [])];
-    db.manager_deposits = updatedMgrDeps;
-    
-    // Save DB
-    saveMockDB(db);
+      // 2. Gọi API thanh toán hóa đơn cọc thật
+      await payInvoiceApi(user.email!, invoiceId, paymentMethodName);
 
-    // Reload state from DB to ensure sync
-    const reloadedDb = getMockDB();
-    const list = (reloadedDb.customer_deposit_requests || [])
-      .filter((r: CustomerDepositRequest) => r.customer_id === user.id)
-      .sort((a: CustomerDepositRequest, b: CustomerDepositRequest) => b.created_at.localeCompare(a.created_at));
-    
-    setRequests(list);
-    setManagerDeposits(reloadedDb.manager_deposits || []);
-    setIsPaymentOpen(false);
-    setSelectedRequest(null);
+      // 3. Reload lại dữ liệu cọc
+      const deposits = await getMyDepositsApi();
+      setRequests(deposits);
+      setIsPaymentOpen(false);
+      setSelectedRequest(null);
+    } catch (err: any) {
+      alert(err?.message || 'Có lỗi xảy ra khi thực hiện thanh toán hóa đơn cọc.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filtered = useMemo(() => {

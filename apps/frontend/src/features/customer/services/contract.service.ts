@@ -1,20 +1,8 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import apiClient from '../../../lib/api.client';
 
-export const fetchMyContracts = async (email: string) => {
-  const token = `mock-token-${email}`;
-  
-  const res = await fetch(`${API}/api/contracts/my-contracts`, {
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    }
-  });
+// Note: apiClient baseURL đã là http://localhost:3001/api và tự động gắn Bearer token thật.
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi tải hợp đồng từ server');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const fetchMyContracts = async (_email?: string) => {
+  const res = await apiClient.get('/contracts/my-contracts');
+  return (res.data as any).data || [];
 };

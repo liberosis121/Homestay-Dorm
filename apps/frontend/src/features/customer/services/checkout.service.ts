@@ -1,58 +1,18 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import apiClient from '../../../lib/api.client';
 
-export const fetchCheckoutRequests = async (email: string) => {
-  const token = `mock-token-${email}`;
-  const res = await fetch(`${API}/api/checkouts/my-requests`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    }
-  });
+// Note: apiClient baseURL đã là http://localhost:3001/api và tự động gắn Bearer token thật từ localStorage.
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi tải danh sách yêu cầu trả phòng');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const fetchCheckoutRequests = async (_email?: string) => {
+  const res = await apiClient.get('/checkouts/my-requests');
+  return (res.data as any).data || [];
 };
 
-export const submitCheckoutRequestApi = async (email: string, requestData: any) => {
-  const token = `mock-token-${email}`;
-  const res = await fetch(`${API}/api/checkouts/request`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(requestData)
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi đăng ký trả phòng');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const submitCheckoutRequestApi = async (_email: string, requestData: any) => {
+  const res = await apiClient.post('/checkouts/request', requestData);
+  return (res.data as any).data;
 };
 
-export const cancelCheckoutRequestApi = async (email: string, requestId: string) => {
-  const token = `mock-token-${email}`;
-  const res = await fetch(`${API}/api/checkouts/${requestId}/cancel`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    }
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || 'Lỗi khi hủy yêu cầu trả phòng');
-  }
-
-  const result = await res.json();
-  return result.data;
+export const cancelCheckoutRequestApi = async (_email: string, requestId: string) => {
+  const res = await apiClient.post(`/checkouts/${requestId}/cancel`, {});
+  return (res.data as any).data;
 };
