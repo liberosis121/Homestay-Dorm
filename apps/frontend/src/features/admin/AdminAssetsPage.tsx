@@ -1,4 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
+import {
+  fetchAdminAssets,
+  createAssetApi,
+  updateAssetApi,
+} from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -41,18 +47,10 @@ const CAT_LABEL: Record<AssetCategory, { label: string; icon: string }> = {
   facility: { label: 'Cơ sở hạ tầng', icon: 'construction' },
 };
 
-const MOCK_ASSETS: Asset[] = [
-  { id: 'TS001', name: 'Giường tầng - Set A', category: 'furniture', location: 'Phòng 101 - Quận 1', brand: 'Nội thất Hòa Phát', purchaseDate: '01/06/2022', value: 3500000, status: 'in_use', serialNumber: 'HP-BED-001A' },
-  { id: 'TS002', name: 'Điều hòa 12000BTU', category: 'electronics', location: 'Phòng 101 - Quận 1', brand: 'Daikin', purchaseDate: '15/07/2021', value: 8500000, status: 'in_use', serialNumber: 'DK-AC-0078' },
-  { id: 'TS003', name: 'Máy lạnh 9000BTU', category: 'electronics', location: 'Kho - Quận 1', brand: 'Samsung', purchaseDate: '10/03/2023', value: 6200000, status: 'available', serialNumber: 'SAM-AC-1234' },
-  { id: 'TS004', name: 'Tủ quần áo 4 ngăn', category: 'furniture', location: 'Phòng 202 - Quận 3', brand: 'IKEA', purchaseDate: '01/01/2020', value: 2800000, status: 'damaged', serialNumber: 'IKEA-WRD-456' },
-  { id: 'TS005', name: 'Máy nước nóng', category: 'appliance', location: 'Phòng 102 - Quận 1', brand: 'Ariston', purchaseDate: '05/08/2022', value: 4200000, status: 'maintenance', serialNumber: 'ARS-HWT-789' },
-  { id: 'TS006', name: 'Camera an ninh', category: 'facility', location: 'Hành lang tầng 1 - Quận 1', brand: 'Hikvision', purchaseDate: '20/09/2021', value: 1800000, status: 'in_use', serialNumber: 'HIK-CAM-321' },
-];
-
 export default function AdminAssetsPage() {
-  const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -60,12 +58,33 @@ export default function AdminAssetsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
 
-  useEffect(() => {
+  const loadAssets = async () => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
+    setError(null);
+    try {
+      const data = await fetchAdminAssets();
+      const mapped = (data || []).map((dbAsset: any) => ({
+        id: dbAsset.serial_number,
+        name: dbAsset.name || '',
+        category: dbAsset.category || 'furniture',
+        location: dbAsset.location || '',
+        brand: dbAsset.brand || '',
+        purchaseDate: dbAsset.purchase_date ? dbAsset.purchase_date.split('-').reverse().join('/') : '',
+        value: dbAsset.value || 0,
+        status: dbAsset.status || 'available',
+        serialNumber: dbAsset.serial_number
+      }));
+      setAssets(mapped);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi tải danh sách tài sản');
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadAssets();
   }, []);
 
   const kpis = useMemo(() => {
@@ -101,7 +120,7 @@ export default function AdminAssetsPage() {
     setShowModal(true);
   };
 
-  const saveForm = () => {
+  const saveForm = async () => {
     if (!form.name?.trim()) {
       alert("Tên tài sản không được để trống!");
       return;
@@ -110,24 +129,85 @@ export default function AdminAssetsPage() {
       alert("Vị trí không được để trống!");
       return;
     }
-    if (modalMode === 'add') {
-      const na: Asset = {
-        name: form.name,
-        category: form.category || 'furniture',
-        location: form.location,
-        brand: form.brand || '',
-        value: form.value || 0,
-        status: form.status || 'available',
-        purchaseDate: form.purchaseDate || new Date().toLocaleDateString('vi-VN'),
-        serialNumber: form.serialNumber || `SN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        id: `TS${String(assets.length + 1).padStart(3, '0')}`
-      };
-      setAssets(prev => [...prev, na]);
-    } else {
-      setAssets(prev => prev.map(a => a.id === form.id ? { ...a, ...form } as Asset : a));
+    try {
+      if (modalMode === 'add') {
+        const pDate = new Date().toISOString().split('T')[0];
+        const created = await createAssetApi({
+          name: form.name,
+          category: form.category || 'furniture',
+          location: form.location,
+          brand: form.brand || '',
+          value: form.value || 0,
+          status: form.status || 'available',
+          purchase_date: pDate
+        });
+        const na: Asset = {
+          id: created.serial_number,
+          name: created.name,
+          category: created.category as AssetCategory,
+          location: created.location,
+          brand: created.brand,
+          value: created.value,
+          status: created.status as AssetStatus,
+          purchaseDate: created.purchase_date ? created.purchase_date.split('-').reverse().join('/') : '',
+          serialNumber: created.serial_number
+        };
+        setAssets(prev => [na, ...prev]);
+      } else {
+        if (!form.serialNumber) return;
+        const updated = await updateAssetApi(form.serialNumber, {
+          location: form.location,
+          value: form.value,
+          status: form.status
+        });
+        setAssets(prev => prev.map(a => a.serialNumber === form.serialNumber ? {
+          ...a,
+          location: updated.location,
+          value: updated.value,
+          status: updated.status as AssetStatus
+        } : a));
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi lưu thông tin tài sản');
     }
-    setShowModal(false);
   };
+
+  const formatNumber = (num: number | undefined) => {
+    if (!num) return "";
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  const categoryFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "furniture", label: "Nội thất" },
+    { value: "electronics", label: "Điện tử" },
+    { value: "appliance", label: "Thiết bị" },
+    { value: "facility", label: "Cơ sở hạ tầng" }
+  ];
+
+  const statusFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "in_use", label: "Đang sử dụng" },
+    { value: "available", label: "Sẵn sàng" },
+    { value: "maintenance", label: "Đang bảo trì" },
+    { value: "damaged", label: "Hư hỏng" }
+  ];
+
+  const categoryFormOptions = [
+    { value: "furniture", label: "Nội thất" },
+    { value: "electronics", label: "Điện tử" },
+    { value: "appliance", label: "Thiết bị" },
+    { value: "facility", label: "Cơ sở hạ tầng" }
+  ];
+
+  const statusFormOptions = [
+    { value: "available", label: "Sẵn sàng" },
+    { value: "in_use", label: "Đang sử dụng" },
+    { value: "maintenance", label: "Bảo trì" },
+    { value: "damaged", label: "Hư hỏng" }
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
@@ -140,12 +220,18 @@ export default function AdminAssetsPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}>
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer">
           <span className="material-symbols-outlined text-[18px]">add_circle</span>
           Thêm tài sản
         </button>
       </header>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI */}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -175,26 +261,24 @@ export default function AdminAssetsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả loại</option>
-          <option value="furniture">Nội thất</option>
-          <option value="electronics">Điện tử</option>
-          <option value="appliance">Thiết bị</option>
-          <option value="facility">Cơ sở hạ tầng</option>
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="in_use">Đang sử dụng</option>
-          <option value="available">Sẵn sàng</option>
-          <option value="maintenance">Đang bảo trì</option>
-          <option value="damaged">Hư hỏng</option>
-        </select>
+        <CustomSelect
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={categoryFilterOptions}
+          placeholder="Loại tài sản"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={statusFilterOptions}
+          placeholder="Trạng thái"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
         <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterCategory(''); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}>
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           Làm mới
@@ -209,7 +293,7 @@ export default function AdminAssetsPage() {
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
                 {['Mã TS', 'Tên tài sản', 'Loại', 'Vị trí', 'Thương hiệu', 'Giá trị', 'Trạng thái', 'Thao tác'].map(h => (
-                  <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${h === 'Thao tác' ? 'text-center' : 'text-left'}`}
                     style={{ color: A.textMuted }}>{h}</th>
                 ))}
               </tr>
@@ -262,7 +346,7 @@ export default function AdminAssetsPage() {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${si.cls}`}>{si.label}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-center gap-1 transition-opacity">
                         <button onClick={e => { e.stopPropagation(); openEdit(a); }}
                           className="p-1.5 rounded-full hover:bg-gray-100 transition-colors" style={{ color: A.accent }}
                           title="Chỉnh sửa tài sản">
@@ -279,7 +363,7 @@ export default function AdminAssetsPage() {
         <div className="px-5 py-3 flex items-center justify-between"
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}>
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {assets.length} tài sản
+            Hiển thị {filtered.length > 0 ? 1 : 0} - {filtered.length} trong số {filtered.length} tài sản
           </p>
         </div>
       </section>
@@ -347,8 +431,9 @@ export default function AdminAssetsPage() {
               )}
 
               {/* Tên tài sản */}
+              {/* Tên tài sản */}
               <div className="col-span-2">
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tên tài sản <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên tài sản <span className="text-red-500">*</span></label>
                 <input
                   value={form.name || ''}
                   onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
@@ -356,60 +441,50 @@ export default function AdminAssetsPage() {
                   disabled={modalMode === 'edit'}
                   tabIndex={modalMode === 'edit' ? -1 : undefined}
                   placeholder="Tên tài sản..."
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
-                      ? 'cursor-not-allowed select-none opacity-60'
-                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
                     }`}
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
 
               {/* Loại tài sản */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Loại</label>
                 {modalMode === 'edit' ? (
                   <input
                     value={CAT_LABEL[form.category as AssetCategory]?.label || ''}
                     readOnly
                     disabled
                     tabIndex={-1}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none border border-[#d1c4b9] bg-[#faf2ec]/50 text-[#1e1b17]"
                   />
                 ) : (
-                  <select
+                  <CustomSelect
                     value={form.category || 'furniture'}
-                    onChange={e => setForm(prev => ({ ...prev, category: e.target.value as AssetCategory }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="furniture">Nội thất</option>
-                    <option value="electronics">Điện tử</option>
-                    <option value="appliance">Thiết bị</option>
-                    <option value="facility">Cơ sở hạ tầng</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, category: val as AssetCategory }))}
+                    options={categoryFormOptions}
+                    placeholder="Loại"
+                    theme="sale"
+                  />
                 )}
               </div>
 
               {/* Trạng thái - EDITABLE in both modes */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                <select
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
+                <CustomSelect
                   value={form.status || 'available'}
-                  onChange={e => setForm(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                >
-                  <option value="available">Sẵn sàng</option>
-                  <option value="in_use">Đang sử dụng</option>
-                  <option value="maintenance">Bảo trì</option>
-                  <option value="damaged">Hư hỏng</option>
-                </select>
+                  onChange={val => setForm(prev => ({ ...prev, status: val as AssetStatus }))}
+                  options={statusFormOptions}
+                  placeholder="Trạng thái"
+                  theme="sale"
+                />
               </div>
 
               {/* Thương hiệu */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Thương hiệu</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Thương hiệu</label>
                 <input
                   value={form.brand || ''}
                   onChange={e => setForm(prev => ({ ...prev, brand: e.target.value }))}
@@ -417,23 +492,26 @@ export default function AdminAssetsPage() {
                   disabled={modalMode === 'edit'}
                   tabIndex={modalMode === 'edit' ? -1 : undefined}
                   placeholder="Thương hiệu..."
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
-                      ? 'cursor-not-allowed select-none opacity-60'
-                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
                     }`}
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
 
               {/* Giá trị - EDITABLE in both modes */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giá trị (đ)</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giá trị (đ)</label>
                 <input
-                  type="number"
-                  value={form.value || 0}
-                  onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  type="text"
+                  value={formatNumber(form.value)}
+                  onChange={e => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    const num = clean ? parseInt(clean, 10) : 0;
+                    setForm(prev => ({ ...prev, value: num }));
+                  }}
+                  placeholder="Nhập giá trị..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
 
@@ -456,13 +534,13 @@ export default function AdminAssetsPage() {
             {/* Modal Actions */}
             <div className="flex gap-3 pt-3 border-t mt-2" style={{ borderColor: A.border }}>
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border hover:bg-gray-50 transition-colors"
-                style={{ borderColor: A.border, color: A.textMuted }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
+              >
                 Hủy
               </button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95 shadow"
-                style={{ background: A.primary }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
+              >
                 {modalMode === 'add' ? 'Thêm tài sản' : 'Lưu thay đổi'}
               </button>
             </div>

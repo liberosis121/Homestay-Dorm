@@ -61,7 +61,7 @@ export default function RegisterPage() {
       return;
     }
 
-    const isSuccess = await register(email, fullName, phone);
+    const isSuccess = await register(email, fullName, phone, password);
     if (isSuccess) {
       setSuccess(true);
       setTimeout(() => {

@@ -1,9 +1,28 @@
 import { useState, useEffect } from 'react';
 import { Search, X, Info } from 'lucide-react';
-import { getMockDB, saveMockDB, RefundRecord } from '../../lib/supabaseClient';
+import { RefundRecord } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
+
+type LiveRefundRecord = RefundRecord & {
+  checkout_id?: string;
+  contract_id?: string;
+  reconciliation_id?: string;
+};
+
+const uniqueReconciliationsByCheckout = (records: any[]) => {
+  const seen = new Set<string>();
+  return records.filter((record) => {
+    const key = record.checkout_id || record.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 export default function AccountantRefundsPage() {
-  const [refunds, setRefunds] = useState<RefundRecord[]>([]);
+  const { user } = useAuthStore();
+  const [refunds, setRefunds] = useState<LiveRefundRecord[]>([]);
   const [selectedRefundId, setSelectedRefundId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'checkout' | 'cancellation'>('checkout');
@@ -26,9 +45,70 @@ export default function AccountantRefundsPage() {
 
   // Load Data
   useEffect(() => {
-    const db = getMockDB();
-    setRefunds(db.refund_records || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [pendingCheckouts, liveReconciliations] = await Promise.all([
+          accountantService.fetchPendingCheckouts(email),
+          accountantService.fetchRefundReconciliations(email)
+        ]);
+
+        const mappedCheckouts = (pendingCheckouts || []).map((ch: any) => {
+          const contract = ch.contracts || {};
+          const profile = contract.profiles || {};
+          return {
+            id: ch.id,
+            checkout_id: ch.id,
+            contract_id: contract.id,
+            customer_id: profile.id || contract.customer_id,
+            customer_name: profile.full_name || 'Khách hàng',
+            room_id: contract.rooms?.id || contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            checkout_date: ch.request_date || '',
+            deposit_original: Number(contract.deposit_amount || contract.rent_price || 0),
+            damage_deductions: [],
+            debt_deductions: 0,
+            status: ch.status === 'pending' ? 'pending' : 'calculated',
+            created_at: ch.request_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: 0,
+            total_deductions: 0
+          };
+        });
+
+        const mappedReconciliations = uniqueReconciliationsByCheckout(liveReconciliations || []).map((rec: any) => {
+          const checkout = rec.checkouts || {};
+          const contract = checkout.contracts || {};
+          const customer_name = contract.profiles?.full_name || 'Khách hàng';
+          return {
+            id: rec.id,
+            checkout_id: rec.checkout_id,
+            contract_id: contract.id || checkout.contract_id,
+            reconciliation_id: rec.id,
+            customer_id: contract.profiles?.id || contract.customer_id || '',
+            customer_name,
+            room_id: contract.rooms?.id || contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            checkout_date: checkout.request_date || rec.reconciliation_date || '',
+            deposit_original: Number(rec.original_deposit || contract.deposit_amount || contract.rent_price || 0),
+            damage_deductions: [],
+            debt_deductions: 0,
+            status: rec.status === 'paid' ? 'paid' : 'confirmed',
+            created_at: rec.reconciliation_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: Number(rec.final_refund || 0),
+            total_deductions: Number(rec.total_deductions || 0)
+          };
+        });
+
+        setRefunds([...mappedCheckouts, ...mappedReconciliations]);
+      } catch (err) {
+        console.warn('[AccountantRefunds] Failed to fetch live data:', err);
+        setRefunds([]);
+      }
+    };
+    loadData();
+  }, [user]);
 
   const activeRefund = refunds.find(r => r.id === selectedRefundId);
   const isCancellation = activeRefund?.type === 'cancellation';
@@ -86,52 +166,99 @@ export default function AccountantRefundsPage() {
     setIsCalculated(true);
   };
 
-  const handleApproveRefund = () => {
+  const handleApproveRefund = async () => {
     if (!activeRefund) return;
+    if (activeRefund.status === 'confirmed' || activeRefund.status === 'paid') {
+      alert('Hồ sơ này đã được lập đối soát, vui lòng chuyển sang phân hệ chi tiền để xử lý tiếp.');
+      return;
+    }
     if (!isCalculated) {
       alert("Vui lòng nhấn 'Tính toán đối soát' trước khi phê duyệt!");
       return;
     }
     
-    const db = getMockDB();
-    
-    // Create payout record automatically first in UC17 list
-    const payoutId = `PAY-${Date.now().toString().slice(-4)}`;
-    const newPayout = {
-      id: payoutId,
-      refund_id: activeRefund.id,
-      customer_id: activeRefund.customer_id,
-      customer_name: activeRefund.customer_name,
-      bank_account: `001100${Math.floor(100000 + Math.random() * 900000)}`,
-      bank_name: 'Vietcombank',
-      account_holder: activeRefund.customer_name.toUpperCase(),
-      amount: netRefund, // Can be positive (hoàn cọc) or negative (thu thêm)
-      payment_method: 'transfer' as const,
-      status: 'pending' as const,
-      created_at: new Date().toISOString().split('T')[0]
-    };
-    
-    db.payout_records = [newPayout, ...(db.payout_records || [])];
-    
-    // Update refund status to confirmed (Chờ xử lý hoàn cọc)
-    const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
-      if (r.id === activeRefund.id) {
+    const email = user?.email || 'accountant@homestay.vn';
+    const checkoutId = activeRefund.checkout_id || activeRefund.id;
+    const contractId = activeRefund.contract_id;
+
+    if (!contractId) {
+      alert('Không tìm thấy hợp đồng liên kết với hồ sơ trả phòng này.');
+      return;
+    }
+
+    try {
+      // De biet checkoutId co the mapping dung hop dong, ta truyen activeRefund.id lam ca 2
+      await accountantService.createRefundReconciliation(email, {
+        checkoutId,
+        contractId,
+        originalDeposit: activeRefund.deposit_original,
+        refundRate: residencyRate / 100,
+        baseRefund: basicRefundAmount,
+        totalDeductions: totalDeductions,
+        finalRefund: netRefund,
+        additionalCharge: netRefund < 0 ? Math.abs(netRefund) : 0,
+        note: `Bản đối soát hoàn cọc cho ${activeRefund.customer_name}`
+      });
+
+      alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
+      setIsCalculated(false);
+
+      const pendingCheckouts = await accountantService.fetchPendingCheckouts(email);
+      const liveReconciliations = await accountantService.fetchRefundReconciliations(email);
+
+      const mappedCheckouts = (pendingCheckouts || []).map((ch: any) => {
+        const contract = ch.contracts || {};
+        const profile = contract.profiles || {};
         return {
-          ...r,
-          status: 'confirmed',
-          debt_deductions: parseInt(elecWaterDeduction) || 0,
-          total_deductions: totalDeductions,
-          refund_amount: netRefund
+          id: ch.id,
+          checkout_id: ch.id,
+          contract_id: contract.id,
+          customer_id: profile.id || contract.customer_id,
+          customer_name: profile.full_name || 'Khách hàng',
+          room_id: contract.rooms?.id || contract.room_id || '',
+          room_name: contract.rooms?.name || 'Phòng',
+          checkout_date: ch.request_date || '',
+          deposit_original: Number(contract.deposit_amount || contract.rent_price || 0),
+          damage_deductions: [],
+          debt_deductions: 0,
+          status: ch.status === 'pending' ? 'pending' : 'calculated',
+          created_at: ch.request_date || new Date().toISOString(),
+          type: 'checkout' as const,
+          refund_amount: 0,
+          total_deductions: 0
         };
-      }
-      return r;
-    });
-    db.refund_records = updatedRefunds;
-    
-    saveMockDB(db);
-    setRefunds(updatedRefunds);
-    setIsCalculated(false);
-    alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
+      });
+
+      const mappedReconciliations = uniqueReconciliationsByCheckout(liveReconciliations || []).map((rec: any) => {
+        const checkout = rec.checkouts || {};
+        const contract = checkout.contracts || {};
+        const customer_name = contract.profiles?.full_name || 'Khách hàng';
+        return {
+          id: rec.id,
+          checkout_id: rec.checkout_id,
+          contract_id: contract.id || checkout.contract_id,
+          reconciliation_id: rec.id,
+          customer_id: contract.profiles?.id || contract.customer_id || '',
+          customer_name,
+          room_id: contract.rooms?.id || contract.room_id || '',
+          room_name: contract.rooms?.name || 'Phòng',
+          checkout_date: checkout.request_date || rec.reconciliation_date || '',
+          deposit_original: Number(rec.original_deposit || contract.deposit_amount || contract.rent_price || 0),
+          damage_deductions: [],
+          debt_deductions: 0,
+          status: rec.status === 'paid' ? 'paid' : 'confirmed',
+          created_at: rec.reconciliation_date || new Date().toISOString(),
+          type: 'checkout' as const,
+          refund_amount: Number(rec.final_refund || 0),
+          total_deductions: Number(rec.total_deductions || 0)
+        };
+      });
+
+      setRefunds([...mappedCheckouts, ...mappedReconciliations]);
+    } catch (err) {
+      console.warn('[AccountantRefunds] Live API failed:', err);
+      alert((err as Error)?.message || 'Không thể lập bảng đối soát hoàn cọc trên dữ liệu hiện tại.');
+    }
   };
 
   // Stats

@@ -1,4 +1,12 @@
+
+
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
+import {
+  fetchAdminConditions,
+  createConditionApi,
+  updateConditionApi,
+} from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -28,19 +36,33 @@ const PRIORITY_MAP: Record<string, { label: string; cls: string }> = {
   low:    { label: 'Khuyến nghị',  cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
 };
 
-const MOCK_CONDITIONS: Condition[] = [
-  { id: 'DC001', title: 'Đăng ký tạm trú', category: 'Pháp lý', description: 'Khách thuê người nước ngoài phải hoàn thành thủ tục đăng ký tạm trú với cơ quan công an địa phương trong vòng 24 giờ kể từ ngày nhận phòng.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
-  { id: 'DC002', title: 'Giờ giấc ra vào', category: 'Nội quy', description: 'Cổng chính đóng cửa lúc 23:00 và mở cửa lúc 06:00. Khách thuê về muộn hơn 23:00 phải thông báo trước cho bảo vệ và sử dụng thẻ từ cá nhân.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
-  { id: 'DC003', title: 'Không hút thuốc trong phòng', category: 'Vệ sinh', description: 'Nghiêm cấm hút thuốc lá trong tất cả các khu vực có mái che. Khu vực hút thuốc được quy định riêng ngoài sân.', effectiveDate: '01/03/2023', isActive: true, priority: 'high' },
-  { id: 'DC004', title: 'Giữ yên lặng sau 22:00', category: 'Nội quy', description: 'Không gây tiếng ồn lớn, tụ tập đông người trong phòng sau 22:00 để đảm bảo quyền nghỉ ngơi của các khách hàng khác.', effectiveDate: '01/01/2024', isActive: true, priority: 'medium' },
-  { id: 'DC005', title: 'Giấy tờ tùy thân', category: 'Pháp lý', description: 'Khách hàng phải cung cấp bản sao CCCD/CMND/Hộ chiếu còn hiệu lực khi ký hợp đồng. Không chấp nhận giấy tờ hết hạn.', effectiveDate: '01/01/2024', isActive: true, priority: 'high' },
-  { id: 'DC006', title: 'Đưa khách ngoài ở lại qua đêm', category: 'Nội quy', description: 'Khách ngoài muốn ở lại qua đêm phải đăng ký với quản lý và đóng phí phụ thu là 50,000đ/đêm. Tối đa 2 đêm/tháng.', effectiveDate: '15/06/2023', isActive: true, priority: 'medium' },
-  { id: 'DC007', title: 'Vật nuôi', category: 'Nội quy', description: 'Không được phép nuôi vật nuôi trong các phòng ký túc xá. Áp dụng cho tất cả các loại động vật.', effectiveDate: '01/01/2022', isActive: false, priority: 'low' },
-];
+
+
+const classifyCondition = (title: string, desc: string) => {
+  const text = (title + ' ' + desc).toLowerCase();
+  let category = 'Nội quy';
+  if (text.includes('tạm trú') || text.includes('pháp lý') || text.includes('giấy tờ') || text.includes('cccd')) {
+    category = 'Pháp lý';
+  } else if (text.includes('hút thuốc') || text.includes('vệ sinh') || text.includes('rác') || text.includes('sân')) {
+    category = 'Vệ sinh';
+  } else if (text.includes('bảo vệ') || text.includes('an ninh') || text.includes('thẻ từ') || text.includes('trộm') || text.includes('cổng')) {
+    category = 'An ninh';
+  }
+
+  let priority: 'high' | 'medium' | 'low' = 'medium';
+  if (text.includes('bắt buộc') || text.includes('nghiêm cấm') || text.includes('tạm trú') || text.includes('giờ giấc') || text.includes('giấy tờ') || text.includes('hút thuốc') || text.includes('khóa')) {
+    priority = 'high';
+  } else if (text.includes('khuyến nghị') || text.includes('nên') || text.includes('nhắc nhở')) {
+    priority = 'low';
+  }
+
+  return { category, priority };
+};
 
 export default function AdminConditionsPage() {
-  const [conditions, setConditions] = useState<Condition[]>(MOCK_CONDITIONS);
+  const [conditions, setConditions] = useState<Condition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -48,12 +70,34 @@ export default function AdminConditionsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Condition>>({});
 
-  useEffect(() => {
+  const loadConditions = async () => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
+    setError(null);
+    try {
+      const data = await fetchAdminConditions();
+      const mapped = (data || []).map((dbCond: any) => {
+        const { category, priority } = classifyCondition(dbCond.title || '', dbCond.description || '');
+        return {
+          id: dbCond.id,
+          title: dbCond.title || '',
+          description: dbCond.description || '',
+          isActive: dbCond.is_active,
+          effectiveDate: dbCond.created_at ? new Date(dbCond.created_at).toLocaleDateString('vi-VN') : '',
+          category,
+          priority
+        };
+      });
+      setConditions(mapped);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi tải danh sách điều kiện lưu trú');
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadConditions();
   }, []);
 
   const categories = useMemo(() => [...new Set(conditions.map(c => c.category))], [conditions]);
@@ -90,27 +134,82 @@ export default function AdminConditionsPage() {
     setShowModal(true);
   };
 
-  const saveForm = () => {
+  const saveForm = async () => {
     if (!form.title?.trim() || !form.description?.trim()) {
       alert("Tiêu đề và nội dung quy định không được để trống!");
       return;
     }
-    if (modalMode === 'add') {
-      const nc: Condition = {
-        title: form.title,
-        category: form.category || 'Nội quy',
-        description: form.description,
-        effectiveDate: form.effectiveDate || new Date().toLocaleDateString('vi-VN'),
-        isActive: form.isActive !== undefined ? form.isActive : true,
-        priority: (form.priority as 'high' | 'medium' | 'low') || 'medium',
-        id: `DC${String(conditions.length + 1).padStart(3, '0')}`
-      };
-      setConditions(prev => [...prev, nc]);
-    } else {
-      setConditions(prev => prev.map(c => c.id === form.id ? { ...c, ...form } as Condition : c));
+    try {
+      if (modalMode === 'add') {
+        const created = await createConditionApi({
+          title: form.title,
+          description: form.description,
+          is_active: form.isActive !== undefined ? form.isActive : true
+        });
+        const { category, priority } = classifyCondition(created.title || '', created.description || '');
+        const newCond: Condition = {
+          id: created.id,
+          title: created.title,
+          description: created.description,
+          isActive: created.is_active,
+          effectiveDate: created.created_at ? new Date(created.created_at).toLocaleDateString('vi-VN') : '',
+          category,
+          priority
+        };
+        setConditions(prev => [newCond, ...prev]);
+      } else {
+        if (!form.id) return;
+        const updated = await updateConditionApi(form.id, {
+          title: form.title,
+          description: form.description,
+          is_active: form.isActive
+        });
+        const { category, priority } = classifyCondition(updated.title || '', updated.description || '');
+        setConditions(prev => prev.map(c => c.id === form.id ? {
+          ...c,
+          title: updated.title,
+          description: updated.description,
+          isActive: updated.is_active,
+          category,
+          priority
+        } : c));
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi lưu điều kiện lưu trú');
     }
-    setShowModal(false);
   };
+
+  const categoryFilterOptions = useMemo(() => [
+    { value: "", label: "Tất cả" },
+    ...categories.map(c => ({ value: c, label: c }))
+  ], [categories]);
+
+  const priorityFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "high", label: "Bắt buộc" },
+    { value: "medium", label: "Quan trọng" },
+    { value: "low", label: "Khuyến nghị" }
+  ];
+
+  const categoryFormOptions = [
+    { value: "Nội quy", label: "Nội quy" },
+    { value: "Pháp lý", label: "Pháp lý" },
+    { value: "Vệ sinh", label: "Vệ sinh" },
+    { value: "An ninh", label: "An ninh" }
+  ];
+
+  const priorityFormOptions = [
+    { value: "high", label: "Bắt buộc" },
+    { value: "medium", label: "Quan trọng" },
+    { value: "low", label: "Khuyến nghị" }
+  ];
+
+  const statusFormOptions = [
+    { value: "true", label: "Đang áp dụng" },
+    { value: "false", label: "Ngưng áp dụng" }
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
@@ -123,12 +222,18 @@ export default function AdminConditionsPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}>
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer">
           <span className="material-symbols-outlined text-[18px]">add_circle</span>
           Thêm điều kiện
         </button>
       </header>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI */}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -158,22 +263,24 @@ export default function AdminConditionsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả danh mục</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả mức độ</option>
-          <option value="high">Bắt buộc</option>
-          <option value="medium">Quan trọng</option>
-          <option value="low">Khuyến nghị</option>
-        </select>
+        <CustomSelect
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={categoryFilterOptions}
+          placeholder="Danh mục"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
+        <CustomSelect
+          value={filterPriority}
+          onChange={setFilterPriority}
+          options={priorityFilterOptions}
+          placeholder="Mức độ"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
         <button onClick={() => { setSearch(''); setFilterCategory(''); setFilterPriority(''); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}>
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           Làm mới
@@ -225,7 +332,7 @@ export default function AdminConditionsPage() {
                     Có hiệu lực từ: {c.effectiveDate}
                   </p>
                 </div>
-                <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 shrink-0 transition-opacity">
                   <button onClick={e => { e.stopPropagation(); openEdit(c); }}
                     className="p-1.5 rounded-full hover:bg-gray-100 transition-colors" style={{ color: A.accent }}
                     title="Chỉnh sửa điều kiện lưu trú">
@@ -289,57 +396,48 @@ export default function AdminConditionsPage() {
             {/* Editable Fields */}
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tiêu đề <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tiêu đề <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={form.title || ''}
                   onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="Tiêu đề điều kiện..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Nội dung quy định <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Nội dung quy định <span className="text-red-500">*</span></label>
                 <textarea
                   value={form.description || ''}
                   onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
                   rows={4}
-                  placeholder="Mô tả chi tiết điều kiện..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  placeholder="Nhập nội dung quy định lưu trú chi tiết..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Danh mục</label>
-                  <select
+                  <CustomSelect
                     value={form.category || 'Nội quy'}
-                    onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="Nội quy">Nội quy</option>
-                    <option value="Pháp lý">Pháp lý</option>
-                    <option value="Vệ sinh">Vệ sinh</option>
-                    <option value="An ninh">An ninh</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, category: val }))}
+                    options={categoryFormOptions}
+                    placeholder="Danh mục"
+                    theme="sale"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mức độ</label>
-                  <select
+                  <CustomSelect
                     value={form.priority || 'medium'}
-                    onChange={e => setForm(prev => ({ ...prev, priority: e.target.value as any }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="high">Bắt buộc</option>
-                    <option value="medium">Quan trọng</option>
-                    <option value="low">Khuyến nghị</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, priority: val as any }))}
+                    options={priorityFormOptions}
+                    placeholder="Mức độ"
+                    theme="sale"
+                  />
                 </div>
               </div>
 
@@ -347,15 +445,13 @@ export default function AdminConditionsPage() {
               {modalMode === 'edit' && (
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                  <select
+                  <CustomSelect
                     value={form.isActive ? 'true' : 'false'}
-                    onChange={e => setForm(prev => ({ ...prev, isActive: e.target.value === 'true' }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="true">Đang áp dụng</option>
-                    <option value="false">Ngưng áp dụng</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, isActive: val === 'true' }))}
+                    options={statusFormOptions}
+                    placeholder="Trạng thái"
+                    theme="sale"
+                  />
                 </div>
               )}
             </div>
@@ -363,13 +459,13 @@ export default function AdminConditionsPage() {
             {/* Modal Actions */}
             <div className="flex gap-3 pt-3 border-t mt-2" style={{ borderColor: A.border }}>
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border hover:bg-gray-50 transition-colors animate-fade-in"
-                style={{ borderColor: A.border, color: A.textMuted }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
+              >
                 Hủy
               </button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95 shadow"
-                style={{ background: A.primary }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
+              >
                 {modalMode === 'add' ? 'Thêm điều kiện' : 'Lưu thay đổi'}
               </button>
             </div>

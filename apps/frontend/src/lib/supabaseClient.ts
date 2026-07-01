@@ -657,7 +657,15 @@ const INITIAL_DB = {
     { id: 'u-3', email: 'sale@homestay.com', role: 'sale', full_name: 'Nguyễn Thị Trúc Hằng (NV Sale)', phone: '0912345678', avatar_url: avatarSale },
     { id: 'u-4', email: 'accountant@homestay.com', role: 'accountant', full_name: 'Lê Hoàng Nhật Anh (Kế toán)', phone: '0987654321', avatar_url: avatarAccountant },
     { id: 'u-5', email: 'customer@gmail.com', role: 'customer', full_name: 'Lê Lâm Trí Đức (Khách hàng)', phone: '0933344556', renting_room_name: 'Phòng 101 (Nam)', avatar_url: avatarCustomer },
-    { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900', avatar_url: avatarNewCustomer }
+    { id: 'u-6', email: 'newcustomer@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Nam (Khách mới)', phone: '0977889900', avatar_url: avatarNewCustomer },
+    // Sync with real DB profiles
+    { id: 'c001c001-c001-c001-c001-c001c001c001', email: 'customer1@gmail.com', role: 'customer', full_name: 'Phạm Thị Khách Hàng 1', phone: '0944445566', renting_room_name: 'P-101', avatar_url: avatarCustomer },
+    { id: 'c002c002-c002-c002-c002-c002c002c002', email: 'customer2@gmail.com', role: 'customer', full_name: 'Nguyễn Văn Khách Hàng 2', phone: '0955556677', avatar_url: avatarCustomer },
+    { id: 'c003c003-c003-c003-c003-c003c003c003', email: 'customer3@gmail.com', role: 'customer', full_name: 'Lê Thị Khách Hàng 3', phone: '0966667788', avatar_url: avatarCustomer },
+    { id: 'e001e001-e001-e001-e001-e001e001e001', email: 'sale@homestay.vn', role: 'sale', full_name: 'Nguyễn Văn Sale', phone: '0901234567', avatar_url: avatarSale },
+    { id: 'e002e002-e002-e002-e002-e002e002e002', email: 'manager@homestay.vn', role: 'manager', full_name: 'Trần Thị Quản Lý', phone: '0907654321', avatar_url: avatarManager },
+    { id: 'e003e003-e003-e003-e003-e003e003e003', email: 'accountant@homestay.vn', role: 'accountant', full_name: 'Lê Văn Kế Toán', phone: '0987654321', avatar_url: avatarAccountant },
+    { id: 'e004e004-e004-e004-e004-e004e004e004', email: 'admin@homestay.vn', role: 'admin', full_name: 'Hoàng Admin', phone: '0901234567', avatar_url: avatarAdmin }
   ] as Profile[],
   branches: [
     { id: 'b-1', name: 'Chi nhánh Quận 1', address: '120 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM', manager_id: 'u-2' },

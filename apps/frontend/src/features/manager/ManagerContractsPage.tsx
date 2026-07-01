@@ -39,6 +39,14 @@ export default function ManagerContractsPage() {
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    // Auth that cua kyen: uu tien gui access_token Supabase ma authStore luu sau khi login.
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      };
+    }
     try {
       const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
       if (tokenKey) {

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useCheckoutStore, CheckoutRequest } from './store/useCheckoutStore';
 import { CheckoutForm } from './components/CheckoutForm';
 import { CheckoutTimeline } from './components/CheckoutTimeline';
-import { MOCK_CONTRACTS, ContractData } from './CustomerContractsPage';
+import { ContractData } from './CustomerContractsPage';
+import { fetchMyContracts } from './services/contract.service';
 import {
   FileText,
   Calendar,
@@ -56,13 +57,75 @@ export const CustomerCheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const stateContractId = location.state?.contractId;
-  const { requests, submitRequest, cancelRequest } = useCheckoutStore();
+  const { requests, submitRequest, cancelRequest, loadRequests } = useCheckoutStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+  const [contractsList, setContractsList] = useState<ContractData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      setLoading(true);
+      setError(null);
+      Promise.all([
+        fetchMyContracts(user.email),
+        loadRequests(user.email)
+      ])
+        .then(([contractsData]) => {
+          setContractsList(contractsData || []);
+        })
+        .catch((err: any) => {
+          console.error('Error loading checkout page data:', err);
+          setError(err.message || 'Không thể tải thông tin trang trả phòng');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [user, loadRequests]);
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-32 flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-16 space-y-6">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </button>
+        <div className="bg-red-50 border border-red-200 rounded-3xl p-8 text-center max-w-xl mx-auto space-y-4 shadow-sm">
+          <AlertTriangle className="w-12 h-12 text-red-600 mx-auto" />
+          <h2 className="text-lg font-bold text-red-800">Lỗi tải dữ liệu</h2>
+          <p className="text-sm text-red-700">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer shadow-sm"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Lọc danh sách hợp đồng hợp lệ để trả phòng
-  const eligibleContracts = MOCK_CONTRACTS.filter(c => c.status === 'active' || c.status === 'expired');
+  const eligibleContracts = contractsList.filter(c => c.status === 'active' || c.status === 'expired');
 
   const selectedContract =
     eligibleContracts.find(c => c.id === stateContractId) ||
@@ -74,7 +137,6 @@ export const CustomerCheckoutPage: React.FC = () => {
     : { branchName: 'Chưa chọn', roomName: 'Chưa chọn', bedName: 'Chưa chọn', contractId: 'Chưa chọn', depositAmount: 0, dueDate: '' };
 
   const currentUserId = user?.id || 'u-5';
-  const currentUserName = user?.full_name || 'Lê Lâm Trí Đức';
 
   const userRequests = requests.filter(r => r.customerId === currentUserId);
 
@@ -85,7 +147,7 @@ export const CustomerCheckoutPage: React.FC = () => {
   const historyRequests = userRequests.filter(r => r.status === 'completed' || r.status === 'rejected');
 
   const contractForActiveRequest = activeRequest
-    ? MOCK_CONTRACTS.find(c => c.contractCode === activeRequest.contractId)
+    ? contractsList.find(c => c.contractCode === activeRequest.contractId)
     : null;
 
   const displayedDueDate = activeRequest
@@ -96,21 +158,20 @@ export const CustomerCheckoutPage: React.FC = () => {
     ? { branchName: activeRequest.branchName, roomName: activeRequest.roomName, bedName: activeRequest.bedName, contractId: activeRequest.contractId, depositAmount: activeRequest.depositAmount }
     : currentRentInfo;
 
-  const handleFormSubmit = (formData: any) => {
+  const handleFormSubmit = async (formData: any) => {
+    if (!user?.email) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      submitRequest({
-        customerId: currentUserId,
-        customerName: currentUserName,
-        branchName: currentRentInfo.branchName,
-        roomName: currentRentInfo.roomName,
-        bedName: currentRentInfo.bedName,
+    try {
+      await submitRequest(user.email, {
         contractId: currentRentInfo.contractId,
-        depositAmount: currentRentInfo.depositAmount,
         ...formData,
       });
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Có lỗi xảy ra khi gửi yêu cầu trả phòng.');
+    } finally {
       setIsSubmitting(false);
-    }, 1200);
+    }
   };
 
   const activeStatusCfg = activeRequest ? getStatusConfig(activeRequest.status) : null;
@@ -263,7 +324,15 @@ export const CustomerCheckoutPage: React.FC = () => {
               {activeRequest.status === 'rejected' && (
                 <div className="pt-4 border-t border-outline-variant/40 flex justify-end">
                   <button
-                    onClick={() => cancelRequest(activeRequest.id)}
+                    onClick={async () => {
+                      if (user?.email && activeRequest) {
+                        try {
+                          await cancelRequest(user.email, activeRequest.id);
+                        } catch (err: any) {
+                          alert(err.message || 'Có lỗi xảy ra khi xóa yêu cầu.');
+                        }
+                      }
+                    }}
                     className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary font-semibold text-sm px-5 py-2.5 rounded-full transition cursor-pointer"
                   >
                     <ClipboardList className="w-4 h-4" />
@@ -427,8 +496,14 @@ export const CustomerCheckoutPage: React.FC = () => {
                 Giữ lại
               </button>
               <button
-                onClick={() => {
-                  cancelRequest(activeRequest.id);
+                onClick={async () => {
+                  if (user?.email && activeRequest) {
+                    try {
+                      await cancelRequest(user.email, activeRequest.id);
+                    } catch (err: any) {
+                      alert(err.message || 'Có lỗi xảy ra khi hủy yêu cầu.');
+                    }
+                  }
                   setShowCancelConfirm(false);
                 }}
                 className="px-5 py-2.5 rounded-full bg-error hover:bg-error/90 text-white text-sm font-semibold transition cursor-pointer"
