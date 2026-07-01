@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getRoomDetailApi, getRoomBedsApi } from './rooms.api';
 import { useAuthStore } from '../../stores/authStore';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
@@ -66,50 +66,29 @@ export default function RoomDetailPage() {
   const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
 
   const fetchRoomData = async () => {
+    if (!roomId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const db = getMockDB();
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Gọi API thật thay vì getMockDB()
+      const [roomData, bedsData] = await Promise.all([
+        getRoomDetailApi(roomId),
+        getRoomBedsApi(roomId).catch(() => [])
+      ]);
 
-      const foundRoom = db.rooms?.find((r: any) => r.id === roomId) as Room;
-      if (!foundRoom) {
+      if (!roomData) {
         setRoom(null);
         setIsLoading(false);
         return;
       }
 
-      setRoom(foundRoom);
+      setRoom(roomData as any);
+      setBeds(bedsData as any[]);
 
-      // Fetch or generate beds
-      let matchedBeds = db.beds?.filter((b: any) => b.room_id === roomId) as Bed[];
-      if (!matchedBeds || matchedBeds.length === 0) {
-        // Dynamically generate beds for rich demo data based on capacity & status
-        const count = foundRoom.capacity;
-        const occupiedCount = foundRoom.current_occupants;
-        
-        matchedBeds = Array.from({ length: count }).map((_, index) => {
-          let status: 'available' | 'occupied' | 'deposited' = 'available';
-          if (index < occupiedCount) {
-            status = 'occupied';
-          }
-          return {
-            id: `${foundRoom.id}-bed-${index + 1}`,
-            room_id: foundRoom.id,
-            name: `Giường ${String.fromCharCode(65 + index)}`, // Giường A, Giường B, Giường C...
-            price: foundRoom.price,
-            status: status
-          };
-        });
-      }
-      setBeds(matchedBeds);
-
-      // Fetch branch info
-      const foundBranch = db.branches?.find((b: any) => b.id === foundRoom.branch_id);
-      if (foundBranch) {
-        setBranchName(foundBranch.name);
-        setBranchAddress(foundBranch.address);
+      // Đọc thông tin chi nhánh từ dữ liệu phòng (đã được join bởi API)
+      if (roomData.branches) {
+        setBranchName(roomData.branches.name || 'Chi nhánh');
+        setBranchAddress(roomData.branches.address || 'TP. Hồ Chí Minh');
       }
     } catch (err) {
       setError('Đã xảy ra lỗi khi kết nối dữ liệu. Vui lòng tải lại trang.');
