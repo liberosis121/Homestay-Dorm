@@ -26,6 +26,9 @@ export const BACKUP_TABLES = [
   'deductions'
 ];
 
+// Bucket Supabase Storage để lưu lịch sử các bản sao lưu (tách khỏi 23 bảng dữ liệu ở trên)
+export const BACKUP_BUCKET = 'backups';
+
 export const adminBackupRepo = {
   countAll: async (): Promise<Record<string, number>> => {
     const counts: Record<string, number> = {};
@@ -60,5 +63,48 @@ export const adminBackupRepo = {
       data[table] = rows;
     }
     return data;
+  },
+
+  // ─── STORAGE: lịch sử bản sao lưu ───────────────────────────────────────────
+  // Tạo bucket nếu chưa có (idempotent). Service-role bypass RLS nên thao tác được.
+  ensureBucket: async (): Promise<void> => {
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    if (error) throw error;
+    if (!buckets?.some(b => b.name === BACKUP_BUCKET)) {
+      const { error: createErr } = await supabase.storage.createBucket(BACKUP_BUCKET, { public: false });
+      // Bỏ qua nếu bucket vừa được tạo bởi request khác (race condition)
+      if (createErr && !/exist/i.test(createErr.message)) throw createErr;
+    }
+  },
+
+  // Upload nội dung JSON của 1 bản sao lưu lên Storage
+  saveBackup: async (filename: string, json: string): Promise<void> => {
+    await adminBackupRepo.ensureBucket();
+    const { error } = await supabase.storage
+      .from(BACKUP_BUCKET)
+      .upload(filename, Buffer.from(json, 'utf-8'), {
+        contentType: 'application/json',
+        upsert: false
+      });
+    if (error) throw error;
+  },
+
+  // Liệt kê các file backup (mới nhất trước)
+  listBackupFiles: async () => {
+    await adminBackupRepo.ensureBucket();
+    const { data, error } = await supabase.storage
+      .from(BACKUP_BUCKET)
+      .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) throw error;
+    return (data ?? []).filter(f => f.name.endsWith('.json'));
+  },
+
+  // Tải nội dung 1 bản sao lưu (parse JSON trả về object)
+  downloadBackupFile: async (filename: string): Promise<unknown> => {
+    const { data, error } = await supabase.storage.from(BACKUP_BUCKET).download(filename);
+    if (error) throw error;
+    if (!data) throw new Error('Không tìm thấy bản sao lưu');
+    const text = await data.text();
+    return JSON.parse(text);
   }
 };

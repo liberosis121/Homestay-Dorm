@@ -85,7 +85,8 @@ export const checkinInvoiceRepo = {
         customer_name: mappedContract?.customer_name || 'Khách hàng',
         customer_phone: mappedContract?.customer_phone || '',
         room_name: mappedContract?.rooms?.name || 'Phòng',
-        contracts: mappedContract
+        contracts: mappedContract,
+        created_at: inv.created_at || mappedContract?.created_date || mappedContract?.created_at || ''
       };
     });
 

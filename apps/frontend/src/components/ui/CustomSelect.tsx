@@ -96,6 +96,7 @@ export default function CustomSelect({
   };
 
   const handleToggle = () => {
+    if (disabled) return;
     if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setCoords({
@@ -131,6 +132,7 @@ export default function CustomSelect({
       <button
         type="button"
         onClick={handleToggle}
+        disabled={disabled}
         className={`w-full flex items-center justify-between bg-white border ${borderClass} px-4 py-2.5 outline-none transition-all cursor-pointer font-label-md text-on-surface text-sm ${
           pill ? 'rounded-[24px]' : 'rounded-[12px]'
         } ${

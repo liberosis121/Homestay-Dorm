@@ -141,6 +141,14 @@ export default function CustomerLookupPage() {
     }
   };
 
+  const getInitials = (name: string) => {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return 'KH';
+    return words.length === 1
+      ? words[0].slice(0, 2).toUpperCase()
+      : `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+  };
+
 
   return (
     <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
@@ -240,11 +248,19 @@ export default function CustomerLookupPage() {
                       : 'bg-white border-[#d1c4b9]/40'
                   }`}
                 >
-                  <img
-                    src={cust.avatar}
-                    alt={cust.fullName}
-                    className="w-10 h-10 rounded-full object-cover bg-[#faf2ec] border border-[#d1c4b9]/50 shrink-0"
-                  />
+                  <div className="relative flex w-10 h-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#d1c4b9]/60 bg-[#faf2ec] text-xs font-extrabold text-[#6f583c]">
+                    <span>{getInitials(cust.fullName)}</span>
+                    {cust.avatar && (
+                      <img
+                        src={cust.avatar}
+                        alt={cust.fullName}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-bold truncate ${isActive ? 'text-[#6f583c]' : 'text-[#1e1b17]'}`}>
                       {cust.fullName}

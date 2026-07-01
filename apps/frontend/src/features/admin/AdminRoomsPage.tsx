@@ -1,13 +1,50 @@
 import { useState, useMemo, useEffect } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import {
   fetchAdminRooms,
   createRoomApi,
   updateRoomApi,
   fetchAdminBranches,
+  fetchBedsByRoom,
+  createBedApi,
+  updateBedApi,
 } from './services/admin.service';
 
 type RoomStatus = 'available' | 'full' | 'maintenance';
+
+// Trạng thái giường khác trạng thái phòng: dùng đúng 4 giá trị của luồng đặt phòng.
+type BedStatus = 'available' | 'deposited' | 'occupied' | 'maintenance';
+
+interface AdminBed {
+  id: string;
+  room_id: string;
+  name: string;
+  price: number;
+  status: BedStatus;
+}
+
+const BED_STATUS_META: Record<BedStatus, { label: string; cls: string; dot: string }> = {
+  available: { label: 'Còn trống', cls: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
+  deposited: { label: 'Đã đặt cọc', cls: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
+  occupied: { label: 'Đã có người', cls: 'bg-[#e8ede7] text-[#5f745d]', dot: 'bg-[#5f745d]' },
+  maintenance: { label: 'Bảo trì', cls: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
+};
+
+// Admin chỉ được phép chuyển giữa available ↔ maintenance.
+// deposited/occupied do nghiệp vụ đặt phòng sinh ra → khóa, không cho sửa tay.
+const BED_EDIT_STATUS_OPTIONS: { value: BedStatus; label: string }[] = [
+  { value: 'available', label: 'Còn trống' },
+  { value: 'maintenance', label: 'Bảo trì' },
+];
+
+const isBedEditable = (status: BedStatus) =>
+  status === 'available' || status === 'maintenance';
+
+const normalizeBedStatus = (value: unknown): BedStatus =>
+  value === 'deposited' || value === 'occupied' || value === 'maintenance'
+    ? value
+    : 'available';
 
 interface RoomStatusOption {
   value: RoomStatus;
@@ -104,6 +141,77 @@ const ROOM_TYPE_LABEL: Record<string, string> = {
 const roomTypeLabel = (t: string) => ROOM_TYPE_LABEL[t] || t || '—';
 const PAGE_SIZE = 10;
 
+interface BedEditRowProps {
+  draft: { name: string; price: number; status: BedStatus };
+  setDraft: Dispatch<SetStateAction<{ name: string; price: number; status: BedStatus }>>;
+  error: string | null;
+  saving: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+  formatNumber: (num: number | undefined) => string;
+}
+
+function BedEditRow({ draft, setDraft, error, saving, onSave, onCancel, formatNumber }: BedEditRowProps) {
+  return (
+    <div className="rounded-lg px-3 py-3 border space-y-3" style={{ borderColor: A.primary, background: A.surface }}>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[11px] font-semibold mb-1 uppercase text-[#4e453c]">Tên giường</label>
+          <input
+            type="text"
+            value={draft.name}
+            onChange={e => setDraft(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="VD: Giường 1"
+            className="w-full px-2.5 py-2 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold mb-1 uppercase text-[#4e453c]">Đơn giá (đ/tháng)</label>
+          <input
+            type="text"
+            value={formatNumber(draft.price)}
+            onChange={e => {
+              const clean = e.target.value.replace(/\D/g, '');
+              setDraft(prev => ({ ...prev, price: clean ? parseInt(clean, 10) : 0 }));
+            }}
+            className="w-full px-2.5 py-2 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-[11px] font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
+        <CustomSelect
+          value={draft.status}
+          onChange={val => setDraft(prev => ({ ...prev, status: val as BedStatus }))}
+          options={BED_EDIT_STATUS_OPTIONS}
+          theme="sale"
+          triggerClassName="w-full !py-2 bg-[#fff8f3] border-[#d1c4b9]"
+        />
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="flex-1 py-2 rounded-lg text-xs font-medium border transition-all hover:bg-gray-50 active:scale-[0.98] cursor-pointer disabled:opacity-50"
+          style={{ borderColor: A.border, color: A.textMuted }}
+        >
+          Hủy
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold text-white transition-all bg-[#6f583c] hover:bg-[#54422c] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+        >
+          {saving ? 'Đang lưu...' : 'Lưu giường'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminRoomsPage() {
   const formatNumber = (num: number | undefined) => {
     if (num === undefined || num === null) return "";
@@ -131,6 +239,37 @@ export default function AdminRoomsPage() {
   const [editStatus, setEditStatus] = useState<RoomStatus>('available');
   const [editErrors, setEditErrors] = useState<RoomFormErrors>({});
 
+  // ─── Quản lý giường của phòng đang mở ───────────────────────────────
+  const [beds, setBeds] = useState<AdminBed[]>([]);
+  const [bedsLoading, setBedsLoading] = useState(false);
+  const [bedsError, setBedsError] = useState<string | null>(null);
+  const [editingBedId, setEditingBedId] = useState<string | null>(null); // id giường đang sửa, hoặc 'new' khi thêm
+  const [bedDraft, setBedDraft] = useState<{ name: string; price: number; status: BedStatus }>({
+    name: '', price: 0, status: 'available',
+  });
+  const [bedDraftError, setBedDraftError] = useState<string | null>(null);
+  const [bedSaving, setBedSaving] = useState(false);
+
+  const loadBeds = async (roomId: string) => {
+    try {
+      setBedsLoading(true);
+      setBedsError(null);
+      const data = await fetchBedsByRoom(roomId);
+      const mapped: AdminBed[] = (data || []).map((b: any) => ({
+        id: b.id,
+        room_id: b.room_id,
+        name: b.name ?? '',
+        price: b.price ?? 0,
+        status: normalizeBedStatus(b.status),
+      }));
+      setBeds(mapped);
+    } catch (err: any) {
+      setBedsError(err.message || 'Lỗi khi tải danh sách giường');
+    } finally {
+      setBedsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (selected) {
       setEditName(selected.name);
@@ -140,8 +279,74 @@ export default function AdminRoomsPage() {
       setEditArea(selected.area);
       setEditStatus(selected.status);
       setEditErrors({});
+      // Reset & nạp lại giường mỗi khi mở phòng khác.
+      setEditingBedId(null);
+      setBedDraftError(null);
+      loadBeds(selected.id);
+    } else {
+      setBeds([]);
     }
   }, [selected]);
+
+  const startAddBed = () => {
+    setEditingBedId('new');
+    setBedDraftError(null);
+    setBedDraft({
+      name: `Giường ${beds.length + 1}`,
+      price: selected?.price ?? 0,
+      status: 'available',
+    });
+  };
+
+  const startEditBed = (bed: AdminBed) => {
+    setEditingBedId(bed.id);
+    setBedDraftError(null);
+    setBedDraft({ name: bed.name, price: bed.price, status: bed.status });
+  };
+
+  const cancelBedEdit = () => {
+    setEditingBedId(null);
+    setBedDraftError(null);
+  };
+
+  // Đạt/vượt sức chứa tối đa của phòng → không cho thêm giường mới.
+  const bedLimitReached = selected ? beds.length >= selected.capacity : false;
+
+  const saveBed = async () => {
+    if (!selected) return;
+    if (!bedDraft.name.trim()) {
+      setBedDraftError('Vui lòng nhập tên giường.');
+      return;
+    }
+    if (bedDraft.price < 0) {
+      setBedDraftError('Đơn giá không được âm.');
+      return;
+    }
+    try {
+      setBedSaving(true);
+      setBedDraftError(null);
+      if (editingBedId === 'new') {
+        await createBedApi({
+          room_id: selected.id,
+          name: bedDraft.name.trim(),
+          price: bedDraft.price,
+          status: bedDraft.status,
+        });
+      } else if (editingBedId) {
+        await updateBedApi(editingBedId, {
+          name: bedDraft.name.trim(),
+          price: bedDraft.price,
+          status: bedDraft.status,
+        });
+      }
+      setEditingBedId(null);
+      await loadBeds(selected.id);
+    } catch (err: any) {
+      setBedDraftError(err.message || 'Lỗi khi lưu giường');
+    } finally {
+      setBedSaving(false);
+    }
+  };
 
   // DB room: {id,branch_id,name,max_occupants,floor,room_type,area,amenities,price,status}
   // UI: capacity ← max_occupants; branch ← tên theo branch_id; roomType ← room_type; area ← area (đều có thật trong DB).
@@ -616,6 +821,136 @@ export default function AdminRoomsPage() {
                     triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
                   />
                 </div>
+              </div>
+
+              <hr style={{ borderColor: A.border }} />
+
+              {/* Bed Management Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold uppercase" style={{ color: A.accent }}>
+                    Danh sách giường
+                    {!bedsLoading && (
+                      <span className="ml-2 font-medium normal-case" style={{ color: A.textMuted }}>
+                        ({beds.length}{selected ? `/${selected.capacity}` : ''})
+                      </span>
+                    )}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={startAddBed}
+                    disabled={editingBedId !== null || bedLimitReached}
+                    title={bedLimitReached ? `Số giường đã đạt sức chứa tối đa của phòng (${selected?.capacity}).` : undefined}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-all bg-[#6f583c] hover:bg-[#54422c] active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Thêm giường
+                  </button>
+                </div>
+
+                {/* Đã đạt sức chứa: chặn thêm giường */}
+                {selected && bedLimitReached && beds.length === selected.capacity && (
+                  <div className="rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 bg-[#e8ede7] text-[#5f745d] border border-[#d1c4b9]">
+                    <span className="material-symbols-outlined text-[16px]">info</span>
+                    Số giường ({beds.length}) đã đạt sức chứa tối đa của phòng. Tăng sức chứa nếu muốn thêm giường.
+                  </div>
+                )}
+
+                {/* Cảnh báo mềm khi số giường vượt sức chứa phòng (dữ liệu cũ / đã giảm sức chứa) */}
+                {selected && beds.length > selected.capacity && (
+                  <div className="rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="material-symbols-outlined text-[16px]">warning</span>
+                    Số giường ({beds.length}) đang vượt sức chứa tối đa của phòng ({selected.capacity}).
+                  </div>
+                )}
+
+                {bedsError && (
+                  <div className="rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200">
+                    <span className="material-symbols-outlined text-[16px]">error</span>
+                    {bedsError}
+                  </div>
+                )}
+
+                {bedsLoading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="h-12 rounded-lg bg-gray-100 animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {beds.length === 0 && editingBedId !== 'new' && (
+                      <p className="text-xs py-3 text-center" style={{ color: A.textMuted }}>
+                        Phòng này chưa có giường nào. Nhấn "Thêm giường" để bắt đầu.
+                      </p>
+                    )}
+
+                    {beds.map((bed) => {
+                      const meta = BED_STATUS_META[bed.status];
+                      const editable = isBedEditable(bed.status);
+                      const isEditingThis = editingBedId === bed.id;
+
+                      if (isEditingThis) {
+                        return (
+                          <BedEditRow
+                            key={bed.id}
+                            draft={bedDraft}
+                            setDraft={setBedDraft}
+                            error={bedDraftError}
+                            saving={bedSaving}
+                            onSave={saveBed}
+                            onCancel={cancelBedEdit}
+                            formatNumber={formatNumber}
+                          />
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={bed.id}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 border"
+                          style={{ borderColor: A.border, background: A.bg }}
+                        >
+                          <span className="material-symbols-outlined text-[20px]" style={{ color: A.accent }}>bed</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold truncate" style={{ color: A.textPrimary }}>{bed.name}</p>
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: A.sidebar, color: A.textMuted }}>{bed.id}</span>
+                            </div>
+                            <p className="text-xs" style={{ color: A.primary }}>{bed.price.toLocaleString('vi-VN')}đ/tháng</p>
+                          </div>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${meta.cls}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                            {meta.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => startEditBed(bed)}
+                            disabled={!editable || editingBedId !== null}
+                            title={editable ? 'Chỉnh sửa giường' : 'Giường đang được đặt/sử dụng, không thể sửa'}
+                            className="p-1.5 rounded-full transition-all hover:bg-[#e8ede7] hover:text-[#5f745d] active:scale-90 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                            style={{ color: A.accent }}
+                          >
+                            <span className="material-symbols-outlined text-[18px] block">{editable ? 'edit' : 'lock'}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {/* Hàng thêm giường mới */}
+                    {editingBedId === 'new' && (
+                      <BedEditRow
+                        draft={bedDraft}
+                        setDraft={setBedDraft}
+                        error={bedDraftError}
+                        saving={bedSaving}
+                        onSave={saveBed}
+                        onCancel={cancelBedEdit}
+                        formatNumber={formatNumber}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             {/* Drawer Footer Actions */}

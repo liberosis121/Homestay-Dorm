@@ -16,4 +16,3 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     autoRefreshToken: false
   }
 });
-

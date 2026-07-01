@@ -59,7 +59,11 @@ export const customerLookupService = {
           .select(`
             *,
             rooms (
-              name
+              name,
+              room_type,
+              branches (
+                name
+              )
             )
           `)
           .in('registration_id', registrationIds)
@@ -151,11 +155,34 @@ export const customerLookupService = {
         status: d.status === 'paid' ? 'approved' : d.status === 'cancelled' ? 'refunded' : 'pending'
       }));
 
-      const formattedContracts = conList.map(ct => ({
-        id: ct.id,
-        period: `${ct.start_date ? new Date(ct.start_date).toLocaleDateString('vi-VN') : ''} - ${ct.end_date ? new Date(ct.end_date).toLocaleDateString('vi-VN') : ''}`,
-        status: ct.status || 'pending'
-      }));
+      const formattedContracts = conList.map(ct => {
+        const dep = depList.find(d => d.id === ct.deposit_id);
+        const room = dep?.rooms || {};
+        const contractStatus = ct.status === 'active'
+          ? 'active'
+          : ct.status === 'pending'
+            ? 'pending'
+            : 'expired';
+
+        return {
+          id: ct.id,
+          contractCode: ct.contract_code || ct.id,
+          period: `${ct.start_date ? new Date(ct.start_date).toLocaleDateString('vi-VN') : ''} - ${ct.end_date ? new Date(ct.end_date).toLocaleDateString('vi-VN') : ''}`,
+          startDate: ct.start_date ? new Date(ct.start_date).toLocaleDateString('vi-VN') : '',
+          endDate: ct.end_date ? new Date(ct.end_date).toLocaleDateString('vi-VN') : '',
+          signDate: ct.created_date ? new Date(ct.created_date).toLocaleDateString('vi-VN') : '',
+          status: contractStatus,
+          rawStatus: ct.status || 'pending',
+          roomName: room.name || dep?.room_id || 'Chưa xác định',
+          roomType: room.room_type || 'Chưa xác định',
+          branchName: room.branches?.name || 'Chưa xác định',
+          rentPrice: Number(ct.rent_price || 0),
+          depositAmount: Number(dep?.deposit_amount || 0),
+          depositId: ct.deposit_id || '',
+          contractType: ct.contract_type || '',
+          paymentCycle: ct.payment_cycle || '',
+        };
+      });
 
       // Hoat dong gan day (recentActivities)
       const recentActivities: any[] = [];

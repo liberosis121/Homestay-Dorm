@@ -1,11 +1,13 @@
 /**
  * Route layer cho cac API xac thuc va ho so ca nhan.
- * Phu thuoc: services/auth.service.ts, middleware/auth.middleware.ts, utils/response.util.ts
+ * Phu thuoc: services/auth.service.ts, services/profile.service.ts,
+ *            middleware/auth.middleware.ts, utils/response.util.ts
  */
 
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { authService } from '../services/auth.service';
+import { profileService } from '../services/profile.service';
 import { sendSuccess, sendError } from '../utils/response.util';
 
 const router = Router();
@@ -21,11 +23,14 @@ const router = Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, fullName, phone } = req.body;
+    // FE (authStore.register → registerApi) gửi body snake_case: { email, full_name, phone, password }.
+    // Nhận cả full_name lẫn fullName để tương thích ngược.
+    const { email, password, phone } = req.body;
+    const full_name = req.body.full_name ?? req.body.fullName;
 
     // 1. Kiểm tra tính hợp lệ thô của dữ liệu đầu vào (Validation)
-    if (!email || !password || !fullName || !phone) {
-      return sendError(res, null, 'Vui lòng cung cấp đầy đủ thông tin: email, password, fullName, phone.', 400);
+    if (!email || !password || !full_name || !phone) {
+      return sendError(res, null, 'Vui lòng cung cấp đầy đủ thông tin: email, password, full_name, phone.', 400);
     }
 
     if (password.length < 6) {
@@ -33,7 +38,7 @@ router.post('/register', async (req, res) => {
     }
 
     // 2. Chuyển tiếp dữ liệu đến tầng Service để xử lý logic nghiệp vụ
-    const result = await authService.register(email, password, fullName, phone);
+    const result = await authService.register(email, password, full_name, phone);
 
     // 3. Trả về response thành công (HTTP Status 201 Created)
     return sendSuccess(res, result, 'Đăng ký tài khoản mới thành công!', 201);
@@ -92,11 +97,47 @@ router.post('/forgot-password', async (req, res) => {
 
 /**
  * 🔗 GET /api/auth/me
- * 📝 Lấy thông tin user đăng nhập từ token JWT (đọc trực tiếp từ req.user đã giải mã).
+ * 📝 Lấy hồ sơ đầy đủ của user đăng nhập (gộp profiles + nhan_vien/khach_hang).
+ *    Dùng bởi authStore.initialize và StaffProfilePage.
  */
-router.get('/me', requireAuth, (req, res) => {
-  // `requireAuth` đã gán user hợp lệ vào `req.user`. Không cần query thêm database.
-  return sendSuccess(res, req.user, 'Xác thực tài khoản thành công!');
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const profile = await profileService.getProfile(req.user.id);
+
+    // Fallback: nếu chưa có bản ghi profile trong DB, trả tạm dữ liệu từ token
+    if (!profile) {
+      return sendSuccess(res, {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.user_metadata?.role || 'customer',
+        full_name: req.user.user_metadata?.full_name || 'User',
+        avatar_url: req.user.user_metadata?.avatar_url || ''
+      }, 'Xác thực tài khoản thành công (dữ liệu tạm)!');
+    }
+
+    return sendSuccess(res, profile, 'Xác thực tài khoản thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi lấy thông tin tài khoản.');
+  }
+});
+
+/**
+ * 🔗 PUT /api/auth/me
+ * 📝 Cập nhật hồ sơ cá nhân (qua profileService — gộp parent/child table).
+ */
+router.put('/me', requireAuth, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const updatedProfile = await profileService.updateProfile(req.user.id, req.body);
+    return sendSuccess(res, updatedProfile, 'Cập nhật thông tin cá nhân thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi cập nhật thông tin cá nhân.');
+  }
 });
 
 /**
@@ -117,7 +158,7 @@ router.post('/logout', requireAuth, async (req, res) => {
 
 /**
  * 🔗 GET /api/auth/profile
- * 📝 Lấy thông tin hồ sơ cá nhân đầy đủ (kết hợp details theo vai trò).
+ * 📝 Lấy thông tin hồ sơ cá nhân đầy đủ (kết hợp details theo vai trò) — qua authService.
  */
 router.get('/profile', requireAuth, async (req, res) => {
   try {
@@ -135,7 +176,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 
 /**
  * 🔗 PUT /api/auth/profile
- * 📝 Cập nhật thông tin hồ sơ cá nhân.
+ * 📝 Cập nhật thông tin hồ sơ cá nhân — qua authService (xử lý field theo vai trò).
  * 📥 Body input: các trường cần cập nhật tùy theo vai trò
  */
 router.put('/profile', requireAuth, async (req, res) => {

@@ -209,8 +209,8 @@ export default function LoginPage() {
                     { email: 'manager@homestay.vn', name: 'Quản lý (Manager)' },
                     { email: 'sale@homestay.vn', name: 'Nhân viên Sale (Sale)' },
                     { email: 'accountant@homestay.vn', name: 'Kế toán (Accountant)' },
-                    { email: 'customer1@gmail.com', name: 'Khách hàng 1 (Đã thuê)' },
-                    { email: 'customer2@gmail.com', name: 'Khách hàng 2 (Đã thuê)' }
+                    { email: 'customer1@gmail.com', name: 'Khách hàng cũ (Đã thuê)' },
+                    { email: 'customer2@gmail.com', name: 'Khách hàng mới (Chưa thuê)' }
                   ].map((p) => (
                     <button
                       key={p.email}

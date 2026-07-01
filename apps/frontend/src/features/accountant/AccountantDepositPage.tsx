@@ -66,12 +66,15 @@ export default function AccountantDepositPage() {
             deposit_amount: req.deposit_amount,
             expected_move_in_date: req.expected_move_in_date || '',
             status: req.status,
-            note: req.note || ''
+            note: req.note || '',
+            created_at: req.created_at || ''
           };
         });
 
         const mappedInvoices = (depInvoices || []).map((inv: any) => {
           const req = inv.deposit_requests || {};
+          const rawDeadline = inv.deadline || req.payment_deadline || '';
+          const rawCreatedAt = inv.created_at || req.created_at || '';
           return {
             id: inv.id,
             customer_id: inv.customer_id || req.customer_id,
@@ -79,10 +82,10 @@ export default function AccountantDepositPage() {
             room_id: inv.room_id || req.room_id,
             room_name: inv.room_name || req.rooms?.name || 'Phòng',
             amount: inv.amount,
-            deadline: inv.deadline || '',
+            deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
             payment_method: inv.payment_method,
             status: inv.status,
-            created_at: inv.created_at || '',
+            created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
             note: inv.note
           };
         });
@@ -165,12 +168,15 @@ export default function AccountantDepositPage() {
           deposit_amount: req.deposit_amount,
           expected_move_in_date: req.expected_move_in_date || '',
           status: req.status,
-          note: req.note || ''
+          note: req.note || '',
+          created_at: req.created_at || ''
         };
       });
 
       const mappedInvoices = (depInvoices || []).map((inv: any) => {
         const req = inv.deposit_requests || {};
+        const rawDeadline = inv.deadline || req.payment_deadline || '';
+        const rawCreatedAt = inv.created_at || req.created_at || '';
         return {
           id: inv.id,
           customer_id: inv.customer_id || req.customer_id,
@@ -178,10 +184,10 @@ export default function AccountantDepositPage() {
           room_id: inv.room_id || req.room_id,
           room_name: inv.room_name || req.rooms?.name || 'Phòng',
           amount: inv.amount,
-          deadline: inv.deadline || '',
+          deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
           payment_method: inv.payment_method,
           status: inv.status,
-          created_at: inv.created_at || '',
+          created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
           note: inv.note
         };
       });
@@ -242,6 +248,49 @@ export default function AccountantDepositPage() {
   };
 
 
+
+  const handleConfirmPayment = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmInvoicePayment(email, id, 'transfer');
+      setToastMessage('Đã xác nhận thu tiền thành công.');
+
+      // Refresh invoices
+      const depInvoices = await accountantService.fetchDepositInvoices(email);
+      const mappedInvoices = (depInvoices || []).map((inv: any) => {
+        const req = inv.deposit_requests || {};
+        const rawDeadline = inv.deadline || req.payment_deadline || '';
+        const rawCreatedAt = inv.created_at || req.created_at || '';
+        return {
+          id: inv.id,
+          customer_id: inv.customer_id || req.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: inv.room_id || req.room_id,
+          room_name: inv.room_name || req.rooms?.name || 'Phòng',
+          amount: inv.amount,
+          deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
+          payment_method: inv.payment_method,
+          status: inv.status,
+          created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
+          note: inv.note
+        };
+      });
+      setInvoices(mappedInvoices);
+    } catch (err) {
+      console.warn('[AccountantDeposit] Live API confirm payment failed, falling back to mock DB:', err);
+      const db = getMockDB();
+      const updatedInvoices = (db.deposit_invoices || []).map((inv: any) => {
+        if (inv.id === id) {
+          return { ...inv, status: 'paid' as const };
+        }
+        return inv;
+      });
+      db.deposit_invoices = updatedInvoices;
+      saveMockDB(db);
+      setInvoices(updatedInvoices);
+      setToastMessage('Đã xác nhận thu tiền thành công (Mock DB).');
+    }
+  };
 
   // Summaries
   const totalCount = invoices.length;
@@ -700,6 +749,18 @@ export default function AccountantDepositPage() {
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
 
+                      {inv.status === 'pending' && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Xác nhận đã thu tiền cho hóa đơn ${inv.id}?`)) {
+                              handleConfirmPayment(inv.id);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-[#5F7D4E] hover:bg-[#5F7D4E]/90 text-white text-xs font-semibold rounded-md transition-all cursor-pointer active:scale-[0.95]"
+                        >
+                          Thu tiền
+                        </button>
+                      )}
                       <button 
                         onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
                         className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]"
