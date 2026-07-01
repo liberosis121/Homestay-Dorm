@@ -46,4 +46,34 @@ router.get('/backup/export', async (req: Request, res: Response) => {
   }
 });
 
+// Tạo 1 bản sao lưu thật và lưu lên Supabase Storage
+router.post('/backup/create', async (req: Request, res: Response) => {
+  try {
+    const data = await adminBackupService.createBackup();
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Lịch sử các bản sao lưu đã lưu trên Storage
+router.get('/backup/list', async (req: Request, res: Response) => {
+  try {
+    const data = await adminBackupService.listBackups();
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Tải nội dung 1 bản sao lưu (đúng snapshot đã lưu)
+router.get('/backup/download/:name', async (req: Request, res: Response) => {
+  try {
+    const data = await adminBackupService.getBackupFile(req.params.name);
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;

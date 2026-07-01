@@ -43,6 +43,7 @@ export default function LoginPage() {
 
   const fillCredential = (presetEmail: string) => {
     setEmail(presetEmail);
+    // Mật khẩu thực tế trong script nạp dữ liệu (seed data) là '123456'
     setPassword('123456');
   };
 

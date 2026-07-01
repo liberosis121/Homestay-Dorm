@@ -155,6 +155,45 @@ export const exportBackupDataApi = async () => {
   return result.data;
 };
 
+export interface BackupListItem {
+  name: string;
+  size: number;            // bytes
+  createdAt: string | null; // ISO
+  tableCount: number;
+  totalRecords: number | null;
+}
+
+// Tạo 1 bản sao lưu thật (export toàn bộ DB → lưu lên Supabase Storage)
+export const createBackupApi = async (): Promise<BackupListItem> => {
+  const res = await fetch(`${API}/api/admin/backup/create`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tạo bản sao lưu');
+  const result = await res.json();
+  return result.data;
+};
+
+// Lịch sử các bản sao lưu trên Storage
+export const fetchBackupList = async (): Promise<BackupListItem[]> => {
+  const res = await fetch(`${API}/api/admin/backup/list`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải danh sách sao lưu');
+  const result = await res.json();
+  return result.data ?? [];
+};
+
+// Tải nội dung 1 bản sao lưu cụ thể (đúng snapshot đã lưu)
+export const downloadBackupFileApi = async (name: string) => {
+  const res = await fetch(`${API}/api/admin/backup/download/${encodeURIComponent(name)}`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải bản sao lưu');
+  const result = await res.json();
+  return result.data;
+};
+
 // ─── CONDITIONS API ──────────────────────────────────────────────────
 export const fetchAdminConditions = async () => {
   const res = await fetch(`${API}/api/admin/conditions`, {
