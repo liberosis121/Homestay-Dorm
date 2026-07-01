@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { getMockDB } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
 
 export default function AccountantDashboardPage() {
   const { user } = useAuthStore();
@@ -40,86 +41,142 @@ export default function AccountantDashboardPage() {
   });
 
   useEffect(() => {
-    const db = getMockDB();
-    
-    // Revenue from paid invoices
-    const depositRev = (db.deposit_invoices || [])
-      .filter((inv: any) => inv.status === 'paid')
-      .reduce((sum: number, inv: any) => sum + inv.amount, 0);
-    const checkinRev = (db.checkin_invoices || [])
-      .filter((inv: any) => inv.status === 'paid')
-      .reduce((sum: number, inv: any) => sum + inv.total, 0);
-    const monthlyRev = (db.monthly_invoices || [])
-      .filter((inv: any) => inv.status === 'paid')
-      .reduce((sum: number, inv: any) => sum + inv.total, 0);
-    
-    const totalRevenue = depositRev + checkinRev + monthlyRev;
+    const loadStats = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [depInvoices, chkInvoices, monInvoices, refunds, payouts] = await Promise.all([
+          accountantService.fetchDepositInvoices(email),
+          accountantService.fetchCheckinInvoices(email),
+          accountantService.fetchMonthlyInvoices(email),
+          accountantService.fetchRefundReconciliations(email),
+          accountantService.fetchPayouts(email)
+        ]);
 
-    // Pending counts
-    const pendingDeposit = (db.deposit_invoices || []).filter((inv: any) => inv.status === 'pending').length;
-    const pendingCheckin = (db.checkin_invoices || []).filter((inv: any) => inv.status === 'pending').length;
-    const pendingMonthly = (db.monthly_invoices || []).filter((inv: any) => inv.status === 'pending').length;
-    const pendingInvoicesCount = pendingDeposit + pendingCheckin + pendingMonthly;
+        const depositRev = (depInvoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + inv.amount, 0);
+        const checkinRev = (chkInvoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+        const monthlyRev = (monInvoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+        const totalRevenue = depositRev + checkinRev + monthlyRev;
 
-    const pendingRefundsCount = (db.refund_records || []).filter((r: any) => r.status === 'pending' || r.status === 'calculated').length;
-    const pendingPayoutsCount = (db.payout_records || []).filter((p: any) => p.status === 'pending' || p.status === 'processing').length;
+        const pendingDeposit = (depInvoices || []).filter((inv: any) => inv.status === 'pending').length;
+        const pendingCheckin = (chkInvoices || []).filter((inv: any) => inv.status === 'pending').length;
+        const pendingMonthly = (monInvoices || []).filter((inv: any) => inv.status === 'pending').length;
+        const pendingInvoicesCount = pendingDeposit + pendingCheckin + pendingMonthly;
 
-    // Gather recent activities from DB
-    const recentActivities: any[] = [];
-    
-    // Add last 3 deposit invoices
-    (db.deposit_invoices || []).slice(0, 3).forEach((inv: any) => {
-      recentActivities.push({
-        id: inv.id,
-        type: 'deposit',
-        title: `Đặt cọc: ${inv.customer_name}`,
-        subtitle: `${inv.room_name} - ${inv.amount.toLocaleString('vi-VN')} ₫`,
-        status: inv.status,
-        time: inv.created_at,
-        path: '/accountant/invoices/deposit'
-      });
-    });
+        const pendingRefundsCount = (refunds || []).filter((r: any) => r.status === 'pending' || r.status === 'calculated').length;
+        const pendingPayoutsCount = (payouts || []).filter((p: any) => p.status === 'pending' || p.status === 'processing').length;
 
-    // Add last 2 checkin invoices
-    (db.checkin_invoices || []).slice(0, 2).forEach((inv: any) => {
-      recentActivities.push({
-        id: inv.id,
-        type: 'checkin',
-        title: `Nhận phòng: ${inv.customer_name}`,
-        subtitle: `${inv.room_name} - ${inv.total.toLocaleString('vi-VN')} ₫`,
-        status: inv.status,
-        time: inv.created_at,
-        path: '/accountant/invoices/checkin'
-      });
-    });
+        const recentActivities: any[] = [];
+        (depInvoices || []).slice(0, 3).forEach((inv: any) => {
+          recentActivities.push({
+            id: inv.id,
+            type: 'deposit',
+            title: `Đặt cọc: ${inv.customer_name || 'Khách hàng'}`,
+            subtitle: `${inv.room_name || 'Phòng'} - ${inv.amount.toLocaleString('vi-VN')} ₫`,
+            status: inv.status,
+            time: inv.created_at || new Date().toISOString(),
+            path: '/accountant/invoices/deposit'
+          });
+        });
 
-    // Add last 2 refund/payout
-    (db.refund_records || []).slice(0, 2).forEach((r: any) => {
-      recentActivities.push({
-        id: r.id,
-        type: 'refund',
-        title: `Đối soát cọc: ${r.customer_name}`,
-        subtitle: `${r.room_name} - Hoàn ${r.refund_amount.toLocaleString('vi-VN')} ₫`,
-        status: r.status,
-        time: r.created_at,
-        path: '/accountant/refunds'
-      });
-    });
+        (chkInvoices || []).slice(0, 2).forEach((inv: any) => {
+          recentActivities.push({
+            id: inv.id,
+            type: 'checkin',
+            title: `Nhận phòng: ${inv.customer_name || 'Khách hàng'}`,
+            subtitle: `${inv.room_name || 'Phòng'} - ${(inv.amount || 0).toLocaleString('vi-VN')} ₫`,
+            status: inv.status,
+            time: inv.created_at || new Date().toISOString(),
+            path: '/accountant/invoices/checkin'
+          });
+        });
 
-    // Sort recent activities by time descending
-    recentActivities.sort((a, b) => b.time.localeCompare(a.time));
+        (refunds || []).slice(0, 2).forEach((r: any) => {
+          recentActivities.push({
+            id: r.id,
+            type: 'refund',
+            title: `Đối soát cọc: ${r.customer_name || 'Khách hàng'}`,
+            subtitle: `${r.room_name || 'Phòng'} - Hoàn ${(r.refund_amount || r.final_refund || 0).toLocaleString('vi-VN')} ₫`,
+            status: r.status,
+            time: r.created_at || r.reconciliation_date || new Date().toISOString(),
+            path: '/accountant/refunds'
+          });
+        });
 
-    setStats({
-      totalRevenue,
-      depositRev,
-      checkinRev,
-      monthlyRev,
-      pendingInvoicesCount,
-      pendingRefundsCount,
-      pendingPayoutsCount,
-      recentActivities: recentActivities.slice(0, 5)
-    });
-  }, []);
+        recentActivities.sort((a, b) => b.time.localeCompare(a.time));
+
+        setStats({
+          totalRevenue,
+          depositRev,
+          checkinRev,
+          monthlyRev,
+          pendingInvoicesCount,
+          pendingRefundsCount,
+          pendingPayoutsCount,
+          recentActivities: recentActivities.slice(0, 5)
+        });
+      } catch (err) {
+        console.warn('[AccountantDashboard] Failed to fetch live backend stats, falling back to mock DB:', err);
+        const db = getMockDB();
+        const depositRev = (db.deposit_invoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + inv.amount, 0);
+        const checkinRev = (db.checkin_invoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
+        const monthlyRev = (db.monthly_invoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
+        const totalRevenue = depositRev + checkinRev + monthlyRev;
+        const pendingDeposit = (db.deposit_invoices || []).filter((inv: any) => inv.status === 'pending').length;
+        const pendingCheckin = (db.checkin_invoices || []).filter((inv: any) => inv.status === 'pending').length;
+        const pendingMonthly = (db.monthly_invoices || []).filter((inv: any) => inv.status === 'pending').length;
+        const pendingInvoicesCount = pendingDeposit + pendingCheckin + pendingMonthly;
+        const pendingRefundsCount = (db.refund_records || []).filter((r: any) => r.status === 'pending' || r.status === 'calculated').length;
+        const pendingPayoutsCount = (db.payout_records || []).filter((p: any) => p.status === 'pending' || p.status === 'processing').length;
+
+        const recentActivities: any[] = [];
+        (db.deposit_invoices || []).slice(0, 3).forEach((inv: any) => {
+          recentActivities.push({
+            id: inv.id,
+            type: 'deposit',
+            title: `Đặt cọc: ${inv.customer_name}`,
+            subtitle: `${inv.room_name} - ${inv.amount.toLocaleString('vi-VN')} ₫`,
+            status: inv.status,
+            time: inv.created_at,
+            path: '/accountant/invoices/deposit'
+          });
+        });
+        (db.checkin_invoices || []).slice(0, 2).forEach((inv: any) => {
+          recentActivities.push({
+            id: inv.id,
+            type: 'checkin',
+            title: `Nhận phòng: ${inv.customer_name}`,
+            subtitle: `${inv.room_name} - ${(inv.total || inv.amount).toLocaleString('vi-VN')} ₫`,
+            status: inv.status,
+            time: inv.created_at,
+            path: '/accountant/invoices/checkin'
+          });
+        });
+        (db.refund_records || []).slice(0, 2).forEach((r: any) => {
+          recentActivities.push({
+            id: r.id,
+            type: 'refund',
+            title: `Đối soát cọc: ${r.customer_name}`,
+            subtitle: `${r.room_name} - Hoàn ${(r.refund_amount || r.final_refund).toLocaleString('vi-VN')} ₫`,
+            status: r.status,
+            time: r.created_at,
+            path: '/accountant/refunds'
+          });
+        });
+        recentActivities.sort((a, b) => b.time.localeCompare(a.time));
+        setStats({
+          totalRevenue,
+          depositRev,
+          checkinRev,
+          monthlyRev,
+          pendingInvoicesCount,
+          pendingRefundsCount,
+          pendingPayoutsCount,
+          recentActivities: recentActivities.slice(0, 5)
+        });
+      }
+    };
+    loadStats();
+  }, [user]);
 
   const collectionRate = 88; // Static/calculated indicator
 

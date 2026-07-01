@@ -211,7 +211,7 @@ export default function InvoiceDetailDrawer({
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã hợp đồng:</div>
                     <div className="text-right font-mono font-semibold text-[#5C4632]">
-                      {invoiceData.deposit_ref ? invoiceData.deposit_ref.replace('DEP', 'HĐ') : 'HĐ-MOCK'}
+                      {invoiceData.contract_id || (invoiceData.deposit_ref ? invoiceData.deposit_ref.replace('DEP', 'HĐ') : 'HĐ-MOCK')}
                     </div>
                     
                     <div className="text-[#8A7563]">Ngày bắt đầu thuê:</div>

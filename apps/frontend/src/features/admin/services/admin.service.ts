@@ -11,6 +11,27 @@ const getHeaders = () => {
   };
 };
 
+export interface AdminServiceRecord {
+  id: string;
+  name: string;
+  service_type: string;
+  description?: string | null;
+  unit?: string | null;
+  price?: number | null;
+  billing_cycle?: string | null;
+  status?: string | null;
+}
+
+export interface AdminServicePayload {
+  name?: string;
+  service_type?: string;
+  description?: string;
+  unit?: string;
+  price?: number;
+  billing_cycle?: string;
+  status?: string;
+}
+
 // ─── CUSTOMERS API ───────────────────────────────────────────────────
 export const fetchAdminCustomers = async () => {
   const res = await fetch(`${API}/api/admin/customers`, {
@@ -134,6 +155,45 @@ export const exportBackupDataApi = async () => {
   return result.data;
 };
 
+export interface BackupListItem {
+  name: string;
+  size: number;            // bytes
+  createdAt: string | null; // ISO
+  tableCount: number;
+  totalRecords: number | null;
+}
+
+// Tạo 1 bản sao lưu thật (export toàn bộ DB → lưu lên Supabase Storage)
+export const createBackupApi = async (): Promise<BackupListItem> => {
+  const res = await fetch(`${API}/api/admin/backup/create`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tạo bản sao lưu');
+  const result = await res.json();
+  return result.data;
+};
+
+// Lịch sử các bản sao lưu trên Storage
+export const fetchBackupList = async (): Promise<BackupListItem[]> => {
+  const res = await fetch(`${API}/api/admin/backup/list`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải danh sách sao lưu');
+  const result = await res.json();
+  return result.data ?? [];
+};
+
+// Tải nội dung 1 bản sao lưu cụ thể (đúng snapshot đã lưu)
+export const downloadBackupFileApi = async (name: string) => {
+  const res = await fetch(`${API}/api/admin/backup/download/${encodeURIComponent(name)}`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải bản sao lưu');
+  const result = await res.json();
+  return result.data;
+};
+
 // ─── CONDITIONS API ──────────────────────────────────────────────────
 export const fetchAdminConditions = async () => {
   const res = await fetch(`${API}/api/admin/conditions`, {
@@ -162,6 +222,143 @@ export const updateConditionApi = async (id: string, cond: any) => {
     body: JSON.stringify(cond)
   });
   if (!res.ok) throw new Error('Lỗi khi cập nhật điều kiện lưu trú');
+  const result = await res.json();
+  return result.data;
+};
+
+// ─── BRANCHES API (UC27) ─────────────────────────────────────────────
+export const fetchAdminBranches = async () => {
+  const res = await fetch(`${API}/api/admin/branches`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải danh sách chi nhánh');
+  const result = await res.json();
+  return result.data;
+};
+
+export const createBranchApi = async (branch: any) => {
+  const res = await fetch(`${API}/api/admin/branches`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(branch)
+  });
+  if (!res.ok) throw new Error('Lỗi khi thêm chi nhánh mới');
+  const result = await res.json();
+  return result.data;
+};
+
+export const updateBranchApi = async (id: string, branch: any) => {
+  const res = await fetch(`${API}/api/admin/branches/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(branch)
+  });
+  if (!res.ok) throw new Error('Lỗi khi cập nhật chi nhánh');
+  const result = await res.json();
+  return result.data;
+};
+
+// ─── ROOMS & BEDS API (UC28) ─────────────────────────────────────────
+export const fetchAdminRooms = async () => {
+  const res = await fetch(`${API}/api/admin/rooms`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải danh sách phòng');
+  const result = await res.json();
+  return result.data;
+};
+
+export const createRoomApi = async (room: any) => {
+  const res = await fetch(`${API}/api/admin/rooms`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(room)
+  });
+  if (!res.ok) throw new Error('Lỗi khi thêm phòng mới');
+  const result = await res.json();
+  return result.data;
+};
+
+export const updateRoomApi = async (id: string, room: any) => {
+  const res = await fetch(`${API}/api/admin/rooms/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(room)
+  });
+  if (!res.ok) throw new Error('Lỗi khi cập nhật phòng');
+  const result = await res.json();
+  return result.data;
+};
+
+export const fetchBedsByRoom = async (roomId: string) => {
+  const res = await fetch(`${API}/api/admin/rooms/${roomId}/beds`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải danh sách giường');
+  const result = await res.json();
+  return result.data;
+};
+
+export const createBedApi = async (bed: any) => {
+  const res = await fetch(`${API}/api/admin/beds`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(bed)
+  });
+  if (!res.ok) throw new Error('Lỗi khi thêm giường mới');
+  const result = await res.json();
+  return result.data;
+};
+
+export const updateBedApi = async (id: string, bed: any) => {
+  const res = await fetch(`${API}/api/admin/beds/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(bed)
+  });
+  if (!res.ok) throw new Error('Lỗi khi cập nhật giường');
+  const result = await res.json();
+  return result.data;
+};
+
+// ─── SERVICES API (UC29) ─────────────────────────────────────────────
+export const fetchAdminServices = async (): Promise<AdminServiceRecord[]> => {
+  const res = await fetch(`${API}/api/admin/services`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải danh sách dịch vụ');
+  const result = await res.json();
+  return result.data;
+};
+
+export const createServiceApi = async (svc: AdminServicePayload): Promise<AdminServiceRecord> => {
+  const res = await fetch(`${API}/api/admin/services`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(svc)
+  });
+  if (!res.ok) throw new Error('Lỗi khi thêm dịch vụ mới');
+  const result = await res.json();
+  return result.data;
+};
+
+export const updateServiceApi = async (id: string, svc: AdminServicePayload): Promise<AdminServiceRecord> => {
+  const res = await fetch(`${API}/api/admin/services/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(svc)
+  });
+  if (!res.ok) throw new Error('Lỗi khi cập nhật dịch vụ');
+  const result = await res.json();
+  return result.data;
+};
+
+// ─── DASHBOARD API ───────────────────────────────────────────────────
+export const fetchAdminDashboard = async () => {
+  const res = await fetch(`${API}/api/admin/dashboard`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Lỗi khi tải số liệu tổng quan');
   const result = await res.json();
   return result.data;
 };

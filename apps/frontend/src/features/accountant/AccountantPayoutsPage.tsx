@@ -4,8 +4,17 @@ import {
 } from 'lucide-react';
 import { getMockDB, saveMockDB, PayoutRecord, RefundRecord } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
+
+const normalizePayoutStatus = (status?: string): PayoutRecord['status'] => {
+  if (status === 'paid' || status === 'completed') return 'completed';
+  if (status === 'processing') return 'processing';
+  return 'pending';
+};
 
 export default function AccountantPayoutsPage() {
+  const { user } = useAuthStore();
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [selectedPayoutId, setSelectedPayoutId] = useState('');
@@ -25,10 +34,67 @@ export default function AccountantPayoutsPage() {
 
   // Load Data
   useEffect(() => {
-    const db = getMockDB();
-    setPayouts(db.payout_records || []);
-    setRefunds(db.refund_records || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [livePayouts, liveRefunds] = await Promise.all([
+          accountantService.fetchPayouts(email),
+          accountantService.fetchRefundReconciliations(email)
+        ]);
+
+        const mappedPayouts = (livePayouts || []).map((p: any) => {
+          const rec = p.refund_reconciliations || {};
+          const checkout = rec.checkouts || {};
+          const contract = checkout.contracts || {};
+          const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
+          return {
+            id: p.id,
+            refund_id: rec.id || p.reconciliation_id,
+            customer_id: contract.customer_id || '',
+            customer_name,
+            bank_account: p.account_details || '',
+            bank_name: '',
+            account_holder: customer_name.toUpperCase(),
+            amount: Number(p.amount ?? rec.final_refund ?? 0),
+            payment_method: p.payment_method || p.payout_method || 'transfer',
+            status: normalizePayoutStatus(p.status || p.payout_status),
+            paid_at: p.payment_time,
+            created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString()
+          };
+        });
+
+        const mappedRefunds = (liveRefunds || []).map((rec: any) => {
+          const checkout = rec.checkouts || {};
+          const contract = checkout.contracts || {};
+          return {
+            id: rec.id,
+            customer_id: contract.customer_id || '',
+            customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
+            room_id: contract.rooms?.id || contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            checkout_date: checkout.request_date || rec.reconciliation_date || '',
+            deposit_original: Number(rec.original_deposit || 0),
+            damage_deductions: [],
+            debt_deductions: 0,
+            status: rec.status === 'paid' ? 'paid' : 'confirmed',
+            created_at: rec.reconciliation_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: Number(rec.final_refund || 0),
+            total_deductions: Number(rec.total_deductions || 0)
+          };
+        });
+
+        setPayouts(mappedPayouts);
+        setRefunds(mappedRefunds);
+      } catch (err) {
+        console.warn('[AccountantPayouts] Failed to fetch live data, falling back to mock:', err);
+        const db = getMockDB();
+        setPayouts(db.payout_records || []);
+        setRefunds(db.refund_records || []);
+      }
+    };
+    loadData();
+  }, [user]);
 
   const activePayout = payouts.find(p => p.id === selectedPayoutId);
   const matchedRefund = activePayout ? refunds.find(r => r.id === activePayout.refund_id) : null;
@@ -49,101 +115,159 @@ export default function AccountantPayoutsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleConfirmPayout = () => {
+  const handleConfirmPayout = async () => {
     if (!activePayout) return;
 
-    const db = getMockDB();
-    
-    // Update payout status to completed
-    const updatedPayouts = db.payout_records.map((p: PayoutRecord) => {
-      if (p.id === activePayout.id) {
-        return {
-          ...p,
-          payment_method: payMethod,
-          bank_name: payMethod === 'transfer' ? bankName : '',
-          bank_account: payMethod === 'transfer' ? bankAccount : '',
-          account_holder: payMethod === 'transfer' ? accountHolder : '',
-          status: 'completed' as const,
-          paid_at: new Date().toISOString().split('T')[0]
-        };
+    const email = user?.email || 'accountant@homestay.vn';
+    const details = payMethod === 'transfer' ? `${bankName} - ${bankAccount} - ${accountHolder}` : 'Tiền mặt';
+
+    try {
+      await accountantService.confirmPayout(email, activePayout.id, details, payMethod);
+
+      if (activePayout.amount >= 0) {
+        alert('Xác nhận xử lý hoàn cọc thành công!');
+      } else {
+        alert('Xác nhận xử lý thu thêm tiền thành công!');
       }
-      return p;
-    });
-    db.payout_records = updatedPayouts;
 
-    // Update refund status to paid
-    const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
-      if (r.id === activePayout.refund_id) {
+      // Refresh list
+      const livePayouts = await accountantService.fetchPayouts(email);
+      const liveRefunds = await accountantService.fetchRefundReconciliations(email);
+
+      const mappedPayouts = (livePayouts || []).map((p: any) => {
+        const rec = p.refund_reconciliations || {};
+        const checkout = rec.checkouts || {};
+        const contract = checkout.contracts || {};
+        const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
         return {
-          ...r,
-          status: 'paid' as const
+          id: p.id,
+          refund_id: rec.id || p.reconciliation_id,
+          customer_id: contract.customer_id || '',
+          customer_name,
+          bank_account: p.account_details || '',
+          bank_name: '',
+          account_holder: customer_name.toUpperCase(),
+          amount: Number(p.amount ?? rec.final_refund ?? 0),
+          payment_method: p.payment_method || p.payout_method || 'transfer',
+          status: normalizePayoutStatus(p.status || p.payout_status),
+          paid_at: p.payment_time,
+          created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString()
         };
+      });
+
+      const mappedRefunds = (liveRefunds || []).map((rec: any) => {
+        const checkout = rec.checkouts || {};
+        const contract = checkout.contracts || {};
+        return {
+          id: rec.id,
+          customer_id: contract.customer_id || '',
+          customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
+          room_id: contract.rooms?.id || contract.room_id || '',
+          room_name: contract.rooms?.name || 'Phòng',
+          checkout_date: checkout.request_date || rec.reconciliation_date || '',
+          deposit_original: Number(rec.original_deposit || 0),
+          damage_deductions: [],
+          debt_deductions: 0,
+          status: rec.status === 'paid' ? 'paid' : 'confirmed',
+          created_at: rec.reconciliation_date || new Date().toISOString(),
+          type: 'checkout' as const,
+          refund_amount: Number(rec.final_refund || 0),
+          total_deductions: Number(rec.total_deductions || 0)
+        };
+      });
+
+      setPayouts(mappedPayouts);
+      setRefunds(mappedRefunds);
+    } catch (err: any) {
+      console.warn('[AccountantPayouts] Live API failed, falling back to mock:', err);
+      const db = getMockDB();
+      const mockHasPayout = (db.payout_records || []).some((p: PayoutRecord) => p.id === activePayout.id);
+
+      if (!mockHasPayout) {
+        alert(err?.message || 'Không thể xác nhận chi tiền trên dữ liệu hiện tại.');
+        return;
       }
-      return r;
-    });
-    db.refund_records = updatedRefunds;
 
-    // Release room/bed to available
-    if (matchedRefund && matchedRefund.room_id) {
-      db.rooms = (db.rooms || []).map((rm: any) => {
-        if (rm.id === matchedRefund.room_id) {
-          const nextOccupants = Math.max(0, rm.current_occupants - 1);
-          return {
-            ...rm,
-            current_occupants: nextOccupants,
-            status: 'available' as const
-          };
-        }
-        return rm;
-      });
-    }
-
-    // Set active contracts to expired
-    if (db.customers) {
-      db.customers = db.customers.map((c: any) => {
-        const matchesCustomer = 
-          c.id === activePayout.customer_id || 
-          c.fullName === activePayout.customer_name ||
-          c.full_name === activePayout.customer_name;
-
-        if (matchesCustomer) {
-          const updatedContracts = (c.contracts || []).map((contract: any) => {
-            if (contract.status === 'active') {
-              return { ...contract, status: 'expired' as const };
-            }
-            return contract;
-          });
-          return {
-            ...c,
-            status: 'inactive' as const,
-            contracts: updatedContracts
-          };
-        }
-        return c;
-      });
-    }
-
-    // Clear renting room in profiles
-    if (db.profiles) {
-      db.profiles = db.profiles.map((p: any) => {
-        if (p.full_name === activePayout.customer_name || p.email === activePayout.customer_id) {
+      const updatedPayouts = db.payout_records.map((p: PayoutRecord) => {
+        if (p.id === activePayout.id) {
           return {
             ...p,
-            renting_room_name: undefined
+            payment_method: payMethod,
+            bank_name: payMethod === 'transfer' ? bankName : '',
+            bank_account: payMethod === 'transfer' ? bankAccount : '',
+            account_holder: payMethod === 'transfer' ? accountHolder : '',
+            status: 'completed' as const,
+            paid_at: new Date().toISOString().split('T')[0]
           };
         }
         return p;
       });
-    }
+      db.payout_records = updatedPayouts;
 
-    saveMockDB(db);
-    setPayouts(updatedPayouts);
-    setRefunds(updatedRefunds);
+      const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
+        if (r.id === activePayout.refund_id) {
+          return { ...r, status: 'paid' as const };
+        }
+        return r;
+      });
+      db.refund_records = updatedRefunds;
 
-    if (activePayout.amount >= 0) {
-      alert('Xác nhận xử lý hoàn cọc thành công!');
-    } else {
-      alert('Xác nhận xử lý thu thêm tiền thành công!');
+      if (matchedRefund && matchedRefund.room_id) {
+        db.rooms = (db.rooms || []).map((rm: any) => {
+          if (rm.id === matchedRefund.room_id) {
+            const nextOccupants = Math.max(0, rm.current_occupants - 1);
+            return {
+              ...rm,
+              current_occupants: nextOccupants,
+              status: 'available' as const
+            };
+          }
+          return rm;
+        });
+      }
+
+      if (db.customers) {
+        db.customers = db.customers.map((c: any) => {
+          const matchesCustomer = 
+            c.id === activePayout.customer_id || 
+            c.fullName === activePayout.customer_name ||
+            c.full_name === activePayout.customer_name;
+
+          if (matchesCustomer) {
+            const updatedContracts = (c.contracts || []).map((contract: any) => {
+              if (contract.status === 'active') {
+                return { ...contract, status: 'expired' as const };
+              }
+              return contract;
+            });
+            return {
+              ...c,
+              status: 'inactive' as const,
+              contracts: updatedContracts
+            };
+          }
+          return c;
+        });
+      }
+
+      if (db.profiles) {
+        db.profiles = db.profiles.map((p: any) => {
+          if (p.full_name === activePayout.customer_name || p.email === activePayout.customer_id) {
+            return { ...p, renting_room_name: undefined };
+          }
+          return p;
+        });
+      }
+
+      saveMockDB(db);
+      setPayouts(updatedPayouts);
+      setRefunds(updatedRefunds);
+
+      if (activePayout.amount >= 0) {
+        alert('Xác nhận xử lý hoàn cọc thành công (Mock DB)!');
+      } else {
+        alert('Xác nhận xử lý thu thêm tiền thành công (Mock DB)!');
+      }
     }
   };
 

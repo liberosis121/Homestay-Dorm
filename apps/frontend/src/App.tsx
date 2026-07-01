@@ -199,7 +199,7 @@ function DashboardLayout() {
     switch (user.role) {
       case 'admin':
         return [
-          { path: '/', label: 'Tổng quan hệ thống', icon: Home },
+          { path: '/admin/dashboard', label: 'Tổng quan hệ thống', icon: Home },
           { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
           { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
           { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
@@ -287,7 +287,7 @@ function DashboardLayout() {
       {/* ----------------------------------------------------
           SIDEBAR (Desktop)
          ---------------------------------------------------- */}
-      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col flex-shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
+      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
         <div className="p-6 border-b border-[#d1c4b9] flex items-center gap-3">
           <div className="p-2 bg-[#4a6549]/10 rounded-xl text-[#4a6549] border border-[#4a6549]/20 flex items-center justify-center shrink-0">
             <span 
@@ -491,6 +491,7 @@ function DashboardLayout() {
             {user.role === 'accountant' && <Route path="/accountant/refunds" element={<AccountantRefundsPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/payouts" element={<AccountantPayoutsPage />} />}
             {/* Admin Routes (UC25-UC32) */}
+            {user.role === 'admin' && <Route path="/admin/dashboard" element={<AdminDashboardPage />} />}
             {user.role === 'admin' && <Route path="/admin/users" element={<AdminUsersPage />} />}
             {user.role === 'admin' && <Route path="/admin/employees" element={<AdminEmployeesPage />} />}
             {user.role === 'admin' && <Route path="/admin/branches" element={<AdminBranchesPage />} />}
@@ -523,7 +524,7 @@ function DashboardDispatcher() {
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
   if (user.role === 'accountant') return <Navigate to="/accountant/dashboard" replace />;
   if (user.role === 'manager') return <Navigate to="/manager/dashboard" replace />;
-  if (user.role === 'admin') return <AdminDashboardPage />;
+  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
 
   const cards = [
     { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },
@@ -603,7 +604,7 @@ function DashboardDispatcher() {
 function PlaceholderPage() {
   const location = useLocation();
   return (
-    <div className="min-h-[450px] flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
+    <div className="min-h-112.5 flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
       <div className="p-5 bg-[#6f583c]/10 rounded-2xl text-[#6f583c] border border-[#6f583c]/20 mb-6 flex items-center justify-center">
         <Compass className="w-12 h-12" />
       </div>

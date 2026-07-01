@@ -1,13 +1,19 @@
 /**
  * Repository layer de thao tac voi database cac bang profiles, khach_hang, nhan_vien.
  * Phu thuoc: utils/supabase.ts
+ *
+ * Ghi chu (sau merge nhatanh-dev): file nay xuat KEP de phuc vu 2 service khac nhau:
+ *  - Cac ham roi (getProfileByUserId, updateProfile, getCustomerByCccd, getCustomerByUserId,
+ *    getStaffByUserId) -> dung boi services/auth.service.ts (luong auth that cua kyen).
+ *  - Object `profileRepo` + type `ProfileDto` -> dung boi services/profile.service.ts (endpoint /auth/me).
+ *  Khong xoa ben nao; xoa se vo compile mot trong hai service.
  */
 
 import { supabase } from '../utils/supabase';
 import { Profile } from '../types';
 
 // ============================================================
-// QUERY BẢNG PROFILES
+// QUERY BẢNG PROFILES (ham roi — dung cho auth.service)
 // ============================================================
 
 /**
@@ -23,7 +29,7 @@ import { Profile } from '../types';
 export async function getProfileByUserId(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, role, full_name, phone, avatar_url, created_at')
+    .select('id, email, role, full_name, phone, avatar_url, created_at')
     .eq('id', userId)  // Lọc theo UUID → chỉ ra đúng 1 bản ghi
     .single();         // Trả về object (không phải array), lỗi nếu không tìm thấy
 
@@ -113,7 +119,7 @@ export async function getCustomerByUserId(userId: string) {
     .from('khach_hang')
     .select(`
       *,
-      profiles!inner(id, role, full_name, phone)
+      profiles!inner(id, email, role, full_name, phone)
     `)
     .eq('user_id', userId)
     .single();
@@ -144,7 +150,7 @@ export async function getStaffByUserId(userId: string) {
     .from('nhan_vien')
     .select(`
       *,
-      profiles!inner(id, role, full_name, phone)
+      profiles!inner(id, email, role, full_name, phone)
     `)
     .eq('id', userId)  // nhan_vien.id = profiles.id = auth user UUID (khong co cot user_id trong nhan_vien)
     .single();
@@ -154,6 +160,175 @@ export async function getStaffByUserId(userId: string) {
     throw new Error(`[ProfileRepo] Lỗi khi tìm nhân viên theo userId=${userId}: ${error.message}`);
   }
 
+  if (data?.branch_id) {
+    const { data: branch } = await supabase
+      .from('branches')
+      .select('name')
+      .eq('id', data.branch_id)
+      .maybeSingle();
+
+    return {
+      ...data,
+      branch_name: branch?.name || data.branch_id,
+    };
+  }
+
   return data;
 }
 
+// ============================================================
+// OBJECT profileRepo (dung cho profile.service.ts — endpoint /auth/me)
+// Gop profile cha (profiles) voi ban ghi con (nhan_vien / khach_hang).
+// ============================================================
+
+export interface ProfileDto {
+  id: string;
+  email: string;
+  role: string;
+  full_name: string;
+  phone?: string;
+  avatar_url?: string;
+  created_at?: string;
+  [key: string]: any; // Allow arbitrary fields from child tables (nhan_vien, khach_hang)
+}
+
+export const profileRepo = {
+  findById: async (id: string): Promise<ProfileDto | null> => {
+    // 1. Fetch parent profile details
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle(); // maybeSingle doesn't throw if not found
+
+    if (profileErr || !profile) {
+      console.error('Error fetching parent profile:', profileErr);
+      return null;
+    }
+
+    // 2. Fetch specific child details based on the user role
+    const role = profile.role;
+    if (role === 'customer') {
+      const { data: customer, error: customerErr } = await supabase
+        .from('khach_hang')
+        .select('*')
+        .eq('user_id', id)
+        .maybeSingle();
+
+      if (customerErr) {
+        console.error('Error fetching khach_hang record:', customerErr);
+      }
+      if (customer) {
+        return {
+          ...profile,
+          ...customer,
+          type: 'customer'
+        };
+      }
+    } else {
+      // Employee roles: manager, sale, accountant, admin
+      const { data: employee, error: employeeErr } = await supabase
+        .from('nhan_vien')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (employeeErr) {
+        console.error('Error fetching nhan_vien record:', employeeErr);
+      }
+      if (employee) {
+        let branchName = employee.branch_id;
+        if (employee.branch_id) {
+          const { data: branch, error: branchErr } = await supabase
+            .from('branches')
+            .select('name')
+            .eq('id', employee.branch_id)
+            .maybeSingle();
+
+          if (branchErr) {
+            console.error('Error fetching branch record:', branchErr);
+          }
+          branchName = branch?.name || employee.branch_id;
+        }
+
+        return {
+          ...profile,
+          ...employee,
+          branch_name: branchName,
+          type: 'employee'
+        };
+      }
+    }
+
+    // Fallback: return basic profile if child record doesn't exist
+    return profile;
+  },
+
+  update: async (id: string, updates: Partial<ProfileDto>): Promise<ProfileDto> => {
+    // 1. Fetch current profile details to determine the role
+    const currentProfile = await profileRepo.findById(id);
+    if (!currentProfile) {
+      throw new Error('Profile not found');
+    }
+
+    // 2. Separate updates into parent (profiles) and child (nhan_vien / khach_hang) tables
+    const parentFields = ['email', 'role', 'full_name', 'phone', 'avatar_url'];
+    const parentUpdates: Record<string, any> = {};
+    const childUpdates: Record<string, any> = {};
+
+    Object.keys(updates).forEach(key => {
+      if (parentFields.includes(key)) {
+        parentUpdates[key] = updates[key];
+      } else {
+        childUpdates[key] = updates[key];
+      }
+    });
+
+    // Synchronize full_name, phone, and email across parent and child tables if updated
+    if (updates.full_name) {
+      parentUpdates.full_name = updates.full_name;
+      childUpdates.full_name = updates.full_name;
+    }
+    if (updates.phone) {
+      parentUpdates.phone = updates.phone;
+      childUpdates.phone = updates.phone;
+    }
+    if (updates.email) {
+      parentUpdates.email = updates.email;
+      childUpdates.email = updates.email;
+    }
+
+    // 3. Update profiles (parent table)
+    if (Object.keys(parentUpdates).length > 0) {
+      const { error: parentErr } = await supabase
+        .from('profiles')
+        .update(parentUpdates)
+        .eq('id', id);
+      if (parentErr) throw parentErr;
+    }
+
+    // 4. Update child table based on role
+    if (Object.keys(childUpdates).length > 0) {
+      if (currentProfile.role === 'customer') {
+        const { error: customerErr } = await supabase
+          .from('khach_hang')
+          .update(childUpdates)
+          .eq('user_id', id);
+        if (customerErr) throw customerErr;
+      } else {
+        const { error: employeeErr } = await supabase
+          .from('nhan_vien')
+          .update(childUpdates)
+          .eq('id', id);
+        if (employeeErr) throw employeeErr;
+      }
+    }
+
+    // 5. Fetch and return full updated profile
+    const updated = await profileRepo.findById(id);
+    if (!updated) {
+      throw new Error('Failed to retrieve updated profile');
+    }
+    return updated;
+  }
+};

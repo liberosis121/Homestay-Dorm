@@ -15,6 +15,11 @@ import { UserRole } from '../types/constants';
  * Nếu hợp lệ → gán thông tin user vào `req.user` → gọi `next()` cho middleware/route tiếp theo.
  * Nếu không → trả về 401 Unauthorized, chặn request tại đây.
  *
+ * Chấp nhận 2 loại token (thiết kế auth của kyen):
+ *  1. Token Supabase thật → verify qua `supabase.auth.getUser`.
+ *  2. `mock-token-{email}` (cầu nối cho các trang feature dùng raw fetch) → tra bảng
+ *     `profiles` theo email, tự map `@homestay.com` → `@homestay.vn`.
+ *
  * Cách dùng trong route:
  * @example
  * router.get('/profile', requireAuth, (req, res) => {
@@ -39,10 +44,40 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     // "Bearer eyJhbG..." → split(' ') → ['Bearer', 'eyJhbG...'] → [1] → 'eyJhbG...'
     const token = authHeader.split(' ')[1];
 
-    // Bước 3: Nhờ Supabase verify token → trả về thông tin user nếu token hợp lệ
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // Bước 3: Xác định người dùng từ token
+    let user: any = null;
+    let authError: any = null;
 
-    if (error || !user) {
+    if (token.startsWith('mock-token-')) {
+      // Token cầu nối: phần còn lại sau prefix chính là email đăng nhập.
+      const tokenPayload = token.replace('mock-token-', '');
+      const emailPart = tokenPayload
+        .split('-')
+        .reverse()
+        .find(part => part.includes('@'));
+      let email = emailPart || tokenPayload;
+      if (email.endsWith('@homestay.com')) {
+        email = email.replace('@homestay.com', '@homestay.vn');
+      }
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (profileError || !profile) {
+        authError = profileError || new Error('Khong tim thay profile cho email: ' + email);
+      } else {
+        user = { id: profile.id, email: profile.email };
+      }
+    } else {
+      // Token Supabase thật → nhờ Supabase verify
+      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser(token);
+      user = supabaseUser;
+      authError = error;
+    }
+
+    if (authError || !user) {
       return res.status(401).json({
         success: false,
         message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',

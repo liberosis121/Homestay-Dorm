@@ -5,8 +5,11 @@ import {
 import { mockSupabase, getMockDB, saveMockDB, DepositInvoice, Profile, Room, CustomerDepositRequest } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
+import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
 
 export default function AccountantDepositPage() {
+  const { user } = useAuthStore();
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
   const [customers, setCustomers] = useState<Profile[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -39,12 +42,67 @@ export default function AccountantDepositPage() {
 
   // Load initial data
   useEffect(() => {
-    const db = getMockDB();
-    setInvoices(db.deposit_invoices || []);
-    setCustomers(db.profiles?.filter((p: Profile) => p.role === 'customer') || []);
-    setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
-    setDepositRequests(db.customer_deposit_requests || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [pendingRequests, depInvoices] = await Promise.all([
+          accountantService.fetchPendingDepositRequests(email),
+          accountantService.fetchDepositInvoices(email)
+        ]);
+
+        const mappedRequests = (pendingRequests || []).map((req: any) => {
+          const kh = req.rental_registrations?.khach_hang || {};
+          const prof = kh.profiles || {};
+          return {
+            id: req.id,
+            customer_id: kh.user_id || req.customer_id,
+            customer_name: prof.full_name || req.customer_name || 'Khách hàng',
+            customer_phone: prof.phone || req.customer_phone || '',
+            room_id: req.room_id,
+            room_name: req.rooms?.name || req.room_name || 'Phòng',
+            room_image_url: req.room_image_url || '',
+            branch_name: req.rooms?.branches?.name || req.branch_name || '',
+            viewing_schedule_id: req.viewing_schedule_id || '',
+            deposit_amount: req.deposit_amount,
+            expected_move_in_date: req.expected_move_in_date || '',
+            status: req.status,
+            note: req.note || '',
+            created_at: req.created_at || ''
+          };
+        });
+
+        const mappedInvoices = (depInvoices || []).map((inv: any) => {
+          const req = inv.deposit_requests || {};
+          const rawDeadline = inv.deadline || req.payment_deadline || '';
+          const rawCreatedAt = inv.created_at || req.created_at || '';
+          return {
+            id: inv.id,
+            customer_id: inv.customer_id || req.customer_id,
+            customer_name: inv.customer_name || 'Khách hàng',
+            room_id: inv.room_id || req.room_id,
+            room_name: inv.room_name || req.rooms?.name || 'Phòng',
+            amount: inv.amount,
+            deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
+            payment_method: inv.payment_method,
+            status: inv.status,
+            created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
+            note: inv.note
+          };
+        });
+
+        setDepositRequests(mappedRequests);
+        setInvoices(mappedInvoices);
+      } catch (err) {
+        console.warn('[AccountantDeposit] Failed to fetch backend data, falling back to mock:', err);
+        const db = getMockDB();
+        setInvoices(db.deposit_invoices || []);
+        setCustomers(db.profiles?.filter((p: Profile) => p.role === 'customer') || []);
+        setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
+        setDepositRequests(db.customer_deposit_requests || []);
+      }
+    };
+    loadData();
+  }, [user]);
 
   const handleSelectRequest = (req: CustomerDepositRequest) => {
     setSelectedRequestId(req.id);
@@ -64,78 +122,175 @@ export default function AccountantDepositPage() {
     setNote('');
   };
 
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRequestId || !selectedCustomerId || !selectedRoomId) {
       setToastMessage('Vui lòng chọn phiếu đặt cọc trước!');
       return;
     }
 
-    const customer = customers.find(c => c.id === selectedCustomerId);
-    const room = rooms.find(r => r.id === selectedRoomId);
     const req = depositRequests.find(r => r.id === selectedRequestId);
     if (!req) return;
 
     const parsedAmount = parseInt(amount.replace(/\D/g, '')) || req.deposit_amount || 0;
-    
-    // Calculate deadline date
-    const deadlineDate = new Date();
-    if (deadlineType === '24h') {
-      deadlineDate.setDate(deadlineDate.getDate() + 1);
-    } else if (deadlineType === '48h') {
-      deadlineDate.setDate(deadlineDate.getDate() + 2);
-    } else {
-      deadlineDate.setDate(deadlineDate.getDate() + 3);
-    }
+    const email = user?.email || 'accountant@homestay.vn';
 
-    const newInvoice: Omit<DepositInvoice, 'id'> = {
-      customer_id: selectedCustomerId,
-      customer_name: customer?.full_name || req.customer_name,
-      room_id: selectedRoomId,
-      room_name: room?.name || req.room_name,
-      amount: parsedAmount,
-      deadline: deadlineDate.toISOString().replace('T', ' ').substring(0, 16),
-      payment_method: paymentMethod,
-      status: 'pending',
-      created_at: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      note: note || undefined
-    };
-
-    const res = mockSupabase.from('deposit_invoices').insert(newInvoice);
-    if (res.data) {
-      // Reload db state
-      const db = getMockDB();
-      setInvoices(db.deposit_invoices || []);
-      
-      // Update room status to deposited
-      const updatedRooms = db.rooms.map((r: Room) => {
-        if (r.id === selectedRoomId) {
-          return { ...r, status: 'deposited' };
-        }
-        return r;
+    try {
+      await accountantService.createDepositInvoice(email, {
+        requestId: selectedRequestId,
+        customerId: selectedCustomerId,
+        roomId: selectedRoomId,
+        amount: parsedAmount,
+        deadlineType,
+        paymentMethod,
+        note
       });
-      db.rooms = updatedRooms;
 
-      // Update deposit request status to 'invoice_created'
-      const updatedRequests = (db.customer_deposit_requests || []).map((r: CustomerDepositRequest) => {
-        if (r.id === selectedRequestId) {
-          return { ...r, status: 'invoice_created' };
-        }
-        return r;
-      });
-      db.customer_deposit_requests = updatedRequests;
-      
-      saveMockDB(db);
-      setRooms(updatedRooms.filter((r: Room) => r.status === 'available' || r.status === 'partial'));
-      setDepositRequests(updatedRequests);
-
-      // Reset form
-      handleResetForm();
       setToastMessage('Tạo hóa đơn cọc thành công.');
+      handleResetForm();
+
+      const pendingRequests = await accountantService.fetchPendingDepositRequests(email);
+      const depInvoices = await accountantService.fetchDepositInvoices(email);
+
+      const mappedRequests = (pendingRequests || []).map((req: any) => {
+        const kh = req.rental_registrations?.khach_hang || {};
+        const prof = kh.profiles || {};
+        return {
+          id: req.id,
+          customer_id: kh.user_id || req.customer_id,
+          customer_name: prof.full_name || req.customer_name || 'Khách hàng',
+          customer_phone: prof.phone || req.customer_phone || '',
+          room_id: req.room_id,
+          room_name: req.rooms?.name || req.room_name || 'Phòng',
+          room_image_url: req.room_image_url || '',
+          branch_name: req.rooms?.branches?.name || req.branch_name || '',
+          viewing_schedule_id: req.viewing_schedule_id || '',
+          deposit_amount: req.deposit_amount,
+          expected_move_in_date: req.expected_move_in_date || '',
+          status: req.status,
+          note: req.note || '',
+          created_at: req.created_at || ''
+        };
+      });
+
+      const mappedInvoices = (depInvoices || []).map((inv: any) => {
+        const req = inv.deposit_requests || {};
+        const rawDeadline = inv.deadline || req.payment_deadline || '';
+        const rawCreatedAt = inv.created_at || req.created_at || '';
+        return {
+          id: inv.id,
+          customer_id: inv.customer_id || req.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: inv.room_id || req.room_id,
+          room_name: inv.room_name || req.rooms?.name || 'Phòng',
+          amount: inv.amount,
+          deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
+          payment_method: inv.payment_method,
+          status: inv.status,
+          created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
+          note: inv.note
+        };
+      });
+
+      setDepositRequests(mappedRequests);
+      setInvoices(mappedInvoices);
+    } catch (err: any) {
+      console.warn('[AccountantDeposit] Live API failed, falling back to mock DB:', err);
+      const customer = customers.find(c => c.id === selectedCustomerId);
+      const room = rooms.find(r => r.id === selectedRoomId);
+      const req = depositRequests.find(r => r.id === selectedRequestId);
+      if (!req) return;
+
+      const parsedAmount = parseInt(amount.replace(/\D/g, '')) || req.deposit_amount || 0;
+      const deadlineDate = new Date();
+      if (deadlineType === '24h') {
+        deadlineDate.setDate(deadlineDate.getDate() + 1);
+      } else if (deadlineType === '48h') {
+        deadlineDate.setDate(deadlineDate.getDate() + 2);
+      } else {
+        deadlineDate.setDate(deadlineDate.getDate() + 3);
+      }
+
+      const newInvoice: Omit<DepositInvoice, 'id'> = {
+        customer_id: selectedCustomerId,
+        customer_name: customer?.full_name || req.customer_name,
+        room_id: selectedRoomId,
+        room_name: room?.name || req.room_name,
+        amount: parsedAmount,
+        deadline: deadlineDate.toISOString().replace('T', ' ').substring(0, 16),
+        payment_method: paymentMethod,
+        status: 'pending',
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        note: note || undefined
+      };
+
+      const res = mockSupabase.from('deposit_invoices').insert(newInvoice);
+      if (res.data) {
+        const db = getMockDB();
+        setInvoices(db.deposit_invoices || []);
+        const updatedRooms = db.rooms.map((r: Room) => {
+          if (r.id === selectedRoomId) return { ...r, status: 'deposited' };
+          return r;
+        });
+        db.rooms = updatedRooms;
+        const updatedRequests = (db.customer_deposit_requests || []).map((r: CustomerDepositRequest) => {
+          if (r.id === selectedRequestId) return { ...r, status: 'invoice_created' };
+          return r;
+        });
+        db.customer_deposit_requests = updatedRequests;
+        saveMockDB(db);
+        setRooms(updatedRooms.filter((r: Room) => r.status === 'available' || r.status === 'partial'));
+        setDepositRequests(updatedRequests);
+        handleResetForm();
+        setToastMessage('Tạo hóa đơn cọc thành công (Mock DB).');
+      }
     }
   };
 
 
+
+  const handleConfirmPayment = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmInvoicePayment(email, id, 'transfer');
+      setToastMessage('Đã xác nhận thu tiền thành công.');
+
+      // Refresh invoices
+      const depInvoices = await accountantService.fetchDepositInvoices(email);
+      const mappedInvoices = (depInvoices || []).map((inv: any) => {
+        const req = inv.deposit_requests || {};
+        const rawDeadline = inv.deadline || req.payment_deadline || '';
+        const rawCreatedAt = inv.created_at || req.created_at || '';
+        return {
+          id: inv.id,
+          customer_id: inv.customer_id || req.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: inv.room_id || req.room_id,
+          room_name: inv.room_name || req.rooms?.name || 'Phòng',
+          amount: inv.amount,
+          deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
+          payment_method: inv.payment_method,
+          status: inv.status,
+          created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
+          note: inv.note
+        };
+      });
+      setInvoices(mappedInvoices);
+    } catch (err) {
+      console.warn('[AccountantDeposit] Live API confirm payment failed, falling back to mock DB:', err);
+      const db = getMockDB();
+      const updatedInvoices = (db.deposit_invoices || []).map((inv: any) => {
+        if (inv.id === id) {
+          return { ...inv, status: 'paid' as const };
+        }
+        return inv;
+      });
+      db.deposit_invoices = updatedInvoices;
+      saveMockDB(db);
+      setInvoices(updatedInvoices);
+      setToastMessage('Đã xác nhận thu tiền thành công (Mock DB).');
+    }
+  };
 
   // Summaries
   const totalCount = invoices.length;
@@ -594,6 +749,18 @@ export default function AccountantDepositPage() {
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
 
+                      {inv.status === 'pending' && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Xác nhận đã thu tiền cho hóa đơn ${inv.id}?`)) {
+                              handleConfirmPayment(inv.id);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-[#5F7D4E] hover:bg-[#5F7D4E]/90 text-white text-xs font-semibold rounded-md transition-all cursor-pointer active:scale-[0.95]"
+                        >
+                          Thu tiền
+                        </button>
+                      )}
                       <button 
                         onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
                         className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]"
