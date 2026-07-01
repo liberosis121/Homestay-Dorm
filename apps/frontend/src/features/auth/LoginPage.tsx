@@ -25,9 +25,17 @@ export default function LoginPage() {
       return;
     }
 
-    const success = await login(email);
+    // Truyền cả email lẫn password — authStore giờ gọi API thật
+    const success = await login(email, password);
     if (success) {
-      navigate('/');
+      // Redirect theo role: sale/manager/accountant vào dashboard, customer về trang chủ
+      const savedUser = JSON.parse(localStorage.getItem('user_profile') || '{}');
+      const role = savedUser?.role;
+      if (role === 'sale') navigate('/sale/dashboard');
+      else if (role === 'manager') navigate('/manager/dashboard');
+      else if (role === 'accountant') navigate('/accountant/dashboard');
+      else if (role === 'admin') navigate('/admin/dashboard');
+      else navigate('/');
     } else {
       setFailed(true);
     }
@@ -35,7 +43,8 @@ export default function LoginPage() {
 
   const fillCredential = (presetEmail: string) => {
     setEmail(presetEmail);
-    setPassword('password123');
+    // Mật khẩu thực tế trong script nạp dữ liệu (seed data) là '123456'
+    setPassword('123456');
   };
 
   return (
@@ -196,12 +205,12 @@ export default function LoginPage() {
                 </summary>
                 <div className="grid grid-cols-1 gap-2 mt-4">
                   {[
-                    { email: 'admin@homestay.com', name: 'Quản trị viên (Admin)' },
-                    { email: 'manager@homestay.com', name: 'Quản lý (Manager)' },
-                    { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)' },
-                    { email: 'accountant@homestay.com', name: 'Kế toán (Accountant)' },
-                    { email: 'customer@gmail.com', name: 'Khách hàng cũ (Đã thuê)' },
-                    { email: 'newcustomer@gmail.com', name: 'Khách hàng mới (Chưa thuê)' }
+                    { email: 'admin@homestay.vn', name: 'Quản trị viên (Admin)' },
+                    { email: 'manager@homestay.vn', name: 'Quản lý (Manager)' },
+                    { email: 'sale@homestay.vn', name: 'Nhân viên Sale (Sale)' },
+                    { email: 'accountant@homestay.vn', name: 'Kế toán (Accountant)' },
+                    { email: 'customer1@gmail.com', name: 'Khách hàng cũ (Đã thuê)' },
+                    { email: 'customer2@gmail.com', name: 'Khách hàng mới (Chưa thuê)' }
                   ].map((p) => (
                     <button
                       key={p.email}

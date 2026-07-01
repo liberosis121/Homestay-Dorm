@@ -24,7 +24,6 @@ import {
   LogIn,
   Search
 } from 'lucide-react';
-import { initializeMockDB } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
@@ -86,12 +85,8 @@ function ScrollToTop() {
   return null;
 }
 
-// App Wrapper to handle initialization
+// App Wrapper — khởi tạo phiên làm việc khi ứng dụng mở lần đầu
 export default function App() {
-  useEffect(() => {
-    initializeMockDB();
-  }, []);
-
   return (
     <HashRouter>
       <AppRoutes />
@@ -200,10 +195,11 @@ function DashboardLayout() {
 
   // Dynamic Sidebar Menu Items based on User Role
   const getMenuItems = () => {
+    if (!user) return [];
     switch (user.role) {
       case 'admin':
         return [
-          { path: '/', label: 'Tổng quan hệ thống', icon: Home },
+          { path: '/admin/dashboard', label: 'Tổng quan hệ thống', icon: Home },
           { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
           { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
           { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
@@ -260,12 +256,14 @@ function DashboardLayout() {
   };
 
   const getRoleLabel = () => {
+    if (!user) return { text: 'Người dùng', bg: 'bg-surface-container text-on-surface border-outline/20' };
     switch (user.role) {
       case 'admin': return { text: 'Quản trị viên', bg: 'bg-primary-container text-on-primary-container border-primary/20' };
       case 'manager': return { text: 'Quản lý chi nhánh', bg: 'bg-primary-fixed-dim/20 text-primary border-primary/20' };
       case 'sale': return { text: 'Nhân viên Sale', bg: 'bg-secondary-container text-on-secondary-container border-secondary/20' };
       case 'accountant': return { text: 'Kế toán', bg: 'bg-tertiary-container text-on-tertiary-container border-tertiary/20' };
       case 'customer': return { text: 'Khách thuê', bg: 'bg-error-container text-on-error-container border-error/20' };
+      default: return { text: 'Người dùng', bg: 'bg-surface-container text-on-surface border-outline/20' };
     }
   };
 
@@ -273,6 +271,7 @@ function DashboardLayout() {
   const menuItems = getMenuItems();
 
   const getSidebarSubtitle = () => {
+    if (!user) return 'PHÂN HỆ';
     switch (user.role) {
       case 'sale': return 'PHÂN HỆ NHÂN VIÊN SALE';
       case 'manager': return 'PHÂN HỆ QUẢN LÝ';
@@ -422,10 +421,10 @@ function DashboardLayout() {
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer overflow-hidden"
               >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.full_name ?? 'User'} className="w-full h-full object-cover" />
                 ) : (
-                  user.full_name.charAt(0)
+                  user?.full_name?.charAt(0) ?? 'U'
                 )}
               </button>
 
@@ -492,6 +491,7 @@ function DashboardLayout() {
             {user.role === 'accountant' && <Route path="/accountant/refunds" element={<AccountantRefundsPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/payouts" element={<AccountantPayoutsPage />} />}
             {/* Admin Routes (UC25-UC32) */}
+            {user.role === 'admin' && <Route path="/admin/dashboard" element={<AdminDashboardPage />} />}
             {user.role === 'admin' && <Route path="/admin/users" element={<AdminUsersPage />} />}
             {user.role === 'admin' && <Route path="/admin/employees" element={<AdminEmployeesPage />} />}
             {user.role === 'admin' && <Route path="/admin/branches" element={<AdminBranchesPage />} />}
@@ -524,7 +524,7 @@ function DashboardDispatcher() {
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
   if (user.role === 'accountant') return <Navigate to="/accountant/dashboard" replace />;
   if (user.role === 'manager') return <Navigate to="/manager/dashboard" replace />;
-  if (user.role === 'admin') return <AdminDashboardPage />;
+  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
 
   const cards = [
     { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },

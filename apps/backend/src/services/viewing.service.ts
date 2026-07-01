@@ -91,7 +91,7 @@ export const viewingService = {
     // 2. Kiem tra lich xem co ton tai khong
     const schedule = await viewingRepo.getScheduleById(scheduleId);
     if (!schedule) {
-      throw new Error('Lich xem phong khong ton tai.');
+      throw new Error('Lich xem phong không tồn tại.');
     }
 
     // 3. Xac minh quyen phu trach: Sale phai la nguoi duoc phan cong cho lich nay
@@ -99,7 +99,19 @@ export const viewingService = {
       throw new Error('Ban khong phai nhan vien duoc phan cong phu trach lich hen nay.');
     }
 
-    // 4. Cap nhat ket qua
+    // 4. Chi duoc cap nhat ket qua khi lich van dang o trang thai scheduled
+    // Neu da hoan thanh hoac huy, khong cho phep ghi de ket qua cu
+    if (schedule.result !== null && schedule.result !== undefined && schedule.result !== '') {
+      throw new Error('Ket qua cua buoi xem phong nay da duoc ghi nhan truoc do, khong the thay doi.');
+    }
+
+    // 5. Validate gia tri result phai la gia tri hop le
+    const validResults = [VIEWING_STATUS.COMPLETED, VIEWING_STATUS.CANCELLED];
+    if (!validResults.includes(result as any)) {
+      throw new Error(`Gia tri ket qua khong hop le. Chi chap nhan: ${validResults.join(', ')}.`);
+    }
+
+    // 6. Cap nhat ket qua
     return await viewingRepo.updateScheduleResult(scheduleId, result, note);
   },
 

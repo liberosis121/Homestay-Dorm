@@ -48,8 +48,21 @@ export interface Customer {
   }>;
   contracts: Array<{
     id: string;
+    contractCode?: string;
     period: string;
     status: 'active' | 'expired' | 'pending';
+    rawStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    signDate?: string;
+    roomName?: string;
+    roomType?: string;
+    branchName?: string;
+    rentPrice?: number;
+    depositAmount?: number;
+    depositId?: string;
+    contractType?: string;
+    paymentCycle?: string;
   }>;
   recentActivities: Array<{
     icon: string;

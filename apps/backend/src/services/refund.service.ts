@@ -1,0 +1,134 @@
+import { refundRepo } from '../repositories/refund.repo';
+import { supabase } from '../utils/supabase';
+
+export const refundService = {
+  /**
+   * Lay cac don yeu cau tra phong chua doi soat.
+   */
+  getPendingCheckouts: async () => {
+    return await refundRepo.getPendingCheckouts();
+  },
+
+  /**
+   * Lay cac ban doi soat hoan coc.
+   */
+  getReconciliations: async () => {
+    return await refundRepo.getRefundReconciliations();
+  },
+
+  /**
+   * Lap ban doi soat hoan coc va cap nhat trang thai don tra phong.
+   */
+  createReconciliation: async (data: {
+    checkoutId: string;
+    contractId: string;
+    originalDeposit: number;
+    refundRate: number; // 0.0 - 1.0 (vi du: 1.0 = 100%, 0.7 = 70%)
+    baseRefund: number;
+    totalDeductions: number;
+    finalRefund: number;
+    additionalCharge: number;
+    note?: string;
+    staffId: string;
+  }) => {
+    if (!data.checkoutId || !data.contractId || data.originalDeposit === undefined) {
+      throw new Error('Cac truong bat buoc: checkoutId, contractId, originalDeposit');
+    }
+
+    const { data: checkout, error: checkoutError } = await supabase
+      .from('checkouts')
+      .select('id, contract_id, status')
+      .eq('id', data.checkoutId)
+      .maybeSingle();
+
+    if (checkoutError || !checkout) {
+      throw new Error(`[RefundService] Khong tim thay yeu cau tra phong ID=${data.checkoutId}: ${checkoutError?.message || 'missing checkout'}`);
+    }
+
+    if (checkout.contract_id !== data.contractId) {
+      throw new Error(`[RefundService] Hop dong ${data.contractId} khong khop voi yeu cau tra phong ${data.checkoutId}.`);
+    }
+
+    const { data: existingReconciliations, error: existingError } = await supabase
+      .from('refund_reconciliations')
+      .select('id')
+      .eq('checkout_id', data.checkoutId)
+      .limit(1);
+
+    if (existingError) {
+      throw new Error(`[RefundService] Loi khi kiem tra doi soat ton tai: ${existingError.message}`);
+    }
+
+    if (existingReconciliations && existingReconciliations.length > 0) {
+      const duplicateError: any = new Error(`Yeu cau tra phong ${data.checkoutId} da co ban doi soat ${existingReconciliations[0].id}.`);
+      duplicateError.status = 409;
+      throw duplicateError;
+    }
+
+    const reconciliationId = 'REF-' + Math.floor(100000 + Math.random() * 900000);
+    const reconciliationData = {
+      id: reconciliationId,
+      checkout_id: data.checkoutId,
+      original_deposit: data.originalDeposit,
+      refund_rate: data.refundRate,
+      base_refund: data.baseRefund,
+      total_deductions: data.totalDeductions,
+      final_refund: data.finalRefund,
+      additional_charge: data.additionalCharge,
+      reconciliation_date: new Date().toISOString().split('T')[0],
+      status: 'pending',
+      staff_id: data.staffId
+    };
+
+    const reconciliation = await refundRepo.createRefundReconciliation(reconciliationData);
+
+    // Tu dong tao luon mot hoa don hoan coc (invoices) o trang thai pending neu so tien hoan duong (> 0)
+    if (data.finalRefund > 0) {
+      const payoutInvoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
+      const { error: payoutError } = await supabase
+        .from('invoices')
+        .insert({
+          id: payoutInvoiceId,
+          amount: data.finalRefund,
+          status: 'pending',
+          invoice_type: 'refund',
+          payment_method: 'transfer',
+          contract_id: data.contractId,
+          reconciliation_id: reconciliation.id,
+          staff_id: data.staffId
+        });
+
+      if (payoutError) {
+        await supabase.from('refund_reconciliations').delete().eq('id', reconciliation.id);
+        throw new Error(`[RefundService] Loi khi tao phieu chi tu dong: ${payoutError.message}`);
+      }
+    }
+
+    // Neu finalRefund < 0, tuc la khach hang no them tien, ta tao 1 hoa don thu tien phat sinh
+    if (data.finalRefund < 0) {
+      const debtInvoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
+      const debtAmount = Math.abs(data.finalRefund);
+      const { error: debtInvError } = await supabase
+        .from('invoices')
+        .insert({
+          id: debtInvoiceId,
+          amount: debtAmount,
+          status: 'pending',
+          invoice_type: 'refund',
+          payment_method: 'transfer',
+          contract_id: data.contractId,
+          reconciliation_id: reconciliation.id,
+          staff_id: data.staffId
+        });
+
+      if (debtInvError) {
+        await supabase.from('refund_reconciliations').delete().eq('id', reconciliation.id);
+        throw new Error(`[RefundService] Loi khi tao hoa don thu no: ${debtInvError.message}`);
+      }
+    }
+
+    await refundRepo.updateCheckoutStatus(data.checkoutId, 'reconciled');
+
+    return reconciliation;
+  }
+};

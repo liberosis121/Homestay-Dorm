@@ -4,6 +4,15 @@ import { adminServicesService } from '../services/admin-services.service';
 
 const router = Router();
 
+const getErrorStatus = (err: unknown) => {
+  const statusCode = (err as { statusCode?: unknown })?.statusCode;
+  return typeof statusCode === 'number' ? statusCode : 500;
+};
+
+const getErrorMessage = (err: unknown) => {
+  return err instanceof Error ? err.message : 'Unexpected error';
+};
+
 // Middleware to ensure the authenticated user is an Admin
 const requireAdmin = async (req: Request, res: Response, next: any) => {
   try {
@@ -33,8 +42,8 @@ router.get('/services', async (req: Request, res: Response) => {
   try {
     const data = await adminServicesService.getAllServices();
     res.json({ success: true, data });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    res.status(getErrorStatus(err)).json({ success: false, message: getErrorMessage(err) });
   }
 });
 
@@ -42,8 +51,8 @@ router.post('/services', async (req: Request, res: Response) => {
   try {
     const data = await adminServicesService.createService(req.body);
     res.json({ success: true, data });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    res.status(getErrorStatus(err)).json({ success: false, message: getErrorMessage(err) });
   }
 });
 
@@ -51,8 +60,8 @@ router.put('/services/:id', async (req: Request, res: Response) => {
   try {
     const data = await adminServicesService.updateService(req.params.id, req.body);
     res.json({ success: true, data });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    res.status(getErrorStatus(err)).json({ success: false, message: getErrorMessage(err) });
   }
 });
 

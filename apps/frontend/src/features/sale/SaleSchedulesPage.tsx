@@ -67,6 +67,9 @@ const SaleSchedulesPage: React.FC = () => {
     createSchedule,
     rescheduleAppointment,
     getScheduleById,
+    schedules,
+    loadSchedules,
+    loadError,
   } = useSaleScheduleStore();
 
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 5, 2)); // Anchored to June 2026
@@ -82,10 +85,7 @@ const SaleSchedulesPage: React.FC = () => {
 
   // Filter reactively for calendar view (excludes selectedDate filter so other days remain visible)
   const calendarSchedules = React.useMemo(() => {
-    const isSale = user?.role === 'sale';
-    return useSaleScheduleStore.getState().schedules.filter((s) => {
-      // NV sales chỉ đc xem lịch hẹn tại chi nhánh mình làm việc (b-1)
-      if (isSale && s.branchId !== 'b-1') return false;
+    return schedules.filter((s) => {
       if (filters.selectedBranch && s.branchId !== filters.selectedBranch) return false;
       if (filters.selectedStatus && s.status !== filters.selectedStatus) return false;
       if (filters.searchQuery) {
@@ -99,16 +99,17 @@ const SaleSchedulesPage: React.FC = () => {
       }
       return true;
     });
-  }, [filters.selectedBranch, filters.selectedStatus, filters.searchQuery, user]);
+  }, [schedules, filters.selectedBranch, filters.selectedStatus, filters.searchQuery]);
   const selectedSchedule = selectedScheduleId ? getScheduleById(selectedScheduleId) : null;
 
-  // Load data from MockDB
+  // Tải lịch xem phòng THẬT từ API; dữ liệu cho modal tạo lịch (demo) vẫn lấy từ MockDB.
   useEffect(() => {
+    loadSchedules();
     const db = getMockDB();
     setRooms(db.rooms || []);
     setBranches(db.branches || []);
     setCustomers((db.profiles || []).filter((p: MockProfile) => p.role === 'customer'));
-  }, []);
+  }, [loadSchedules]);
 
   const handleMonthChange = (dir: 'prev' | 'next') => {
     setCurrentMonth((prev) => {
@@ -169,6 +170,22 @@ const SaleSchedulesPage: React.FC = () => {
         onSetFilter={setFilter}
         onReset={resetFilters}
       />
+
+      {/* Lỗi tải dữ liệu */}
+      {loadError && (
+        <div className="rounded-2xl px-4 py-3 text-sm flex items-center gap-2 bg-error/10 text-error border border-error/30">
+          <XCircle className="w-4 h-4 shrink-0" /> {loadError}
+        </div>
+      )}
+
+      {/* Ghi chú chế độ kết nối */}
+      <div className="rounded-2xl px-4 py-2.5 text-xs flex items-start gap-2 bg-[#fdf6ec] text-[#7a5a2e] border border-[#e7d3b5]">
+        <FileText className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <span>
+          Danh sách &amp; <b>Dời lịch</b> đã đồng bộ máy chủ thật. Thao tác <b>Tạo / Hủy / Hoàn thành</b> hiện ở chế độ thử nghiệm
+          (chưa lưu CSDL do bảng lịch chưa có cột trạng thái).
+        </span>
+      </div>
 
       {/* Bento Grid */}
       <div className="grid grid-cols-12 gap-5">

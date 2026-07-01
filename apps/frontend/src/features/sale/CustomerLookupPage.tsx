@@ -7,8 +7,11 @@ import CustomerTabs from './components/CustomerTabs';
 import CustomerTimeline from './components/CustomerTimeline';
 import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
 import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../stores/authStore';
+import { customerLookupService } from './services/customerLookup.service';
 
 export default function CustomerLookupPage() {
+  const { user } = useAuthStore();
 
   // Trạng thái Form Tìm kiếm
   const [searchName, setSearchName] = useState('');
@@ -22,13 +25,23 @@ export default function CustomerLookupPage() {
 
   // Load database từ LocalStorage lúc khởi tạo
   useEffect(() => {
-    const db = getMockDB();
-    if (db && db.customers && db.customers.length > 0) {
-      setCustomers(db.customers);
-    } else {
-      setCustomers(MOCK_CUSTOMERS);
-    }
-  }, []);
+    const loadCustomersList = async () => {
+      const email = user?.email || 'sale@homestay.vn';
+      try {
+        const liveCustomers = await customerLookupService.fetchCustomers(email);
+        setCustomers(liveCustomers);
+      } catch (err) {
+        console.warn('[CustomerLookup] Failed to fetch live customer data, falling back to mock:', err);
+        const db = getMockDB();
+        if (db && db.customers && db.customers.length > 0) {
+          setCustomers(db.customers);
+        } else {
+          setCustomers(MOCK_CUSTOMERS);
+        }
+      }
+    };
+    loadCustomersList();
+  }, [user]);
 
   // Lọc danh sách khách hàng dựa trên thông tin tìm kiếm
   const filteredCustomers = useMemo(() => {
@@ -107,15 +120,33 @@ export default function CustomerLookupPage() {
 
 
   // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
-  const handleUpdateCustomer = (updatedCust: Customer) => {
-    const db = getMockDB();
-    const updatedList = customers.map(c => 
-      c.id === updatedCust.id ? updatedCust : c
-    );
-    setCustomers(updatedList);
-    db.customers = updatedList;
-    saveMockDB(db);
-    setActiveCustomer(updatedCust);
+  const handleUpdateCustomer = async (updatedCust: Customer) => {
+    const email = user?.email || 'sale@homestay.vn';
+    try {
+      await customerLookupService.updateCustomerNote(email, updatedCust.id, updatedCust.importantNote);
+      const liveCustomers = await customerLookupService.fetchCustomers(email);
+      setCustomers(liveCustomers);
+      const updatedActive = liveCustomers.find((c: any) => c.id === updatedCust.id);
+      setActiveCustomer(updatedActive || updatedCust);
+    } catch (err) {
+      console.warn('[CustomerLookup] Note update live API failed, falling back to mock:', err);
+      const db = getMockDB();
+      const updatedList = customers.map(c => 
+        c.id === updatedCust.id ? updatedCust : c
+      );
+      setCustomers(updatedList);
+      db.customers = updatedList;
+      saveMockDB(db);
+      setActiveCustomer(updatedCust);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return 'KH';
+    return words.length === 1
+      ? words[0].slice(0, 2).toUpperCase()
+      : `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
   };
 
 
@@ -217,11 +248,19 @@ export default function CustomerLookupPage() {
                       : 'bg-white border-[#d1c4b9]/40'
                   }`}
                 >
-                  <img
-                    src={cust.avatar}
-                    alt={cust.fullName}
-                    className="w-10 h-10 rounded-full object-cover bg-[#faf2ec] border border-[#d1c4b9]/50 shrink-0"
-                  />
+                  <div className="relative flex w-10 h-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#d1c4b9]/60 bg-[#faf2ec] text-xs font-extrabold text-[#6f583c]">
+                    <span>{getInitials(cust.fullName)}</span>
+                    {cust.avatar && (
+                      <img
+                        src={cust.avatar}
+                        alt={cust.fullName}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-bold truncate ${isActive ? 'text-[#6f583c]' : 'text-[#1e1b17]'}`}>
                       {cust.fullName}

@@ -4,7 +4,7 @@ import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Sen
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import { useAuthStore } from '../../stores/authStore';
-import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import { createLeaseRegistrationApi } from './lease.api';
 
 type InterestedRoomState = {
   interestedRoomId?: string;
@@ -141,45 +141,34 @@ export const RegisterLeasePage: React.FC = () => {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user || !validate()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const db = getMockDB();
-      const registration = {
-        id: `rr-${Date.now()}`,
-        customer_id: user.id,
-        customer_name: form.fullName,
-        phone: form.phone,
-        email: form.email,
-        gender: form.gender,
-        preferred_room_type: form.preferredRoomType,
-        rental_type: form.rentalType,
-        occupants_count: Number(form.occupantsCount),
-        preferred_branch_id: form.preferredBranchId,
-        budget_range: form.budgetRange,
-        move_in_date: form.moveInDate,
-        lease_term: form.leaseTerm,
-        preferred_viewing_date: form.preferredViewingDate,
-        preferred_viewing_time: form.preferredViewingTime,
-        viewing_time_note: form.viewingTimeNote,
-        preferred_amenities: form.amenities,
-        note: form.note,
-        interested_room_id: interested.interestedRoomId,
-        interested_room_name: interested.interestedRoomName,
-        status: 'pending_schedule',
-        created_at: new Date().toISOString(),
-      };
-
-      saveMockDB({
-        ...db,
-        rental_registrations: [...(db.rental_registrations || []), registration],
+    try {
+      // Map form fields sang format backend yêu cầu
+      await createLeaseRegistrationApi({
+        occupants_count: parseInt(form.occupantsCount, 10),
+        preferred_area: form.preferredBranchId,           // branch ID / 'any'
+        preferred_room_type: form.preferredRoomType.toLowerCase(), // 'dorm' | 'twin' | 'single' | 'any'
+        preferred_price: form.budgetRange,                 // '2m_5m' etc.
+        viewing_preference: `${form.preferredViewingDate} ${form.preferredViewingTime}`,
+        expected_move_in_date: form.moveInDate,
+        rental_duration: `${form.leaseTerm} tháng`,
+        other_criteria: [
+          form.note,
+          form.amenities.join(', '),
+          form.viewingTimeNote,
+        ].filter(Boolean).join(' | ') || undefined,
       });
-      setIsSubmitting(false);
       setSubmitted(true);
-    }, 800);
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Có lỗi xảy ra khi gửi đơn. Vui lòng thử lại.';
+      setErrors({ submit: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {

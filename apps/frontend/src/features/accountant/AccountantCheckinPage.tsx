@@ -4,8 +4,11 @@ import {
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
+import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
 
 export default function AccountantCheckinPage() {
+  const { user } = useAuthStore();
   const [invoices, setInvoices] = useState<CheckinInvoice[]>([]);
   const [selectedContractId, setSelectedContractId] = useState('');
   const [cardFeeChecked, setCardFeeChecked] = useState(true);
@@ -36,11 +39,62 @@ export default function AccountantCheckinPage() {
 
   // Load data
   useEffect(() => {
-    const db = getMockDB();
-    setInvoices(db.checkin_invoices || []);
-    // Contracts available for checkin are paid deposits
-    setPendingDeposits(db.deposit_invoices?.filter((d: DepositInvoice) => d.status === 'paid') || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [checkinInvoices, depInvoices] = await Promise.all([
+          accountantService.fetchCheckinInvoices(email),
+          accountantService.fetchDepositInvoices(email)
+        ]);
+
+        const mappedInvoices = (checkinInvoices || []).map((inv: any) => {
+          const contract = inv.contracts || {};
+          const noteData = inv.note ? JSON.parse(inv.note) : {};
+          return {
+            id: inv.id,
+            customer_id: contract.id || inv.customer_id,
+            customer_name: inv.customer_name || 'Khách hàng',
+            room_id: contract.rooms?.id || inv.room_id || '',
+            room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+            checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
+            rent_amount: contract.rent_price || inv.rent_amount || 0,
+            deposit_ref: contract.deposit_id || '',
+            contract_id: contract.id || '',
+            services: noteData.services || [],
+            total: inv.amount,
+            status: inv.status,
+            created_at: inv.created_at || ''
+          };
+        });
+
+        const mappedDeposits = (depInvoices || []).filter((d: any) => d.status === 'paid').map((d: any) => {
+          const req = d.deposit_requests || {};
+          return {
+            id: d.id,
+            customer_id: d.customer_id || req.customer_id,
+            customer_name: d.customer_name || 'Khách hàng',
+            room_id: d.room_id || req.room_id,
+            room_name: d.room_name || req.rooms?.name || 'Phòng',
+            amount: d.amount,
+            deadline: d.deadline || '',
+            payment_method: d.payment_method,
+            status: d.status,
+            created_at: d.created_at || '',
+            note: d.note
+          };
+        });
+
+        setInvoices(mappedInvoices);
+        setPendingDeposits(mappedDeposits);
+      } catch (err) {
+        console.warn('[AccountantCheckin] Failed to fetch backend data, falling back to mock:', err);
+        const db = getMockDB();
+        setInvoices(db.checkin_invoices || []);
+        setPendingDeposits(db.deposit_invoices?.filter((d: DepositInvoice) => d.status === 'paid') || []);
+      }
+    };
+    loadData();
+  }, [user]);
 
   // Click outside handler for contract dropdown
   useEffect(() => {
@@ -62,64 +116,150 @@ export default function AccountantCheckinPage() {
   const cleaningFee = cleaningFeeChecked ? 200000 : 0;
   const totalCost = rentAmount + depositAmount + cardFee + cleaningFee;
 
-  const handleCreateCheckinInvoice = (e: React.FormEvent) => {
+  const handleCreateCheckinInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedContractId || !selectedDeposit) {
       setToastMessage('Vui lòng chọn một hợp đồng đã duyệt!');
       return;
     }
 
+    const email = user?.email || 'accountant@homestay.vn';
     const services = [];
     if (cardFeeChecked) services.push({ name: 'Phí cấp thẻ từ (2 thẻ)', amount: 100000 });
     if (cleaningFeeChecked) services.push({ name: 'Phí vệ sinh ban đầu', amount: 200000 });
 
-    const newInvoice: Omit<CheckinInvoice, 'id'> = {
-      customer_id: selectedDeposit.customer_id,
-      customer_name: selectedDeposit.customer_name,
-      room_id: selectedDeposit.room_id,
-      room_name: selectedDeposit.room_name,
-      checkin_date: new Date().toISOString().split('T')[0],
-      rent_amount: rentAmount,
-      deposit_ref: selectedDeposit.id,
-      services,
-      total: totalCost,
-      status: 'pending',
-      created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
-    };
-
-    const res = mockSupabase.from('checkin_invoices').insert(newInvoice);
-    if (res.data) {
-      // Reload invoices
-      const db = getMockDB();
-      setInvoices(db.checkin_invoices || []);
-      
-      // Update deposit status to checkin invoiced / or room status
-      const updatedRooms = db.rooms.map((r: Room) => {
-        if (r.id === selectedDeposit.room_id) {
-          return { ...r, status: 'occupied' };
-        }
-        return r;
+    try {
+      await accountantService.createCheckinInvoice(email, {
+        contractId: selectedContractId,
+        amount: totalCost,
+        paymentMethod: 'transfer',
+        note: JSON.stringify({ services })
       });
-      db.rooms = updatedRooms;
-      saveMockDB(db);
 
-      // Reset
+      setToastMessage('Lập hóa đơn nhận phòng thành công.');
       setSelectedContractId('');
       setCardFeeChecked(true);
       setCleaningFeeChecked(true);
-      setToastMessage('Lập hóa đơn nhận phòng thành công.');
+
+      // Refresh list
+      const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
+      const depInvoices = await accountantService.fetchDepositInvoices(email);
+
+      const mappedInvoices = (checkinInvoices || []).map((inv: any) => {
+        const contract = inv.contracts || {};
+        const noteData = inv.note ? JSON.parse(inv.note) : {};
+        return {
+          id: inv.id,
+          customer_id: contract.id || inv.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: contract.rooms?.id || inv.room_id || '',
+          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+          checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
+          rent_amount: contract.rent_price || inv.rent_amount || 0,
+          deposit_ref: contract.deposit_id || '',
+          contract_id: contract.id || '',
+          services: noteData.services || [],
+          total: inv.amount,
+          status: inv.status,
+          created_at: inv.created_at || ''
+        };
+      });
+
+      const mappedDeposits = (depInvoices || []).filter((d: any) => d.status === 'paid').map((d: any) => {
+        const req = d.deposit_requests || {};
+        return {
+          id: d.id,
+          customer_id: d.customer_id || req.customer_id,
+          customer_name: d.customer_name || 'Khách hàng',
+          room_id: d.room_id || req.room_id,
+          room_name: d.room_name || req.rooms?.name || 'Phòng',
+          amount: d.amount,
+          deadline: d.deadline || '',
+          payment_method: d.payment_method,
+          status: d.status,
+          created_at: d.created_at || '',
+          note: d.note
+        };
+      });
+
+      setInvoices(mappedInvoices);
+      setPendingDeposits(mappedDeposits);
+    } catch (err: any) {
+      console.warn('[AccountantCheckin] Live API failed, falling back to mock DB:', err);
+      const newInvoice: Omit<CheckinInvoice, 'id'> = {
+        customer_id: selectedDeposit.customer_id,
+        customer_name: selectedDeposit.customer_name,
+        room_id: selectedDeposit.room_id,
+        room_name: selectedDeposit.room_name,
+        checkin_date: new Date().toISOString().split('T')[0],
+        rent_amount: rentAmount,
+        deposit_ref: selectedDeposit.id,
+        services,
+        total: totalCost,
+        status: 'pending',
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      };
+
+      const res = mockSupabase.from('checkin_invoices').insert(newInvoice);
+      if (res.data) {
+        const db = getMockDB();
+        setInvoices(db.checkin_invoices || []);
+        const updatedRooms = db.rooms.map((r: Room) => {
+          if (r.id === selectedDeposit.room_id) return { ...r, status: 'occupied' };
+          return r;
+        });
+        db.rooms = updatedRooms;
+        saveMockDB(db);
+        setSelectedContractId('');
+        setCardFeeChecked(true);
+        setCleaningFeeChecked(true);
+        setToastMessage('Lập hóa đơn nhận phòng thành công (Mock DB).');
+      }
     }
   };
 
-  const handleConfirmPayment = (id: string) => {
-    const res = mockSupabase.from('checkin_invoices').update(id, { status: 'paid' });
-    if (res.data) {
-      const db = getMockDB();
-      setInvoices(db.checkin_invoices || []);
+  const handleConfirmPayment = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmInvoicePayment(email, id, 'transfer');
+      setToastMessage('Đã xác nhận thu tiền thành công.');
+
+      const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
+      const mappedInvoices = (checkinInvoices || []).map((inv: any) => {
+        const contract = inv.contracts || {};
+        const noteData = inv.note ? JSON.parse(inv.note) : {};
+        return {
+          id: inv.id,
+          customer_id: contract.id || inv.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: contract.rooms?.id || inv.room_id || '',
+          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+          checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
+          rent_amount: contract.rent_price || inv.rent_amount || 0,
+          deposit_ref: contract.deposit_id || '',
+          contract_id: contract.id || '',
+          services: noteData.services || [],
+          total: inv.amount,
+          status: inv.status,
+          created_at: inv.created_at || ''
+        };
+      });
+      setInvoices(mappedInvoices);
+
       if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
         setSelectedDetailInvoice({ ...selectedDetailInvoice, status: 'paid' });
       }
-      setToastMessage('Đã xác nhận thu tiền thành công.');
+    } catch (err) {
+      console.warn('[AccountantCheckin] Live API payment confirm failed, falling back to mock DB:', err);
+      const res = mockSupabase.from('checkin_invoices').update(id, { status: 'paid' });
+      if (res.data) {
+        const db = getMockDB();
+        setInvoices(db.checkin_invoices || []);
+        if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
+          setSelectedDetailInvoice({ ...selectedDetailInvoice, status: 'paid' });
+        }
+        setToastMessage('Đã xác nhận thu tiền thành công (Mock DB).');
+      }
     }
   };
 

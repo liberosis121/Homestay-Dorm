@@ -88,9 +88,21 @@ export const leaseService = {
       throw new Error('Ban khong co quyen huy don dang ky nay.');
     }
 
-    // 4. Validate trang thai: chi cho phep huy truoc khi nhan vien sap lich
+    // 4. Validate trang thai: chi cho phep huy khi don chua duoc len lich
+    if (registration.status === REGISTRATION_STATUS.SCHEDULED) {
+      throw new Error('Don dang ky da duoc len lich xem phong. Neu muon huy, vui long lien he nhan vien Sale phu trach.');
+    }
+    if (registration.status === REGISTRATION_STATUS.DEPOSITED) {
+      throw new Error('Don dang ky da dat coc, khong the tu huy. Vui long lien he ban quan ly.');
+    }
+    if (registration.status === REGISTRATION_STATUS.COMPLETED) {
+      throw new Error('Don dang ky da hoan thanh hop dong, khong the huy.');
+    }
+    if (registration.status === REGISTRATION_STATUS.CANCELLED) {
+      throw new Error('Don dang ky nay da bi huy truoc do.');
+    }
     if (registration.status !== REGISTRATION_STATUS.PENDING_SCHEDULE) {
-      throw new Error('Don dang ky cua ban da duoc len lich xem phong hoac da dat coc, khong the tu huy.');
+      throw new Error('Don dang ky khong o trang thai hop le de huy.');
     }
 
     // 5. Cap nhat trang thai sang CANCELLED
@@ -110,10 +122,19 @@ export const leaseService = {
     // 2. Kiem tra don dang ky
     const registration = await leaseRepo.getRegistrationById(registrationId);
     if (!registration) {
-      throw new Error('Don dang ky thue khong ton tai.');
+      throw new Error('Don dang ky thue không tồn tại.');
     }
 
-    // 3. Cap nhat nhan vien phu trach
+    // 3. Chi duoc assign khi don chua bi huy hoac hoan thanh
+    // Neu assign cho don da CANCELLED/COMPLETED thi du lieu bi sai lech
+    if (registration.status === REGISTRATION_STATUS.CANCELLED) {
+      throw new Error('Don dang ky nay da bi huy, khong the phan cong nhan vien.');
+    }
+    if (registration.status === REGISTRATION_STATUS.COMPLETED) {
+      throw new Error('Don dang ky nay da hoan thanh, khong the phan cong lai.');
+    }
+
+    // 4. Cap nhat nhan vien phu trach
     return await leaseRepo.updateRegistrationStatus(registrationId, registration.status, staff.id);
   },
 

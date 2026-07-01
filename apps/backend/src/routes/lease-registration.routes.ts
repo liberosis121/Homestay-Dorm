@@ -68,7 +68,7 @@ router.get('/my', requireAuth, async (req, res) => {
  * 🔗 GET /api/lease-registrations
  * 📝 Nhan vien Sale xem tat ca don dang ky thue trong he thong de xu ly.
  */
-router.get('/', requireAuth, requireRole(USER_ROLE.SALE), async (req, res) => {
+router.get('/', requireAuth, requireRole(USER_ROLE.SALE, USER_ROLE.MANAGER), async (req, res) => {
   try {
     const filters = {
       status: req.query.status as string,
@@ -102,7 +102,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
     return sendSuccess(res, registration, 'Lay chi tiet don dang ky thue thanh cong!');
   } catch (error: any) {
-    const statusCode = error.message?.includes('khong ton tai') ? 404 : 500;
+    const statusCode = error.message?.includes('không tồn tại') || error.message?.includes('Không tìm thấy') ? 404 : 500;
     return sendError(res, error, error.message || 'Loi khi lay chi tiet don dang ky.', statusCode);
   }
 });
