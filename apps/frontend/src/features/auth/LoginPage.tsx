@@ -41,6 +41,13 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtbhyikorukkxjkrabgt.supabase.co';
+    const redirectUrl = window.location.origin + '/#/auth/callback';
+    const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = oauthUrl;
+  };
+
   const fillCredential = (presetEmail: string) => {
     setEmail(presetEmail);
     // Mật khẩu thực tế trong script nạp dữ liệu (seed data) là '123456'
@@ -177,6 +184,7 @@ export default function LoginPage() {
 
             <button 
               type="button" 
+              onClick={handleGoogleLogin}
               className="w-full h-14 mt-6 bg-white dark:bg-surface-container-low border border-surface-variant/60 hover:border-primary hover:bg-primary/5 rounded-2xl font-bold text-sm md:text-base flex items-center justify-center gap-3.5 transition-all duration-300 text-on-surface shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] group"
             >
               <img 

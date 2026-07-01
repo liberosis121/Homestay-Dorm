@@ -160,7 +160,26 @@ export const authService = {
 
     // 2. Lấy thêm thông tin chi tiết tùy thuộc vào vai trò
     if (profile.role === USER_ROLE.CUSTOMER) {
-      const customerDetails = await profileRepo.getCustomerByUserId(userId);
+      let customerDetails = await profileRepo.getCustomerByUserId(userId);
+      if (!customerDetails) {
+        // Tự động tạo bản ghi khách hàng tương ứng (khi đăng ký bằng Google OAuth không qua form thông thường)
+        const { data: newCustomer, error: insertError } = await supabase
+          .from('khach_hang')
+          .insert({
+            user_id: userId,
+            full_name: profile.full_name || 'Khách hàng mới',
+            phone: profile.phone || '',
+            email: profile.email,
+            cccd: `TEMP-${Date.now()}`, // Mã CCCD tạm thời để khách hàng cập nhật sau
+            nationality: 'Việt Nam',
+          })
+          .select()
+          .maybeSingle();
+
+        if (!insertError && newCustomer) {
+          customerDetails = newCustomer;
+        }
+      }
       return {
         ...profile,
         details: customerDetails,

@@ -31,6 +31,7 @@ import RegisterPage from './features/auth/RegisterPage';
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
+import AuthCallbackPage from './features/auth/AuthCallbackPage';
 import ProfilePage from './features/customer/ProfilePage';
 import StaffProfilePage from './features/staff/StaffProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
@@ -107,6 +108,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/" replace />} />
         <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
