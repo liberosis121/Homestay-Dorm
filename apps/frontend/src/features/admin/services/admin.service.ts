@@ -1,15 +1,14 @@
-import { useAuthStore } from '../../../stores/authStore';
-
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+// Lấy Bearer token thật từ localStorage
 const getHeaders = () => {
-  const user = useAuthStore.getState().user;
-  const email = user?.email || 'admin@homestay.vn';
+  const token = localStorage.getItem('access_token');
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer mock-token-${email}`
+    'Authorization': token ? `Bearer ${token}` : ''
   };
 };
+
 
 export interface AdminServiceRecord {
   id: string;

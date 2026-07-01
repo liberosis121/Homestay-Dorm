@@ -1,35 +1,39 @@
+
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-const getHeaders = (email: string) => {
+// Lấy Bearer token thật từ localStorage (giống interceptor của api.client.ts)
+const getHeaders = () => {
+  const token = localStorage.getItem('access_token');
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer mock-token-${email}`
+    'Authorization': token ? `Bearer ${token}` : ''
   };
 };
+
 
 export const accountantService = {
   // ============================================================
   // 1. HOA DON DAT COC
   // ============================================================
-  fetchPendingDepositRequests: async (email: string) => {
+  fetchPendingDepositRequests: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/deposit-requests/pending`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải phiếu đặt cọc đang chờ');
     const result = await res.json();
     return result.data;
   },
 
-  fetchDepositInvoices: async (email: string) => {
+  fetchDepositInvoices: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/deposit-invoices`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách hóa đơn đặt cọc');
     const result = await res.json();
     return result.data;
   },
 
-  createDepositInvoice: async (email: string, data: {
+  createDepositInvoice: async (_email: string, data: {
     requestId: string;
     customerId: string;
     roomId: string;
@@ -40,7 +44,7 @@ export const accountantService = {
   }) => {
     const res = await fetch(`${API}/api/accountant/deposit-invoices`, {
       method: 'POST',
-      headers: getHeaders(email),
+      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -54,16 +58,16 @@ export const accountantService = {
   // ============================================================
   // 2. HOA DON NHAN PHONG
   // ============================================================
-  fetchCheckinInvoices: async (email: string) => {
+  fetchCheckinInvoices: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/checkin-invoices`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách hóa đơn nhận phòng');
     const result = await res.json();
     return result.data;
   },
 
-  createCheckinInvoice: async (email: string, data: {
+  createCheckinInvoice: async (_email: string, data: {
     contractId: string;
     amount: number;
     paymentMethod: 'transfer' | 'cash';
@@ -71,7 +75,7 @@ export const accountantService = {
   }) => {
     const res = await fetch(`${API}/api/accountant/checkin-invoices`, {
       method: 'POST',
-      headers: getHeaders(email),
+      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -85,34 +89,34 @@ export const accountantService = {
   // ============================================================
   // 3. HOA DON DINH KY
   // ============================================================
-  fetchMonthlyInvoices: async (email: string) => {
+  fetchMonthlyInvoices: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/monthly-invoices`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách hóa đơn định kỳ');
     const result = await res.json();
     return result.data;
   },
 
-  fetchActiveContracts: async (email: string) => {
+  fetchActiveContracts: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/active-contracts`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách hợp đồng hoạt động');
     const result = await res.json();
     return result.data;
   },
 
-  fetchLatestMeterReading: async (email: string, roomId: string) => {
+  fetchLatestMeterReading: async (_email: string, roomId: string) => {
     const res = await fetch(`${API}/api/accountant/monthly-invoices/latest-reading/${roomId}`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải chỉ số điện nước gần nhất');
     const result = await res.json();
     return result.data;
   },
 
-  createMonthlyInvoice: async (email: string, data: {
+  createMonthlyInvoice: async (_email: string, data: {
     contractId: string;
     roomId: string;
     billingPeriod: string;
@@ -126,7 +130,7 @@ export const accountantService = {
   }) => {
     const res = await fetch(`${API}/api/accountant/monthly-invoices`, {
       method: 'POST',
-      headers: getHeaders(email),
+      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -140,25 +144,25 @@ export const accountantService = {
   // ============================================================
   // 4. DOI SOAT HOAN COC
   // ============================================================
-  fetchPendingCheckouts: async (email: string) => {
+  fetchPendingCheckouts: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/checkouts/pending`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách yêu cầu trả phòng');
     const result = await res.json();
     return result.data;
   },
 
-  fetchRefundReconciliations: async (email: string) => {
+  fetchRefundReconciliations: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/refunds`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách bảng đối soát');
     const result = await res.json();
     return result.data;
   },
 
-  createRefundReconciliation: async (email: string, data: {
+  createRefundReconciliation: async (_email: string, data: {
     checkoutId: string;
     contractId: string;
     originalDeposit: number;
@@ -171,7 +175,7 @@ export const accountantService = {
   }) => {
     const res = await fetch(`${API}/api/accountant/refunds`, {
       method: 'POST',
-      headers: getHeaders(email),
+      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -185,9 +189,9 @@ export const accountantService = {
   // ============================================================
   // 5. PHIEU CHI TIEN & QUYET TOAN
   // ============================================================
-  fetchPayouts: async (email: string) => {
+  fetchPayouts: async (_email: string) => {
     const res = await fetch(`${API}/api/accountant/payouts`, {
-      headers: getHeaders(email)
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách phiếu chi');
     const result = await res.json();
@@ -195,14 +199,14 @@ export const accountantService = {
   },
 
   confirmPayout: async (
-    email: string,
+    _email: string,
     payoutId: string,
     accountDetails: string,
     paymentMethod: 'transfer' | 'cash'
   ) => {
     const res = await fetch(`${API}/api/accountant/payouts/${payoutId}/confirm`, {
       method: 'POST',
-      headers: getHeaders(email),
+      headers: getHeaders(),
       body: JSON.stringify({ accountDetails, paymentMethod })
     });
     if (!res.ok) {
@@ -213,10 +217,10 @@ export const accountantService = {
     return result.data;
   },
 
-  confirmInvoicePayment: async (email: string, invoiceId: string, paymentMethod: string) => {
+  confirmInvoicePayment: async (_email: string, invoiceId: string, paymentMethod: string) => {
     const res = await fetch(`${API}/api/invoices/${invoiceId}/pay`, {
       method: 'POST',
-      headers: getHeaders(email),
+      headers: getHeaders(),
       body: JSON.stringify({ paymentMethod })
     });
     if (!res.ok) {
