@@ -189,7 +189,75 @@ export interface ProfileDto {
   phone?: string;
   avatar_url?: string;
   created_at?: string;
+  renting_room_name?: string;
   [key: string]: any; // Allow arbitrary fields from child tables (nhan_vien, khach_hang)
+}
+
+export async function getRentingRoomName(userId: string): Promise<string | undefined> {
+  try {
+    const { data: customer, error: customerErr } = await supabase
+      .from('khach_hang')
+      .select('cccd')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (customerErr || !customer || !customer.cccd) {
+      return undefined;
+    }
+
+    const { data: regs, error: regsErr } = await supabase
+      .from('rental_registrations')
+      .select('id')
+      .eq('cccd', customer.cccd);
+
+    if (regsErr || !regs || regs.length === 0) {
+      return undefined;
+    }
+    const regIds = regs.map((r: any) => r.id);
+
+    const { data: deposits, error: depErr } = await supabase
+      .from('deposit_requests')
+      .select('id, room_id')
+      .in('registration_id', regIds);
+
+    if (depErr || !deposits || deposits.length === 0) {
+      return undefined;
+    }
+    const depIds = deposits.map((d: any) => d.id);
+
+    const { data: activeContracts, error: contractErr } = await supabase
+      .from('contracts')
+      .select('deposit_id')
+      .eq('status', 'active')
+      .in('deposit_id', depIds);
+
+    if (contractErr || !activeContracts || activeContracts.length === 0) {
+      return undefined;
+    }
+
+    const activeDep = deposits.find((d: any) => 
+      activeContracts.some((ac: any) => ac.deposit_id === d.id)
+    );
+
+    if (!activeDep || !activeDep.room_id) {
+      return undefined;
+    }
+
+    const { data: room, error: roomErr } = await supabase
+      .from('rooms')
+      .select('name')
+      .eq('id', activeDep.room_id)
+      .maybeSingle();
+
+    if (roomErr || !room) {
+      return undefined;
+    }
+
+    return room.name;
+  } catch (err) {
+    console.error('Error resolving renting room name:', err);
+    return undefined;
+  }
 }
 
 export const profileRepo = {
@@ -219,9 +287,11 @@ export const profileRepo = {
         console.error('Error fetching khach_hang record:', customerErr);
       }
       if (customer) {
+        const rentingRoomName = await getRentingRoomName(id);
         return {
           ...profile,
           ...customer,
+          renting_room_name: rentingRoomName,
           type: 'customer'
         };
       }

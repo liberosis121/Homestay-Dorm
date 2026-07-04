@@ -75,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         full_name: u.full_name,
         phone: u.phone,
         avatar_url: u.avatar_url,
+        renting_room_name: u.renting_room_name,
       };
       localStorage.setItem('user_profile', JSON.stringify(userProfile));
 

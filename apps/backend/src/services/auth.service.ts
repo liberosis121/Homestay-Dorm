@@ -111,6 +111,11 @@ export const authService = {
       throw new Error('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ ban quản lý.');
     }
 
+    let rentingRoomName: string | undefined = undefined;
+    if (profile.role === USER_ROLE.CUSTOMER) {
+      rentingRoomName = await profileRepo.getRentingRoomName(data.user.id);
+    }
+
     return {
       session: {
         access_token: data.session.access_token,
@@ -124,6 +129,7 @@ export const authService = {
         phone: profile.phone,
         role: profile.role,
         avatar_url: profile.avatar_url,
+        renting_room_name: rentingRoomName,
       },
     };
   },
