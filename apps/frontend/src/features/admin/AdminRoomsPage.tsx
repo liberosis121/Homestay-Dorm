@@ -652,27 +652,31 @@ export default function AdminRoomsPage() {
             Hiển thị {pageStart} - {pageEnd} trong số {filtered.length} phòng
           </p>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={safeCurrentPage <= 1}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
-              style={{ borderColor: A.border, color: A.textMuted }}
-            >
-              Trước
-            </button>
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Trước
+              </button>
+            )}
             <span className="text-xs font-semibold" style={{ color: A.textMuted }}>
               Trang {safeCurrentPage}/{totalPages}
             </span>
-            <button
-              type="button"
-              disabled={safeCurrentPage >= totalPages}
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
-              style={{ borderColor: A.border, color: A.textMuted }}
-            >
-              Sau
-            </button>
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Sau
+              </button>
+            )}
           </div>
         </div>
       </section>

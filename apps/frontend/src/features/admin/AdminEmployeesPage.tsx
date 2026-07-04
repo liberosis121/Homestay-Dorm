@@ -595,24 +595,33 @@ export default function AdminEmployeesPage() {
             {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} trong số{" "}
             {filtered.length} nhân viên
           </p>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setCurrentPage(n)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                  style={
-                    n === currentPage
-                      ? { background: A.primary, color: "#fff" }
-                      : { color: A.textPrimary }
-                  }
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Trước
+              </button>
+            )}
+            <span className="text-xs font-semibold" style={{ color: A.textMuted }}>
+              Trang {currentPage}/{totalPages}
+            </span>
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Sau
+              </button>
+            )}
+          </div>
         </div>
       </section>
 

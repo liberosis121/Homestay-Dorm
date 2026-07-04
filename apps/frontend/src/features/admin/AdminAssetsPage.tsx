@@ -57,6 +57,8 @@ export default function AdminAssetsPage() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   const loadAssets = async () => {
     setIsLoading(true);
@@ -107,6 +109,19 @@ export default function AdminAssetsPage() {
     const matchCat = !filterCategory || a.category === filterCategory;
     return matchQ && matchStatus && matchCat;
   }), [assets, search, filterStatus, filterCategory]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, filterCategory]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedAssets = useMemo(() => {
+    return filtered.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
+  }, [filtered, safeCurrentPage]);
+  const pageStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1;
+  const pageEnd = Math.min(safeCurrentPage * ITEMS_PER_PAGE, filtered.length);
 
   const openAdd = () => {
     setModalMode('add');
@@ -320,7 +335,7 @@ export default function AdminAssetsPage() {
                     <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
                   </td>
                 </tr>
-              ) : filtered.map((a, i) => {
+              ) : paginatedAssets.map((a, i) => {
                 const si = STATUS_ASSET[a.status];
                 const cat = CAT_LABEL[a.category];
                 return (
@@ -363,8 +378,35 @@ export default function AdminAssetsPage() {
         <div className="px-5 py-3 flex items-center justify-between"
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}>
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length > 0 ? 1 : 0} - {filtered.length} trong số {filtered.length} tài sản
+            Hiển thị {pageStart} - {pageEnd} trong số {filtered.length} tài sản
           </p>
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Trước
+              </button>
+            )}
+            <span className="text-xs font-semibold" style={{ color: A.textMuted }}>
+              Trang {safeCurrentPage}/{totalPages}
+            </span>
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Sau
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
