@@ -243,15 +243,25 @@ function DashboardLayout() {
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
-        return [
-          { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
-          { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
-          { path: '/customer/services', label: user.renting_room_name ? 'Dịch vụ của tôi' : 'Dịch vụ & Bảng giá', icon: Zap },
-          { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
-          { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
-          { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
-          { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
-        ];
+        const isRenting = !!user.renting_room_name;
+        if (isRenting) {
+          return [
+            { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
+            { path: '/rooms', label: 'Tìm phòng khác', icon: Compass },
+            { path: '/customer/services', label: 'Dịch vụ của tôi', icon: Zap },
+            { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
+            { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
+            { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
+          ];
+        } else {
+          return [
+            { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
+            { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
+            { path: '/customer/services', label: 'Dịch vụ & Bảng giá', icon: Zap },
+            { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
+            { path: '/customer/deposit-history', label: 'Lịch sử đặt cọc', icon: Receipt }
+          ];
+        }
       default:
         return [];
     }
