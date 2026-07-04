@@ -186,7 +186,7 @@ export default function ProfilePage() {
   
   const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
   
-  const isNewCustomer = user?.email === 'newcustomer@gmail.com';
+  const isNewCustomer = !user?.renting_room_name;
 
   // ── Profile Form State ────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
