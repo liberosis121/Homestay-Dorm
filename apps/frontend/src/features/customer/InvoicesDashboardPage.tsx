@@ -63,8 +63,10 @@ export default function InvoicesDashboardPage() {
   useEffect(() => {
     if (location.state?.filterType) {
       setFilters({ type: location.state.filterType });
+    } else if (location.state?.from === '/profile') {
+      setFilters({ type: 'Tất cả' });
     }
-  }, [location.state?.filterType, setFilters]);
+  }, [location.state?.filterType, location.state?.from, setFilters]);
 
   const handleSelectInvoice = (id: string) => {
     setSelectedInvoiceId(id);
@@ -101,7 +103,7 @@ export default function InvoicesDashboardPage() {
 
   // 2. Applying Filter logic (on invoices displayed in the table)
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
+    const list = invoices.filter((inv) => {
       // Month
       if (filters.month !== 'Tất cả' && inv.month !== parseInt(filters.month)) return false;
       // Year
@@ -116,6 +118,9 @@ export default function InvoicesDashboardPage() {
       }
       return true;
     });
+
+    // Sort by due date descending (newest / most recent first)
+    return [...list].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
   }, [invoices, filters]);
 
   // Selected Invoice Object

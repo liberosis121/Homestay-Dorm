@@ -106,8 +106,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         : 'hover:bg-surface-container-low hover:shadow-sm'
                     }`}
                   >
-                    <td className="px-5 py-4 text-[13px] font-semibold text-primary">
-                      {invoice.id}
+                    <td className="px-5 py-4 text-[13px] font-semibold text-primary" title={invoice.id}>
+                      {invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}
                     </td>
                     <td className="px-5 py-4 text-sm text-on-surface-variant hidden sm:table-cell">
                       {invoice.billingPeriod}

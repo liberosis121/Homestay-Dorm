@@ -861,7 +861,9 @@ export default function AccountantMonthlyPage() {
                 <tbody className="divide-y divide-[#d1c4b9] font-mono text-xs">
                   {filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-[#f6f3f2] cursor-pointer" onClick={() => { setSelectedInvoice(inv); setDrawerOpen(true); }}>
-                      <td className="p-3 font-bold text-[#5a462d]">{inv.id}</td>
+                      <td className="p-3 font-bold text-[#5a462d]" title={inv.id}>
+                        {inv.id.length > 8 ? inv.id.substring(0, 8) : inv.id}
+                      </td>
                       <td className="p-3 font-sans font-medium text-[#1b1c1c]">{inv.customer_name}</td>
                       <td className="p-3 font-sans text-[#4e453d]">{inv.room_name}</td>
                       <td className="p-3 text-right">{inv.rent_amount.toLocaleString('vi-VN')}</td>

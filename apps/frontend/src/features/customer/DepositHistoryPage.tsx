@@ -141,9 +141,12 @@ export default function DepositHistoryPage() {
   // Map deposit request to Invoice type for PaymentDialog
   const selectedInvoice = useMemo((): Invoice | null => {
     if (!selectedRequest) return null;
+    const rawRoomName = selectedRequest.room_name || '';
+    const cleanRoomName = rawRoomName.startsWith('Phòng') ? rawRoomName.substring(6) : rawRoomName;
+    
     return {
       id: selectedRequest.id,
-      billingPeriod: `Đặt cọc giữ chỗ ${selectedRequest.room_name}`,
+      billingPeriod: `Đặt cọc giữ chỗ phòng ${cleanRoomName}`,
       month: new Date(selectedRequest.created_at).getMonth() + 1,
       year: new Date(selectedRequest.created_at).getFullYear(),
       type: 'incidental' as const,
@@ -154,7 +157,7 @@ export default function DepositHistoryPage() {
       waterPrice: 0,
       waterUsage: '',
       servicePrice: selectedRequest.deposit_amount,
-      serviceDetails: `Đặt cọc phòng ${selectedRequest.room_name} (${selectedRequest.branch_name})`,
+      serviceDetails: `Đặt cọc phòng ${cleanRoomName} (${selectedRequest.branch_name})`,
       totalAmount: selectedRequest.deposit_amount,
       dueDate: selectedRequest.expected_move_in_date,
       status: 'unpaid' as const,

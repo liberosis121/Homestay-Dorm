@@ -666,7 +666,9 @@ export default function AccountantCheckinPage() {
             <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
-                  <td className="p-4 font-mono font-bold text-[#5C4632] text-left">{inv.id}</td>
+                  <td className="p-4 font-mono font-bold text-[#5C4632] text-left" title={inv.id}>
+                    {inv.id.length > 8 ? inv.id.substring(0, 8) : inv.id}
+                  </td>
                   <td className="p-4 font-mono text-xs text-[#8A7563] text-left">{inv.deposit_ref.replace('DEP', 'HĐ')} ({inv.room_name})</td>
                   <td className="p-4 font-semibold text-[#1b1c1c] text-left">{inv.customer_name}</td>
                   <td className="p-4 text-xs font-mono text-[#8A7563] text-left">{inv.checkin_date}</td>

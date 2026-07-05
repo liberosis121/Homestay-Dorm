@@ -99,11 +99,11 @@ const getServiceIcon = (service: ServiceItem) => {
   if (name.includes('wifi') || name.includes('internet')) return 'wifi';
   if (name.includes('giặt')) return 'local_laundry_service';
   if (name.includes('xe')) return 'directions_bike';
-  if (name.includes('vệ sinh')) return 'cleaning_services';
+  if (name.includes('vệ sinh') || name.includes('dọn') || name.includes('tẩy')) return 'cleaning_services';
   if (service.type === 'essential') return 'verified';
   if (service.type === 'premium') return 'workspace_premium';
   if (service.type === 'utility') return 'build_circle';
-  return 'miscellaneous_services';
+  return 'category';
 };
 
 const validateServiceForm = (form: Partial<ServiceItem>): ServiceFormErrors => {
@@ -374,13 +374,13 @@ export default function AdminServicesPage() {
                   opacity: s.status === 'inactive' ? 0.7 : 1,
                 }}>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="p-2 rounded-lg shrink-0" style={{ background: A.badgeBg, color: A.accent }}>
-                    <span className="material-symbols-outlined text-xl">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className="p-2 rounded-lg shrink-0 w-10 h-10 flex items-center justify-center overflow-hidden" style={{ background: A.badgeBg, color: A.accent }}>
+                    <span className="material-symbols-outlined text-xl block w-6 h-6 overflow-hidden text-center whitespace-nowrap">
                       {getServiceIcon(s)}
                     </span>
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold leading-snug break-words" style={{ color: A.primary }}>{s.name}</h3>
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-0.5 ${TYPE_LABEL[s.type].cls}`}>
                       {TYPE_LABEL[s.type].label}

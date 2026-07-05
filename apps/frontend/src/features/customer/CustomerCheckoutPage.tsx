@@ -24,14 +24,22 @@ import {
   Trash2,
 } from 'lucide-react';
 
-const mapContractToRentInfo = (c: ContractData) => ({
-  branchName: c.branch,
-  roomName: `Phòng ${c.roomCode} (${c.roomType})`,
-  bedName: `Giường ${c.bedCode}`,
-  contractId: c.contractCode,
-  depositAmount: c.depositAmount,
-  dueDate: c.endDate,
-});
+const mapContractToRentInfo = (c: ContractData) => {
+  const roomNameRaw = c.roomCode || '';
+  const roomNameClean = roomNameRaw.startsWith('Phòng') ? roomNameRaw : `Phòng ${roomNameRaw}`;
+  
+  const bedNameRaw = c.bedCode || '';
+  const bedNameClean = bedNameRaw ? (bedNameRaw.startsWith('Giường') ? bedNameRaw : `Giường ${bedNameRaw}`) : 'N/A';
+
+  return {
+    branchName: c.branch,
+    roomName: `${roomNameClean} (${c.roomType})`,
+    bedName: bedNameClean,
+    contractId: c.contractCode,
+    depositAmount: c.depositAmount,
+    dueDate: c.endDate,
+  };
+};
 
 const getStatusConfig = (status: CheckoutRequest['status']) => {
   switch (status) {

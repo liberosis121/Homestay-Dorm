@@ -167,7 +167,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <p className="text-xs text-[#4e453c] font-semibold uppercase tracking-wider">Tổng số phòng & giường</p>
-          <h3 className="text-2xl font-bold text-[#1e1b17] mt-1">{stats.roomsCount} Phòng / {stats.capacityCount} Giường</h3>
+          <h3 className="text-lg xl:text-xl font-bold text-[#1e1b17] mt-1 whitespace-nowrap">{stats.roomsCount} Phòng / {stats.capacityCount} Giường</h3>
           <div className="mt-3">
             <div className="w-full bg-[#faf2ec] rounded-full h-1.5 overflow-hidden">
               <div className="bg-[#8c7355] h-1.5 rounded-full" style={{ width: `${occupancyRate}%` }}></div>

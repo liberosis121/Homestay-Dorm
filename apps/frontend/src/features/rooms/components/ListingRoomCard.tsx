@@ -90,9 +90,14 @@ export default function ListingRoomCard({ room }: Props) {
           </div>
         </div>
         
-        <p className="text-on-surface-variant font-body-md text-sm mb-4">
-          Phòng {room.room_type === 'Studio' ? 'đơn' : room.room_type === 'Twin' ? 'đôi' : 'Dorm'} • Sức chứa {room.capacity} người
-        </p>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-on-surface-variant font-body-md text-sm">
+            Phòng {room.room_type === 'Studio' ? 'đơn' : room.room_type === 'Twin' ? 'đôi' : 'Dorm'}
+          </span>
+          <span className="inline-flex items-center bg-primary/10 text-primary text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+            Sức chứa {room.capacity} người
+          </span>
+        </div>
         
         <div className="flex flex-wrap gap-2 mb-6">
           {room.amenities.slice(0, 3).map((am, idx) => (

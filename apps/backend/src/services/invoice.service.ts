@@ -8,10 +8,27 @@ function getMonthYearFromPeriod(periodStr: string | null): { month: number; year
     const d = new Date();
     return { month: d.getMonth() + 1, year: d.getFullYear() };
   }
+  
+  // Try YYYY-MM
+  if (periodStr.includes('-')) {
+    const parts = periodStr.split('-');
+    if (parts.length === 2) {
+      const p0 = parseInt(parts[0]);
+      const p1 = parseInt(parts[1]);
+      if (parts[0].length === 4) {
+        return { month: p1, year: p0 };
+      } else {
+        return { month: p0, year: p1 };
+      }
+    }
+  }
+
+  // Try MM/YYYY
   const parts = periodStr.split('/');
   if (parts.length === 2) {
     return { month: parseInt(parts[0]), year: parseInt(parts[1]) };
   }
+  
   return { month: 6, year: 2026 }; // fallback
 }
 
@@ -65,25 +82,25 @@ export const invoiceService = {
 
     // 7. Map database records to frontend Invoice structures
     return rawInvoices.map((inv: DbInvoice) => {
-      const isDeposit = inv.invoice_type === 'deposit';
-      const isRefund = inv.invoice_type === 'refund';
+      const isDeposit = inv.invoice_type === 'deposit' && inv.deposit_id !== null;
+      const isRefund = inv.invoice_type === 'refund' && inv.reconciliation_id !== null;
       const isMonthly = inv.invoice_type === 'monthly' || inv.invoice_type === 'checkin';
-      const isService = inv.invoice_type === 'service';
+      const isService = inv.invoice_type === 'service' || (inv.invoice_type === 'deposit' && inv.deposit_id === null);
+      const isIncidentalCost = inv.invoice_type === 'liquidation' || (inv.invoice_type === 'refund' && inv.reconciliation_id === null);
 
       // Billing Period
-      let billingPeriod = '';
+      let rawPeriod = '';
       if (inv.electricity_water_records) {
-        billingPeriod = `Tháng ${inv.electricity_water_records.billing_period}`;
+        rawPeriod = inv.electricity_water_records.billing_period;
       } else {
         const d = inv.payment_time ? new Date(inv.payment_time) : new Date();
         const m = d.getMonth() + 1;
         const y = d.getFullYear();
-        billingPeriod = `Tháng ${m < 10 ? '0' + m : m}/${y}`;
+        rawPeriod = `${m < 10 ? '0' + m : m}/${y}`;
       }
 
-      const { month, year } = getMonthYearFromPeriod(
-        inv.electricity_water_records ? inv.electricity_water_records.billing_period : billingPeriod.replace('Tháng ', '')
-      );
+      const { month, year } = getMonthYearFromPeriod(rawPeriod);
+      const billingPeriod = `Tháng ${month < 10 ? '0' + month : month}/${year}`;
 
       // Invoice Type mapping
       let type: 'monthly' | 'service' | 'incidental' = 'incidental';
@@ -141,7 +158,9 @@ export const invoiceService = {
       if (isRefund && inv.refund_reconciliations) {
         dueDate = inv.refund_reconciliations.reconciliation_date;
       } else if (isDeposit && inv.deposit_requests) {
-        dueDate = inv.deposit_requests.payment_deadline.split('T')[0];
+        dueDate = inv.deposit_requests.payment_deadline 
+          ? inv.deposit_requests.payment_deadline.split('T')[0] 
+          : new Date().toISOString().split('T')[0];
       }
 
       // Status mapping: 'paid' | 'unpaid' | 'overdue'
@@ -170,7 +189,12 @@ export const invoiceService = {
         waterPrice,
         waterUsage,
         servicePrice,
-        serviceDetails: serviceDetails || (isDeposit ? 'Phí cọc giữ chỗ' : isRefund ? 'Hoàn trả cọc đối soát' : 'Chi tiết khác'),
+        serviceDetails: serviceDetails || (
+          isDeposit ? 'Phí cọc giữ chỗ' : 
+          isRefund ? 'Hoàn trả cọc đối soát' : 
+          isIncidentalCost ? 'Phí bồi thường hư hỏng tài sản' : 
+          'Phụ thu phí phát sinh'
+        ),
         totalAmount: inv.amount,
         dueDate,
         status,

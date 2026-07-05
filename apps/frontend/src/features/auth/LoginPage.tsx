@@ -213,12 +213,13 @@ export default function LoginPage() {
                 </summary>
                 <div className="grid grid-cols-1 gap-2 mt-4">
                   {[
-                    { email: 'admin@homestay.vn', name: 'Quản trị viên (Admin)' },
-                    { email: 'manager@homestay.vn', name: 'Quản lý (Manager)' },
-                    { email: 'sale@homestay.vn', name: 'Nhân viên Sale (Sale)' },
-                    { email: 'accountant@homestay.vn', name: 'Kế toán (Accountant)' },
-                    { email: 'customer1@gmail.com', name: 'Khách hàng cũ (Đã thuê)' },
-                    { email: 'customer2@gmail.com', name: 'Khách hàng mới (Chưa thuê)' }
+                    { email: 'admin@homestay.com', name: 'Quản trị viên (Admin)' },
+                    { email: 'quanly@homestay.com', name: 'Quản lý (Manager)' },
+                    { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)' },
+                    { email: 'ketoan@homestay.com', name: 'Kế toán (Accountant)' },
+                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)' },
+                    { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thuê)' },
+                    { email: 'khach_moi@homestay.com', name: 'Khách hàng mới (Chưa thuê)' }
                   ].map((p) => (
                     <button
                       key={p.email}

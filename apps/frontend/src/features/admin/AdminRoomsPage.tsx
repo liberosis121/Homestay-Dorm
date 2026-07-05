@@ -579,7 +579,7 @@ export default function AdminRoomsPage() {
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
                 {['Mã phòng', 'Tên phòng', 'Chi nhánh', 'Tầng', 'Sức chứa tối đa', 'Loại phòng', 'Đơn giá/tháng', 'Trạng thái', 'Thao tác'].map(h => {
-                  const isCenter = h === 'Mã phòng' || h === 'Loại phòng' || h === 'Thao tác';
+                  const isCenter = h === 'Mã phòng' || h === 'Loại phòng' || h === 'Sức chứa tối đa' || h === 'Thao tác';
                   return (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${isCenter ? 'text-center' : ''}`}
                       style={{ color: A.textMuted }}>{h}</th>
@@ -591,15 +591,15 @@ export default function AdminRoomsPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-[#d1c4b9] animate-pulse">
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12 mx-auto"></div></td>
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-10"></div></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12 mx-auto"></div></td>
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-                    <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
-                    <td className="px-4 py-4"><div className="h-8 bg-gray-200 rounded-full w-16"></div></td>
+                    <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded-full w-20 mx-auto"></div></td>
+                    <td className="px-4 py-4"><div className="h-8 bg-gray-200 rounded-full w-16 mx-auto"></div></td>
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
@@ -622,7 +622,7 @@ export default function AdminRoomsPage() {
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{r.name}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>{r.branch}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>Tầng {r.floor}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{r.capacity} người</td>
+                    <td className="px-4 py-3 text-sm text-center" style={{ color: A.textPrimary }}>{r.capacity} người</td>
                     <td className="px-4 py-3 text-sm text-center" style={{ color: A.textPrimary }}>{roomTypeLabel(r.roomType)}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.primary }}>
                       {r.price.toLocaleString('vi-VN')}đ
