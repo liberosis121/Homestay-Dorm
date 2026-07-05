@@ -75,7 +75,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20 bg-surface-container-low">
           <div>
             <h2 className="text-lg font-bold text-primary font-headline-md">Thanh toán hóa đơn</h2>
-            <p className="text-xs text-on-surface-variant mt-0.5">Mã giao dịch: {invoice.id}</p>
+            <p className="text-xs text-on-surface-variant mt-0.5">Mã giao dịch: {invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}</p>
           </div>
           <button 
             onClick={onClose}
@@ -105,7 +105,7 @@ export default function PaymentDialog({ isOpen, invoice, onClose, onSuccess }: P
             </div>
             <h3 className="font-bold text-xl text-status-success">Thanh toán thành công!</h3>
             <p className="text-sm text-on-surface-variant max-w-xs">
-              Hóa đơn **{invoice.id}** đã được thanh toán hoàn tất. Hệ thống đang cập nhật hóa đơn của bạn.
+              Hóa đơn **{invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}** đã được thanh toán hoàn tất. Hệ thống đang cập nhật hóa đơn của bạn.
             </p>
           </div>
         )}

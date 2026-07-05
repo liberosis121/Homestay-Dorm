@@ -55,7 +55,7 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
           </span>
           <span className="whitespace-nowrap text-xs font-semibold text-on-primary/85">Hạn: {formatDate(invoice.dueDate)}</span>
         </div>
-        <h2 className="text-xl font-bold font-headline-md tracking-wide">{invoice.id}</h2>
+        <h2 className="text-xl font-bold font-headline-md tracking-wide">{invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}</h2>
         <p className="text-xs opacity-90 mt-1 font-medium">Kỳ thanh toán: {invoice.billingPeriod}</p>
       </div>
 

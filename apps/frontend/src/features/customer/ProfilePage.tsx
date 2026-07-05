@@ -214,13 +214,13 @@ export default function ProfilePage() {
         full_name: data.full_name || user?.full_name || '',
         email: data.email || user?.email || '',
         phone: data.phone || user?.phone || '',
-        cccd: data.customer?.cccd || '',
-        dob: data.customer?.dob || '',
-        gender: data.customer?.gender === 'Nữ' ? 'female' : 'male',
+        cccd: data.details?.cccd || '',
+        dob: data.details?.dob || '',
+        gender: (data.details?.gender === 'female' || data.details?.gender === 'Nữ') ? 'female' : 'male',
         issue_date: '2018-05-10',
         issue_place: 'Cục CSQLHC về TTXH',
-        nationality: data.customer?.nationality || 'Việt Nam',
-        permanent_address: data.customer?.address || '',
+        nationality: data.details?.nationality === 'vietnamese' ? 'Việt Nam' : (data.details?.nationality || 'Việt Nam'),
+        permanent_address: data.details?.address || '',
       };
       setFormData(profileData);
       setInitialData(profileData);
