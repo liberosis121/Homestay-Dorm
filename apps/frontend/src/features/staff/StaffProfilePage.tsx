@@ -223,6 +223,14 @@ export default function StaffProfilePage() {
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
     try {
+      const directToken = localStorage.getItem('access_token');
+      if (directToken) {
+        return {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${directToken}`
+        };
+      }
+
       const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
       if (tokenKey) {
         const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
