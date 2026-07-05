@@ -2,8 +2,8 @@ import { supabase } from '../utils/supabase';
 
 export const BACKUP_TABLES = [
   'profiles',
-  'nhan_vien',
-  'khach_hang',
+  'employees',
+  'customers',
   'branches',
   'rooms',
   'beds',

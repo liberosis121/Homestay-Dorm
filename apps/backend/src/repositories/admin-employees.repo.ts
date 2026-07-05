@@ -25,7 +25,7 @@ export const adminEmployeesRepo = {
   findAll: async (): Promise<DbEmployeeAdmin[]> => {
     // 1. Fetch all employees from nhan_vien table
     const { data: employees, error: eErr } = await supabase
-      .from('nhan_vien')
+      .from('employees')
       .select('*');
 
     if (eErr) throw eErr;
@@ -94,7 +94,7 @@ export const adminEmployeesRepo = {
     // Insert employee record
     const joinDateStr = new Date().toISOString().split('T')[0];
     const { error: eErr } = await supabase
-      .from('nhan_vien')
+      .from('employees')
       .insert({
         id: userId,
         full_name: emp.full_name,
@@ -158,7 +158,7 @@ export const adminEmployeesRepo = {
 
     if (Object.keys(nvUpdate).length > 0) {
       const { error: eErr } = await supabase
-        .from('nhan_vien')
+        .from('employees')
         .update(nvUpdate)
         .eq('id', id);
 
@@ -181,7 +181,7 @@ export const adminEmployeesRepo = {
 
     if (profile.role === 'locked') {
       const { data: nv, error: nvErr } = await supabase
-        .from('nhan_vien')
+        .from('employees')
         .select('role')
         .eq('id', id)
         .single();

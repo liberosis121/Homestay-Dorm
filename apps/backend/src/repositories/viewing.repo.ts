@@ -66,7 +66,7 @@ export const viewingRepo = {
         rental_registrations!inner (
           id,
           cccd,
-          khach_hang!inner (
+          customers!inner (
             profiles!inner (
               full_name,
               phone
@@ -143,7 +143,7 @@ export const viewingRepo = {
         rental_registrations!inner (
           id,
           cccd,
-          khach_hang!inner (
+          customers!inner (
             profiles!inner (
               full_name,
               phone

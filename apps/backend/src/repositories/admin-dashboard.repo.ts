@@ -47,8 +47,8 @@ export const adminDashboardRepo = {
 
   // Beds & services only need counts -> COUNT query (accurate at any scale, no row fetch)
   countBranches: () => countTable('branches'),
-  countStaff: () => countTable('nhan_vien'),
-  countCustomers: () => countTable('khach_hang'),
+  countStaff: () => countTable('employees'),
+  countCustomers: () => countTable('customers'),
   countBeds: () => countTable('beds'),
   countBedsByStatus: (status: string) => countByStatus('beds', status),
   countServices: () => countTable('services'),

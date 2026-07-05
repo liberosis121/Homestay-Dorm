@@ -97,7 +97,7 @@ router.post('/forgot-password', async (req, res) => {
 
 /**
  * 🔗 GET /api/auth/me
- * 📝 Lấy hồ sơ đầy đủ của user đăng nhập (gộp profiles + nhan_vien/khach_hang).
+ * 📝 Lấy hồ sơ đầy đủ của user đăng nhập (gộp profiles + employees/customers).
  *    Dùng bởi authStore.initialize và StaffProfilePage.
  */
 router.get('/me', requireAuth, async (req, res) => {

@@ -49,7 +49,7 @@ export const refundRepo = {
 
     const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
     const { data: customers } = cccds.length > 0
-      ? await supabase.from('khach_hang').select('cccd, full_name, phone').in('cccd', cccds)
+      ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
       : { data: [] as any[] };
 
     // 7. Map results in-memory
@@ -139,7 +139,7 @@ export const refundRepo = {
 
     const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
     const { data: customers } = cccds.length > 0
-      ? await supabase.from('khach_hang').select('cccd, full_name, phone').in('cccd', cccds)
+      ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
       : { data: [] as any[] };
 
     // 5. Map in-memory

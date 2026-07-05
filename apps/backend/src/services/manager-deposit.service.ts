@@ -23,7 +23,7 @@ export const managerDepositService = {
       supabase.from('rooms').select('*'),
       supabase.from('beds').select('*'),
       supabase.from('rental_registrations').select('*'),
-      supabase.from('khach_hang').select('*')
+      supabase.from('customers').select('*')
     ]);
 
     // 3. Merge related details into ManagerDeposit format expected by the frontend, filtering only deposits that have invoices

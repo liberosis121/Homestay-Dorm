@@ -7,7 +7,7 @@ export const customerLookupService = {
   getAllCustomersDetail: async () => {
     // 1. Lay thong tin ho so profiles (customer) va khach_hang
     const { data: customersList, error: customerErr } = await supabase
-      .from('khach_hang')
+      .from('customers')
       .select(`
         *,
         profiles (

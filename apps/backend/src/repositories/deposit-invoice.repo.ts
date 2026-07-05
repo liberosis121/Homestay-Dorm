@@ -42,7 +42,7 @@ export const depositInvoiceRepo = {
     // Lay khach hang dua tren cccd cua registration
     const cccds = regs.map(rg => rg.cccd).filter(Boolean);
     const { data: customers } = cccds.length > 0
-      ? await supabase.from('khach_hang').select('cccd, full_name, phone, user_id').in('cccd', cccds)
+      ? await supabase.from('customers').select('cccd, full_name, phone, user_id').in('cccd', cccds)
       : { data: [] as any[] };
 
     // Map ket qua ve format mong muon
@@ -59,7 +59,7 @@ export const depositInvoiceRepo = {
         rental_registrations: reg ? {
           id: reg.id,
           cccd: reg.cccd,
-          khach_hang: customer ? {
+          customers: customer ? {
             user_id: customer.user_id,
             profiles: {
               full_name: customer.full_name,
@@ -126,7 +126,7 @@ export const depositInvoiceRepo = {
 
     const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
     const { data: customers } = cccds.length > 0
-      ? await supabase.from('khach_hang').select('cccd, full_name, phone, user_id').in('cccd', cccds)
+      ? await supabase.from('customers').select('cccd, full_name, phone, user_id').in('cccd', cccds)
       : { data: [] as any[] };
 
     const result = invoices.map(inv => {

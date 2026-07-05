@@ -59,7 +59,7 @@ export const payoutRepo = {
 
     const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
     const { data: customers } = cccds.length > 0
-      ? await supabase.from('khach_hang').select('cccd, full_name, phone').in('cccd', cccds)
+      ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
       : { data: [] as any[] };
 
     // 7. Map in-memory

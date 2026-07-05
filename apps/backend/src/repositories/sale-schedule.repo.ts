@@ -18,10 +18,10 @@ export interface UpdateViewingScheduleInput {
 const SCHEDULE_SELECT = `
   *,
   rooms ( id, name, room_type, branch_id, branches ( id, name, address ) ),
-  nhan_vien ( id, full_name, phone ),
+  employees ( id, full_name, phone ),
   rental_registrations (
     id, cccd, status, expected_move_in_date,
-    khach_hang ( cccd, full_name, phone, email )
+    customers ( cccd, full_name, phone, email )
   )
 `;
 

@@ -23,11 +23,11 @@ export const managerContractRepo = {
     ] = await Promise.all([
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
-      supabase.from('khach_hang').select('*'),
+      supabase.from('customers').select('*'),
       supabase.from('rooms').select('*'),
       supabase.from('beds').select('*'),
       supabase.from('branches').select('*'),
-      supabase.from('nhan_vien').select('*')
+      supabase.from('employees').select('*')
     ]);
 
     // 3. Resolve relations
@@ -105,11 +105,11 @@ export const managerContractRepo = {
     ] = await Promise.all([
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
-      supabase.from('khach_hang').select('*'),
+      supabase.from('customers').select('*'),
       supabase.from('rooms').select('*'),
       supabase.from('beds').select('*'),
       supabase.from('branches').select('*'),
-      supabase.from('nhan_vien').select('*')
+      supabase.from('employees').select('*')
     ]);
 
     const dep = deposits?.find(d => d.id === contract.deposit_id) || {};

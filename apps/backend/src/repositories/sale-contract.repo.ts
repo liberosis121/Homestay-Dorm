@@ -2,12 +2,12 @@ import { supabase } from '../utils/supabase';
 
 const CONTRACT_SELECT = `
   *,
-  nhan_vien (*),
+  employees (*),
   deposit_requests (
     *,
     rooms ( *, branches (*) ),
     beds (*),
-    rental_registrations ( *, khach_hang (*) )
+    rental_registrations ( *, customers (*) )
   )
 `;
 

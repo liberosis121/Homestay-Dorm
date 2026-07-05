@@ -212,10 +212,10 @@ const mapApiSchedule = (s: any): SaleSchedule => {
   const status: ScheduleStatus = base.getTime() < Date.now() ? 'completed' : 'confirmed';
 
   const reg = s.rental_registrations || {};
-  const kh = reg.khach_hang || {};
+  const kh = reg.customers || {};
   const room = s.rooms || {};
   const branch = room.branches || {};
-  const createdBy = s.nhan_vien?.full_name || 'Nhân viên Sale';
+  const createdBy = s.employees?.full_name || 'Nhân viên Sale';
   const createdAt = s.created_at || new Date().toISOString();
 
   return {

@@ -51,7 +51,7 @@ export default function AccountantDepositPage() {
         ]);
 
         const mappedRequests = (pendingRequests || []).map((req: any) => {
-          const kh = req.rental_registrations?.khach_hang || {};
+          const kh = req.rental_registrations?.customers || {};
           const prof = kh.profiles || {};
           return {
             id: req.id,
@@ -153,7 +153,7 @@ export default function AccountantDepositPage() {
       const depInvoices = await accountantService.fetchDepositInvoices(email);
 
       const mappedRequests = (pendingRequests || []).map((req: any) => {
-        const kh = req.rental_registrations?.khach_hang || {};
+        const kh = req.rental_registrations?.customers || {};
         const prof = kh.profiles || {};
         return {
           id: req.id,

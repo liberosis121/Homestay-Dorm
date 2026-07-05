@@ -32,8 +32,8 @@ export interface LeaseRegistration {
   other_criteria?: string;
   staff_id?: string;
   created_at: string;
-  // Thông tin join từ bảng khach_hang -> profiles
-  khach_hang?: {
+  // Thông tin join từ bảng customers -> profiles
+  customers?: {
     profiles?: {
       full_name: string;
       phone: string;

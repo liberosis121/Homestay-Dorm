@@ -8,7 +8,7 @@ export const adminBackupService = {
     const totalRecords = Object.values(counts).reduce((sum, n) => sum + n, 0);
 
     return {
-      customers: counts['khach_hang'] ?? 0,
+      customers: counts['customers'] ?? 0,
       rooms: counts['rooms'] ?? 0,
       contracts: counts['contracts'] ?? 0,
       invoices: counts['invoices'] ?? 0,

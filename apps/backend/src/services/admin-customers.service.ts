@@ -12,8 +12,8 @@ export const adminCustomersService = {
       status: c.status,
       accountStatus: c.role === 'locked' ? 'locked' : 'active',
       joinDate: c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '01/01/2026',
-      note: c.khach_hang ? `CCCD: ${c.khach_hang.cccd} | Địa chỉ: ${c.khach_hang.address}` : '',
-      khach_hang: c.khach_hang,
+      note: c.customers ? `CCCD: ${c.customers.cccd} | Địa chỉ: ${c.customers.address}` : '',
+      customers: c.customers,
       invoices: c.invoices || []
     }));
   },

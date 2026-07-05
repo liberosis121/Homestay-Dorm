@@ -7,7 +7,7 @@ export interface DbCustomerAdmin {
   phone: string;
   role: string;
   created_at: string;
-  khach_hang?: {
+  customers?: {
     cccd: string;
     dob: string;
     gender: string;
@@ -38,7 +38,7 @@ export const adminCustomersRepo = {
 
     // Fetch all employee IDs to filter locked employees from locked customers
     const { data: employees, error: eErr } = await supabase
-      .from('nhan_vien')
+      .from('employees')
       .select('id');
 
     if (eErr) throw eErr;
@@ -53,7 +53,7 @@ export const adminCustomersRepo = {
 
     // 2. Fetch all khach_hang details
     const { data: khDetails, error: kErr } = await supabase
-      .from('khach_hang')
+      .from('customers')
       .select('*');
 
     if (kErr) throw kErr;
@@ -73,7 +73,7 @@ export const adminCustomersRepo = {
             name
           ),
           rental_registrations (
-            khach_hang (
+            customers (
               user_id
             )
           )
@@ -93,7 +93,7 @@ export const adminCustomersRepo = {
       for (const c of allContracts) {
         const depReq = c.deposit_requests as any;
         if (depReq && depReq.rental_registrations) {
-          const kh = depReq.rental_registrations.khach_hang;
+          const kh = depReq.rental_registrations.customers;
           if (kh && kh.user_id) {
             const userId = kh.user_id;
 
@@ -192,7 +192,7 @@ export const adminCustomersRepo = {
         phone: p.phone || detail?.phone || '09x xxx xxxx',
         role: p.role,
         created_at: p.created_at,
-        khach_hang: detail ? {
+        customers: detail ? {
           cccd: detail.cccd,
           dob: detail.dob,
           gender: detail.gender,

@@ -44,7 +44,7 @@ export const handoverRepo = {
       supabase.from('contracts').select('*'),
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
-      supabase.from('khach_hang').select('*'),
+      supabase.from('customers').select('*'),
       supabase.from('rooms').select('*')
     ]);
 

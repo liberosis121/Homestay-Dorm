@@ -56,7 +56,7 @@ export const authService = {
       // 3. Tao ban ghi khach hang lien ket voi profile
       // cccd dung prefix 'TEMP-' de service layer nhan biet va yeu cau cap nhat CCCD that truoc khi dang ky thue
       const { error: customerError } = await supabase
-        .from('khach_hang')
+        .from('customers')
         .insert({
           user_id: userId,
           full_name: fullName,
@@ -170,7 +170,7 @@ export const authService = {
       if (!customerDetails) {
         // Tự động tạo bản ghi khách hàng tương ứng (khi đăng ký bằng Google OAuth không qua form thông thường)
         const { data: newCustomer, error: insertError } = await supabase
-          .from('khach_hang')
+          .from('customers')
           .insert({
             user_id: userId,
             full_name: profile.full_name || 'Khách hàng mới',
@@ -228,7 +228,7 @@ export const authService = {
       avatar_url,
     });
 
-    // 3. Cập nhật bảng chi tiết (khach_hang hoặc nhan_vien)
+    // 3. Cập nhật bảng chi tiết (customers hoặc employees)
     if (profile.role === USER_ROLE.CUSTOMER) {
       // Chi cap nhat cac truong khach hang co trong request body
       const customerUpdates: Record<string, any> = {};
@@ -247,7 +247,7 @@ export const authService = {
 
       if (Object.keys(customerUpdates).length > 0) {
         const { error: customerError } = await supabase
-          .from('khach_hang')
+          .from('customers')
           .update(customerUpdates)
           .eq('user_id', userId);
 
@@ -263,7 +263,7 @@ export const authService = {
 
       if (Object.keys(staffUpdates).length > 0) {
         const { error: staffError } = await supabase
-          .from('nhan_vien')
+          .from('employees')
           .update(staffUpdates)
           .eq('id', userId);
 

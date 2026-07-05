@@ -12,7 +12,7 @@ interface DbContract {
   status: 'active' | 'expired' | 'terminated';
   deposit_id: string;
   staff_id: string;
-  nhan_vien?: {
+  employees?: {
     full_name: string;
     phone: string;
   };
@@ -73,7 +73,7 @@ export const contractService = {
       const room = depReq.rooms || {};
       const bed = depReq.beds || {};
       const branch = room.branches || {};
-      const staff: { full_name?: string; phone?: string } = c.nhan_vien || {};
+      const staff: { full_name?: string; phone?: string } = c.employees || {};
 
       const totalMonths = calculateMonthsDifference(c.start_date, c.end_date);
       const monthsPassed = calculateMonthsDifference(c.start_date, new Date().toISOString().split('T')[0]);

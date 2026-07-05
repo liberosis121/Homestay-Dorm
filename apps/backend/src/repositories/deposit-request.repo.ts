@@ -66,7 +66,7 @@ export const depositRequestRepo = {
         *,
         rental_registrations!inner (
           *,
-          khach_hang!inner (
+          customers!inner (
             *,
             profiles!inner (
               id,
@@ -99,7 +99,7 @@ export const depositRequestRepo = {
         rental_registrations!inner (
           id,
           cccd,
-          khach_hang!inner (
+          customers!inner (
             profiles!inner (
               full_name,
               phone

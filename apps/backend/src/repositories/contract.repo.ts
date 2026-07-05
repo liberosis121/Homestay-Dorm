@@ -6,7 +6,7 @@ export const contractRepo = {
       .from('contracts')
       .select(`
         *,
-        nhan_vien (*),
+        employees (*),
         deposit_requests!inner (
           *,
           rooms!inner (
@@ -16,11 +16,11 @@ export const contractRepo = {
           beds (*),
           rental_registrations!inner (
             *,
-            khach_hang!inner (*)
+            customers!inner (*)
           )
         )
       `)
-      .eq('deposit_requests.rental_registrations.khach_hang.user_id', userId);
+      .eq('deposit_requests.rental_registrations.customers.user_id', userId);
 
     if (error) {
       throw error;

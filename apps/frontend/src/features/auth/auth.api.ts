@@ -54,7 +54,7 @@ export interface ProfileResponse {
     full_name: string;
     phone: string;
     avatar_url?: string;
-    customer?: {
+    details?: {
       cccd: string;
       dob: string;
       gender: string;
@@ -108,7 +108,7 @@ export const getMeApi = async (): Promise<ProfileResponse> => {
 };
 
 /**
- * Lấy profile đầy đủ (bao gồm thông tin khach_hang hoặc nhan_vien).
+ * Lấy profile đầy đủ (bao gồm thông tin customers hoặc employees).
  * Gọi: GET /api/auth/profile
  */
 export const getProfileApi = async (): Promise<ProfileResponse> => {

@@ -87,7 +87,7 @@ export async function updateProfile(
  */
 export async function getCustomerByCccd(cccd: string) {
   const { data, error } = await supabase
-    .from('khach_hang')
+    .from('customers')
     .select('*')
     .eq('cccd', cccd)
     .single();
@@ -116,7 +116,7 @@ export async function getCustomerByCccd(cccd: string) {
  */
 export async function getCustomerByUserId(userId: string) {
   const { data, error } = await supabase
-    .from('khach_hang')
+    .from('customers')
     .select(`
       *,
       profiles!inner(id, email, role, full_name, phone)
@@ -147,7 +147,7 @@ export async function getCustomerByUserId(userId: string) {
  */
 export async function getStaffByUserId(userId: string) {
   const { data, error } = await supabase
-    .from('nhan_vien')
+    .from('employees')
     .select(`
       *,
       profiles!inner(id, email, role, full_name, phone)
@@ -196,7 +196,7 @@ export interface ProfileDto {
 export async function getRentingRoomName(userId: string): Promise<string | undefined> {
   try {
     const { data: customer, error: customerErr } = await supabase
-      .from('khach_hang')
+      .from('customers')
       .select('cccd')
       .eq('user_id', userId)
       .maybeSingle();
@@ -278,7 +278,7 @@ export const profileRepo = {
     const role = profile.role;
     if (role === 'customer') {
       const { data: customer, error: customerErr } = await supabase
-        .from('khach_hang')
+        .from('customers')
         .select('*')
         .eq('user_id', id)
         .maybeSingle();
@@ -298,7 +298,7 @@ export const profileRepo = {
     } else {
       // Employee roles: manager, sale, accountant, admin
       const { data: employee, error: employeeErr } = await supabase
-        .from('nhan_vien')
+        .from('employees')
         .select('*')
         .eq('id', id)
         .maybeSingle();
@@ -381,13 +381,13 @@ export const profileRepo = {
     if (Object.keys(childUpdates).length > 0) {
       if (currentProfile.role === 'customer') {
         const { error: customerErr } = await supabase
-          .from('khach_hang')
+          .from('customers')
           .update(childUpdates)
           .eq('user_id', id);
         if (customerErr) throw customerErr;
       } else {
         const { error: employeeErr } = await supabase
-          .from('nhan_vien')
+          .from('employees')
           .update(childUpdates)
           .eq('id', id);
         if (employeeErr) throw employeeErr;
