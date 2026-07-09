@@ -244,6 +244,7 @@ function DashboardLayout() {
         ];
       case 'customer':
         const isRenting = !!user.renting_room_name;
+        const isOldCustomer = !isRenting && !!user.has_contract_history;
         if (isRenting) {
           return [
             { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
@@ -252,6 +253,15 @@ function DashboardLayout() {
             { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
             { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
             { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
+          ];
+        } else if (isOldCustomer) {
+          return [
+            { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
+            { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
+            { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
+            { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
+            { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
+            { path: '/customer/deposit-history', label: 'Lịch sử đặt cọc', icon: Receipt }
           ];
         } else {
           return [

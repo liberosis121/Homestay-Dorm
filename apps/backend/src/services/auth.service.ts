@@ -112,8 +112,10 @@ export const authService = {
     }
 
     let rentingRoomName: string | undefined = undefined;
+    let hasContractHistory = false;
     if (profile.role === USER_ROLE.CUSTOMER) {
       rentingRoomName = await profileRepo.getRentingRoomName(data.user.id);
+      hasContractHistory = await profileRepo.hasContractHistory(data.user.id);
     }
 
     return {
@@ -130,6 +132,7 @@ export const authService = {
         role: profile.role,
         avatar_url: profile.avatar_url,
         renting_room_name: rentingRoomName,
+        has_contract_history: hasContractHistory,
       },
     };
   },

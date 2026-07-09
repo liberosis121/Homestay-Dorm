@@ -260,6 +260,54 @@ export async function getRentingRoomName(userId: string): Promise<string | undef
   }
 }
 
+export async function hasContractHistory(userId: string): Promise<boolean> {
+  try {
+    const { data: customer, error: customerErr } = await supabase
+      .from('customers')
+      .select('cccd')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (customerErr || !customer || !customer.cccd) {
+      return false;
+    }
+
+    const { data: regs, error: regsErr } = await supabase
+      .from('rental_registrations')
+      .select('id')
+      .eq('cccd', customer.cccd);
+
+    if (regsErr || !regs || regs.length === 0) {
+      return false;
+    }
+    const regIds = regs.map((r: any) => r.id);
+
+    const { data: deposits, error: depErr } = await supabase
+      .from('deposit_requests')
+      .select('id')
+      .in('registration_id', regIds);
+
+    if (depErr || !deposits || deposits.length === 0) {
+      return false;
+    }
+    const depIds = deposits.map((d: any) => d.id);
+
+    const { count, error: contractErr } = await supabase
+      .from('contracts')
+      .select('*', { count: 'exact', head: true })
+      .in('deposit_id', depIds);
+
+    if (contractErr || count === null) {
+      return false;
+    }
+
+    return count > 0;
+  } catch (err) {
+    console.error('Error checking contract history:', err);
+    return false;
+  }
+}
+
 export const profileRepo = {
   findById: async (id: string): Promise<ProfileDto | null> => {
     // 1. Fetch parent profile details
@@ -288,10 +336,12 @@ export const profileRepo = {
       }
       if (customer) {
         const rentingRoomName = await getRentingRoomName(id);
+        const hasHistory = await hasContractHistory(id);
         return {
           ...profile,
           ...customer,
           renting_room_name: rentingRoomName,
+          has_contract_history: hasHistory,
           type: 'customer'
         };
       }

@@ -186,7 +186,9 @@ export default function ProfilePage() {
   
   const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
   
-  const isNewCustomer = !user?.renting_room_name;
+  const isRenting = !!user?.renting_room_name;
+  const isOldCustomer = !isRenting && !!user?.has_contract_history;
+  const isNewCustomer = !isRenting && !user?.has_contract_history;
 
   // ── Profile Form State ────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
@@ -352,19 +354,7 @@ export default function ProfilePage() {
                   <Shield className="w-5 h-5" /> Bảo mật &amp; Cài đặt
                 </button>
                 
-                {isNewCustomer ? (
-                  <>
-                    <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <Compass className="w-5 h-5" /> Tra cứu &amp; Thuê phòng
-                    </Link>
-                    <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
-                    </Link>
-                    <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
-                    </Link>
-                  </>
-                ) : (
+                {isRenting ? (
                   <>
                     <Link to="/customer/invoices" state={{ from: '/profile' }} className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <CreditCard className="w-5 h-5" /> Hóa đơn &amp; Thanh toán
@@ -380,6 +370,36 @@ export default function ProfilePage() {
                     </Link>
                     <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
                       <Compass className="w-5 h-5" /> Tìm phòng khác
+                    </Link>
+                  </>
+                ) : isOldCustomer ? (
+                  <>
+                    <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Compass className="w-5 h-5" /> Tra cứu &amp; Thuê phòng
+                    </Link>
+                    <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
+                    </Link>
+                    <Link to="/customer/invoices" state={{ from: '/profile' }} className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <CreditCard className="w-5 h-5" /> Hóa đơn &amp; Thanh toán
+                    </Link>
+                    <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <FileText className="w-5 h-5" /> Hợp đồng của tôi
+                    </Link>
+                    <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Compass className="w-5 h-5" /> Tra cứu &amp; Thuê phòng
+                    </Link>
+                    <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
+                    </Link>
+                    <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
                     </Link>
                   </>
                 )}
@@ -474,13 +494,22 @@ export default function ProfilePage() {
                           <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
                             Khách hàng mới
                           </span>
+                        ) : isOldCustomer ? (
+                          <>
+                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                              Cựu thành viên
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-error/20 bg-error/10 px-2.5 py-1 text-[11px] font-semibold text-error">
+                              Đã trả phòng
+                            </span>
+                          </>
                         ) : (
                           <>
                             <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
                               Sinh viên
                             </span>
                             <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
-                              {user?.renting_room_name || 'Phòng 402-B'}
+                              {user?.renting_room_name}
                             </span>
                           </>
                         )}
@@ -490,13 +519,13 @@ export default function ProfilePage() {
                         <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
                           <span className="text-on-surface-variant font-label-md">Thành viên từ:</span>
                           <span className="font-semibold text-on-surface">
-                            {isNewCustomer ? '06/2026' : '05/2023'}
+                            {isNewCustomer ? '06/2026' : isOldCustomer ? '09/2024' : '05/2023'}
                           </span>
                         </div>
                         <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
                           <span className="text-on-surface-variant font-label-md">Phòng lưu trú:</span>
-                          <span className={`font-semibold ${isNewCustomer ? 'text-error' : 'text-primary'}`}>
-                            {isNewCustomer ? 'Chưa đăng ký' : (user?.renting_room_name ? (user.renting_room_name.includes('101') ? 'Standard Dorm' : 'Premium Eco') : 'Premium Eco')}
+                          <span className={`font-semibold ${isNewCustomer || isOldCustomer ? 'text-error' : 'text-primary'}`}>
+                            {isNewCustomer ? 'Chưa đăng ký' : isOldCustomer ? 'Đã trả phòng' : (user?.renting_room_name ? (user.renting_room_name.includes('101') ? 'Standard Dorm' : 'Premium Eco') : 'Premium Eco')}
                           </span>
                         </div>
                       </div>
