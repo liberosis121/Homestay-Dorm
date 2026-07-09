@@ -199,7 +199,7 @@ export default function AccountantDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Greeting Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ fontFamily: "'Lexend', sans-serif" }}>
         <div>

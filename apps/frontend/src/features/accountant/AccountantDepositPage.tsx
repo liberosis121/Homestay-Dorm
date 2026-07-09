@@ -343,7 +343,7 @@ export default function AccountantDepositPage() {
   ];
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       <style>{`
         .accountant-scrollbar::-webkit-scrollbar {
           width: 6px;

@@ -307,7 +307,7 @@ export default function AccountantPayoutsPage() {
   ];
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Page Header */}
       <div>
         <h2 className="font-headline-md text-2xl text-[#5a462d] font-semibold">Chi tiền hoàn cọc & Thanh lý</h2>

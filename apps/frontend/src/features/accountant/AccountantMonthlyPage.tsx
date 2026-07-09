@@ -425,7 +425,7 @@ export default function AccountantMonthlyPage() {
   ];
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md relative">
+    <div className="space-y-6 text-[#1b1c1c] relative" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
