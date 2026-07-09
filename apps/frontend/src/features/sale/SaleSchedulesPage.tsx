@@ -479,7 +479,7 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 >
                   {/* Mã lịch */}
                   <td className="px-3 py-3 whitespace-nowrap w-[80px] min-w-[80px]">
-                    <span className="font-mono font-bold text-sm text-[#6f583c]">#{s.id}</span>
+                    <span className="font-mono font-bold text-sm text-[#6f583c]">#{s.id.slice(0, 8)}</span>
                   </td>
 
                   {/* Khách hàng */}
@@ -664,7 +664,7 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
           Tiến trình lịch hẹn
         </h3>
         <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#E8E1D3] text-[#5E503F] border border-[#D2C4AF] rounded-lg whitespace-nowrap">
-          #{schedule.id}
+          #{schedule.id.slice(0, 8)}
         </span>
       </div>
       <div className="text-xs text-on-surface-variant mb-4">
