@@ -175,6 +175,61 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
 
 
+interface InputFieldProps {
+  label: string;
+  name: string;
+  value: string;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  isEditing: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+}
+
+const InputField = ({
+  label,
+  name,
+  value,
+  type = 'text',
+  placeholder = '',
+  disabled = false,
+  isEditing,
+  onChange
+}: InputFieldProps) => {
+  const isDate = type === 'date';
+  if (isDate) {
+    return (
+      <CustomDatePicker
+        label={label}
+        value={value}
+        onChange={(val) => {
+          onChange({
+            target: { name, value: val }
+          } as any);
+        }}
+        disabled={disabled || !isEditing}
+        placeholder={placeholder || 'Chọn ngày'}
+        required={label.includes('*')}
+        variant="surface"
+      />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <FormLabel label={label} required={label.includes('*')} />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled || !isEditing}
+        className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
+      />
+    </div>
+  );
+};
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, setLogoutConfirmOpen } = useAuthStore();
@@ -532,10 +587,10 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InputField label="Họ và tên *" name="full_name" value={formData.full_name} />
-                    <InputField label="Email liên lạc *" name="email" value={formData.email} disabled />
+                    <InputField label="Họ và tên *" name="full_name" value={formData.full_name} isEditing={isEditing} onChange={handleProfileChange} />
+                    <InputField label="Email liên lạc *" name="email" value={formData.email} disabled isEditing={isEditing} onChange={handleProfileChange} />
                     
-                    <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
+                    <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} isEditing={isEditing} onChange={handleProfileChange} />
                     <div className="space-y-2">
                       <FormLabel label="Giới tính" required />
                       <CustomSelect
@@ -553,22 +608,24 @@ export default function ProfilePage() {
                       />
                     </div>
                     
-                    <InputField label="Số điện thoại *" name="phone" value={formData.phone} />
-                    <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} />
+                    <InputField label="Số điện thoại *" name="phone" value={formData.phone} isEditing={isEditing} onChange={handleProfileChange} />
+                    <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} isEditing={isEditing} onChange={handleProfileChange} />
 
                     <InputField 
                       label="Số CCCD / Passport *" 
                       name="cccd" 
                       value={formData.cccd} 
                       placeholder={isNewCustomer ? "Vui lòng nhập CCCD để làm thủ tục thuê" : ""} 
+                      isEditing={isEditing}
+                      onChange={handleProfileChange}
                     />
-                    <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} />
+                    <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} isEditing={isEditing} onChange={handleProfileChange} />
                     
                     <div className="md:col-span-2">
-                      <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} />
+                      <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} isEditing={isEditing} onChange={handleProfileChange} />
                     </div>
                     <div className="md:col-span-2">
-                      <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} />
+                      <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} isEditing={isEditing} onChange={handleProfileChange} />
                     </div>
                   </div>
                   

@@ -385,13 +385,13 @@ export default function AccountantPayoutsPage() {
                   onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); setVoucherUploaded(false); }}
                   className="hover:bg-[#f6f3f2] cursor-pointer transition-colors"
                 >
-                  <td className="p-4 font-mono font-bold text-[#5a462d]">{formatShortId(p.refund_id)}</td>
+                  <td className="p-4  font-bold text-[#5a462d]">{formatShortId(p.refund_id)}</td>
                   <td className="p-4">
                     <div className="font-semibold text-[#1b1c1c]">{p.customer_name}</div>
                     <div className="text-xs text-[#5e5f5d]">{p.payment_method === 'cash' ? 'Nhận tiền mặt' : 'Chuyển khoản ngân hàng'}</div>
                   </td>
-                  <td className="p-4 text-right font-mono font-medium text-[#ba1a1a]">{p.amount.toLocaleString('vi-VN')} ₫</td>
-                  <td className="p-4 font-mono text-xs text-[#4e453d]">{p.payment_method === 'cash' ? 'N/A (Tiền mặt)' : `${p.bank_account} (${p.bank_name})`}</td>
+                  <td className="p-4 text-right  font-medium text-[#ba1a1a]">{p.amount.toLocaleString('vi-VN')} ₫</td>
+                  <td className="p-4  text-xs text-[#4e453d]">{p.payment_method === 'cash' ? 'N/A (Tiền mặt)' : `${p.bank_account} (${p.bank_name})`}</td>
                   <td className="p-4">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       p.status === 'completed' ? 'bg-[#e4e2e1] text-[#4e453d]' : 'bg-[#d0def1] text-[#3d4a59]'
@@ -440,7 +440,7 @@ export default function AccountantPayoutsPage() {
             <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8] shrink-0">
               <div>
                 <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Chi tiết lệnh chi</h3>
-                <p className="font-mono text-xs text-[#5a462d] mt-1">{formatShortId(activePayout.refund_id)}</p>
+                <p className=" text-xs text-[#5a462d] mt-1">{formatShortId(activePayout.refund_id)}</p>
               </div>
               <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full">
                 <X className="w-5 h-5" />
@@ -470,25 +470,25 @@ export default function AccountantPayoutsPage() {
                 <div className="bg-[#fbf9f8] p-4 border border-[#d1c4b9] rounded-lg space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-[#5e5f5d]">Tiền cọc ban đầu:</span>
-                    <span className="font-mono font-medium text-[#1b1c1c]">{((matchedRefund ? matchedRefund.deposit_original : 2000000)).toLocaleString('vi-VN')} ₫</span>
+                    <span className=" font-medium text-[#1b1c1c]">{((matchedRefund ? matchedRefund.deposit_original : 2000000)).toLocaleString('vi-VN')} ₫</span>
                   </div>
                   {matchedRefund && matchedRefund.type === 'cancellation' ? (
                     <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
                       <span>Khấu trừ phạt hủy cọc / hợp đồng (20%):</span>
-                      <span className="font-mono font-medium">-{matchedRefund.total_deductions.toLocaleString('vi-VN')} ₫</span>
+                      <span className=" font-medium">-{matchedRefund.total_deductions.toLocaleString('vi-VN')} ₫</span>
                     </div>
                   ) : (
                     <>
                       {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
                         <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
                           <span>Khấu trừ hư hại tài sản:</span>
-                          <span className="font-mono font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
+                          <span className=" font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
                         </div>
                       )}
                       {matchedRefund && matchedRefund.debt_deductions > 0 && (
                         <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
                           <span>Khấu trừ điện nước / nợ cũ:</span>
-                          <span className="font-mono font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
+                          <span className=" font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
                         </div>
                       )}
                     </>
@@ -497,7 +497,7 @@ export default function AccountantPayoutsPage() {
                     <span className="text-[#1b1c1c]">
                       {activePayout.amount >= 0 ? 'Tổng tiền thực hoàn:' : 'Tổng tiền khách đóng thêm:'}
                     </span>
-                    <span className={`font-mono text-base ${activePayout.amount >= 0 ? 'text-[#2E7D32]' : 'text-[#ba1a1a]'}`}>
+                    <span className={` text-base ${activePayout.amount >= 0 ? 'text-[#2E7D32]' : 'text-[#ba1a1a]'}`}>
                       {Math.abs(activePayout.amount).toLocaleString('vi-VN')} ₫
                     </span>
                   </div>
@@ -535,7 +535,7 @@ export default function AccountantPayoutsPage() {
                       <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded flex justify-between items-center">
                         <div>
                           <div className="font-bold text-xs text-[#1b1c1c]">{bankName}</div>
-                          <div className="font-mono text-xs text-[#5e5f5d] mt-1">
+                          <div className=" text-xs text-[#5e5f5d] mt-1">
                             {bankAccount} - {accountHolder}
                           </div>
                         </div>

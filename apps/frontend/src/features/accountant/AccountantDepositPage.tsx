@@ -449,7 +449,7 @@ export default function AccountantDepositPage() {
                       </div>
                       <div>
                         <span className="text-[#8A7563] mr-1">Ngày gửi:</span>
-                        <span className="font-mono text-[#5e5f5d]">
+                        <span className=" text-[#5e5f5d]">
                           {req.created_at.includes('T') ? new Date(req.created_at).toLocaleDateString('vi-VN') : req.created_at.substring(0, 10)}
                         </span>
                       </div>
@@ -605,7 +605,7 @@ export default function AccountantDepositPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Hạn thanh toán:</span>
-                  <span className="font-mono font-semibold text-right">
+                  <span className=" font-semibold text-right">
                     {selectedRequestId ? (() => {
                       const d = new Date();
                       if (deadlineType === '24h') d.setDate(d.getDate() + 1);
@@ -720,13 +720,13 @@ export default function AccountantDepositPage() {
             <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
-                  <td className="p-4 font-mono font-bold text-[#5C4632] text-sm text-left" title={inv.id}>
+                  <td className="p-4  font-bold text-[#5C4632] text-sm text-left" title={inv.id}>
                     {formatShortId(inv.id)}
                   </td>
                   <td className="p-4 text-sm font-medium text-[#1b1c1c] text-left">{inv.customer_name}</td>
                   <td className="p-4 text-xs text-[#8A7563] text-center">{inv.room_name}</td>
-                  <td className="p-4 text-center font-mono font-medium text-[#1b1c1c] text-sm">{inv.amount.toLocaleString('vi-VN')} ₫</td>
-                  <td className="p-4 text-xs font-mono text-[#8A7563] leading-tight text-left">
+                  <td className="p-4 text-center  font-medium text-[#1b1c1c] text-sm">{inv.amount.toLocaleString('vi-VN')} ₫</td>
+                  <td className="p-4 text-xs  text-[#8A7563] leading-tight text-left">
                     {(() => {
                       const parts = inv.deadline.split(' ');
                       return (

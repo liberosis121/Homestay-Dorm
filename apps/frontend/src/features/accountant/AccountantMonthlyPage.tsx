@@ -536,11 +536,11 @@ export default function AccountantMonthlyPage() {
                     }`}
                   >
                     <div className="flex justify-between items-start">
-                      <span className="font-mono text-xs font-bold text-[#5a462d]">{formatShortId(c.id)}</span>
+                      <span className=" text-xs font-bold text-[#5a462d]">{formatShortId(c.id)}</span>
                       <span className="text-[10px] bg-[#e4e2e1] text-[#4e453d] font-bold px-1.5 py-0.5 rounded">Tháng {c.period}</span>
                     </div>
                     <h4 className="font-semibold text-sm mt-1 text-[#1b1c1c]">{c.customer_name}</h4>
-                    <div className="flex justify-between text-xs text-[#5e5f5d] mt-2 font-mono">
+                    <div className="flex justify-between text-xs text-[#5e5f5d] mt-2 ">
                       <span>{c.room_name}</span>
                       <span className="font-bold text-[#5a462d]">{c.rent_price.toLocaleString('vi-VN')} đ</span>
                     </div>
@@ -597,11 +597,11 @@ export default function AccountantMonthlyPage() {
                       </div>
                       <div>
                         <span className="text-[#5e5f5d] block">Kỳ thanh toán</span>
-                        <span className="font-semibold text-sm text-[#1b1c1c] font-mono">Tháng {selectedPeriod}</span>
+                        <span className="font-semibold text-sm text-[#1b1c1c] ">Tháng {selectedPeriod}</span>
                       </div>
                       <div>
                         <span className="text-[#5e5f5d] block">Tiền phòng định kỳ</span>
-                        <span className="font-semibold text-sm text-[#5a462d] font-mono">{rentAmount.toLocaleString('vi-VN')} đ</span>
+                        <span className="font-semibold text-sm text-[#5a462d] ">{rentAmount.toLocaleString('vi-VN')} đ</span>
                       </div>
                     </div>
                   </div>
@@ -620,7 +620,7 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={elecOld}
                               readOnly
-                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs cursor-not-allowed"
+                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -629,15 +629,15 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={elecNew}
                               onChange={(e) => setElecNew(parseInt(e.target.value) || 0)}
-                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                             />
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-xs pt-1 border-t border-[#eee7e1] text-[#5e5f5d]">
-                          <span>Tiêu thụ: <strong className="font-mono text-[#1b1c1c]">{elecUse} kWh</strong></span>
-                          <span>Đơn giá: <strong className="font-mono text-[#1b1c1c]">3,500đ</strong></span>
+                          <span>Tiêu thụ: <strong className=" text-[#1b1c1c]">{elecUse} kWh</strong></span>
+                          <span>Đơn giá: <strong className=" text-[#1b1c1c]">3,500đ</strong></span>
                         </div>
-                        <div className="text-right text-xs font-bold text-[#5a462d] font-mono">
+                        <div className="text-right text-xs font-bold text-[#5a462d] ">
                           Thành tiền: {elecCost.toLocaleString('vi-VN')} đ
                         </div>
                       </div>
@@ -652,7 +652,7 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={waterOld}
                               readOnly
-                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs cursor-not-allowed"
+                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -661,15 +661,15 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={waterNew}
                               onChange={(e) => setWaterNew(parseInt(e.target.value) || 0)}
-                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                             />
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-xs pt-1 border-t border-[#eee7e1] text-[#5e5f5d]">
-                          <span>Tiêu thụ: <strong className="font-mono text-[#1b1c1c]">{waterUse} m³</strong></span>
-                          <span>Đơn giá: <strong className="font-mono text-[#1b1c1c]">15,000đ</strong></span>
+                          <span>Tiêu thụ: <strong className=" text-[#1b1c1c]">{waterUse} m³</strong></span>
+                          <span>Đơn giá: <strong className=" text-[#1b1c1c]">15,000đ</strong></span>
                         </div>
-                        <div className="text-right text-xs font-bold text-[#5a462d] font-mono">
+                        <div className="text-right text-xs font-bold text-[#5a462d] ">
                           Thành tiền: {waterCost.toLocaleString('vi-VN')} đ
                         </div>
                       </div>
@@ -683,18 +683,18 @@ export default function AccountantMonthlyPage() {
                       {subscriptions.map((s) => (
                         <div key={s.id} className="flex justify-between items-center py-1 border-b border-[#f0eded] border-dashed">
                           <span className="text-[#1b1c1c]">{s.service_name}</span>
-                          <span className="font-mono font-bold text-[#4e453d]">{s.monthly_cost.toLocaleString('vi-VN')} đ</span>
+                          <span className=" font-bold text-[#4e453d]">{s.monthly_cost.toLocaleString('vi-VN')} đ</span>
                         </div>
                       ))}
                       {subscriptions.length === 0 && (
                         <div className="flex justify-between items-center py-1 border-b border-[#f0eded] border-dashed">
                           <span className="text-[#1b1c1c]">Dịch vụ mặc định (Wifi, Rác)</span>
-                          <span className="font-mono font-bold text-[#4e453d]">150.000 đ</span>
+                          <span className=" font-bold text-[#4e453d]">150.000 đ</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center pt-2 font-bold text-[#5a462d]">
                         <span>Tổng tiền dịch vụ:</span>
-                        <span className="font-mono">{servicesCost.toLocaleString('vi-VN')} đ</span>
+                        <span className="">{servicesCost.toLocaleString('vi-VN')} đ</span>
                       </div>
                     </div>
                   </div>
@@ -730,14 +730,14 @@ export default function AccountantMonthlyPage() {
                               )}
                               <span className="font-sans font-bold text-[#1b1c1c] text-xs">{inc.name}</span>
                             </div>
-                            <div className="text-[10px] text-[#5e5f5d] font-mono flex items-center gap-3">
+                            <div className="text-[10px] text-[#5e5f5d]  flex items-center gap-3">
                               <span>Mã: <strong className="text-[#5a462d]">{formatShortId(inc.id)}</strong></span>
                               <span className="text-[#d1c4b9]">•</span>
                               <span>Ngày sự cố: <strong>{inc.dateRecorded || new Date().toISOString().split('T')[0]}</strong></span>
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-bold text-[#5a462d] text-xs font-mono">{inc.amount.toLocaleString('vi-VN')} đ</span>
+                            <span className="font-bold text-[#5a462d] text-xs ">{inc.amount.toLocaleString('vi-VN')} đ</span>
                             {!inc.confirmed && (
                               <button
                                 type="button"
@@ -769,26 +769,26 @@ export default function AccountantMonthlyPage() {
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between">
                         <span className="text-[#5e5f5d]">Tiền phòng:</span>
-                        <span className="font-mono text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} đ</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[#5e5f5d]">Tiền điện nước:</span>
-                        <span className="font-mono text-[#1b1c1c]">{(elecCost + waterCost).toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-[#1b1c1c]">{(elecCost + waterCost).toLocaleString('vi-VN')} đ</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[#5e5f5d]">Tiền dịch vụ đã đăng ký:</span>
-                        <span className="font-mono text-[#1b1c1c]">{servicesCost.toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-[#1b1c1c]">{servicesCost.toLocaleString('vi-VN')} đ</span>
                       </div>
                       {incidentalsCost > 0 && (
                         <div className="flex justify-between">
                           <span className="text-[#5e5f5d]">Phí phát sinh trong kỳ:</span>
-                          <span className="font-mono text-[#ba1a1a]">+{incidentalsCost.toLocaleString('vi-VN')} đ</span>
+                          <span className=" text-[#ba1a1a]">+{incidentalsCost.toLocaleString('vi-VN')} đ</span>
                         </div>
                       )}
                       <div className="h-px bg-[#d1c4b9] my-2"></div>
                       <div className="flex justify-between items-center text-sm font-bold text-[#5a462d]">
                         <span>Tổng tiền cần thanh toán:</span>
-                        <span className="text-lg font-mono">{totalCost.toLocaleString('vi-VN')} đ</span>
+                        <span className="text-lg ">{totalCost.toLocaleString('vi-VN')} đ</span>
                       </div>
                     </div>
 
@@ -859,7 +859,7 @@ export default function AccountantMonthlyPage() {
                     <th className="p-3 text-right">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#d1c4b9] font-mono text-xs">
+                <tbody className="divide-y divide-[#d1c4b9]  text-xs">
                   {filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-[#f6f3f2] cursor-pointer" onClick={() => { setSelectedInvoice(inv); setDrawerOpen(true); }}>
                       <td className="p-3 font-bold text-[#5a462d]" title={inv.id}>
@@ -925,7 +925,7 @@ export default function AccountantMonthlyPage() {
             <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8]">
               <div>
                 <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Chi tiết Hóa đơn</h3>
-                <p className="font-mono text-xs text-[#5e5f5d] mt-1">#{formatShortId(selectedInvoice.id)}</p>
+                <p className=" text-xs text-[#5e5f5d] mt-1">#{formatShortId(selectedInvoice.id)}</p>
               </div>
               <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full cursor-pointer">
                 <X className="w-5 h-5" />
@@ -959,7 +959,7 @@ export default function AccountantMonthlyPage() {
 
               <div className="border-t border-[#d1c4b9] pt-4">
                 <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider font-label-caps">Chi tiết phí</h4>
-                <div className="space-y-2 font-mono text-xs">
+                <div className="space-y-2  text-xs">
                   <div className="flex justify-between text-sm">
                     <span className="font-sans font-medium text-[#1b1c1c]">Tiền phòng:</span>
                     <span>{selectedInvoice.rent_amount.toLocaleString('vi-VN')} đ</span>
@@ -983,7 +983,7 @@ export default function AccountantMonthlyPage() {
 
               <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
                 <span className="font-bold text-[#1b1c1c]">Tổng cộng:</span>
-                <span className="text-xl font-bold text-[#5a462d] font-mono">{selectedInvoice.total.toLocaleString('vi-VN')} VND</span>
+                <span className="text-xl font-bold text-[#5a462d] ">{selectedInvoice.total.toLocaleString('vi-VN')} VND</span>
               </div>
             </div>
 
@@ -1079,7 +1079,7 @@ export default function AccountantMonthlyPage() {
                   value={newIncidentalCode}
                   onChange={(e) => setNewIncidentalCode(e.target.value)}
                   placeholder="Ví dụ: CPPS-1021"
-                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono disabled:opacity-60 disabled:bg-[#f3ede8]"
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]  disabled:opacity-60 disabled:bg-[#f3ede8]"
                 />
               </div>
 
@@ -1096,7 +1096,7 @@ export default function AccountantMonthlyPage() {
                   value={newIncidentalAmount || ''}
                   onChange={(e) => setNewIncidentalAmount(parseInt(e.target.value) || 0)}
                   placeholder="Nhập số tiền..."
-                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono disabled:opacity-60 disabled:bg-[#f3ede8]"
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]  disabled:opacity-60 disabled:bg-[#f3ede8]"
                 />
               </div>
 
@@ -1128,7 +1128,7 @@ export default function AccountantMonthlyPage() {
                     required
                     value={newIncidentalDate}
                     onChange={(e) => setNewIncidentalDate(e.target.value)}
-                    className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-2.5 px-4 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono"
+                    className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-2.5 px-4 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] "
                   />
                 </div>
               </div>

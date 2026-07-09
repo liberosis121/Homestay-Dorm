@@ -366,8 +366,8 @@ export default function AccountantRefundsPage() {
                   >
                     <td className="p-3 font-semibold text-[#1b1c1c]">{r.room_name}</td>
                     <td className="p-3 font-medium text-[#1b1c1c]">{r.customer_name}</td>
-                    <td className="p-3 text-xs text-[#5e5f5d] font-mono">{r.checkout_date}</td>
-                    <td className="p-3 text-right font-mono text-[#1b1c1c]">{r.deposit_original.toLocaleString('vi-VN')}</td>
+                    <td className="p-3 text-xs text-[#5e5f5d] ">{r.checkout_date}</td>
+                    <td className="p-3 text-right  text-[#1b1c1c]">{r.deposit_original.toLocaleString('vi-VN')}</td>
                     <td className="p-3 text-center">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                         r.status === 'confirmed' || r.status === 'paid' ? 'bg-[#E8F5E9] text-[#2E7D32]' :
@@ -406,7 +406,7 @@ export default function AccountantRefundsPage() {
               <div className="p-4 space-y-4">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-[#5e5f5d]">Tiền cọc gốc:</span>
-                  <span className="font-mono font-bold text-[#1b1c1c]">{activeRefund.deposit_original.toLocaleString('vi-VN')} đ</span>
+                  <span className=" font-bold text-[#1b1c1c]">{activeRefund.deposit_original.toLocaleString('vi-VN')} đ</span>
                 </div>
 
                 {/* Residency / Refund Rate Selector (UC Step 6) */}
@@ -454,7 +454,7 @@ export default function AccountantRefundsPage() {
                           type="text"
                           value={violationDeduction}
                           onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
-                          className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                       </div>
@@ -472,7 +472,7 @@ export default function AccountantRefundsPage() {
                             type="text"
                             value={elecWaterDeduction}
                             onChange={(e) => { setElecWaterDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -497,7 +497,7 @@ export default function AccountantRefundsPage() {
                             type="text"
                             value={damageDeduction}
                             onChange={(e) => { setDamageDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -513,7 +513,7 @@ export default function AccountantRefundsPage() {
                             type="text"
                             value={cleaningDeduction}
                             onChange={(e) => { setCleaningDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -529,7 +529,7 @@ export default function AccountantRefundsPage() {
                             type="text"
                             value={violationDeduction}
                             onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -552,11 +552,11 @@ export default function AccountantRefundsPage() {
                   <div className="border-t border-[#d1c4b9] pt-3 space-y-2 text-xs bg-[#fbf9f8] p-3 rounded border">
                     <div className="flex justify-between">
                       <span className="text-[#5e5f5d]">Tiền hoàn cơ bản ({residencyRate}%):</span>
-                      <span className="font-mono text-[#1b1c1c]">{basicRefundAmount.toLocaleString('vi-VN')} đ</span>
+                      <span className=" text-[#1b1c1c]">{basicRefundAmount.toLocaleString('vi-VN')} đ</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#5e5f5d]">Tổng các khoản trừ:</span>
-                      <span className="font-mono text-error">-{totalDeductions.toLocaleString('vi-VN')} đ</span>
+                      <span className=" text-error">-{totalDeductions.toLocaleString('vi-VN')} đ</span>
                     </div>
                     
                     <div className="h-[1px] bg-[#d1c4b9] my-1.5" />
@@ -566,12 +566,12 @@ export default function AccountantRefundsPage() {
                       <div className="text-right">
                         {netRefund >= 0 ? (
                           <>
-                            <span className="text-lg font-extrabold text-[#2E7D32] block font-mono">+{netRefund.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-lg font-extrabold text-[#2E7D32] block ">+{netRefund.toLocaleString('vi-VN')} đ</span>
                             <span className="text-[9px] text-[#2E7D32] font-bold uppercase tracking-wider block">Hoàn trả khách</span>
                           </>
                         ) : (
                           <>
-                            <span className="text-lg font-extrabold text-[#ba1a1a] block font-mono">{netRefund.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-lg font-extrabold text-[#ba1a1a] block ">{netRefund.toLocaleString('vi-VN')} đ</span>
                             <span className="text-[9px] text-[#ba1a1a] font-bold uppercase tracking-wider block">Khách đóng thêm</span>
                           </>
                         )}
@@ -645,7 +645,7 @@ export default function AccountantRefundsPage() {
                     <div key={idx} className="border border-[#d1c4b9] rounded p-3 bg-[#FAF9F6]">
                       <div className="flex justify-between items-start mb-1.5">
                         <span className="font-bold text-sm text-[#1b1c1c]">{item.item}</span>
-                        <span className="font-mono text-sm text-[#ba1a1a] font-semibold">{item.amount.toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-sm text-[#ba1a1a] font-semibold">{item.amount.toLocaleString('vi-VN')} đ</span>
                       </div>
                       <p className="text-xs text-[#5e5f5d]">Biên bản kiểm tra phòng kỹ thuật lập lúc bàn giao trả phòng.</p>
                       
@@ -663,7 +663,7 @@ export default function AccountantRefundsPage() {
 
             <div className="p-6 border-t border-[#d1c4b9] bg-[#fbf9f8] flex justify-between items-center text-sm font-semibold">
               <span className="text-[#5e5f5d]">Tổng giá trị khấu trừ:</span>
-              <span className="text-base text-[#ba1a1a] font-bold font-mono">
+              <span className="text-base text-[#ba1a1a] font-bold ">
                 {(activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0).toLocaleString('vi-VN')} VND
               </span>
             </div>

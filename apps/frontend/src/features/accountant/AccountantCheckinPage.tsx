@@ -417,7 +417,7 @@ export default function AccountantCheckinPage() {
                                 }`}
                               >
                                 <div className="flex justify-between items-center w-full">
-                                  <span className="font-mono font-bold text-[#5C4632]">
+                                  <span className=" font-bold text-[#5C4632]">
                                     {formatShortId(d.id)}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#E8EDE5] text-[#5F7D4E] uppercase">
@@ -468,11 +468,11 @@ export default function AccountantCheckinPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
                 <span className="text-sm text-[#1b1c1c]">Tiền Thuê Tháng Đầu (Tỷ lệ: 100%)</span>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} ₫</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} ₫</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
                 <span className="text-sm text-[#1b1c1c]">Tiền Cọc Định Kỳ (Giữ hộ)</span>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{depositAmount.toLocaleString('vi-VN')} ₫</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{depositAmount.toLocaleString('vi-VN')} ₫</span>
               </div>
               
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
@@ -496,7 +496,7 @@ export default function AccountantCheckinPage() {
                   </div>
                   <span className="select-none group-hover:text-[#5C4632] transition-colors">Phí Cấp Thẻ Từ (2 thẻ)</span>
                 </label>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{cardFee.toLocaleString('vi-VN')} ₫</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{cardFee.toLocaleString('vi-VN')} ₫</span>
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
@@ -520,7 +520,7 @@ export default function AccountantCheckinPage() {
                   </div>
                   <span className="select-none group-hover:text-[#5C4632] transition-colors">Phí Vệ Sinh Ban Đầu</span>
                 </label>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{cleaningFee.toLocaleString('vi-VN')} ₫</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{cleaningFee.toLocaleString('vi-VN')} ₫</span>
               </div>
 
               <div className="flex justify-between items-center pt-3 mt-3">
@@ -585,7 +585,7 @@ export default function AccountantCheckinPage() {
                       <th className="py-1.5 text-right font-normal">Thành tiền (₫)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E7DED2] divide-dashed font-mono">
+                  <tbody className="divide-y divide-[#E7DED2] divide-dashed ">
                     <tr>
                       <td className="py-1.5 text-[#1b1c1c]">Tiền thuê (Tháng đầu)</td>
                       <td className="py-1.5 text-right text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')}</td>
@@ -613,7 +613,7 @@ export default function AccountantCheckinPage() {
 
             <div className="flex justify-between items-center mt-6 pt-3 border-t-2 border-[#DCCFC0]">
               <span className="font-bold text-sm text-[#1b1c1c]">Tổng thanh toán:</span>
-              <span className="font-mono text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} đ</span>
+              <span className=" text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} đ</span>
             </div>
           </div>
         </div>
@@ -667,13 +667,13 @@ export default function AccountantCheckinPage() {
             <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
-                  <td className="p-4 font-mono font-bold text-[#5C4632] text-left" title={inv.id}>
+                  <td className="p-4  font-bold text-[#5C4632] text-left" title={inv.id}>
                     {formatShortId(inv.id)}
                   </td>
-                  <td className="p-4 font-mono text-xs text-[#8A7563] text-left">{formatShortId(inv.deposit_ref)} ({inv.room_name})</td>
+                  <td className="p-4  text-xs text-[#8A7563] text-left">{formatShortId(inv.deposit_ref)} ({inv.room_name})</td>
                   <td className="p-4 font-semibold text-[#1b1c1c] text-left">{inv.customer_name}</td>
-                  <td className="p-4 text-xs font-mono text-[#8A7563] text-left">{inv.checkin_date}</td>
-                  <td className="p-4 text-right font-mono font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')} ₫</td>
+                  <td className="p-4 text-xs  text-[#8A7563] text-left">{inv.checkin_date}</td>
+                  <td className="p-4 text-right  font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')} ₫</td>
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :

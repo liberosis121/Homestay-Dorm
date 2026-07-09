@@ -82,7 +82,7 @@ export default function InvoiceDetailDrawer({
   };
 
   const formattedAmount = (amount: number) => (
-    <span className="whitespace-nowrap font-mono">
+    <span className="whitespace-nowrap ">
       {(amount || 0).toLocaleString('vi-VN')}
       {'\u00A0\u0111'}
     </span>
@@ -110,7 +110,7 @@ export default function InvoiceDetailDrawer({
               {invoiceType === 'service' && 'Chi tiết Hóa đơn dịch vụ'}
               {invoiceType === 'liquidation' && 'Chi tiết Hóa đơn thanh lý'}
             </h3>
-            <p className="font-mono text-xs text-[#5e5f5d] mt-1">
+            <p className=" text-xs text-[#5e5f5d] mt-1">
               Mã: {invoiceData.id || invoiceData.code || '---'}
             </p>
           </div>
@@ -144,10 +144,10 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right font-semibold text-[#1b1c1c]">{invoiceData.room_name || '---'}</div>
                   
                   <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.created_at || '---'}</div>
                   
                   <div className="text-[#8A7563]">Hạn thanh toán:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.deadline || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.deadline || '---'}</div>
 
                   <div className="text-[#8A7563]">Phương thức thu:</div>
                   <div className="text-right text-[#1b1c1c]">
@@ -160,7 +160,7 @@ export default function InvoiceDetailDrawer({
                 <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Chi tiết thanh toán</h4>
                 <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
                   <span className="font-bold text-[#1b1c1c]">Tổng tiền đặt cọc:</span>
-                  <span className="text-xl font-bold text-[#5a462d] font-mono">{formattedAmount(invoiceData.amount)}</span>
+                  <span className="text-xl font-bold text-[#5a462d] ">{formattedAmount(invoiceData.amount)}</span>
                 </div>
                 {invoiceData.note && (
                   <div className="mt-2 text-xs bg-[#FAF9F6] p-3 rounded-lg border border-[#DCCFC0]/40 text-[#8A7563]">
@@ -188,13 +188,13 @@ export default function InvoiceDetailDrawer({
                   <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin hóa đơn</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã hóa đơn nhận phòng:</div>
-                    <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.id || '---'}</div>
+                    <div className="text-right  font-semibold text-[#5C4632]">{invoiceData.id || '---'}</div>
                     
                     <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                    <div className="text-right text-[#5C4632] font-mono">{invoiceData.created_at || '---'}</div>
+                    <div className="text-right text-[#5C4632] ">{invoiceData.created_at || '---'}</div>
                     
                     <div className="text-[#8A7563]">Hạn thanh toán:</div>
-                    <div className="text-right text-[#5C4632] font-mono">
+                    <div className="text-right text-[#5C4632] ">
                       {invoiceData.deadline || invoiceData.checkin_date || (invoiceData.created_at ? invoiceData.created_at.substring(0, 10) : '---')}
                     </div>
 
@@ -210,12 +210,12 @@ export default function InvoiceDetailDrawer({
                   <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin hợp đồng</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã hợp đồng:</div>
-                    <div className="text-right font-mono font-semibold text-[#5C4632]">
+                    <div className="text-right  font-semibold text-[#5C4632]">
                       {invoiceData.contract_id || (invoiceData.deposit_ref ? invoiceData.deposit_ref.replace('DEP', 'HĐ') : 'HĐ-MOCK')}
                     </div>
                     
                     <div className="text-[#8A7563]">Ngày bắt đầu thuê:</div>
-                    <div className="text-right text-[#5C4632] font-mono">{invoiceData.checkin_date || '---'}</div>
+                    <div className="text-right text-[#5C4632] ">{invoiceData.checkin_date || '---'}</div>
                     
                     <div className="text-[#8A7563]">Kỳ thanh toán:</div>
                     <div className="text-right text-[#5C4632] font-semibold">
@@ -238,7 +238,7 @@ export default function InvoiceDetailDrawer({
                   <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin phòng / giường</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã phòng / giường:</div>
-                    <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.room_id || '---'}</div>
+                    <div className="text-right  font-semibold text-[#5C4632]">{invoiceData.room_id || '---'}</div>
                     
                     <div className="text-[#8A7563]">Tên phòng:</div>
                     <div className="text-right font-semibold text-[#5C4632]">{invoiceData.room_name || '---'}</div>
@@ -287,7 +287,7 @@ export default function InvoiceDetailDrawer({
                 {/* Section 6: Tổng cộng */}
                 <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
                     <span className="font-bold text-[#1b1c1c]">Tổng cộng cần thanh toán:</span>
-                    <span className="text-xl font-bold text-[#5a462d] font-mono">{formattedAmount(invoiceData.total)}</span>
+                    <span className="text-xl font-bold text-[#5a462d] ">{formattedAmount(invoiceData.total)}</span>
                   </div>
               </>
             );
@@ -309,16 +309,16 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right text-[#1b1c1c] font-semibold">Tháng {invoiceData.period || '---'}</div>
 
                   <div className="text-[#8A7563]">Hạn thanh toán:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.due_date || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.due_date || '---'}</div>
 
                   <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.created_at || '---'}</div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Chi tiết chỉ số & chi phí</h4>
-                <div className="divide-y divide-[#E7DED2]/65 text-xs font-mono space-y-1">
+                <div className="divide-y divide-[#E7DED2]/65 text-xs  space-y-1">
                   <div className="flex justify-between py-1.5">
                     <span className="font-sans text-[#1b1c1c]">Tiền thuê phòng:</span>
                     <span className="text-[#1b1c1c]">{formattedAmount(invoiceData.rent_amount)}</span>
@@ -339,7 +339,7 @@ export default function InvoiceDetailDrawer({
 
                 <div className="flex justify-between items-center py-2.5 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10 mt-3">
                   <span className="font-bold text-[#5C4632] text-sm">Tổng cộng hóa đơn:</span>
-                  <span className="font-mono text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total)}</span>
+                  <span className=" text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total)}</span>
                 </div>
               </div>
             </>
@@ -361,7 +361,7 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right text-[#1b1c1c] font-medium">{invoiceData.description || '---'}</div>
 
                   <div className="text-[#8A7563]">Ngày tạo phiếu:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.created_at || '---'}</div>
                 </div>
               </div>
 
@@ -369,7 +369,7 @@ export default function InvoiceDetailDrawer({
                 <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thanh toán dịch vụ</h4>
                 <div className="flex justify-between items-center py-2.5 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10">
                   <span className="font-bold text-[#5C4632] text-sm">Số tiền dịch vụ:</span>
-                  <span className="font-mono text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.amount || invoiceData.total)}</span>
+                  <span className=" text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.amount || invoiceData.total)}</span>
                 </div>
               </div>
             </>
@@ -385,16 +385,16 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right font-semibold text-[#1b1c1c]">{invoiceData.customer_name || '---'}</div>
                   
                   <div className="text-[#8A7563]">Hợp đồng số:</div>
-                  <div className="text-right font-semibold text-[#1b1c1c] font-mono text-xs">{invoiceData.contract_code || invoiceData.contract_id || '---'}</div>
+                  <div className="text-right font-semibold text-[#1b1c1c]  text-xs">{invoiceData.contract_code || invoiceData.contract_id || '---'}</div>
                   
                   <div className="text-[#8A7563]">Ngày thanh lý:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.liquidated_at || invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.liquidated_at || invoiceData.created_at || '---'}</div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Bảng quyết toán thanh lý</h4>
-                <div className="divide-y divide-[#E7DED2]/65 text-xs font-mono">
+                <div className="divide-y divide-[#E7DED2]/65 text-xs ">
                   <div className="flex justify-between py-2">
                     <span className="font-sans text-[#1b1c1c]">Tiền hoàn cọc phòng:</span>
                     <span className="text-[#5F7D4E] font-bold">+{formattedAmount(invoiceData.refund_amount || invoiceData.deposit_refund)}</span>
@@ -415,7 +415,7 @@ export default function InvoiceDetailDrawer({
 
                 <div className="flex justify-between items-center py-2.5 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10 mt-3">
                   <span className="font-bold text-[#5C4632] text-sm">Tổng thanh toán thực tế:</span>
-                  <span className="font-mono text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total || invoiceData.amount)}</span>
+                  <span className=" text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total || invoiceData.amount)}</span>
                 </div>
               </div>
             </>
