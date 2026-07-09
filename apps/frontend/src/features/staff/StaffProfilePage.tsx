@@ -188,6 +188,60 @@ function getRoleDisplayInfo(role: string) {
   }
 }
 
+interface InputFieldProps {
+  label: string;
+  name: string;
+  value: string;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  isEditing: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+}
+
+const InputField = ({
+  label,
+  name,
+  value,
+  type = 'text',
+  placeholder = '',
+  disabled = false,
+  isEditing,
+  onChange
+}: InputFieldProps) => {
+  const isDate = type === 'date';
+  if (isDate) {
+    return (
+      <CustomDatePicker
+        label={label}
+        value={value}
+        onChange={(val) => {
+          onChange({
+            target: { name, value: val }
+          } as any);
+        }}
+        disabled={disabled || !isEditing}
+        placeholder={placeholder || 'Chọn ngày'}
+        required={label.includes('*')}
+      />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <FormLabel label={label} required={label.includes('*')} />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled || !isEditing}
+        className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
+      />
+    </div>
+  );
+};
+
 // ─── Main Staff Profile Page ───────────────────────────────────────────────────
 export default function StaffProfilePage() {
   const { user } = useAuthStore();
@@ -369,42 +423,7 @@ export default function StaffProfilePage() {
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // ── Shared InputField ─────────────────────────────────────────────────────
-  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: {
-    label: string; name: string; value: string; type?: string; placeholder?: string; disabled?: boolean;
-  }) => {
-    const isDate = type === 'date';
-    if (isDate) {
-      return (
-        <CustomDatePicker
-          label={label}
-          value={value}
-          onChange={(val) => {
-            handleProfileChange({
-              target: { name, value: val }
-            } as any);
-          }}
-          disabled={disabled || !isEditing}
-          placeholder={placeholder || 'Chọn ngày'}
-          required={label.includes('*')}
-        />
-      );
-    }
-    return (
-      <div className="space-y-2">
-        <FormLabel label={label} required={label.includes('*')} />
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={handleProfileChange}
-          placeholder={placeholder}
-          disabled={disabled || !isEditing}
-          className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
-        />
-      </div>
-    );
-  };
+
 
   const ReadOnlyField = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
     <div className="space-y-2">
@@ -591,10 +610,10 @@ export default function StaffProfilePage() {
                   <User className="w-3.5 h-3.5" /> Thông tin cá nhân
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <InputField label="Họ và tên *" name="full_name" value={formData.full_name} />
-                  <InputField label="Email *" name="email" value={formData.email} disabled />
+                  <InputField label="Họ và tên *" name="full_name" value={formData.full_name} isEditing={isEditing} onChange={handleProfileChange} />
+                  <InputField label="Email *" name="email" value={formData.email} disabled isEditing={isEditing} onChange={handleProfileChange} />
 
-                  <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
+                  <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} isEditing={isEditing} onChange={handleProfileChange} />
                   <div className="space-y-2">
                     <FormLabel label="Giới tính" required />
                     <CustomSelect
@@ -613,8 +632,8 @@ export default function StaffProfilePage() {
                     />
                   </div>
 
-                  <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" />
-                  <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} />
+                  <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" isEditing={isEditing} onChange={handleProfileChange} />
+                  <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} isEditing={isEditing} onChange={handleProfileChange} />
 
 
                 </div>

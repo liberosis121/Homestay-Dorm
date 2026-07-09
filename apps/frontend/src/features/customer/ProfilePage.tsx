@@ -285,41 +285,7 @@ export default function ProfilePage() {
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // ── Shared InputField ─────────────────────────────────────────────────────
-  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => {
-    const isDate = type === 'date';
-    if (isDate) {
-      return (
-        <CustomDatePicker
-          label={label}
-          value={value}
-          onChange={(val) => {
-            handleProfileChange({
-              target: { name, value: val }
-            } as any);
-          }}
-          disabled={disabled || !isEditing}
-          placeholder={placeholder || 'Chọn ngày'}
-          required={label.includes('*')}
-          variant="surface"
-        />
-      );
-    }
-    return (
-      <div className="space-y-2">
-        <FormLabel label={label} required={label.includes('*')} />
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={handleProfileChange}
-          placeholder={placeholder}
-          disabled={disabled || !isEditing}
-          className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
-        />
-      </div>
-    );
-  };
+
 
 
 
