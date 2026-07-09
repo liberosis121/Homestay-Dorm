@@ -5,9 +5,21 @@
 
 import { Router } from 'express';
 import { roomService } from '../services/room.service';
+import { adminBranchesService } from '../services/admin-branches.service';
 import { sendSuccess, sendError } from '../utils/response.util';
 
 const router = Router();
+
+// GET /api/branches - Lay danh sach tat ca chi nhanh (Public)
+router.get('/branches', async (req, res) => {
+  try {
+    const data = await adminBranchesService.getAllBranches();
+    return sendSuccess(res, data, 'Lấy danh sách chi nhánh thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi lấy danh sách chi nhánh.');
+  }
+});
+
 
 // GET /api/rooms - Lay danh sach phong, ho tro bo loc
 router.get('/rooms', async (req, res) => {

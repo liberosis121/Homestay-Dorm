@@ -111,3 +111,19 @@ export const getRoomBedsApi = async (roomId: string): Promise<Bed[]> => {
   const response = await apiClient.get<{ success: boolean; data: Bed[] }>(`/rooms/${roomId}/beds`);
   return response.data.data;
 };
+
+export interface Branch {
+  id: string;
+  name: string;
+  address: string;
+}
+
+/**
+ * Lấy danh sách tất cả các chi nhánh phục vụ bộ lọc tìm kiếm.
+ * Gọi: GET /api/branches
+ */
+export const getBranchesApi = async (): Promise<Branch[]> => {
+  const response = await apiClient.get<{ success: boolean; data: Branch[] }>('/branches');
+  return response.data.data || [];
+};
+

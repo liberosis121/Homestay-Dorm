@@ -267,9 +267,9 @@ function ServiceDetailModal({
         </div>
 
         {/* Footer Action */}
-        <div className="px-6 pb-6 border-t border-outline-variant/20 pt-4 flex justify-end">
-          {isRenter ? (
-            !subscription || subscription.status === 'cancelled' ? (
+        {isRenter && (
+          <div className="px-6 pb-6 border-t border-outline-variant/20 pt-4 flex justify-end">
+            {!subscription || subscription.status === 'cancelled' ? (
               !isComingSoon && (
                 <button
                   onClick={() => { onClose(); onRegister?.(); }}
@@ -282,17 +282,9 @@ function ServiceDetailModal({
               <span className="text-xs font-bold text-[#4C7A4F] py-2 px-4 bg-[#4C7A4F]/10 border border-[#4C7A4F]/25 rounded-full flex items-center gap-1.5 shadow-sm">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Đang hoạt động
               </span>
-            )
-          ) : (
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 border border-outline-variant bg-[#FAF8F5] text-sm font-bold text-on-surface-variant rounded-xl
-                         hover:bg-surface-container hover:text-on-surface cursor-pointer active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
-            >
-              Đóng lại
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

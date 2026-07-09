@@ -1,6 +1,7 @@
-
+import { useEffect, useState } from 'react';
 import { useRoomSearchStore } from '../store/useRoomSearchStore';
 import CustomSelect from '../../../components/ui/CustomSelect';
+import { getBranchesApi, Branch } from '../rooms.api';
 
 interface Props {
   onToggleFilters: () => void;
@@ -16,12 +17,19 @@ export default function FilterBar({ onToggleFilters, showExtended }: Props) {
     sortBy, setSortBy
   } = useRoomSearchStore();
 
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    getBranchesApi()
+      .then(setBranches)
+      .catch(err => console.error('Lỗi khi lấy chi nhánh:', err));
+  }, []);
+
   const branchOptions = [
     { value: 'Tất cả chi nhánh', label: 'Tất cả chi nhánh' },
-    { value: 'b-1', label: 'Quận 1 - Đinh Tiên Hoàng' },
-    { value: 'b-2', label: 'Quận 7 - Phú Mỹ Hưng' },
-    { value: 'b-3', label: 'Thủ Đức - Làng Đại Học' },
+    ...branches.map(b => ({ value: b.id, label: b.name }))
   ];
+
 
   const roomTypeOptions = [
     { value: 'Loại phòng', label: 'Loại phòng' },

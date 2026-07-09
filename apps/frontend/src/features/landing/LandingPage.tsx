@@ -10,7 +10,7 @@ import Footer from '../../components/ui/Footer';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import servicesImage from '../../assets/homestay-services.png';
-import { getRoomsApi, Room } from '../rooms/rooms.api';
+import { getRoomsApi, getBranchesApi, Room, Branch } from '../rooms/rooms.api';
 
 export default function LandingPage() {
   const { user } = useAuthStore();
@@ -23,6 +23,7 @@ export default function LandingPage() {
   const [localGender, setLocalGender] = useState('Giới tính');
   const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
 
   const handleRegisterClick = (e: React.MouseEvent, roomId: string) => {
     e.preventDefault();
@@ -79,6 +80,13 @@ export default function LandingPage() {
       })
       .catch((err) => {
         console.error('Không thể tải phòng tiêu biểu:', err);
+      });
+
+    // Tải danh sách chi nhánh
+    getBranchesApi()
+      .then(setBranches)
+      .catch((err) => {
+        console.error('Không thể tải danh sách chi nhánh:', err);
       });
 
     // Simple Fade-in Animation for Hero
@@ -181,9 +189,7 @@ export default function LandingPage() {
                   onChange={setLocalBranch}
                   options={[
                     { value: 'Tất cả chi nhánh', label: 'Tất cả chi nhánh' },
-                    { value: 'b-1', label: 'Quận 1' },
-                    { value: 'b-2', label: 'Quận 7' },
-                    { value: 'b-3', label: 'Thủ Đức' }
+                    ...branches.map(b => ({ value: b.id, label: b.name }))
                   ]}
                   triggerClassName="h-14 bg-surface-container-low border-none rounded-2xl"
                 />

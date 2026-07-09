@@ -14,6 +14,11 @@ interface Room {
   amenities: string[];
   status: string;
   image_url: string;
+  branches?: {
+    id: string;
+    name: string;
+    address: string;
+  };
 }
 
 interface Props {
@@ -29,14 +34,6 @@ export default function ListingRoomCard({ room }: Props) {
   const tagBg = availableBeds === room.capacity ? 'bg-status-success' : 'bg-status-warning';
   const tagText = availableBeds === room.capacity ? 'Sẵn sàng' : `Còn ${availableBeds} giường`;
 
-  const getBranchName = (id: string) => {
-    const map: Record<string, string> = {
-      'b-1': 'Chi nhánh Quận 1',
-      'b-2': 'Chi nhánh Quận 7',
-      'b-3': 'Thủ Đức - Làng Đại Học'
-    };
-    return map[id] || 'Chi nhánh khác';
-  };
 
   const getAmenityIcon = (am: string) => {
     switch (am) {
@@ -85,7 +82,7 @@ export default function ListingRoomCard({ room }: Props) {
       <div className="p-6 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <p className="text-[12px] text-primary font-semibold mb-1 uppercase tracking-tight">{getBranchName(room.branch_id)}</p>
+            <p className="text-[12px] text-primary font-semibold mb-1 uppercase tracking-tight">{room.branches?.name || 'Chi nhánh khác'}</p>
             <h3 className="font-headline-md text-[20px] leading-tight text-on-surface">{room.name}</h3>
           </div>
         </div>
