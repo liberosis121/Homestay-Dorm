@@ -186,22 +186,6 @@ export const customerLookupService = {
 
       // Hoat dong gan day (recentActivities)
       const recentActivities: any[] = [];
-      if (formattedContracts.length > 0) {
-        recentActivities.push({
-          icon: 'file_signature',
-          iconBg: 'bg-[#5F7D4E]/10 text-[#5F7D4E]',
-          time: 'Mới nhất',
-          title: `Đã ký hợp đồng ${formattedContracts[0].id}`
-        });
-      }
-      if (formattedDeposits.length > 0) {
-        recentActivities.push({
-          icon: 'payments',
-          iconBg: 'bg-[#B9792B]/10 text-[#B9792B]',
-          time: 'Gần đây',
-          title: `Đã xác nhận đặt cọc giữ chỗ`
-        });
-      }
 
       return {
         id: c.cccd,

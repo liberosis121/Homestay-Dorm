@@ -4,7 +4,6 @@ import {
 } from 'lucide-react';
 import CustomerProfileCard from './components/CustomerProfileCard';
 import CustomerTabs from './components/CustomerTabs';
-import CustomerTimeline from './components/CustomerTimeline';
 import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
 import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
@@ -214,7 +213,7 @@ export default function CustomerLookupPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* CỘT TRÁI: Sidebar danh sách khách hàng luôn hiển thị */}
-        <div className="lg:col-span-4 xl:col-span-3 bg-white rounded-24 border border-[#d1c4b9] shadow-sm p-4 flex flex-col h-[700px] overflow-hidden animate-fade-in-up">
+        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-24 border border-[#d1c4b9] shadow-sm p-4 flex flex-col h-[700px] overflow-hidden animate-fade-in-up">
           <div className="flex items-center justify-between pb-3 border-b border-[#e8ede7] mb-3">
             <h3 className="font-bold text-[#6f583c] text-xs tracking-wide uppercase flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -265,9 +264,14 @@ export default function CustomerLookupPage() {
                     <p className={`text-sm font-bold truncate ${isActive ? 'text-[#6f583c]' : 'text-[#1e1b17]'}`}>
                       {cust.fullName}
                     </p>
-                    <p className="text-[11px] text-[#7f756b] font-medium mt-0.5 truncate font-body-sm">
-                      {cust.code} • {cust.personalInfo.phone}
-                    </p>
+                    <div className="flex flex-wrap gap-1 mt-1 font-body-sm">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#eee7e1] text-[#6f583c] text-[10px] font-bold">
+                        {cust.code}
+                      </span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#eee7e1]/80 text-[#4e453c] text-[10px] font-bold">
+                        {cust.personalInfo.phone}
+                      </span>
+                    </div>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${statusColor}`}>
                     {statusLabel}
@@ -293,7 +297,7 @@ export default function CustomerLookupPage() {
         </div>
 
         {/* CỘT PHẢI: Canvas thông tin chi tiết */}
-        <div className="lg:col-span-8 xl:col-span-9 min-h-[700px] relative">
+        <div className="lg:col-span-7 xl:col-span-8 min-h-[700px] relative">
           
           {/* A. TRẠNG THÁI LỖI */}
           {uiState === 'error' && (
@@ -337,28 +341,9 @@ export default function CustomerLookupPage() {
                 customer={activeCustomer} 
               />
 
-              {/* Bottom Contents Grid Layout */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                
-                {/* Left & Middle Column: Detailed Tabs */}
-                <div className="xl:col-span-2 space-y-6">
-                  <CustomerTabs customer={activeCustomer} onUpdateCustomer={handleUpdateCustomer} />
-                </div>
-
-                {/* Right Column: Activities Timeline */}
-                <div className="space-y-6">
-                  
-                  {/* Hoạt động gần đây */}
-                  <div className="bg-white p-6 rounded-24 border border-[#d1c4b9] shadow-sm">
-                    <h4 className="font-bold text-[#6f583c] text-sm tracking-wider uppercase mb-5 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 0" }}>history</span>
-                      Hoạt động gần đây
-                    </h4>
-                    <CustomerTimeline activities={activeCustomer.recentActivities} />
-                  </div>
-
-                </div>
-
+              {/* Bottom Contents: Detailed Tabs */}
+              <div className="w-full">
+                <CustomerTabs customer={activeCustomer} onUpdateCustomer={handleUpdateCustomer} />
               </div>
 
             </div>
