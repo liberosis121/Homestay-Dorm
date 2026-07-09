@@ -359,7 +359,7 @@ export default function SaleDashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[#1e1b17]">{reg.customer_name}</p>
-                      <p className="text-xs text-[#4e453c]">{reg.time_ago} • {reg.room_name}</p>
+                      <p className="text-xs text-[#4e453c]">{reg.time_ago}</p>
                     </div>
                   </div>
                 ))}
@@ -392,7 +392,9 @@ export default function SaleDashboardPage() {
                   <div key={log.id} className="relative pl-10">
                     <TimelineDot type={log.type} />
                     <p className="text-sm font-semibold text-[#1e1b17]">{log.title}</p>
-                    <p className="text-xs text-[#4e453c] mt-0.5">{log.detail}</p>
+                    <p className="text-xs text-[#4e453c] mt-0.5">
+                      {log.detail.includes('•') ? log.detail.split('•')[1].trim() : log.detail}
+                    </p>
                   </div>
                 ))}
               </div>

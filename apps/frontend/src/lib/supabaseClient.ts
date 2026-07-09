@@ -988,11 +988,11 @@ const INITIAL_DB = {
     { id: 'rr-4', customer_name: 'Trịnh Hoài An', time_ago: '2 giờ trước', room_name: 'Phòng Đôi 203', created_at: '2026-06-02T05:00:00Z' }
   ] as RecentRegistration[],
   activity_logs: [
-    { id: 'al-1', title: 'Hợp đồng #HD2026-08 hoàn tất', detail: 'Khách: Phạm Gia Bảo • 10:45 AM', type: 'contract' },
-    { id: 'al-2', title: 'Lịch xem phòng đã xác nhận', detail: 'Khách: Nguyễn Văn A • 09:15 AM', type: 'schedule' },
-    { id: 'al-3', title: 'Email nhắc hẹn đã gửi', detail: 'Hệ thống tự động • 08:00 AM', type: 'system' },
-    { id: 'al-4', title: 'Phiếu đăng ký mới từ khách hàng', detail: 'Khách: Lê Minh Tuấn • 07:30 AM', type: 'registration' },
-    { id: 'al-5', title: 'Hủy lịch hẹn bởi khách hàng', detail: 'Khách: Đinh Thị Hoa • 06:15 AM', type: 'schedule' }
+    { id: 'al-1', title: 'Hợp đồng #HD2026-08 hoàn tất', detail: '10:45 AM', type: 'contract' },
+    { id: 'al-2', title: 'Lịch xem phòng đã xác nhận', detail: '09:15 AM', type: 'schedule' },
+    { id: 'al-3', title: 'Email nhắc hẹn đã gửi', detail: '08:00 AM', type: 'system' },
+    { id: 'al-4', title: 'Phiếu đăng ký mới từ khách hàng', detail: '07:30 AM', type: 'registration' },
+    { id: 'al-5', title: 'Hủy lịch hẹn bởi khách hàng', detail: '06:15 AM', type: 'schedule' }
   ] as ActivityLog[],
   services: [
     { id: 'svc-1',  name: 'Điện sinh hoạt',                  category: 'essential',   description: 'Điện theo chỉ số công tơ riêng từng phòng, quyết toán hàng tháng.',                                     unit_price: 3500,   billing_cycle: 'per_kwh',  status: 'available',    icon: 'Zap',         is_default: true  },
