@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 import { Room } from '../../lib/supabaseClient';
 
@@ -142,7 +143,7 @@ export default function ManagerRoomsPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-6 animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif" }} className="space-y-6 animate-fade-in-up">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
@@ -343,7 +344,7 @@ export default function ManagerRoomsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 22, fontWeight: 800, color: T.text }}>{selectedRoom.name}</h3>
-                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 3 }}>Mã phòng: {selectedRoom.id} • Tầng {selectedRoom.floor}</p>
+                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 3 }}>Mã phòng: {formatShortId(selectedRoom.id, 'room')} • Tầng {selectedRoom.floor}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: 8, cursor: 'pointer' }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.textMuted }}>close</span>

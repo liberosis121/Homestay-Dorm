@@ -1336,9 +1336,13 @@ function generateContracts(): ManagerContract[] {
       ];
     }
 
+    // Generate deterministic UUID-like IDs for each contract
+    const uuidBase = ['a3f9c1d2', 'b7e4a812', 'c2d6f034', 'd8b1e795', 'e5a3c920', 'f1d7b468', 'a9c5e237', 'b3f8d104', 'c7e2a956', 'd4b9f312', 'e8a1c674', 'f5d3b089'];
+    const uid = uuidBase[i % uuidBase.length] + String(i).padStart(8, '0').slice(0, 8);
+    const depUid = uuidBase[(i + 3) % uuidBase.length] + String(i + 100).padStart(8, '0').slice(0, 8);
     list.push({
-      id: `CON-${7000 + i}`,
-      contract_code: `HD-2026-${String(100 + i)}`,
+      id: uid,
+      contract_code: uid,
       customer_id: `u-mock-cust-${200 + i}`,
       customer_name: name,
       customer_phone: selfPhone,
@@ -1363,7 +1367,7 @@ function generateContracts(): ManagerContract[] {
       manager_phone: '0907654321',
       created_at: new Date(startYear, i % 12, 5).toISOString(),
       // Thuộc tính bổ sung theo ERD
-      deposit_code: `DEP-${1000 + i}`,
+      deposit_code: depUid,
       sale_staff_name: ['Nguyễn Thị Trúc Hằng', 'Phan Thanh Tùng', 'Vũ Thị Hạnh'][i % 3],
       payment_cycle: ['1_month', '3_months', '6_months'][i % 3] as '1_month' | '3_months' | '6_months',
       contract_type: i % 2 === 0 ? 'long_term' : 'short_term',

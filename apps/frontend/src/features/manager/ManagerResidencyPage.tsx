@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useState, useMemo } from 'react';
 import { ResidencyCheck } from '../../lib/supabaseClient';
 
@@ -356,7 +357,7 @@ export default function ManagerResidencyPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="animate-fade-in-up">
 
       {/* ── Header ── */}
       <div className="mb-6">
@@ -513,7 +514,7 @@ export default function ManagerResidencyPage() {
                   <tr key={g.room_id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150"
                     onClick={() => openGroup(g)}>
-                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{g.deposit_ref}</td>
+                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>{formatShortId(g.deposit_ref, 'deposit')}</td>
                     <td style={{ padding: '14px 16px' }}>
                       <p style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.room_name}</p>
                     </td>
@@ -584,7 +585,7 @@ export default function ManagerResidencyPage() {
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Kiểm tra điều kiện lưu trú</p>
                   </div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 22, fontWeight: 800, color: T.text }}>{selectedGroup.room_name}</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {selectedGroup.deposit_ref} • {selectedGroup.members.length} thành viên</p>
+                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {formatShortId(selectedGroup.deposit_ref, 'deposit')} • {selectedGroup.members.length} thành viên</p>
                 </div>
                 <button onClick={() => { setSelectedGroup(null); setSelectedMember(null); }}
                   style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -744,7 +745,7 @@ export default function ManagerResidencyPage() {
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Thẩm định thành viên</p>
                     <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 19, fontWeight: 800, color: T.text }}>{selectedMember.customer_name}</h3>
-                    <p style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedMember.id} • {selectedMember.room_name}</p>
+                    <p style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{formatShortId(selectedMember.id, 'customer')} • {selectedMember.room_name}</p>
                   </div>
                   <button onClick={() => setSelectedMember(null)}
                     style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -972,7 +973,7 @@ export default function ManagerResidencyPage() {
             </div>
             
             <p style={{ fontSize: 13, color: T.textMuted, lineHeight: 1.6 }}>
-              Trong nhóm phòng <strong>{selectedGroup.room_name}</strong> (Phiếu cọc <strong>{selectedGroup.deposit_ref}</strong>), có thành viên không đạt yêu cầu thẩm định lưu trú.
+              Trong nhóm phòng <strong>{selectedGroup.room_name}</strong> (Phiếu cọc <strong>{formatShortId(selectedGroup.deposit_ref, 'deposit')}</strong>), có thành viên không đạt yêu cầu thẩm định lưu trú.
             </p>
 
             <div style={{ background: T.bg, borderRadius: 16, padding: 14, border: `1px solid ${T.border}` }} className="space-y-3.5">

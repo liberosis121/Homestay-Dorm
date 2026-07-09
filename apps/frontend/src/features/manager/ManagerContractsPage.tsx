@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useState, useMemo } from 'react';
 import { ManagerContract } from '../../lib/supabaseClient';
 
@@ -241,7 +242,7 @@ export default function ManagerContractsPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="space-y-5 animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="space-y-5 animate-fade-in-up">
       {/* ── Toast Notification ── */}
       {toast && (
         <div style={{
@@ -434,14 +435,14 @@ export default function ManagerContractsPage() {
                 const typeCfg = DEPOSIT_TYPE_CONFIG[c.deposit_type];
 
                 return (
-                  <tr key={c.id}
+                  <tr key={formatShortId(c.id, 'contract')}
                     onClick={() => handleOpenDrawer(c)}
                     style={{ borderBottom: `1px solid ${T.border}`, transition: 'background 0.15s', cursor: 'pointer' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150">
 
                     {/* Mã hợp đồng */}
-                    <td style={{ padding: '13px 16px 13px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                      {c.contract_code}
+                    <td style={{ padding: '13px 16px 13px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
+                      {formatShortId(c.id, 'contract')}
                     </td>
 
                     {/* Khách hàng */}
@@ -475,12 +476,12 @@ export default function ManagerContractsPage() {
                     </td>
 
                     {/* Tiền thuê */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.text, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
                       {c.rent_amount.toLocaleString('vi-VN')}đ
                     </td>
 
                     {/* Tiền cọc */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
                       {c.deposit_amount.toLocaleString('vi-VN')}đ
                     </td>
 
@@ -543,7 +544,7 @@ export default function ManagerContractsPage() {
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hợp đồng thuê phòng</p>
                   </div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>
-                    Mã hợp đồng: {selected.contract_code}
+                    Mã hợp đồng: {formatShortId(selected.id, 'contract')}
                   </h3>
                   <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Chi nhánh: {selected.branch_name}</p>
                 </div>
@@ -674,7 +675,7 @@ export default function ManagerContractsPage() {
                             {selected.tenants.map((tenant, idx) => (
                               <tr key={idx} style={{ borderBottom: idx < selected.tenants!.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                                 <td style={{ padding: '12px', fontWeight: 700, color: T.text }}>{tenant.name}</td>
-                                <td style={{ padding: '12px', color: T.textMuted, fontFamily: 'monospace' }}>{tenant.cccd}</td>
+                                <td style={{ padding: '12px', color: T.textMuted, fontFamily: "'Lexend', sans-serif" }}>{tenant.cccd}</td>
                                 <td style={{ padding: '12px', color: T.textMuted }}>{tenant.phone}</td>
                                 <td style={{ padding: '12px', textAlign: 'center' }}>
                                   <span style={{
@@ -712,7 +713,7 @@ export default function ManagerContractsPage() {
                       ].map((row, i) => (
                         <div key={i} className="flex justify-between items-center gap-4">
                           <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
-                          <span style={{ fontSize: row.primary ? 15 : 13, fontWeight: 800, color: row.color || T.text, fontFamily: 'monospace' }}>{row.val}</span>
+                          <span style={{ fontSize: row.primary ? 15 : 13, fontWeight: 800, color: row.color || T.text, fontFamily: "'Lexend', sans-serif" }}>{row.val}</span>
                         </div>
                       ))}
                     </div>

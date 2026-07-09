@@ -536,7 +536,7 @@ export default function AccountantMonthlyPage() {
                     }`}
                   >
                     <div className="flex justify-between items-start">
-                      <span className=" text-xs font-bold text-[#5a462d]">{formatShortId(c.id)}</span>
+                      <span className=" text-xs font-bold text-[#5a462d]">{formatShortId(c.id, 'contract')}</span>
                       <span className="text-[10px] bg-[#e4e2e1] text-[#4e453d] font-bold px-1.5 py-0.5 rounded">Tháng {c.period}</span>
                     </div>
                     <h4 className="font-semibold text-sm mt-1 text-[#1b1c1c]">{c.customer_name}</h4>
@@ -731,7 +731,7 @@ export default function AccountantMonthlyPage() {
                               <span className="font-sans font-bold text-[#1b1c1c] text-xs">{inc.name}</span>
                             </div>
                             <div className="text-[10px] text-[#5e5f5d]  flex items-center gap-3">
-                              <span>Mã: <strong className="text-[#5a462d]">{formatShortId(inc.id)}</strong></span>
+                              <span>Mã: <strong className="text-[#5a462d]">{formatShortId(inc.id, 'invoice')}</strong></span>
                               <span className="text-[#d1c4b9]">•</span>
                               <span>Ngày sự cố: <strong>{inc.dateRecorded || new Date().toISOString().split('T')[0]}</strong></span>
                             </div>
@@ -863,7 +863,7 @@ export default function AccountantMonthlyPage() {
                   {filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-[#f6f3f2] cursor-pointer" onClick={() => { setSelectedInvoice(inv); setDrawerOpen(true); }}>
                       <td className="p-3 font-bold text-[#5a462d]" title={inv.id}>
-                        {formatShortId(inv.id)}
+                        {formatShortId(inv.id, 'invoice')}
                       </td>
                       <td className="p-3 font-sans font-medium text-[#1b1c1c]">{inv.customer_name}</td>
                       <td className="p-3 font-sans text-[#4e453d]">{inv.room_name}</td>
@@ -925,7 +925,7 @@ export default function AccountantMonthlyPage() {
             <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8]">
               <div>
                 <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Chi tiết Hóa đơn</h3>
-                <p className=" text-xs text-[#5e5f5d] mt-1">#{formatShortId(selectedInvoice.id)}</p>
+                <p className=" text-xs text-[#5e5f5d] mt-1">#{formatShortId(selectedInvoice.id, 'invoice')}</p>
               </div>
               <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full cursor-pointer">
                 <X className="w-5 h-5" />

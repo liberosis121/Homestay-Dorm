@@ -188,8 +188,8 @@ export const customerLookupService = {
       const recentActivities: any[] = [];
 
       return {
-        id: c.cccd,
-        code: `KH-${c.cccd.substring(0, 5)}`,
+        id: c.id || c.cccd,
+        code: c.id || c.cccd,
         fullName: c.full_name || p.full_name || 'Khách hàng',
         full_name: c.full_name || p.full_name || 'Khách hàng',
         email: c.email || p.email || '',

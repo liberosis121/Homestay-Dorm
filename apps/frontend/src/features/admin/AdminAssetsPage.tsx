@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import {
@@ -344,7 +345,7 @@ export default function AdminAssetsPage() {
                     style={{ borderBottom: `1px solid ${A.border}`, background: i % 2 === 0 ? A.surface : A.bg }}
                     onMouseEnter={e => (e.currentTarget.style.background = A.bg)}
                     onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}>
-                    <td className="px-4 py-3 text-sm font-mono font-semibold" style={{ color: A.accent }}>{a.id}</td>
+                    <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.accent }}>{formatShortId(a.id, 'checkout')}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{a.name}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5" style={{ color: A.textMuted }}>

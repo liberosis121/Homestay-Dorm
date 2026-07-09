@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from "react";
 import CustomSelect from "../../components/ui/CustomSelect";
 import {
@@ -365,7 +366,7 @@ export default function AdminBranchesPage() {
                       className="text-xs font-semibold px-2 py-0.5 rounded-full mb-2 inline-block"
                       style={{ background: A.badgeBg, color: A.accent }}
                     >
-                      {b.code?.substring(0, 8)}
+                      {formatShortId(b.code, 'branch')}
                     </span>
                     <h3
                       className="text-base font-bold mt-1"

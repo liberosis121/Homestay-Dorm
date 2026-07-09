@@ -1,3 +1,4 @@
+import { formatShortId } from '../../../lib/utils';
 import { Invoice } from '../store/useInvoiceStore';
 import { Eye, CreditCard } from 'lucide-react';
 
@@ -107,7 +108,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                     }`}
                   >
                     <td className="px-5 py-4 text-[13px] font-semibold text-primary" title={invoice.id}>
-                      {invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}
+                      {formatShortId(invoice.id, 'invoice')}
                     </td>
                     <td className="px-5 py-4 text-sm text-on-surface-variant hidden sm:table-cell">
                       {invoice.billingPeriod}

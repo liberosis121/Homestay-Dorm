@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useMemo, useState } from 'react';
 import { ManagerDeposit } from '../../lib/supabaseClient';
 
@@ -187,7 +188,7 @@ export default function ManagerDepositsPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-5 animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif" }} className="space-y-5 animate-fade-in-up">
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
@@ -332,14 +333,14 @@ export default function ManagerDepositsPage() {
                 const meta    = STATUS_LABELS[dep.status] ?? STATUS_LABELS.pending;
                 const typeCfg = getTypeCfg(dep.deposit_type);
                 return (
-                  <tr key={dep.id}
+                  <tr key={formatShortId(dep.id, 'deposit')}
                     style={{ borderBottom: `1px solid ${T.border}`, transition: 'background 0.15s', cursor: 'pointer' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150"
                     onClick={() => openDrawer(dep)}>
 
                     {/* Mã cọc */}
-                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                      {dep.id}
+                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
+                      {formatShortId(dep.id, 'deposit')}
                     </td>
 
                     {/* Khách hàng */}
@@ -373,7 +374,7 @@ export default function ManagerDepositsPage() {
                     </td>
 
                     {/* Số tiền */}
-                    <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 800, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 800, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
                       {dep.amount.toLocaleString('vi-VN')}đ
                     </td>
 
@@ -449,7 +450,7 @@ export default function ManagerDepositsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiết đặt cọc</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Mã cọc: {selected.id} • {selected.customer_name}</p>
+                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Mã cọc: {formatShortId(selected.id, 'deposit')} • {selected.customer_name}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }} className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
                   <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>

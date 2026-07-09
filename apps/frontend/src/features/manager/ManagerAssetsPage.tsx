@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 import { ManagedAsset } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -183,7 +184,7 @@ export default function ManagerAssetsPage() {
   );
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="space-y-6 animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="space-y-6 animate-fade-in-up">
       {/* Toast */}
       {toast && (
         <div style={{
@@ -297,7 +298,7 @@ export default function ManagerAssetsPage() {
                     const meta = STATUS_META[asset.status] || STATUS_META.available;
                     const isSelected = selected?.id === asset.id;
                     return (
-                      <tr key={asset.id} style={{
+                      <tr key={formatShortId(asset.id, 'checkout')} style={{
                         borderBottom: `1px solid ${T.border}`,
                         background: isSelected ? T.primaryLight : 'transparent',
                         cursor: 'pointer'
@@ -309,7 +310,7 @@ export default function ManagerAssetsPage() {
                           borderLeft: isSelected ? `4px solid ${T.primary}` : '4px solid transparent'
                         }}>
                           <p style={{ fontSize: 13, fontWeight: isSelected ? 800 : 700, color: T.text }}>{asset.name}</p>
-                          <p style={{ fontSize: 11, color: T.textFaint, fontFamily: 'monospace', marginTop: 2 }}>{asset.id}</p>
+                          <p style={{ fontSize: 11, color: T.textFaint, fontFamily: "'Lexend', sans-serif", marginTop: 2 }}>{formatShortId(asset.id, 'checkout')}</p>
                         </td>
                         <td style={{ padding: '13px 14px', fontSize: 12, color: T.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>{CAT_LABELS[asset.category]}</td>
                         <td style={{ padding: '13px 14px', fontSize: 13, color: T.text, fontWeight: 700, whiteSpace: 'nowrap' }}>{asset.current_location}</td>
@@ -341,7 +342,7 @@ export default function ManagerAssetsPage() {
                 {/* Header Section */}
                 <div>
                   <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text, letterSpacing: -0.5 }}>{selected.name}</h2>
-                  <p style={{ fontSize: 11.5, color: T.textFaint, fontFamily: 'monospace', marginTop: 2 }}>Mã: {selected.id}</p>
+                  <p style={{ fontSize: 11.5, color: T.textFaint, fontFamily: "'Lexend', sans-serif", marginTop: 2 }}>Mã: {formatShortId(selected.id, 'checkout')}</p>
                 </div>
 
                 {/* Sơ đồ điều phối (Dọc) */}
@@ -440,7 +441,7 @@ export default function ManagerAssetsPage() {
                             <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1, fontWeight: 500 }}>{h.reason}</p>
                             <div className="flex justify-between items-center text-[10.5px] text-textFaint" style={{ marginTop: 2 }}>
                               <span>Phụ trách: <strong style={{ color: T.textMuted }}>{h.by}</strong></span>
-                              <span style={{ fontFamily: 'monospace' }}>{h.date}</span>
+                              <span style={{ fontFamily: "'Lexend', sans-serif" }}>{h.date}</span>
                             </div>
                           </div>
                         </div>

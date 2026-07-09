@@ -721,7 +721,7 @@ export default function AccountantDepositPage() {
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
                   <td className="p-4  font-bold text-[#5C4632] text-sm text-left" title={inv.id}>
-                    {formatShortId(inv.id)}
+                    {formatShortId(inv.id, 'deposit')}
                   </td>
                   <td className="p-4 text-sm font-medium text-[#1b1c1c] text-left">{inv.customer_name}</td>
                   <td className="p-4 text-xs text-[#8A7563] text-center">{inv.room_name}</td>

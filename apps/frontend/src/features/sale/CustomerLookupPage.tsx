@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Users, RefreshCw, HelpCircle, AlertTriangle 
@@ -272,7 +273,7 @@ export default function CustomerLookupPage() {
                     </p>
                     <div className="flex flex-wrap gap-1 mt-1 font-body-sm">
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#eee7e1] text-[#6f583c] text-[10px] font-bold">
-                        {cust.code}
+                        {formatShortId(cust.code, 'customer')}
                       </span>
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#eee7e1]/80 text-[#4e453c] text-[10px] font-bold">
                         {cust.personalInfo.phone}

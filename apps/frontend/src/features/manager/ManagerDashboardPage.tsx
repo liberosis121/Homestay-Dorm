@@ -178,7 +178,7 @@ export default function ManagerDashboardPage() {
 
   return (
     <div
-      style={{ fontFamily: "'Inter', sans-serif" }}
+      style={{ fontFamily: "'Lexend', sans-serif" }}
       className="space-y-8 animate-fade-in-up"
     >
       {/* Greeting Header */}
@@ -187,7 +187,7 @@ export default function ManagerDashboardPage() {
           <h1 className="text-2xl font-bold text-[#8C7355]">Xin chào, {user?.full_name?.split(' (')[0] || 'Quản lý'}!</h1>
           <p className="text-[13px] text-[#4E453C] mt-1 flex items-center gap-2 font-medium">
             <Calendar className="w-4 h-4 text-[#8C7355]" />
-            {todayLabel} · <span className="text-[#7F756B]">Bàn vận hành chi nhánh — Quận 1</span>
+            {todayLabel}
           </p>
         </div>
         <button
@@ -251,7 +251,7 @@ export default function ManagerDashboardPage() {
         <div>
           <h4 style={{ color: '#A67B5B', fontSize: 13, fontWeight: 700 }}>Thông báo vận hành hôm nay</h4>
           <p style={{ color: T.textMuted, fontSize: 11.5, marginTop: 4, lineHeight: 1.5 }}>
-            Đề nghị Quản lý chi nhánh tập trung hoàn tất việc **duyệt đặt cọc** đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi **kiểm duyệt hồ sơ lưu trú** để tránh chậm trễ báo cáo cơ quan công an địa phương.
+            Đề nghị Quản lý chi nhánh tập trung hoàn tất việc <strong className="font-bold text-[#A67B5B]">duyệt đặt cọc</strong> đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi <strong className="font-bold text-[#A67B5B]">kiểm duyệt hồ sơ lưu trú</strong> để tránh chậm trễ báo cáo cơ quan công an địa phương.
           </p>
         </div>
       </div>

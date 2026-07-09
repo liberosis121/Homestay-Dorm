@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 import { AssetHandover, ManagerContract, ManagedAsset } from '../../lib/supabaseClient';
 
@@ -307,7 +308,7 @@ export default function ManagerHandoversPage() {
   });
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="space-y-6 animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="space-y-6 animate-fade-in-up">
       {/* Toast */}
       {toast && (
         <div style={{
@@ -465,10 +466,10 @@ export default function ManagerHandoversPage() {
                   {filtered.map((rec) => {
                     const meta = STATUS_LABELS[rec.status];
                     return (
-                      <tr key={rec.id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer' }}
+                      <tr key={formatShortId(rec.id, 'checkout')} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer' }}
                         onClick={() => { setSelected(rec); setDrawerOpen(true); }}
                         className="hover:bg-[#FAF2E8] transition-colors duration-150">
-                        <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{rec.id}</td>
+                        <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>{formatShortId(rec.id, 'checkout')}</td>
                         <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.customer_name}</td>
                         <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 600, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.room_name}</td>
                         <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', fontWeight: 600 }}>{rec.handover_date}</td>
@@ -550,7 +551,7 @@ export default function ManagerHandoversPage() {
                 <tbody>
                   {eligibleContracts.map(c => (
                     <tr key={c.id} style={{ borderBottom: `1px solid ${T.border}` }} className="hover:bg-[#FAF2E8] transition-colors duration-150">
-                      <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace' }}>{c.contract_code}</td>
+                      <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif" }}>{formatShortId(c.contract_code, 'contract')}</td>
                       <td style={{ padding: '13px 16px' }}>
                         <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{c.customer_name}</p>
                         <p style={{ fontSize: 11, color: T.textMuted }}>{c.customer_phone}</p>
@@ -565,8 +566,8 @@ export default function ManagerHandoversPage() {
                       </td>
                       <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, fontWeight: 600 }}>{c.start_date.split('-').reverse().join('/')}</td>
                       <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontSize: 12, color: T.textMuted }}>Thuê: <strong style={{ color: T.text, fontFamily: 'monospace' }}>{c.rent_amount.toLocaleString('vi-VN')}đ</strong></p>
-                        <p style={{ fontSize: 12, color: T.textMuted }}>Cọc: <strong style={{ color: T.primary, fontFamily: 'monospace' }}>{c.deposit_amount.toLocaleString('vi-VN')}đ</strong></p>
+                        <p style={{ fontSize: 12, color: T.textMuted }}>Thuê: <strong style={{ color: T.text, fontFamily: "'Lexend', sans-serif" }}>{c.rent_amount.toLocaleString('vi-VN')}đ</strong></p>
+                        <p style={{ fontSize: 12, color: T.textMuted }}>Cọc: <strong style={{ color: T.primary, fontFamily: "'Lexend', sans-serif" }}>{c.deposit_amount.toLocaleString('vi-VN')}đ</strong></p>
                       </td>
                       <td style={{ padding: '13px 24px 13px 16px', textAlign: 'right' }}>
                         <button onClick={() => startHandover(c)} style={{
@@ -607,7 +608,7 @@ export default function ManagerHandoversPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Biên bản bàn giao</h3>
-                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>{selected.id} — {selected.customer_name} — {selected.room_name}</p>
+                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>{formatShortId(selected.id, 'checkout')} — {selected.customer_name} — {selected.room_name}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)}
                   style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -706,7 +707,7 @@ export default function ManagerHandoversPage() {
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Thực hiện bàn giao tài sản</h3>
                   <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>
-                    Hợp đồng: {selectedContract.contract_code} — KH: {selectedContract.customer_name}
+                    Hợp đồng: {formatShortId(selectedContract.contract_code, 'contract')} — KH: {selectedContract.customer_name}
                   </p>
                 </div>
                 <button onClick={() => setHandoverDrawerOpen(false)}
@@ -774,11 +775,11 @@ export default function ManagerHandoversPage() {
                         </button>
 
                         <div style={{ paddingRight: 24 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: T.primary, background: T.primaryLight, padding: '2px 8px', borderRadius: 12, fontFamily: 'monospace' }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: T.primary, background: T.primaryLight, padding: '2px 8px', borderRadius: 12, fontFamily: "'Lexend', sans-serif" }}>
                             {item.assetId}
                           </span>
                           <h5 style={{ fontSize: 13.5, fontWeight: 800, color: T.text, marginTop: 6 }}>{item.name}</h5>
-                          <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: 'monospace' }}>Số seri: {item.serialNumber}</p>
+                          <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: "'Lexend', sans-serif" }}>Số seri: {item.serialNumber}</p>
                         </div>
 
                         {/* Inputs for Handover details: Quantity and Condition */}
@@ -862,21 +863,21 @@ export default function ManagerHandoversPage() {
                         </div>
                       ) : (
                         availableAssets.map(asset => (
-                          <div key={asset.id} style={{
+                          <div key={formatShortId(asset.id, 'checkout')} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             background: T.surface, padding: '8px 12px', borderRadius: 10,
                             border: `1px solid ${T.border}`
                           }}>
                             <div className="flex-1 min-w-0 pr-2">
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: T.primary, fontWeight: 800, fontFamily: 'monospace' }}>{asset.id}</span>
+                                <span style={{ fontSize: 10, color: T.primary, fontWeight: 800, fontFamily: "'Lexend', sans-serif" }}>{formatShortId(asset.id, 'checkout')}</span>
                                 <span style={{ fontSize: 10, background: T.sageBg, color: T.sage, fontWeight: 800, padding: '1px 5px', borderRadius: 4 }}>
                                   {asset.category}
                                 </span>
                               </div>
                               <h6 style={{ fontSize: 12.5, fontWeight: 700, color: T.text, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name}</h6>
                               {asset.serial_number && (
-                                <p style={{ fontSize: 11, color: T.textMuted, fontFamily: 'monospace', marginTop: 1 }}>Seri: {asset.serial_number}</p>
+                                <p style={{ fontSize: 11, color: T.textMuted, fontFamily: "'Lexend', sans-serif", marginTop: 1 }}>Seri: {asset.serial_number}</p>
                               )}
                             </div>
                             <button type="button" onClick={() => addAssetToHandover(asset)}

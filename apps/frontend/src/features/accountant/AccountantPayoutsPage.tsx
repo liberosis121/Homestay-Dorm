@@ -385,7 +385,7 @@ export default function AccountantPayoutsPage() {
                   onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); setVoucherUploaded(false); }}
                   className="hover:bg-[#f6f3f2] cursor-pointer transition-colors"
                 >
-                  <td className="p-4  font-bold text-[#5a462d]">{formatShortId(p.refund_id)}</td>
+                  <td className="p-4  font-bold text-[#5a462d]">{formatShortId(p.refund_id, 'refund')}</td>
                   <td className="p-4">
                     <div className="font-semibold text-[#1b1c1c]">{p.customer_name}</div>
                     <div className="text-xs text-[#5e5f5d]">{p.payment_method === 'cash' ? 'Nhận tiền mặt' : 'Chuyển khoản ngân hàng'}</div>
@@ -440,7 +440,7 @@ export default function AccountantPayoutsPage() {
             <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8] shrink-0">
               <div>
                 <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Chi tiết lệnh chi</h3>
-                <p className=" text-xs text-[#5a462d] mt-1">{formatShortId(activePayout.refund_id)}</p>
+                <p className=" text-xs text-[#5a462d] mt-1">{formatShortId(activePayout.refund_id, 'refund')}</p>
               </div>
               <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full">
                 <X className="w-5 h-5" />
@@ -456,7 +456,7 @@ export default function AccountantPayoutsPage() {
                   <div className="text-[#5e5f5d]">Khách hàng:</div>
                   <div className="font-semibold text-right text-[#1b1c1c]">{activePayout.customer_name}</div>
                   <div className="text-[#5e5f5d]">Mã hoàn cọc:</div>
-                  <div className="text-right text-[#1b1c1c]">{formatShortId(activePayout.refund_id)}</div>
+                  <div className="text-right text-[#1b1c1c]">{formatShortId(activePayout.refund_id, 'refund')}</div>
                   <div className="text-[#5e5f5d]">Ngày lập lệnh:</div>
                   <div className="text-right text-[#1b1c1c]">{activePayout.created_at}</div>
                 </div>

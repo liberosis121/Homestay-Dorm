@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -618,7 +619,7 @@ export default function AdminRoomsPage() {
                     style={{ borderBottom: `1px solid ${A.border}`, background: i % 2 === 0 ? A.surface : A.bg }}
                     onMouseEnter={e => (e.currentTarget.style.background = A.bg)}
                     onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}>
-                    <td className="px-4 py-3 text-sm font-mono font-semibold text-center" style={{ color: A.accent }}>{r.id}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-center" style={{ color: A.accent }}>{formatShortId(r.id)}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{r.name}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>{r.branch}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>Tầng {r.floor}</td>
@@ -919,7 +920,7 @@ export default function AdminRoomsPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-semibold truncate" style={{ color: A.textPrimary }}>{bed.name}</p>
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: A.sidebar, color: A.textMuted }}>{bed.id}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: A.sidebar, color: A.textMuted }}>{formatShortId(bed.id)}</span>
                             </div>
                             <p className="text-xs" style={{ color: A.primary }}>{bed.price.toLocaleString('vi-VN')}đ/tháng</p>
                           </div>

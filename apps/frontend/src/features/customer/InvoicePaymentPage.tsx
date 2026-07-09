@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useInvoiceStore } from './store/useInvoiceStore';
@@ -118,14 +119,14 @@ export default function InvoicePaymentPage() {
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-primary font-headline-lg">Thanh toán thành công!</h2>
             <p className="text-on-surface-variant font-body-md text-[15px]">
-              Giao dịch của bạn đã được đối soát tự động thành công. Hóa đơn <span className="font-bold text-primary">{invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}</span> hiện đã cập nhật trạng thái là <span className="font-bold text-primary">Đã thanh toán</span>.
+              Giao dịch của bạn đã được đối soát tự động thành công. Hóa đơn <span className="font-bold text-primary">{formatShortId(invoice.id, 'invoice')}</span> hiện đã cập nhật trạng thái là <span className="font-bold text-primary">Đã thanh toán</span>.
             </p>
           </div>
 
           <div className="p-6 bg-surface-container-low border border-outline-variant/20 rounded-2xl text-left space-y-3">
             <div className="flex justify-between text-xs sm:text-sm font-semibold">
               <span className="text-on-surface-variant">Hóa đơn thanh toán</span>
-              <span className="text-primary">{invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}</span>
+              <span className="text-primary">{formatShortId(invoice.id, 'invoice')}</span>
             </div>
             <div className="flex justify-between text-xs sm:text-sm font-semibold">
               <span className="text-on-surface-variant">Tổng số tiền</span>
@@ -384,7 +385,7 @@ export default function InvoicePaymentPage() {
               <span className="inline-flex rounded-full border border-surface/40 bg-surface/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-primary shadow-sm">
                 Tóm tắt thanh toán
               </span>
-              <h3 className="text-lg font-bold font-headline-md mt-2">Hóa đơn: {invoice.id.length > 8 ? invoice.id.substring(0, 8) : invoice.id}</h3>
+              <h3 className="text-lg font-bold font-headline-md mt-2">Hóa đơn: {formatShortId(invoice.id, 'invoice')}</h3>
               <p className="text-xs opacity-90">Kỳ thanh toán: {invoice.billingPeriod}</p>
             </div>
             

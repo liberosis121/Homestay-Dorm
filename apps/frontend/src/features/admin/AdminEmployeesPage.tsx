@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from "react";
 import CustomSelect from "../../components/ui/CustomSelect";
 import {
@@ -486,7 +487,7 @@ export default function AdminEmployeesPage() {
                         style={{ color: A.textMuted }}
                         title={emp.id}
                       >
-                        {emp.id.substring(0, 8)}
+                        {formatShortId(emp.id, 'employee')}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -681,7 +682,7 @@ export default function AdminEmployeesPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { label: "Mã nhân viên", val: selected.id.substring(0, 8) },
+                  { label: "Mã nhân viên", val: formatShortId(selected.id, 'employee') },
                   { label: "Email", val: selected.email },
                   { label: "Điện thoại", val: selected.phone },
                   { label: "Ngày vào làm", val: selected.joinDate },
@@ -954,7 +955,7 @@ export default function AdminEmployeesPage() {
                 <div className="flex justify-between items-center gap-4">
                   <span className="font-semibold text-gray-500">Mã NV:</span>
                   <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmLockEmployee.id}>
-                    {confirmLockEmployee.id.substring(0, 8)}
+                    {formatShortId(confirmLockEmployee.id, 'employee')}
                   </span>
                 </div>
               </div>

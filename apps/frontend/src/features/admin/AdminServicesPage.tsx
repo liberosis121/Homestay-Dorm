@@ -1,3 +1,4 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import {
@@ -606,8 +607,8 @@ export default function AdminServicesPage() {
                 </div>
                 <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
                   <span className="font-semibold text-gray-500">Mã dịch vụ:</span>
-                  <span className="justify-self-end font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-full truncate" title={confirmStatusService.id}>
-                    {confirmStatusService.id}
+                  <span className="justify-self-end bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-full truncate" title={confirmStatusService.id}>
+                    {formatShortId(confirmStatusService.id)}
                   </span>
                 </div>
                 <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
