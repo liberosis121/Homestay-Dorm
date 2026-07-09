@@ -195,7 +195,7 @@ export const customerLookupService = {
         email: c.email || p.email || '',
         phone: c.phone || p.phone || '',
         avatar: p.avatar_url || '',
-        status: conList.some(ct => ct.status === 'active') ? 'active' : 'inactive',
+        status: conList.some(ct => ct.status === 'active') ? 'active' : (conList.length > 0 ? 'inactive' : 'new'),
         tier: conList.some(ct => ct.status === 'active') ? 'Loyal' : 'New',
         joinDate: c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '01/01/2026',
         created_at: c.created_at,
