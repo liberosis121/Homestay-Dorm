@@ -30,9 +30,12 @@ export const payoutRepo = {
       : { data: [] as any[] };
 
     // 4. Fetch related contracts
-    const contractIds = (checkouts || []).map(ch => ch.contract_id).filter(Boolean);
-    const { data: contracts } = contractIds.length > 0
-      ? await supabase.from('contracts').select('*').in('id', contractIds)
+    const directContractIds = invoices.map(i => i.contract_id).filter(Boolean);
+    const checkoutContractIds = (checkouts || []).map(ch => ch.contract_id).filter(Boolean);
+    const allContractIds = Array.from(new Set([...directContractIds, ...checkoutContractIds]));
+
+    const { data: contracts } = allContractIds.length > 0
+      ? await supabase.from('contracts').select('*').in('id', allContractIds)
       : { data: [] as any[] };
 
     // 5. Resolve rooms and branches
@@ -112,10 +115,38 @@ export const payoutRepo = {
         };
       }
 
+      // Fallback contract mapping
+      const directContract = (contracts || []).find(c => c.id === inv.contract_id);
+      let mappedDirectContract = null;
+      if (directContract) {
+        const depReq = (depositReqs || []).find(dr => dr.id === directContract.deposit_id);
+        const room = depReq ? (rooms || []).find(r => r.id === depReq.room_id) : null;
+        const branch = room ? (branches || []).find(b => b.id === room.branch_id) : null;
+        const reg = depReq ? (regs || []).find(rg => rg.id === depReq.registration_id) : null;
+        const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
+
+        mappedDirectContract = {
+          ...directContract,
+          customer_name: customer?.full_name || 'Khách hàng',
+          rooms: room ? {
+            id: room.id,
+            name: room.name,
+            branches: branch ? {
+              id: branch.id,
+              name: branch.name
+            } : null
+          } : null,
+          profiles: customer ? {
+            id: customer.cccd,
+            full_name: customer.full_name
+          } : null
+        };
+      }
+
       return {
         ...inv,
-        customer_name: mappedRec?.checkouts?.contracts?.customer_name || 'Khách hàng',
-        room_name: mappedRec?.checkouts?.contracts?.rooms?.name || 'Phòng',
+        customer_name: mappedRec?.checkouts?.contracts?.customer_name || mappedDirectContract?.customer_name || 'Khách hàng',
+        room_name: mappedRec?.checkouts?.contracts?.rooms?.name || mappedDirectContract?.rooms?.name || 'Phòng',
         refund_reconciliations: mappedRec
       };
     });

@@ -13,21 +13,9 @@ export default function AccountantDashboardPage() {
   const today = new Date();
   const todayLabel = today.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  const T = {
-    bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
-    border: '#DCCFC0', primary: '#5C4632', primaryLight: '#FAF9F6',
-    sage: '#5F7D4E', sageBg: '#E8EDE5', amber: '#B9792B', amberBg: '#FAF2E8',
-    red: '#A94F4F', redBg: '#F8EAE8', text: '#1b1c1c', textMuted: '#5C4632', textFaint: '#8A7563'
-  };
 
-  const quickActions = [
-    { label: 'Hóa đơn Đặt cọc', icon: 'receipt_long', path: '/accountant/invoices/deposit', color: T.amber, bg: T.amberBg },
-    { label: 'Hóa đơn Nhận phòng', icon: 'login', path: '/accountant/invoices/checkin', color: T.sage, bg: T.sageBg },
-    { label: 'Hóa đơn Định kỳ', icon: 'credit_card', path: '/accountant/invoices/monthly', color: T.primary, bg: T.primaryLight },
-    { label: 'Đối soát Hoàn cọc', icon: 'compare_arrows', path: '/accountant/refunds', color: T.amber, bg: T.amberBg },
-    { label: 'Chi tiền & Thanh lý', icon: 'paid', path: '/accountant/payouts', color: T.red, bg: T.redBg },
-    { label: 'Hồ sơ Khách hàng', icon: 'manage_search', path: '/sale/customers', color: T.textFaint, bg: '#F5F0EB' },
-  ];
+
+
 
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -218,7 +206,7 @@ export default function AccountantDashboardPage() {
           <h1 className="text-2xl font-bold text-[#5C4632]">Xin chào, {user?.full_name?.split(' (')[0] || 'Kế toán'}!</h1>
           <p className="text-sm text-[#8A7563] mt-1 flex items-center gap-2 font-medium">
             <Calendar className="w-4 h-4 text-[#5C4632]" />
-            {todayLabel} · <span className="text-[#8A7563]">Kỳ kế toán: 06/2026</span>
+            {todayLabel}
           </p>
         </div>
         <button
@@ -294,37 +282,7 @@ export default function AccountantDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Quick Actions & Distribution (Col-span 2) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Quick Actions */}
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 28, boxShadow: '0 2px 12px rgba(111,88,60,0.06)' }}>
-            <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 20 }}>
-              Hành động nhanh nghiệp vụ
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-              {quickActions.map((action, i) => (
-                <Link 
-                  key={i} 
-                  to={action.path}
-                  style={{ 
-                    background: action.bg, 
-                    border: `1px solid ${T.border}`, 
-                    borderRadius: 16, 
-                    padding: '20px 12px', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    gap: 10, 
-                    textDecoration: 'none', 
-                    transition: 'all 0.2s' 
-                  }}
-                  className="hover:scale-[1.03] hover:shadow-md"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 28, color: action.color }}>{action.icon}</span>
-                  <span style={{ color: T.text, fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>{action.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
+
 
           {/* Revenue Distribution and Progress */}
           <div className="bg-white border border-[#DCCFC0] rounded-xl p-5 shadow-sm space-y-4">
@@ -419,7 +377,7 @@ export default function AccountantDashboardPage() {
         <div>
           <h4 className="font-bold text-xs">Lưu ý chốt kỳ kế toán</h4>
           <p className="text-[11px] text-[#B9792B]/90 mt-0.5 leading-relaxed">
-            Hạn cuối ghi số điện nước và gửi hóa đơn cho khách thuê là ngày **10 hàng tháng**. Vui lòng hoàn thành việc nhập chỉ số tiêu thụ điện nước phòng trước thời gian trên để tránh chậm trễ.
+            Hạn cuối ghi số điện nước và gửi hóa đơn cho khách thuê là ngày <strong className="font-bold">10 hàng tháng</strong>. Vui lòng hoàn thành việc nhập chỉ số tiêu thụ điện nước phòng trước thời gian trên để tránh chậm trễ.
           </p>
         </div>
       </div>

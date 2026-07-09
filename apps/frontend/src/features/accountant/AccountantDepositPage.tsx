@@ -7,6 +7,7 @@ import CustomSelect from '../../components/ui/CustomSelect';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
+import { formatShortId } from '../../lib/utils';
 
 export default function AccountantDepositPage() {
   const { user } = useAuthStore();
@@ -720,7 +721,7 @@ export default function AccountantDepositPage() {
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
                   <td className="p-4 font-mono font-bold text-[#5C4632] text-sm text-left" title={inv.id}>
-                    {inv.id.length > 8 ? inv.id.substring(0, 8) : inv.id}
+                    {formatShortId(inv.id)}
                   </td>
                   <td className="p-4 text-sm font-medium text-[#1b1c1c] text-left">{inv.customer_name}</td>
                   <td className="p-4 text-xs text-[#8A7563] text-center">{inv.room_name}</td>

@@ -6,6 +6,7 @@ import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoi
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
+import { formatShortId } from '../../lib/utils';
 
 export default function AccountantCheckinPage() {
   const { user } = useAuthStore();
@@ -360,7 +361,7 @@ export default function AccountantCheckinPage() {
                     <div className="truncate text-left">
                       {selectedDeposit ? (
                         <span className="truncate font-medium text-[#1b1c1c]">
-                          {selectedDeposit.id.replace('DEP', 'HĐ')} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
+                          {formatShortId(selectedDeposit.id)} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
                         </span>
                       ) : (
                         <span className="text-[#8A7563]">— Chọn hợp đồng (Đã duyệt cọc) —</span>
@@ -417,7 +418,7 @@ export default function AccountantCheckinPage() {
                               >
                                 <div className="flex justify-between items-center w-full">
                                   <span className="font-mono font-bold text-[#5C4632]">
-                                    {d.id.replace('DEP', 'HĐ')}
+                                    {formatShortId(d.id)}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#E8EDE5] text-[#5F7D4E] uppercase">
                                     Đã cọc
@@ -667,9 +668,9 @@ export default function AccountantCheckinPage() {
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
                   <td className="p-4 font-mono font-bold text-[#5C4632] text-left" title={inv.id}>
-                    {inv.id.length > 8 ? inv.id.substring(0, 8) : inv.id}
+                    {formatShortId(inv.id)}
                   </td>
-                  <td className="p-4 font-mono text-xs text-[#8A7563] text-left">{inv.deposit_ref.replace('DEP', 'HĐ')} ({inv.room_name})</td>
+                  <td className="p-4 font-mono text-xs text-[#8A7563] text-left">{formatShortId(inv.deposit_ref)} ({inv.room_name})</td>
                   <td className="p-4 font-semibold text-[#1b1c1c] text-left">{inv.customer_name}</td>
                   <td className="p-4 text-xs font-mono text-[#8A7563] text-left">{inv.checkin_date}</td>
                   <td className="p-4 text-right font-mono font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')} ₫</td>
