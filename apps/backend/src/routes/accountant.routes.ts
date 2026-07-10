@@ -294,4 +294,19 @@ router.post('/payouts/:id/confirm', async (req, res) => {
   }
 });
 
+/**
+ * 🔗 GET /api/accountant/contracts/:contractId/services
+ * 📝 Lay danh sach dang ky dich vu thuc te cua mot hop dong.
+ */
+router.get('/contracts/:contractId/services', async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { serviceRegistrationRepo } = require('../repositories/service-registration.repo');
+    const data = await serviceRegistrationRepo.findSubscriptionsByContractIds([contractId]);
+    return sendSuccess(res, data, 'Lay danh sach dang ky dich vu thanh cong!');
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi lay danh sach dang ky dich vu.');
+  }
+});
+
 export default router;

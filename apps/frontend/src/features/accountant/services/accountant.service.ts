@@ -107,6 +107,15 @@ export const accountantService = {
     return result.data;
   },
 
+  fetchContractServices: async (_email: string, contractId: string) => {
+    const res = await fetch(`${API}/api/accountant/contracts/${contractId}/services`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Không thể tải danh sách dịch vụ đăng ký');
+    const result = await res.json();
+    return result.data;
+  },
+
   fetchLatestMeterReading: async (_email: string, roomId: string) => {
     const res = await fetch(`${API}/api/accountant/monthly-invoices/latest-reading/${roomId}`, {
       headers: getHeaders()

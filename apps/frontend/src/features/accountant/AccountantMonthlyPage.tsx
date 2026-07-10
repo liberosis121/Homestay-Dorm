@@ -145,11 +145,28 @@ export default function AccountantMonthlyPage() {
       };
       fetchReading();
 
-      const db = getMockDB();
-      const subs = db.service_subscriptions?.filter(
-        (s: ServiceSubscription) => s.customer_id === selectedContract.customer_id && s.status === 'active'
-      ) || [];
-      setSubscriptions(subs);
+      const fetchServices = async () => {
+        const email = user?.email || 'accountant@homestay.vn';
+        try {
+          const apiSubs = await accountantService.fetchContractServices(email, selectedContract.id);
+          const mappedSubs = (apiSubs || []).map((sub: any) => ({
+            id: sub.service_id,
+            service_name: sub.services?.name || 'Dịch vụ',
+            monthly_cost: Number(sub.amount || sub.services?.price || 0),
+            customer_id: selectedContract.customer_id,
+            status: 'active'
+          }));
+          setSubscriptions(mappedSubs);
+        } catch (err) {
+          console.warn('[AccountantMonthly] Failed to fetch services from backend, falling back to mock DB:', err);
+          const db = getMockDB();
+          const subs = db.service_subscriptions?.filter(
+            (s: ServiceSubscription) => s.customer_id === selectedContract.customer_id && s.status === 'active'
+          ) || [];
+          setSubscriptions(subs);
+        }
+      };
+      fetchServices();
 
       if (selectedContract.customer_id === 'u-5') {
         setIncidentals([
