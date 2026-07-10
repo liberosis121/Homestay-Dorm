@@ -37,18 +37,21 @@ export const adminEmployeesRepo = {
 
     if (pErr) throw pErr;
 
-    // Map profiles by id
+    // 2.5 Fetch branches to map branch name dynamically
+    const { data: branches, error: bErr } = await supabase
+      .from('branches')
+      .select('id, name');
+
+    if (bErr) throw bErr;
+
+    const branchMap = new Map((branches || []).map((b: any) => [b.id, b.name]));
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
     // 3. Map to Employee structure
     return (employees || []).map((emp: any) => {
       const prof = profileMap.get(emp.id);
       const isLocked = prof?.role === 'locked';
-
-      // Map branchId to name
-      let branchName = 'Quận 1';
-      if (emp.branch_id === 'CN-002') branchName = 'Quận 3';
-      else if (emp.branch_id === 'CN-003') branchName = 'Bình Thạnh';
+      const branchName = branchMap.get(emp.branch_id) || 'Chi nhánh khác';
 
       return {
         id: emp.id,
@@ -71,11 +74,7 @@ export const adminEmployeesRepo = {
     branch: string;
   }): Promise<DbEmployeeAdmin> => {
     const userId = crypto.randomUUID();
-
-    // Map branch name to branch_id
-    let branchId = 'CN-001';
-    if (emp.branch.includes('Quận 3')) branchId = 'CN-002';
-    else if (emp.branch.includes('Bình Thạnh')) branchId = 'CN-003';
+    const branchId = emp.branch;
 
     // Insert profile record
     const { error: pErr } = await supabase
@@ -109,13 +108,21 @@ export const adminEmployeesRepo = {
 
     if (eErr) throw eErr;
 
+    // Fetch branch name to return
+    const { data: branchObj } = await supabase
+      .from('branches')
+      .select('name')
+      .eq('id', branchId)
+      .maybeSingle();
+    const branchName = branchObj?.name || 'Chi nhánh khác';
+
     return {
       id: userId,
       full_name: emp.full_name,
       email: emp.email,
       phone: emp.phone,
       role: emp.role as any,
-      branch: emp.branch,
+      branch: branchName,
       status: 'active',
       joinDate: formatDate(joinDateStr)
     };
@@ -150,10 +157,7 @@ export const adminEmployeesRepo = {
     if (emp.role !== undefined) nvUpdate.role = emp.role;
 
     if (emp.branch !== undefined) {
-      let branchId = 'CN-001';
-      if (emp.branch.includes('Quận 3')) branchId = 'CN-002';
-      else if (emp.branch.includes('Bình Thạnh')) branchId = 'CN-003';
-      nvUpdate.branch_id = branchId;
+      nvUpdate.branch_id = emp.branch;
     }
 
     if (Object.keys(nvUpdate).length > 0) {
@@ -165,7 +169,17 @@ export const adminEmployeesRepo = {
       if (eErr) throw eErr;
     }
 
-    return { id, ...emp };
+    let branchName = emp.branch;
+    if (emp.branch !== undefined) {
+      const { data: branchObj } = await supabase
+        .from('branches')
+        .select('name')
+        .eq('id', emp.branch)
+        .maybeSingle();
+      branchName = branchObj?.name || 'Chi nhánh khác';
+    }
+
+    return { id, ...emp, branch: branchName };
   },
 
   toggleLock: async (id: string): Promise<string> => {

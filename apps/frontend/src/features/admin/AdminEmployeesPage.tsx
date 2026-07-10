@@ -6,6 +6,7 @@ import {
   createEmployeeApi,
   updateEmployeeApi,
   toggleEmployeeLockApi,
+  fetchAdminBranches,
 } from "./services/admin.service";
 
 const A = {
@@ -60,12 +61,13 @@ export default function AdminEmployeesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editRole, setEditRole] = useState<Role | "">("");
   const [editBranch, setEditBranch] = useState("");
+  const [branches, setBranches] = useState<any[]>([]);
   const [newEmp, setNewEmp] = useState({
     full_name: "",
     email: "",
     phone: "",
     role: "sale" as Role,
-    branch: "Quận 1",
+    branch: "",
   });
   const [confirmLockEmployee, setConfirmLockEmployee] = useState<Employee | null>(null);
   const [isConfirmHover, setIsConfirmHover] = useState(false);
@@ -84,8 +86,21 @@ export default function AdminEmployeesPage() {
     }
   };
 
+  const loadBranches = async () => {
+    try {
+      const data = await fetchAdminBranches();
+      setBranches(data || []);
+      if (data && data.length > 0) {
+        setNewEmp(prev => ({ ...prev, branch: data[0].id }));
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải chi nhánh:", err);
+    }
+  };
+
   useEffect(() => {
     loadEmployees();
+    loadBranches();
   }, []);
 
   useEffect(() => {
@@ -95,8 +110,9 @@ export default function AdminEmployeesPage() {
       return;
     }
     setEditRole(selected.role);
-    setEditBranch(selected.branch);
-  }, [selected]);
+    const branchObj = branches.find((b: any) => b.name === selected.branch);
+    setEditBranch(branchObj ? branchObj.id : "");
+  }, [selected, branches]);
 
   const kpis = useMemo(() => {
     const total = employees.length;
@@ -191,7 +207,7 @@ export default function AdminEmployeesPage() {
         email: "",
         phone: "",
         role: "sale",
-        branch: "Quận 1",
+        branch: branches[0]?.id || "",
       });
     } catch (err: any) {
       console.error(err);
@@ -202,19 +218,19 @@ export default function AdminEmployeesPage() {
   const saveChanges = async () => {
     if (!selected) return;
     try {
-      await updateEmployeeApi(selected.id, {
+      const updated = await updateEmployeeApi(selected.id, {
         role: editRole,
         branch: editBranch,
       });
       setEmployees((prev) =>
         prev.map((e) =>
           e.id === selected.id
-            ? { ...e, role: editRole as Role, branch: editBranch }
+            ? { ...e, role: updated.role as Role, branch: updated.branch }
             : e,
         ),
       );
       setSelected((prev) =>
-        prev ? { ...prev, role: editRole as Role, branch: editBranch } : null,
+        prev ? { ...prev, role: updated.role as Role, branch: updated.branch } : null,
       );
       alert("Cập nhật thông tin nhân viên thành công!");
     } catch (err: any) {
@@ -230,12 +246,12 @@ export default function AdminEmployeesPage() {
     { value: "admin", label: "Quản trị viên" }
   ];
 
-  const branchOptions = [
-    { value: "", label: "Tất cả" },
-    { value: "Quận 1", label: "Quận 1" },
-    { value: "Quận 3", label: "Quận 3" },
-    { value: "Bình Thạnh", label: "Bình Thạnh" }
-  ];
+  const branchOptions = useMemo(() => {
+    return [
+      { value: "", label: "Tất cả" },
+      ...branches.map((b: any) => ({ value: b.id, label: b.name }))
+    ];
+  }, [branches]);
 
   return (
     <div
