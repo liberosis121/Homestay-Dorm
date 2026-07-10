@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchSchedules, updateScheduleApi } from '../services/sale.service';
+import { fetchSchedules, updateScheduleApi, createScheduleApi } from '../services/sale.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +41,7 @@ export interface SaleSchedule {
 export interface CreateSchedulePayload {
   customerName: string;
   customerId?: string;
+  registrationId?: string;   // id đơn đăng ký thuê (bắt buộc để tạo lịch thật)
   roomId: string;
   roomName: string;
   branchId: string;
@@ -83,7 +84,7 @@ interface SaleScheduleStore {
 
   // Actions
   loadSchedules: () => Promise<void>;
-  createSchedule: (payload: CreateSchedulePayload, createdBy: string) => void;
+  createSchedule: (payload: CreateSchedulePayload, createdBy: string) => Promise<void>;
   rescheduleAppointment: (payload: ReschedulePayload) => Promise<void>;
   cancelSchedule: (id: string) => void;
   completeSchedule: (id: string) => void;
@@ -188,11 +189,6 @@ const buildTimeline = (
   }
 
   return timeline;
-};
-
-const makeId = () => {
-  const num = Math.floor(8000 + Math.random() * 1999);
-  return `BK-${num}`;
 };
 
 // ─── Map dữ liệu API (viewing_schedules enriched) → SaleSchedule của UI ──────────
@@ -305,27 +301,20 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     }
   },
 
-  // Tạo lịch hiện vẫn ở chế độ demo (local) — DB cần registration_id + room_id thật,
-  // modal tạo lịch đang dùng dữ liệu mock → chờ rework để gọi POST /sale/schedules.
-  createSchedule: (payload, createdBy) => {
-    const newSchedule: SaleSchedule = {
-      id: makeId(),
-      customerId: payload.customerId || `c-new-${Date.now()}`,
-      customerName: payload.customerName,
-      roomId: payload.roomId,
-      roomName: payload.roomName,
-      branchId: payload.branchId,
-      branchName: payload.branchName,
-      viewDate: payload.viewDate,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
-      status: 'pending',
-      createdBy,
-      notes: payload.notes,
-      createdAt: new Date().toISOString(),
-      timeline: buildTimeline('pending', new Date().toISOString(), createdBy, payload.viewDate, payload.startTime),
-    };
-    set((state) => ({ schedules: [newSchedule, ...state.schedules] }));
+  // Tạo lịch xem phòng THẬT: gọi POST /api/viewing-schedules rồi tải lại danh sách từ server.
+  // Backend cần registration_id + room_id + scheduled_time (ISO).
+  createSchedule: async (payload) => {
+    if (!payload.registrationId || !payload.roomId) {
+      throw new Error('Thiếu phiếu đăng ký hoặc phòng để tạo lịch hẹn.');
+    }
+    const iso = new Date(`${payload.viewDate}T${payload.startTime}:00`).toISOString();
+    await createScheduleApi({
+      registration_id: payload.registrationId,
+      room_id: payload.roomId,
+      scheduled_time: iso,
+      note: payload.notes,
+    });
+    await get().loadSchedules();
   },
 
   // Dời lịch: ghi thật scheduled_time + note (lý do) lên backend, rồi cập nhật local.
