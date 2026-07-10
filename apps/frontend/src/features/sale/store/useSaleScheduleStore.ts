@@ -21,6 +21,7 @@ export interface TimelineEvent {
 
 export interface SaleSchedule {
   id: string;           // e.g. "LXM-001"
+  registrationId: string;
   customerId: string;
   customerName: string;
   roomId: string;
@@ -210,9 +211,9 @@ const mapApiSchedule = (s: any): SaleSchedule => {
       ? 'completed'
       : s.result === 'cancelled'
         ? 'cancelled'
-        : s.result === 'pending'
-          ? 'pending'
-          : 'confirmed';
+        : s.result === 'confirmed'
+          ? 'confirmed'
+          : 'pending';
 
   const reg = s.rental_registrations || {};
   const kh = reg.customers || {};
@@ -223,6 +224,7 @@ const mapApiSchedule = (s: any): SaleSchedule => {
 
   return {
     id: s.id,
+    registrationId: s.registration_id || reg.id || '',
     customerId: reg.cccd || '',
     customerName: kh.full_name || 'Khách hàng',
     roomId: s.room_id || room.id || '',

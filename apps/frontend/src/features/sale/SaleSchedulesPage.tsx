@@ -2,7 +2,7 @@ import { formatShortId } from '../../lib/utils';
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, CheckCircle, Calendar, Clock,
-  RotateCcw, XCircle, Building2, FileText, Filter
+  RotateCcw, XCircle, Building2, FileText, Filter, CalendarPlus
 } from 'lucide-react';
 import { useSaleScheduleStore, ScheduleStatus, ReschedulePayload } from './store/useSaleScheduleStore';
 import ScheduleStatusBadge from './components/ScheduleStatusBadge';
@@ -20,6 +20,12 @@ interface MockRoom {
   name: string;
   branch_id: string;
   room_type: string;
+  capacity?: number;
+  gender_type?: string;
+  price?: number;
+  amenities?: string[];
+  image_url?: string;
+  status?: string;
 }
 
 interface MockBranch {
@@ -48,7 +54,7 @@ const parseLocalDate = (dateStr: string) => {
 // Dùng chung cho panel chi tiết (TimelineWidget). Trạng thái kết thúc
 // (completed / cancelled) không còn thao tác khả dụng.
 const canComplete = (status: ScheduleStatus) =>
-  ['confirmed', 'in_progress'].includes(status);
+  ['pending', 'confirmed', 'in_progress'].includes(status);
 const canReschedule = (status: ScheduleStatus) =>
   ['pending', 'confirmed', 'rescheduled'].includes(status);
 const canCancel = (status: ScheduleStatus) =>
@@ -91,6 +97,7 @@ const SaleSchedulesPage: React.FC = () => {
   const [customers] = useState<MockProfile[]>([]);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [confirmCompleteId, setConfirmCompleteId] = useState<string | null>(null);
+  const [rebookingScheduleId, setRebookingScheduleId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState('');
 
   const filteredSchedules = getFilteredSchedules();
@@ -114,6 +121,7 @@ const SaleSchedulesPage: React.FC = () => {
     });
   }, [schedules, filters.selectedBranch, filters.selectedStatus, filters.searchQuery]);
   const selectedSchedule = selectedScheduleId ? getScheduleById(selectedScheduleId) : null;
+  const rebookingSchedule = rebookingScheduleId ? getScheduleById(rebookingScheduleId) : null;
 
   // Tải lịch xem phòng THẬT từ API; dữ liệu cho modal tạo lịch cũng lấy từ API rooms.
   useEffect(() => {
@@ -125,6 +133,12 @@ const SaleSchedulesPage: React.FC = () => {
         name: r.name,
         branch_id: r.branch_id,
         room_type: r.room_type,
+        capacity: r.capacity,
+        gender_type: r.gender_type,
+        price: r.price,
+        amenities: r.amenities,
+        image_url: r.image_url,
+        status: r.status,
       })));
       // Extract branches từ rooms (mỏi phòng có branches nếu API join)
       const branchMap = new Map<string, MockBranch>();
@@ -254,6 +268,7 @@ const SaleSchedulesPage: React.FC = () => {
             onReschedule={openRescheduleModal}
             onCancel={(id) => setConfirmCancelId(id)}
             onComplete={(id) => setConfirmCompleteId(id)}
+            onCreateFollowUp={(id) => setRebookingScheduleId(id)}
           />
         </div>
       </div>
@@ -268,6 +283,21 @@ const SaleSchedulesPage: React.FC = () => {
           onClose={closeCreateModal}
           onCreate={createSchedule}
           onCreated={() => showToast('Đã tạo lịch hẹn và gửi thông báo cho khách.')}
+        />
+      )}
+
+      {rebookingSchedule && (
+        <CreateFromRegistrationModal
+          rooms={rooms}
+          branches={branches}
+          customers={customers}
+          createdBy={user?.full_name || 'Nhân viên Sale'}
+          initialRegistrationId={rebookingSchedule.registrationId}
+          excludeRoomId={rebookingSchedule.roomId}
+          followUpMode
+          onClose={() => setRebookingScheduleId(null)}
+          onCreate={createSchedule}
+          onCreated={() => showToast('Đã lập lịch xem phòng mới cho phiếu yêu cầu hiện tại.')}
         />
       )}
 
@@ -622,9 +652,10 @@ interface TimelineWidgetProps {
   onReschedule: (id: string) => void;
   onCancel: (id: string) => void;
   onComplete: (id: string) => void;
+  onCreateFollowUp: (id: string) => void;
 }
 
-const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule, onReschedule, onCancel, onComplete }) => {
+const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule, onReschedule, onCancel, onComplete, onCreateFollowUp }) => {
   if (!schedule) {
     return (
       <div className="bg-white rounded-2xl border border-[#d1c4b9] p-5 text-center" style={{ boxShadow: '0 4px 12px rgba(45, 42, 38, 0.04)' }}>
@@ -726,6 +757,19 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule, onReschedule,
                 Hủy lịch
               </button>
             )}
+          </div>
+        ) : schedule.status === 'completed' && schedule.registrationId ? (
+          <div className="space-y-2">
+            <button
+              onClick={() => onCreateFollowUp(schedule.id)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#4f6f4a] bg-[#4f6f4a]/10 hover:bg-[#4f6f4a]/20 transition-all active:scale-95"
+            >
+              <CalendarPlus className="w-4 h-4" />
+              Lập lịch xem phòng mới
+            </button>
+            <p className="text-xs text-on-surface-variant italic">
+              Dùng khi khách chưa ưng ý phòng hiện tại và cần xem phòng khác trên cùng phiếu yêu cầu.
+            </p>
           </div>
         ) : (
           <p className="text-xs text-on-surface-variant italic">

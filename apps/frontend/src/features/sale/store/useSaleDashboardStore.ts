@@ -73,9 +73,9 @@ const mapTodayAppointment = (s: any): TodayAppointment => {
       ? 'completed'
       : s.result === 'cancelled'
         ? 'cancelled'
-        : s.result === 'pending'
-          ? 'pending'
-          : 'confirmed';
+        : s.result === 'confirmed'
+          ? 'confirmed'
+          : 'pending';
   return {
     id: s.id,
     time,

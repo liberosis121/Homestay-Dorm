@@ -64,6 +64,9 @@ interface Props {
   branches: SaleBranch[];
   customers?: unknown[];
   createdBy: string;
+  initialRegistrationId?: string;
+  excludeRoomId?: string;
+  followUpMode?: boolean;
   onClose: () => void;
   onCreate: (payload: CreateSchedulePayload, createdBy: string) => void | Promise<void>;
   onCreated: () => void;
@@ -159,6 +162,9 @@ export default function CreateFromRegistrationModal({
   rooms,
   branches,
   createdBy,
+  initialRegistrationId,
+  excludeRoomId,
+  followUpMode = false,
   onClose,
   onCreate,
   onCreated,
@@ -186,13 +192,17 @@ export default function CreateFromRegistrationModal({
       .then((list: any[]) => {
         if (!active) return;
         const mapped = (Array.isArray(list) ? list : [])
-          .filter((item) => !item.status || AWAITING_SCHEDULE_STATUSES.includes(item.status))
+          .filter((item) =>
+            item.id === initialRegistrationId ||
+            !item.status ||
+            AWAITING_SCHEDULE_STATUSES.includes(item.status)
+          )
           .map(mapRegistration);
         setRegistrations(mapped);
       })
       .catch((err) => console.error('Lỗi khi tải phiếu đăng ký:', err));
     return () => { active = false; };
-  }, []);
+  }, [initialRegistrationId]);
 
   const branchName = (id?: string) => branches.find((branch) => branch.id === id)?.name || id || 'Chưa chọn';
 
@@ -222,6 +232,7 @@ export default function CreateFromRegistrationModal({
     if (!selectedRegistration) return [];
     return rooms
       .filter((room) => {
+        if (excludeRoomId && room.id === excludeRoomId) return false;
         if (filters.branchId && room.branch_id !== filters.branchId) return false;
         if (filters.roomType && room.room_type !== filters.roomType) return false;
         if (filters.capacity && (room.capacity || 0) < Number(filters.capacity)) return false;
@@ -232,7 +243,7 @@ export default function CreateFromRegistrationModal({
         return !amenityFilters.some((item) => !(room.amenities || []).includes(item));
       })
       .sort((a, b) => matchInfo(b, selectedRegistration).score - matchInfo(a, selectedRegistration).score);
-  }, [rooms, selectedRegistration, filters, amenityFilters]);
+  }, [rooms, selectedRegistration, filters, amenityFilters, excludeRoomId]);
 
   const selectRegistration = (registration: RentalRegistration) => {
     setSelectedRegistration(registration);
@@ -255,6 +266,14 @@ export default function CreateFromRegistrationModal({
       notes: registration.viewing_time_note || registration.note || '',
     });
   };
+
+  useEffect(() => {
+    if (!initialRegistrationId || selectedRegistration) return;
+    const initial = registrations.find((registration) => registration.id === initialRegistrationId);
+    if (initial) {
+      selectRegistration(initial);
+    }
+  }, [initialRegistrationId, registrations, selectedRegistration]);
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
@@ -306,8 +325,14 @@ export default function CreateFromRegistrationModal({
       <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-[#d8cbb8] bg-white shadow-2xl">
         <div className="px-6 py-4 border-b border-[#d8cbb8] flex justify-between items-center bg-[#f7f4ef]">
           <div>
-            <h3 className="font-headline-md text-xl text-[#4f6f4a]">Tạo lịch xem phòng</h3>
-            <p className="text-xs text-[#7f756b] mt-1">Chọn phiếu nhu cầu, đối chiếu phòng phù hợp rồi mới lập lịch cho khách.</p>
+            <h3 className="font-headline-md text-xl text-[#4f6f4a]">
+              {followUpMode ? 'Lập lịch xem phòng mới' : 'Tạo lịch xem phòng'}
+            </h3>
+            <p className="text-xs text-[#7f756b] mt-1">
+              {followUpMode
+                ? 'Giữ nguyên phiếu yêu cầu của khách, chọn phòng khác và thời gian xem mới.'
+                : 'Chọn phiếu nhu cầu, đối chiếu phòng phù hợp rồi mới lập lịch cho khách.'}
+            </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-[#e8e1d3] rounded-full transition-colors">
             <X className="w-5 h-5 text-[#4e453c]" />
@@ -323,14 +348,16 @@ export default function CreateFromRegistrationModal({
             <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] p-5 pb-10">
               <div className="space-y-5">
               <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRegistration(null)}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#d8cbb8] bg-white px-4 py-2 text-sm font-semibold text-[#4f6f4a] shadow-sm transition-all hover:border-[#9a866b] hover:bg-[#f4f1ec] hover:text-[#3f6038] active:scale-[0.98]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Chọn phiếu khác
-                </button>
+                {!followUpMode && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRegistration(null)}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#d8cbb8] bg-white px-4 py-2 text-sm font-semibold text-[#4f6f4a] shadow-sm transition-all hover:border-[#9a866b] hover:bg-[#f4f1ec] hover:text-[#3f6038] active:scale-[0.98]"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Chọn phiếu khác
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-12 gap-5">
