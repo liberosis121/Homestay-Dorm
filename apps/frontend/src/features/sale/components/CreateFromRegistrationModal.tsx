@@ -137,7 +137,7 @@ const mapRegistration = (r: any): RentalRegistration => {
 };
 
 // Các trạng thái đơn đang chờ xếp lịch xem phòng.
-const AWAITING_SCHEDULE_STATUSES = ['pending_schedule', 'pending', 'new'];
+const AWAITING_SCHEDULE_STATUSES = ['pending_schedule', 'scheduled', 'pending', 'new'];
 
 const timeOptions = Array.from({ length: 27 }, (_, index) => {
   const totalMinutes = 7 * 60 + index * 30;
@@ -172,6 +172,7 @@ export default function CreateFromRegistrationModal({
   const { user } = useAuthStore();
   const isSale = user?.role === 'sale';
   const [registrations, setRegistrations] = useState<RentalRegistration[]>([]);
+  const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(true);
   const [selectedRegistration, setSelectedRegistration] = useState<RentalRegistration | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<SaleRoom | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<SaleRoom | null>(null);
@@ -188,6 +189,7 @@ export default function CreateFromRegistrationModal({
 
   useEffect(() => {
     let active = true;
+    setIsLoadingRegistrations(true);
     fetchLeaseRegistrationsApi()
       .then((list: any[]) => {
         if (!active) return;
@@ -200,7 +202,10 @@ export default function CreateFromRegistrationModal({
           .map(mapRegistration);
         setRegistrations(mapped);
       })
-      .catch((err) => console.error('Lỗi khi tải phiếu đăng ký:', err));
+      .catch((err) => console.error('Lỗi khi tải phiếu đăng ký:', err))
+      .finally(() => {
+        if (active) setIsLoadingRegistrations(false);
+      });
     return () => { active = false; };
   }, [initialRegistrationId]);
 
@@ -351,7 +356,28 @@ export default function CreateFromRegistrationModal({
 
         {!selectedRegistration ? (
           <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] p-5 pb-8">
-            <RegistrationPicker registrations={registrations} onSelect={selectRegistration} />
+            {isLoadingRegistrations ? (
+              <div className="flex flex-col items-center justify-center py-16 text-[#7f756b]">
+                <div className="w-8 h-8 border-2 border-[#4f6f4a] border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-sm font-semibold">Đang tải dữ liệu phiếu yêu cầu...</p>
+              </div>
+            ) : followUpMode && initialRegistrationId ? (
+              <div className="flex flex-col items-center justify-center py-16 text-[#7f756b] bg-white rounded-2xl border border-[#d8cbb8] max-w-md mx-auto my-6 p-6 shadow-sm">
+                <p className="text-base font-bold text-[#b91c1c] mb-2">Không tìm thấy phiếu yêu cầu gốc ({initialRegistrationId})</p>
+                <p className="text-xs text-[#5e5f5d] text-center mb-6 leading-relaxed">
+                  Phiếu yêu cầu có thể đã hoàn tất hợp đồng hoặc chấm dứt trước đó. Vui lòng kiểm tra lại danh sách phiếu.
+                </p>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-full bg-[#4f6f4a] px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-[#3f6038] transition-all"
+                >
+                  Đóng cửa sổ
+                </button>
+              </div>
+            ) : (
+              <RegistrationPicker registrations={registrations} onSelect={selectRegistration} />
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
