@@ -388,7 +388,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, branches, onSetFilter, o
       {isSale ? (
         <div className="flex items-center gap-2 pl-3.5 pr-5 py-2.5 bg-[#f4ede6] border border-[#d1c4b9] rounded-xl text-sm font-bold text-[#6f583c] shadow-sm select-none cursor-not-allowed">
           <Building2 className="w-4 h-4 text-[#8c7355]" />
-          <span>Chi nhánh: Q.1</span>
+          <span>Chi nhánh {user?.branch_name?.replace('Chi nhánh ', '') || 'N/A'}</span>
         </div>
       ) : (
         <CustomSelect
