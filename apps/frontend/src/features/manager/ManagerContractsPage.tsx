@@ -375,15 +375,14 @@ export default function ManagerContractsPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '12%' }} /> {/* Mã hợp đồng */}
-              <col style={{ width: '16%' }} /> {/* Khách hàng */}
+              <col style={{ width: '11%' }} /> {/* Mã hợp đồng */}
+              <col style={{ width: '18%' }} /> {/* Khách hàng */}
               <col style={{ width: '15%' }} /> {/* Phòng / Giường */}
-              <col style={{ width: '11%' }} /> {/* Loại thuê */}
-              <col style={{ width: '13%' }} /> {/* Tiền thuê / tháng */}
-              <col style={{ width: '12%' }} /> {/* Tiền đặt cọc */}
+              <col style={{ width: '10%' }} /> {/* Loại thuê */}
+              <col style={{ width: '12%' }} /> {/* Tiền thuê / tháng */}
               <col style={{ width: '11%' }} /> {/* Thời hạn */}
               <col style={{ width: '12%' }} /> {/* Trạng thái */}
-              <col style={{ width: '8%' }} />  {/* Action */}
+              <col style={{ width: '11%' }} /> {/* Action */}
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
@@ -392,7 +391,7 @@ export default function ManagerContractsPage() {
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                 }}>Mã hợp đồng</th>
-                {['Khách hàng', 'Phòng / Giường', 'Loại thuê', 'Tiền thuê / tháng', 'Tiền đặt cọc', 'Thời hạn', 'Trạng thái'].map(h => (
+                {['Khách hàng', 'Phòng / Giường', 'Loại thuê', 'Tiền thuê / tháng', 'Thời hạn', 'Trạng thái'].map(h => (
                   <th key={h} style={{
                     padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                     color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -403,7 +402,7 @@ export default function ManagerContractsPage() {
                   padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                }}></th>
+                }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -413,7 +412,7 @@ export default function ManagerContractsPage() {
                     <td style={{ padding: '14px 16px 14px 24px' }}>
                       <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 80 }} className="animate-pulse" />
                     </td>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} style={{ padding: '14px 16px' }}>
                         <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 60 }} className="animate-pulse" />
                       </td>
@@ -480,10 +479,6 @@ export default function ManagerContractsPage() {
                       {c.rent_amount.toLocaleString('vi-VN')}đ
                     </td>
 
-                    {/* Tiền cọc */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
-                      {c.deposit_amount.toLocaleString('vi-VN')}đ
-                    </td>
 
                     {/* Thời hạn */}
                     <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>

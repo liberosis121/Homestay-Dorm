@@ -325,7 +325,7 @@ export default function ManagerDepositsPage() {
                   padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                }}></th>
+                }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -450,40 +450,10 @@ export default function ManagerDepositsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiết đặt cọc</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Mã cọc: {formatShortId(selected.id, 'deposit')} • {selected.customer_name}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }} className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
                   <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                 </button>
-              </div>
-              {/* Status + Type badges */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                {(() => {
-                  const statusMeta = STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending;
-                  return (
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      background: statusMeta.bg, color: statusMeta.text,
-                      fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
-                      border: `1px solid ${statusMeta.text}1A`
-                    }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{statusMeta.icon}</span>
-                      {statusMeta.label}
-                    </span>
-                  );
-                })()}
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: getTypeCfg(selected.deposit_type).bg,
-                  color: getTypeCfg(selected.deposit_type).text,
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
-                  border: `1px solid ${getTypeCfg(selected.deposit_type).text}1A`
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-                    {getTypeCfg(selected.deposit_type).icon}
-                  </span>
-                  {getTypeCfg(selected.deposit_type).label}
-                </span>
               </div>
             </div>
 

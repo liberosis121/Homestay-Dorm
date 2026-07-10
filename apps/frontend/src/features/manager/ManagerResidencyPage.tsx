@@ -462,7 +462,7 @@ export default function ManagerResidencyPage() {
                 }}>Phiếu cọc</th>
                 {['Phòng', 'Thành viên', 'Kết quả thẩm định', 'Tiến độ', 'Trạng thái'].map(h => (
                   <th key={h} style={{
-                    padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                    padding: '14px 16px', textAlign: h === 'Kết quả thẩm định' ? 'center' : 'left', fontSize: 11, fontWeight: 700,
                     color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                     borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                   }}>{h}</th>
@@ -471,7 +471,7 @@ export default function ManagerResidencyPage() {
                   padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                }}></th>
+                }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -520,7 +520,7 @@ export default function ManagerResidencyPage() {
                     </td>
                     <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 600, color: T.textMuted, whiteSpace: 'nowrap' }}>{total} thành viên</td>
                     <td style={{ padding: '14px 16px' }}>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
                         <span style={{ fontSize: 11, fontWeight: 700, color: T.sage, background: T.sageBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.sage}1A` }}>{approved} đạt</span>
                         {pending > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.amber, background: T.amberBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.amber}1A` }}>{pending} chờ</span>}
                         {rejected > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.red, background: T.redBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.red}1A` }}>{rejected} không đạt</span>}

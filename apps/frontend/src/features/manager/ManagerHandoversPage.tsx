@@ -459,7 +459,7 @@ export default function ManagerHandoversPage() {
                       padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                    }}></th>
+                    }}>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -545,7 +545,7 @@ export default function ManagerHandoversPage() {
                       padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                    }}></th>
+                    }}>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -641,7 +641,10 @@ export default function ManagerHandoversPage() {
                       <div className="flex-1">
                         <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{item.item}</p>
                         <p style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-                          Tình trạng: {item.condition} &nbsp;•&nbsp; Số lượng: {item.quantity || 1}
+                          Tình trạng: {item.condition}
+                        </p>
+                        <p style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
+                          Số lượng: {item.quantity || 1}
                         </p>
                         {item.note && <p style={{ fontSize: 11.5, color: T.amber, marginTop: 1, fontWeight: 600 }}>Ghi chú: {item.note}</p>}
                       </div>
