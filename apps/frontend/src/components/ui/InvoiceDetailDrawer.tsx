@@ -1,5 +1,4 @@
 import { X, Printer, Check } from 'lucide-react';
-import { getMockDB, Room } from '../../lib/supabaseClient';
 
 export interface InvoiceDetailDrawerProps {
   isOpen: boolean;
@@ -21,28 +20,6 @@ export default function InvoiceDetailDrawer({
   const handlePrint = () => {
     window.print();
   };
-
-  // Load room details if room_id is present
-  let roomDetails: Room | undefined = undefined;
-  if (invoiceData && invoiceData.room_id) {
-    try {
-      const db = getMockDB();
-      roomDetails = db.rooms?.find((r: any) => r.id === invoiceData.room_id);
-    } catch (e) {
-      console.error("Failed to load room details", e);
-    }
-  }
-
-  // Load deposit details if deposit_ref is present
-  let depositDetails: any = undefined;
-  if (invoiceData && invoiceData.deposit_ref) {
-    try {
-      const db = getMockDB();
-      depositDetails = db.deposit_invoices?.find((d: any) => d.id === invoiceData.deposit_ref);
-    } catch (e) {
-      console.error("Failed to load deposit details", e);
-    }
-  }
 
   // Status badge style helper
   const getStatusBadge = (status: string) => {
@@ -79,6 +56,16 @@ export default function InvoiceDetailDrawer({
           </span>
         );
     }
+  };
+
+  // DB có 2 kiểu giá trị cho payment_method: enum tiếng Anh ('transfer'/'cash') do code hiện tại ghi,
+  // và nhãn tiếng Việt viết thẳng (vd 'Chuyển khoản') do dữ liệu seed cũ ghi. Chuẩn hóa cả 2 dạng,
+  // và không đoán bừa 'Tiền mặt' khi dữ liệu thật sự chưa có (null).
+  const formatPaymentMethod = (method: string | null | undefined, fallback = '---') => {
+    if (!method) return fallback;
+    if (method === 'transfer') return 'Chuyển khoản';
+    if (method === 'cash') return 'Tiền mặt';
+    return method; // đã là nhãn tiếng Việt sẵn có trong dữ liệu, hiển thị nguyên trạng
   };
 
   const formattedAmount = (amount: number) => (
@@ -151,7 +138,7 @@ export default function InvoiceDetailDrawer({
 
                   <div className="text-[#8A7563]">Phương thức thu:</div>
                   <div className="text-right text-[#1b1c1c]">
-                    {invoiceData.payment_method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt'}
+                    {formatPaymentMethod(invoiceData.payment_method)}
                   </div>
                 </div>
               </div>
@@ -175,7 +162,7 @@ export default function InvoiceDetailDrawer({
           {/* 2. CHECKIN TYPE */}
           {invoiceType === 'checkin' && (() => {
             const rent = invoiceData.rent_amount || 0;
-            const deposit = depositDetails?.amount || invoiceData.rent_amount || 0;
+            const deposit = invoiceData.deposit_amount || 0;
             const servicesList = invoiceData.services || [];
             const servicesTotal = servicesList.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
             const calculatedTotal = rent + deposit + servicesTotal;
@@ -200,7 +187,7 @@ export default function InvoiceDetailDrawer({
 
                     <div className="text-[#8A7563]">Phương thức thanh toán:</div>
                     <div className="text-right text-[#5C4632] font-semibold">
-                      {invoiceData.payment_method === 'transfer' ? 'Chuyển khoản' : invoiceData.payment_method === 'cash' ? 'Tiền mặt' : invoiceData.payment_method || 'Chuyển khoản (QR)'}
+                      {formatPaymentMethod(invoiceData.payment_method, 'Chuyển khoản (QR)')}
                     </div>
                   </div>
                 </div>
@@ -245,7 +232,7 @@ export default function InvoiceDetailDrawer({
                     
                     <div className="text-[#8A7563]">Loại phòng:</div>
                     <div className="text-right text-[#5C4632]">
-                      {roomDetails?.room_type || 'Ký túc xá cao cấp'}
+                      {invoiceData.room_type || '---'}
                     </div>
                   </div>
                 </div>

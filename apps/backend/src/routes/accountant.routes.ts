@@ -154,6 +154,76 @@ router.get('/monthly-invoices/latest-reading/:roomId', async (req, res) => {
 });
 
 /**
+ * 🔗 GET /api/accountant/monthly-invoices/services/:contractId
+ * 📝 Lay danh sach dich vu co dinh hop dong da dang ky (du lieu that, thay cho Mock DB).
+ */
+router.get('/monthly-invoices/services/:contractId', async (req, res) => {
+  try {
+    const data = await monthlyInvoiceService.getContractServices(req.params.contractId);
+    return sendSuccess(res, data, 'Lay danh sach dich vu dang ky thanh cong!');
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi lay danh sach dich vu dang ky.');
+  }
+});
+
+/**
+ * 🔗 GET /api/accountant/monthly-invoices/incidentals/:contractId
+ * 📝 Lay danh sach khoan phi phat sinh (incidental_costs) that cua hop dong.
+ */
+router.get('/monthly-invoices/incidentals/:contractId', async (req, res) => {
+  try {
+    const data = await monthlyInvoiceService.getContractIncidentals(req.params.contractId);
+    return sendSuccess(res, data, 'Lay danh sach phi phat sinh thanh cong!');
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi lay danh sach phi phat sinh.');
+  }
+});
+
+/**
+ * 🔗 POST /api/accountant/monthly-invoices/incidentals
+ * 📝 Ghi nhan mot khoan phi phat sinh moi cho hop dong.
+ */
+router.post('/monthly-invoices/incidentals', async (req, res) => {
+  try {
+    const { id, contractId, costName, amount, status, recordedDate } = req.body;
+    const staffId = req.profile!.id;
+    const data = await monthlyInvoiceService.createContractIncidental({
+      id, contractId, costName, amount, status, recordedDate, staffId
+    });
+    return sendSuccess(res, data, 'Ghi nhan khoan phi phat sinh thanh cong!', 201);
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi ghi nhan khoan phi phat sinh.');
+  }
+});
+
+/**
+ * 🔗 PATCH /api/accountant/monthly-invoices/incidentals/:id/status
+ * 📝 Cap nhat trang thai (xac nhan) mot khoan phi phat sinh.
+ */
+router.patch('/monthly-invoices/incidentals/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const data = await monthlyInvoiceService.updateContractIncidentalStatus(req.params.id, status);
+    return sendSuccess(res, data, 'Cap nhat trang thai khoan phi phat sinh thanh cong!');
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi cap nhat trang thai khoan phi phat sinh.');
+  }
+});
+
+/**
+ * 🔗 DELETE /api/accountant/monthly-invoices/incidentals/:id
+ * 📝 Xoa mot khoan phi phat sinh chua dua vao hoa don.
+ */
+router.delete('/monthly-invoices/incidentals/:id', async (req, res) => {
+  try {
+    await monthlyInvoiceService.deleteContractIncidental(req.params.id);
+    return sendSuccess(res, null, 'Xoa khoan phi phat sinh thanh cong!');
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi xoa khoan phi phat sinh.');
+  }
+});
+
+/**
  * 🔗 POST /api/accountant/monthly-invoices
  * 📝 Lap hoa don dinh ky va ghi nhan so dien nuoc.
  */

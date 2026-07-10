@@ -8,6 +8,55 @@ import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
+// Chuẩn hóa danh sách hóa đơn check-in từ response API.
+const mapCheckinInvoices = (checkinInvoices: any[]): CheckinInvoice[] =>
+  (checkinInvoices || []).map((inv: any) => {
+    const contract = inv.contracts || {};
+    const noteData = inv.note ? JSON.parse(inv.note) : {};
+    return {
+      id: inv.id,
+      customer_id: contract.id || inv.customer_id,
+      customer_name: inv.customer_name || 'Khách hàng',
+      room_id: contract.rooms?.id || inv.room_id || '',
+      room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+      room_type: inv.room_type || contract.rooms?.room_type || '',
+      checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
+      rent_amount: contract.rent_price || inv.rent_amount || 0,
+      deposit_amount: inv.deposit_amount ?? undefined,
+      deposit_ref: contract.deposit_id || '',
+      contract_id: contract.id || '',
+      services: noteData.services || [],
+      total: inv.amount,
+      status: inv.status,
+      created_at: inv.created_at || ''
+    };
+  });
+
+// Chuẩn hóa danh sách phiếu cọc đã thu tiền, sẵn sàng để lập hóa đơn nhận phòng.
+// Loại bỏ những phiếu đã có hóa đơn check-in rồi (checkedInDepositIds) để tránh lập trùng.
+const mapPendingDeposits = (depInvoices: any[], checkedInDepositIds: Set<string>): DepositInvoice[] =>
+  (depInvoices || [])
+    .filter((d: any) => d.status === 'paid')
+    .map((d: any) => {
+      const req = d.deposit_requests || {};
+      const depositRequestId = d.deposit_id || req.id || '';
+      return {
+        id: d.id,
+        deposit_request_id: depositRequestId,
+        customer_id: d.customer_id || req.customer_id,
+        customer_name: d.customer_name || 'Khách hàng',
+        room_id: d.room_id || req.room_id,
+        room_name: d.room_name || req.rooms?.name || 'Phòng',
+        amount: d.amount,
+        deadline: d.deadline || '',
+        payment_method: d.payment_method,
+        status: d.status,
+        created_at: d.created_at || '',
+        note: d.note
+      };
+    })
+    .filter((d) => !d.deposit_request_id || !checkedInDepositIds.has(d.deposit_request_id));
+
 export default function AccountantCheckinPage() {
   const { user } = useAuthStore();
   const [invoices, setInvoices] = useState<CheckinInvoice[]>([]);
@@ -48,42 +97,9 @@ export default function AccountantCheckinPage() {
           accountantService.fetchDepositInvoices(email)
         ]);
 
-        const mappedInvoices = (checkinInvoices || []).map((inv: any) => {
-          const contract = inv.contracts || {};
-          const noteData = inv.note ? JSON.parse(inv.note) : {};
-          return {
-            id: inv.id,
-            customer_id: contract.id || inv.customer_id,
-            customer_name: inv.customer_name || 'Khách hàng',
-            room_id: contract.rooms?.id || inv.room_id || '',
-            room_name: inv.room_name || contract.rooms?.name || 'Phòng',
-            checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
-            rent_amount: contract.rent_price || inv.rent_amount || 0,
-            deposit_ref: contract.deposit_id || '',
-            contract_id: contract.id || '',
-            services: noteData.services || [],
-            total: inv.amount,
-            status: inv.status,
-            created_at: inv.created_at || ''
-          };
-        });
-
-        const mappedDeposits = (depInvoices || []).filter((d: any) => d.status === 'paid').map((d: any) => {
-          const req = d.deposit_requests || {};
-          return {
-            id: d.id,
-            customer_id: d.customer_id || req.customer_id,
-            customer_name: d.customer_name || 'Khách hàng',
-            room_id: d.room_id || req.room_id,
-            room_name: d.room_name || req.rooms?.name || 'Phòng',
-            amount: d.amount,
-            deadline: d.deadline || '',
-            payment_method: d.payment_method,
-            status: d.status,
-            created_at: d.created_at || '',
-            note: d.note
-          };
-        });
+        const mappedInvoices = mapCheckinInvoices(checkinInvoices);
+        const checkedInDepositIds = new Set(mappedInvoices.map((inv) => inv.deposit_ref).filter(Boolean));
+        const mappedDeposits = mapPendingDeposits(depInvoices, checkedInDepositIds);
 
         setInvoices(mappedInvoices);
         setPendingDeposits(mappedDeposits);
@@ -146,42 +162,9 @@ export default function AccountantCheckinPage() {
       const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
       const depInvoices = await accountantService.fetchDepositInvoices(email);
 
-      const mappedInvoices = (checkinInvoices || []).map((inv: any) => {
-        const contract = inv.contracts || {};
-        const noteData = inv.note ? JSON.parse(inv.note) : {};
-        return {
-          id: inv.id,
-          customer_id: contract.id || inv.customer_id,
-          customer_name: inv.customer_name || 'Khách hàng',
-          room_id: contract.rooms?.id || inv.room_id || '',
-          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
-          checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
-          rent_amount: contract.rent_price || inv.rent_amount || 0,
-          deposit_ref: contract.deposit_id || '',
-          contract_id: contract.id || '',
-          services: noteData.services || [],
-          total: inv.amount,
-          status: inv.status,
-          created_at: inv.created_at || ''
-        };
-      });
-
-      const mappedDeposits = (depInvoices || []).filter((d: any) => d.status === 'paid').map((d: any) => {
-        const req = d.deposit_requests || {};
-        return {
-          id: d.id,
-          customer_id: d.customer_id || req.customer_id,
-          customer_name: d.customer_name || 'Khách hàng',
-          room_id: d.room_id || req.room_id,
-          room_name: d.room_name || req.rooms?.name || 'Phòng',
-          amount: d.amount,
-          deadline: d.deadline || '',
-          payment_method: d.payment_method,
-          status: d.status,
-          created_at: d.created_at || '',
-          note: d.note
-        };
-      });
+      const mappedInvoices = mapCheckinInvoices(checkinInvoices);
+      const checkedInDepositIds = new Set(mappedInvoices.map((inv) => inv.deposit_ref).filter(Boolean));
+      const mappedDeposits = mapPendingDeposits(depInvoices, checkedInDepositIds);
 
       setInvoices(mappedInvoices);
       setPendingDeposits(mappedDeposits);
@@ -226,25 +209,7 @@ export default function AccountantCheckinPage() {
       setToastMessage('Đã xác nhận thu tiền thành công.');
 
       const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
-      const mappedInvoices = (checkinInvoices || []).map((inv: any) => {
-        const contract = inv.contracts || {};
-        const noteData = inv.note ? JSON.parse(inv.note) : {};
-        return {
-          id: inv.id,
-          customer_id: contract.id || inv.customer_id,
-          customer_name: inv.customer_name || 'Khách hàng',
-          room_id: contract.rooms?.id || inv.room_id || '',
-          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
-          checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
-          rent_amount: contract.rent_price || inv.rent_amount || 0,
-          deposit_ref: contract.deposit_id || '',
-          contract_id: contract.id || '',
-          services: noteData.services || [],
-          total: inv.amount,
-          status: inv.status,
-          created_at: inv.created_at || ''
-        };
-      });
+      const mappedInvoices = mapCheckinInvoices(checkinInvoices);
       setInvoices(mappedInvoices);
 
       if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
@@ -307,15 +272,15 @@ export default function AccountantCheckinPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm flex flex-col justify-between h-[100px]">
           <span className="font-label-caps text-[11px] text-[#8A7563] font-bold uppercase tracking-wider">HĐ Nhận Phòng Hôm Nay</span>
-          <div className="text-3xl font-semibold text-[#5C4632] tabular-nums">{todayCount || 5}</div>
+          <div className="text-3xl font-semibold text-[#5C4632] tabular-nums">{todayCount}</div>
         </div>
         <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-l-4 border-l-[#5F7D4E] flex flex-col justify-between h-[100px]">
-          <span className="font-label-caps text-[11px] text-[#5F7D4E] font-bold uppercase tracking-wider">Tổng Thu Check-in (Tháng)</span>
-          <div className="text-3xl font-bold text-[#5F7D4E] tabular-nums">{(totalPaidSum || 24500000).toLocaleString('vi-VN')} ₫</div>
+          <span className="font-label-caps text-[11px] text-[#5F7D4E] font-bold uppercase tracking-wider">Tổng Thu Check-in</span>
+          <div className="text-3xl font-bold text-[#5F7D4E] tabular-nums">{totalPaidSum.toLocaleString('vi-VN')} ₫</div>
         </div>
         <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-l-4 border-l-[#B9792B] flex flex-col justify-between h-[100px]">
           <span className="font-label-caps text-[11px] text-[#B9792B] font-bold uppercase tracking-wider">HĐ Chờ Xử Lý</span>
-          <div className="text-3xl font-semibold text-[#B9792B] tabular-nums">{pendingCheckinsCount || 2}</div>
+          <div className="text-3xl font-semibold text-[#B9792B] tabular-nums">{pendingCheckinsCount}</div>
         </div>
       </div>
 

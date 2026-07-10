@@ -56,5 +56,13 @@ export const incidentalCostRepo = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  remove: async (id: string) => {
+    const { error } = await supabase
+      .from('incidental_costs')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   }
 };

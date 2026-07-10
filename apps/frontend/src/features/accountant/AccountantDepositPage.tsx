@@ -293,10 +293,13 @@ export default function AccountantDepositPage() {
     }
   };
 
+  // DB dùng status 'unpaid' cho hóa đơn cọc chưa thu (mock DB cũ dùng 'pending') → gộp chung.
+  const isUnpaidStatus = (status: string) => status === 'unpaid' || status === 'pending';
+
   // Summaries
   const totalCount = invoices.length;
   const paidCount = invoices.filter(i => i.status === 'paid').length;
-  const pendingCount = invoices.filter(i => i.status === 'pending').length;
+  const pendingCount = invoices.filter(i => isUnpaidStatus(i.status)).length;
   const overdueCount = invoices.filter(i => i.status === 'overdue').length;
   const totalExpectedAmount = invoices
     .filter(i => i.status !== 'cancelled')
@@ -304,22 +307,25 @@ export default function AccountantDepositPage() {
 
   // Filtered Invoices History Table
   const filteredInvoices = invoices.filter(inv => {
-    const matchesSearch = 
+    const matchesSearch =
       inv.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.room_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = 
-      statusFilter === 'all' ? true : inv.status === statusFilter;
+
+    const matchesStatus =
+      statusFilter === 'all' ? true :
+      statusFilter === 'pending' ? isUnpaidStatus(inv.status) :
+      inv.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
-  // Filtered deposit requests: only status === 'confirmed'
+  // Phiếu cọc chờ lập hóa đơn: chấp nhận cả 'pending' lẫn 'confirmed' (chưa lập hóa đơn).
+  // 'invoice_created' bị loại vì đã có hóa đơn rồi, không cần hiện lại ở đây.
   const filteredRequests = useMemo(() => {
     return depositRequests.filter(req => {
-      if (req.status !== 'confirmed') return false;
-      
+      if (req.status !== 'pending' && req.status !== 'confirmed') return false;
+
       const query = requestSearchQuery.toLowerCase();
       const matchesSearch = 
         req.id.toLowerCase().includes(query) ||
@@ -430,8 +436,10 @@ export default function AccountantDepositPage() {
                     }`}
                   >
                     <div className="flex justify-between items-center mb-1">
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-[#E8EDE5] text-[#5F7D4E]">
-                        Đã xác nhận
+                      {/* Khách hàng tự gửi phiếu cọc qua app (status 'pending'); 'confirmed' là trạng thái
+                          dự phòng cho quy trình duyệt thủ công, hiện chưa có luồng nào trong hệ thống gán giá trị này. */}
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-[#FAF2E8] text-[#B9792B]">
+                        Chờ lập hóa đơn
                       </span>
                       <span className="text-xs font-bold text-[#5C4632] tabular-nums">
                         {req.deposit_amount.toLocaleString('vi-VN')} đ
@@ -740,31 +748,35 @@ export default function AccountantDepositPage() {
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
-                      inv.status === 'pending' ? 'bg-[#FAF2E8] text-[#B9792B]' :
+                      isUnpaidStatus(inv.status) ? 'bg-[#FAF2E8] text-[#B9792B]' :
                       inv.status === 'overdue' ? 'bg-[#F8EAE8] text-[#A94F4F]' :
+                      inv.status === 'cancelled' ? 'bg-[#ECEAE6] text-[#8A7563]' :
                       'bg-[#ECEAE6] text-[#8A7563]'
                     }`}>
                       {inv.status === 'paid' ? 'Đã thu' :
-                       inv.status === 'pending' ? 'Chờ TT' :
-                       inv.status === 'overdue' ? 'Quá hạn' : 'Hủy'}
+                       isUnpaidStatus(inv.status) ? 'Chờ TT' :
+                       inv.status === 'overdue' ? 'Quá hạn' :
+                       inv.status === 'cancelled' ? 'Hủy' : inv.status}
                     </span>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
 
-                      {inv.status === 'pending' && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Xác nhận đã thu tiền cho hóa đơn ${inv.id}?`)) {
-                              handleConfirmPayment(inv.id);
-                            }
-                          }}
-                          className="px-2.5 py-1 bg-[#5F7D4E] hover:bg-[#5F7D4E]/90 text-white text-xs font-semibold rounded-md transition-all cursor-pointer active:scale-[0.95]"
-                        >
-                          Thu tiền
-                        </button>
-                      )}
-                      <button 
+                      {/* Luôn render nút để giữ chỗ (invisible khi không cần) — tránh icon mắt bị
+                          lệch vị trí giữa các dòng do bề rộng nội dung ô thay đổi theo điều kiện. */}
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Xác nhận đã thu tiền cho hóa đơn ${inv.id}?`)) {
+                            handleConfirmPayment(inv.id);
+                          }
+                        }}
+                        className={`px-2.5 py-1 bg-[#5F7D4E] hover:bg-[#5F7D4E]/90 text-white text-xs font-semibold rounded-md transition-all cursor-pointer active:scale-[0.95] ${
+                          isUnpaidStatus(inv.status) ? '' : 'invisible pointer-events-none'
+                        }`}
+                      >
+                        Thu tiền
+                      </button>
+                      <button
                         onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
                         className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]"
                       >
