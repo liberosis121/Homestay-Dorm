@@ -92,6 +92,24 @@ router.put('/:id/result', requireAuth, requireRole(USER_ROLE.SALE), async (req, 
 });
 
 /**
+ * PUT /api/viewing-schedules/:id/staff-reschedule
+ * Nhan vien Sale doi thoi gian lich hen minh phu trach.
+ * Body: { newScheduledTime, note? }
+ */
+router.put('/:id/staff-reschedule', requireAuth, requireRole(USER_ROLE.SALE), async (req, res) => {
+  try {
+    const { newScheduledTime, note } = req.body;
+    if (!newScheduledTime) {
+      return sendError(res, null, 'Vui long cung cap thoi gian hen moi (newScheduledTime).', 400);
+    }
+    const result = await viewingService.rescheduleByStaff(req.user!.id, req.params.id, newScheduledTime, note);
+    return sendSuccess(res, result, 'Doi thoi gian hen xem phong thanh cong!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Loi khi doi thoi gian hen xem phong.');
+  }
+});
+
+/**
  * 🔗 PUT /api/viewing-schedules/:id/cancel
  * 📝 Khách hàng tự hủy lịch hẹn xem phòng.
  */

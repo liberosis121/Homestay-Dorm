@@ -1,18 +1,13 @@
 import { formatShortId } from '../../lib/utils';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, RefreshCw, HelpCircle, AlertTriangle 
 } from 'lucide-react';
 import CustomerProfileCard from './components/CustomerProfileCard';
 import CustomerTabs from './components/CustomerTabs';
-import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
-import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
-import { useAuthStore } from '../../stores/authStore';
-import { customerLookupService } from './services/customerLookup.service';
+import { customerLookupService, Customer } from './services/customerLookup.service';
 
 export default function CustomerLookupPage() {
-  const { user } = useAuthStore();
-
   // Trạng thái Form Tìm kiếm
   const [searchName, setSearchName] = useState('');
   const [searchID, setSearchID] = useState('');
@@ -22,26 +17,24 @@ export default function CustomerLookupPage() {
   // Danh sách khách hàng và khách hàng đang chọn
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [activeCustomer, setActiveCustomer] = useState<Customer | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Load database từ LocalStorage lúc khởi tạo
+  const loadCustomersList = useCallback(async () => {
+    try {
+      const liveCustomers = await customerLookupService.fetchCustomers();
+      setCustomers(liveCustomers);
+      setLoadError(null);
+    } catch (err) {
+      console.warn('[CustomerLookup] Failed to fetch live customer data:', err);
+      setCustomers([]);
+      setLoadError('Không thể tải dữ liệu khách hàng từ máy chủ.');
+    }
+  }, []);
+
+  // Load danh sách khách hàng thật từ API lúc khởi tạo
   useEffect(() => {
-    const loadCustomersList = async () => {
-      const email = user?.email || 'sale@homestay.vn';
-      try {
-        const liveCustomers = await customerLookupService.fetchCustomers(email);
-        setCustomers(liveCustomers);
-      } catch (err) {
-        console.warn('[CustomerLookup] Failed to fetch live customer data, falling back to mock:', err);
-        const db = getMockDB();
-        if (db && db.customers && db.customers.length > 0) {
-          setCustomers(db.customers);
-        } else {
-          setCustomers(MOCK_CUSTOMERS);
-        }
-      }
-    };
     loadCustomersList();
-  }, [user]);
+  }, [loadCustomersList]);
 
   // Lọc danh sách khách hàng dựa trên thông tin tìm kiếm
   const filteredCustomers = useMemo(() => {
@@ -70,26 +63,12 @@ export default function CustomerLookupPage() {
     });
   }, [customers, searchName, searchID, searchPhone, searchEmail]);
 
-  // Kiểm tra giả lập trạng thái lỗi
-  const isErrorTriggered = useMemo(() => {
-    const qName = searchName.toLowerCase();
-    const qID = searchID.toLowerCase();
-    const qPhone = searchPhone.toLowerCase();
-    const qEmail = searchEmail.toLowerCase();
-    return (
-      qName.includes('lỗi') || qName.includes('error') ||
-      qID.includes('lỗi') || qID.includes('error') ||
-      qPhone.includes('lỗi') || qPhone.includes('error') ||
-      qEmail.includes('lỗi') || qEmail.includes('error')
-    );
-  }, [searchName, searchID, searchPhone, searchEmail]);
-
   // Trạng thái UI động
   const uiState = useMemo(() => {
-    if (isErrorTriggered) return 'error';
+    if (loadError) return 'error';
     if (filteredCustomers.length === 0) return 'empty';
     return 'success';
-  }, [isErrorTriggered, filteredCustomers]);
+  }, [loadError, filteredCustomers]);
 
   // Tự động gán active customer khi danh sách đã lọc thay đổi
   useEffect(() => {
@@ -121,23 +100,15 @@ export default function CustomerLookupPage() {
 
   // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
   const handleUpdateCustomer = async (updatedCust: Customer) => {
-    const email = user?.email || 'sale@homestay.vn';
     try {
-      await customerLookupService.updateCustomerNote(email, updatedCust.id, updatedCust.importantNote);
-      const liveCustomers = await customerLookupService.fetchCustomers(email);
+      await customerLookupService.updateCustomerNote(updatedCust.id, updatedCust.importantNote);
+      const liveCustomers = await customerLookupService.fetchCustomers();
       setCustomers(liveCustomers);
-      const updatedActive = liveCustomers.find((c: any) => c.id === updatedCust.id);
+      const updatedActive = liveCustomers.find((c) => c.id === updatedCust.id);
       setActiveCustomer(updatedActive || updatedCust);
     } catch (err) {
-      console.warn('[CustomerLookup] Note update live API failed, falling back to mock:', err);
-      const db = getMockDB();
-      const updatedList = customers.map(c => 
-        c.id === updatedCust.id ? updatedCust : c
-      );
-      setCustomers(updatedList);
-      db.customers = updatedList;
-      saveMockDB(db);
-      setActiveCustomer(updatedCust);
+      console.warn('[CustomerLookup] Note update live API failed:', err);
+      setLoadError('Không thể cập nhật dữ liệu khách hàng trên máy chủ.');
     }
   };
 
@@ -287,17 +258,17 @@ export default function CustomerLookupPage() {
               );
             })}
 
-            {filteredCustomers.length === 0 && !isErrorTriggered && (
+            {filteredCustomers.length === 0 && !loadError && (
               <div className="flex flex-col items-center justify-center py-12 text-center text-[#7f756b]">
                 <HelpCircle className="w-8 h-8 opacity-40 mb-2" />
                 <p className="text-xs font-semibold">Không tìm thấy khách hàng nào</p>
               </div>
             )}
             
-            {isErrorTriggered && (
+            {loadError && (
               <div className="flex flex-col items-center justify-center py-12 text-center text-red-500">
                 <AlertTriangle className="w-8 h-8 opacity-60 mb-2" />
-                <p className="text-xs font-bold">Lỗi kết nối máy chủ</p>
+                <p className="text-xs font-bold">{loadError}</p>
               </div>
             )}
           </div>
@@ -314,14 +285,14 @@ export default function CustomerLookupPage() {
               </div>
               <h3 className="text-xl font-bold text-[#ba1a1a] mb-2">Đã xảy ra lỗi kết nối</h3>
               <p className="text-sm text-[#7f756b] max-w-md font-body-md leading-relaxed mb-6 px-4">
-                Lỗi giả lập máy chủ dữ liệu trung tâm không phản hồi hoặc hết thời gian yêu cầu. Vui lòng thử lại.
+                Máy chủ dữ liệu khách hàng không phản hồi hoặc hết thời gian yêu cầu. Vui lòng thử lại.
               </p>
               <button
-                onClick={handleResetSearch}
+                onClick={loadCustomersList}
                 className="px-6 py-2.5 bg-[#ba1a1a] hover:bg-[#ba1a1a]/95 text-white font-semibold text-sm rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 duration-200 flex items-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                Làm mới bộ lọc
+                Thử tải lại
               </button>
             </div>
           )}

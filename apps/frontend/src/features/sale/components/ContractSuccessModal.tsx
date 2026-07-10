@@ -5,8 +5,8 @@ import {
 
 interface Props {
   contractCode: string;
-  invoiceCode: string;
-  handoverCode: string;
+  invoiceCode?: string;
+  handoverCode?: string;
   customerName: string;
   roomCode: string;
   branch: string;
@@ -142,22 +142,22 @@ export default function ContractSuccessModal({
                   icon: CheckCircle2,
                   action: null,
                 },
-                {
+                ...(invoiceCode ? [{
                   color: 'text-[#6f583c] bg-[#faf2ec]',
                   borderColor: 'border-[#d1c4b9]/40',
                   label: 'Hóa đơn nhận phòng',
                   value: invoiceCode,
                   icon: FileText,
                   action: 'Tải xuống',
-                },
-                {
+                }] : []),
+                ...(handoverCode ? [{
                   color: 'text-[#5e503f] bg-[#faf2ec]/60',
                   borderColor: 'border-[#d1c4b9]/30',
                   label: 'Biên bản bàn giao tài sản',
                   value: `${handoverCode} – Chờ ký`,
                   icon: FileText,
                   action: 'Xem',
-                },
+                }] : []),
               ].map((item, i) => {
                 const Icon = item.icon;
                 return (

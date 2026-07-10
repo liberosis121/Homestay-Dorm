@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import CustomDatePicker from '../../../components/ui/CustomDatePicker';
 import CustomSelect from '../../../components/ui/CustomSelect';
-import { getMockDB, saveMockDB } from '../../../lib/supabaseClient';
+import { fetchLeaseRegistrationsApi } from '../services/sale.service';
 import { useAuthStore } from '../../../stores/authStore';
 import { CreateSchedulePayload } from '../store/useSaleScheduleStore';
 
@@ -25,7 +25,6 @@ interface SaleRoom {
   branch_id: string;
   room_type: string;
   capacity?: number;
-  current_occupants?: number;
   gender_type?: string;
   price?: number;
   amenities?: string[];
@@ -66,7 +65,7 @@ interface Props {
   customers?: unknown[];
   createdBy: string;
   onClose: () => void;
-  onCreate: (payload: CreateSchedulePayload, createdBy: string) => void;
+  onCreate: (payload: CreateSchedulePayload, createdBy: string) => void | Promise<void>;
   onCreated: () => void;
 }
 
@@ -97,9 +96,7 @@ const genderLabel = (value?: string) => ({
 
 const statusLabel = (value?: string) => ({
   available: 'Còn trống',
-  partial: 'Còn chỗ',
   occupied: 'Đã thuê',
-  maintenance: 'Bảo trì',
 }[value || ''] || 'Chưa rõ');
 
 const formatDate = (value?: string) => {
@@ -107,6 +104,37 @@ const formatDate = (value?: string) => {
   const [year, month, day] = value.split('-');
   return day && month && year ? `${day}/${month}/${year}` : value;
 };
+
+// Map đơn đăng ký THẬT (rental_registrations + join customers) sang cấu trúc UI của modal.
+// Schema thật gọn hơn cấu trúc mock cũ nên một số trường (branch_id, amenities, giới tính,
+// ngày/giờ xem cụ thể) không có → degrade an toàn về rỗng/suy giản.
+const mapRegistration = (r: any): RentalRegistration => {
+  const occupants = Number(r.occupants_count) || 1;
+  return {
+    id: r.id,
+    customer_id: r.customers?.user_id || r.customers?.id || undefined,
+    customer_name: r.customers?.full_name || 'Khách hàng',
+    customer_phone: r.customers?.phone || '',
+    customer_email: r.customers?.email || '',
+    gender: r.customers?.gender || undefined,
+    preferred_room_type: r.preferred_room_type || '',
+    rental_type: occupants > 1 ? 'group' : 'individual',
+    occupants_count: occupants,
+    preferred_branch_id: undefined,
+    preferred_branch_name: r.preferred_area || '',
+    budget_range: r.preferred_price || '',
+    move_in_date: r.expected_move_in_date || '',
+    preferred_viewing_date: '',
+    preferred_viewing_time: '',
+    viewing_time_note: r.viewing_preference || '',
+    preferred_amenities: [],
+    note: r.other_criteria || '',
+    status: r.status,
+  };
+};
+
+// Các trạng thái đơn đang chờ xếp lịch xem phòng.
+const AWAITING_SCHEDULE_STATUSES = ['pending_schedule', 'pending', 'new'];
 
 const timeOptions = Array.from({ length: 27 }, (_, index) => {
   const totalMinutes = 7 * 60 + index * 30;
@@ -144,7 +172,7 @@ export default function CreateFromRegistrationModal({
   const [amenityFilters, setAmenityFilters] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState({
-    branchId: isSale ? 'b-1' : '',
+    branchId: '',
     roomType: '',
     priceRange: '',
     capacity: '',
@@ -153,10 +181,17 @@ export default function CreateFromRegistrationModal({
   const [form, setForm] = useState({ viewDate: '', startTime: '', endTime: '', notes: '' });
 
   useEffect(() => {
-    const db = getMockDB();
-    setRegistrations((db.rental_registrations || []).filter((item: RentalRegistration) =>
-      ['pending_schedule', 'pending', 'new', undefined].includes(item.status)
-    ));
+    let active = true;
+    fetchLeaseRegistrationsApi()
+      .then((list: any[]) => {
+        if (!active) return;
+        const mapped = (Array.isArray(list) ? list : [])
+          .filter((item) => !item.status || AWAITING_SCHEDULE_STATUSES.includes(item.status))
+          .map(mapRegistration);
+        setRegistrations(mapped);
+      })
+      .catch((err) => console.error('Lỗi khi tải phiếu đăng ký:', err));
+    return () => { active = false; };
   }, []);
 
   const branchName = (id?: string) => branches.find((branch) => branch.id === id)?.name || id || 'Chưa chọn';
@@ -169,10 +204,10 @@ export default function CreateFromRegistrationModal({
       { label: 'Chi nhánh', ok: !registration.preferred_branch_id || room.branch_id === registration.preferred_branch_id, need: branchName(registration.preferred_branch_id), actual: branchName(room.branch_id) },
       { label: 'Loại phòng', ok: !registration.preferred_room_type || room.room_type === registration.preferred_room_type, need: registration.preferred_room_type || 'Linh hoạt', actual: room.room_type },
       { label: 'Ngân sách', ok: !room.price || room.price <= maxBudget(registration.budget_range), need: budgetLabel(registration.budget_range), actual: money(room.price) },
-      { label: 'Số người', ok: (room.capacity || 0) >= (registration.occupants_count || 1), need: `${registration.occupants_count || 1} người`, actual: `${room.current_occupants || 0}/${room.capacity || 0} người` },
+      { label: 'Sức chứa tối đa', ok: (room.capacity || 0) >= (registration.occupants_count || 1), need: `${registration.occupants_count || 1} người`, actual: room.capacity ? `${room.capacity} người` : '—' },
       { label: 'Giới tính', ok: room.gender_type === 'unisex' || registration.gender === 'group' || !registration.gender || room.gender_type === registration.gender, need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
       { label: 'Tiện ích', ok: preferredAmenities.length === 0 || matchedAmenities >= Math.ceil(preferredAmenities.length * 0.6), need: preferredAmenities.join(', ') || 'Không yêu cầu', actual: roomAmenities.join(', ') || 'Chưa có' },
-      { label: 'Trạng thái', ok: ['available', 'partial'].includes(room.status || ''), need: 'Có thể xếp lịch', actual: statusLabel(room.status) },
+      { label: 'Trạng thái', ok: room.status === 'available', need: 'Còn trống', actual: statusLabel(room.status) },
     ];
     const score = checks.reduce((sum, item) => sum + (item.ok ? 1 : 0), 0);
     return {
@@ -205,7 +240,7 @@ export default function CreateFromRegistrationModal({
     setHoveredRoom(null);
     setErrors({});
     setFilters({
-      branchId: isSale ? 'b-1' : registration.preferred_branch_id || '',
+      branchId: registration.preferred_branch_id || '',
       roomType: registration.preferred_room_type || '',
       priceRange: '',
       capacity: registration.occupants_count ? String(registration.occupants_count) : '',
@@ -232,30 +267,33 @@ export default function CreateFromRegistrationModal({
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedRegistration || !selectedRoom || !validate()) return;
     const branch = branches.find((item) => item.id === selectedRoom.branch_id);
-    onCreate({
-      customerName: selectedRegistration.customer_name,
-      customerId: selectedRegistration.customer_id,
-      roomId: selectedRoom.id,
-      roomName: selectedRoom.name,
-      branchId: selectedRoom.branch_id,
-      branchName: branch?.name || '',
-      viewDate: form.viewDate,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      notes: form.notes || `Tạo từ phiếu ${selectedRegistration.id}`,
-    }, createdBy);
-
-    const db = getMockDB();
-    db.rental_registrations = (db.rental_registrations || []).map((item: RentalRegistration) =>
-      item.id === selectedRegistration.id
-        ? { ...item, status: 'scheduled', selected_room_id: selectedRoom.id, selected_room_name: selectedRoom.name, scheduled_date: form.viewDate, scheduled_time: form.startTime }
-        : item
-    );
-    saveMockDB(db);
+    setSubmitting(true);
+    try {
+      await onCreate({
+        customerName: selectedRegistration.customer_name,
+        customerId: selectedRegistration.customer_id,
+        registrationId: selectedRegistration.id,
+        roomId: selectedRoom.id,
+        roomName: selectedRoom.name,
+        branchId: selectedRoom.branch_id,
+        branchName: branch?.name || '',
+        viewDate: form.viewDate,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        notes: form.notes || `Tạo từ phiếu ${selectedRegistration.id}`,
+      }, createdBy);
+    } catch (err: any) {
+      setErrors((prev) => ({ ...prev, submit: err?.response?.data?.message || err?.message || 'Lỗi khi tạo lịch hẹn. Vui lòng thử lại.' }));
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(false);
     onCreated();
     onClose();
   };
@@ -348,7 +386,7 @@ export default function CreateFromRegistrationModal({
                       {!isSale && <CustomSelect value={filters.branchId} onChange={(value) => setFilters((prev) => ({ ...prev, branchId: value }))} options={[{ value: '', label: 'Tất cả CN' }, ...branches.map((branch) => ({ value: branch.id, label: branch.name.replace('Chi nhánh ', '') }))]} className="w-full min-w-[150px] sm:w-[168px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[200px]" theme="sale" />}
                       <CustomSelect value={filters.roomType} onChange={(value) => setFilters((prev) => ({ ...prev, roomType: value }))} options={[{ value: '', label: 'Mọi loại phòng' }, ...Array.from(new Set(rooms.map((room) => room.room_type))).map((type) => ({ value: type, label: type }))]} className="w-full min-w-[140px] sm:w-[154px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[190px]" theme="sale" />
                       <CustomSelect value={filters.priceRange} onChange={(value) => setFilters((prev) => ({ ...prev, priceRange: value }))} options={[{ value: '', label: 'Mọi mức giá' }, { value: 'under_2m', label: 'Dưới 2tr' }, { value: '2m_5m', label: '2-5tr' }, { value: '5m_7m', label: '5-7tr' }]} className="w-full min-w-[150px] sm:w-[164px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[185px]" theme="sale" />
-                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'partial', label: 'Còn chỗ' }, { value: 'occupied', label: 'Đã thuê' }]} className="w-full min-w-[160px] sm:w-[178px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[205px]" theme="sale" />
+                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'occupied', label: 'Đã thuê' }]} className="w-full min-w-[160px] sm:w-[178px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[205px]" theme="sale" />
                     </div>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {allAmenities.map((amenity) => {
@@ -379,7 +417,7 @@ export default function CreateFromRegistrationModal({
                                   </span>
                                   <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{room.room_type}</span>
                                   <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{money(room.price)}</span>
-                                  <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{room.current_occupants || 0}/{room.capacity || 0} người</span>
+                                  <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">Tối đa {room.capacity || '—'} người</span>
                                   <span className="inline-flex items-center rounded-full border border-[#c8d9c0] bg-[#eef6ea] px-2.5 py-1 text-[11px] font-bold text-[#4f6f4a]">{statusLabel(room.status)}</span>
                                 </div>
                                 {(room.amenities || []).length > 0 && (
@@ -476,12 +514,17 @@ export default function CreateFromRegistrationModal({
               </div>
             </div>
 
-            <div className="flex shrink-0 justify-end gap-3 border-t border-[#d8cbb8] bg-white px-5 py-4 shadow-[0_-8px_18px_rgba(63,53,40,0.06)]">
-              <button type="button" onClick={onClose} className="rounded-full border border-[#d8cbb8] px-5 py-2.5 text-sm font-semibold text-[#4e453c] transition-all hover:border-[#9a866b] hover:bg-[#f4f1ec] active:scale-[0.98]">Hủy bỏ</button>
-              <button type="submit" className="inline-flex items-center gap-2 rounded-full bg-[#6f583c] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#6f583c]/20 transition-all hover:bg-[#5f4a32] active:scale-[0.98]">
-                Tạo lịch hẹn & gửi cho khách
-                <Send className="h-4 w-4" />
-              </button>
+            <div className="flex shrink-0 flex-col gap-2 border-t border-[#d8cbb8] bg-white px-5 py-4 shadow-[0_-8px_18px_rgba(63,53,40,0.06)]">
+              {errors.submit && (
+                <p className="text-right text-xs font-semibold text-error">{errors.submit}</p>
+              )}
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={onClose} className="rounded-full border border-[#d8cbb8] px-5 py-2.5 text-sm font-semibold text-[#4e453c] transition-all hover:border-[#9a866b] hover:bg-[#f4f1ec] active:scale-[0.98]">Hủy bỏ</button>
+                <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-full bg-[#6f583c] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#6f583c]/20 transition-all hover:bg-[#5f4a32] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed">
+                  {submitting ? 'Đang tạo lịch...' : 'Tạo lịch hẹn & gửi cho khách'}
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </form>
         )}
