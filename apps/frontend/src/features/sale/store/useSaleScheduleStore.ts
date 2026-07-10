@@ -217,6 +217,7 @@ const mapApiSchedule = (s: any): SaleSchedule => {
 
   const reg = s.rental_registrations || {};
   const kh = reg.customers || {};
+  const khProfile = kh.profiles || {};
   const room = s.rooms || {};
   const branch = room.branches || {};
   const createdBy = s.employees?.full_name || 'Nhân viên Sale';
@@ -226,7 +227,7 @@ const mapApiSchedule = (s: any): SaleSchedule => {
     id: s.id,
     registrationId: s.registration_id || reg.id || '',
     customerId: reg.cccd || '',
-    customerName: kh.full_name || 'Khách hàng',
+    customerName: khProfile.full_name || 'Khách hàng',
     roomId: s.room_id || room.id || '',
     roomName: room.name || s.room_id || '',
     branchId: room.branch_id || branch.id || '',
