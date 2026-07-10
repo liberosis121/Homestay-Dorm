@@ -375,7 +375,7 @@ export default function ManagerDepositsPage() {
 
                     {/* Số tiền */}
                     <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 800, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
-                      {dep.amount.toLocaleString('vi-VN')}đ
+                      {(dep.amount ?? 0).toLocaleString('vi-VN')}đ
                     </td>
 
                     {/* Ngân hàng */}
@@ -463,7 +463,14 @@ export default function ManagerDepositsPage() {
                 <div style={{ padding: '10px 16px', borderBottom: `1px solid ${T.border}` }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase' }}>Ảnh bill chuyển khoản</p>
                 </div>
-                <img src={selected.bill_image_url} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
+                {selected.bill_image_url ? (
+                  <img src={selected.bill_image_url} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
+                ) : (
+                  <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textFaint }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 6 }}>image_not_supported</span>
+                    <p style={{ fontSize: 12 }}>Chưa có ảnh bill minh chứng</p>
+                  </div>
+                )}
               </div>
 
               {/* Info grid */}
@@ -476,7 +483,7 @@ export default function ManagerDepositsPage() {
                     { label: 'Loại đặt cọc',  val: getTypeCfg(selected.deposit_type).label, highlight: true },
                     { label: 'Phòng đăng ký', val: selected.room_name },
                     ...(selected.bed_name ? [{ label: 'Giường', val: selected.bed_name }] : []),
-                    { label: 'Số tiền cọc',   val: `${selected.amount.toLocaleString('vi-VN')}đ`, isAmount: true },
+                    { label: 'Số tiền cọc',   val: `${(selected.amount ?? 0).toLocaleString('vi-VN')}đ`, isAmount: true },
                     { label: 'Ngân hàng',     val: selected.bank_name },
                     { label: 'Số tài khoản',  val: selected.account_number },
                     { label: 'Ngày cọc',      val: formatDate(selected.deposit_date) },
@@ -560,7 +567,7 @@ export default function ManagerDepositsPage() {
             {selected.status !== 'pending' && (
               <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <p style={{ fontSize: 12.5, color: T.textMuted, textAlign: 'center', fontWeight: 500 }}>
-                  Chứng từ đã được xử lý: <strong style={{ color: STATUS_LABELS[selected.status].text, fontWeight: 700 }}>{STATUS_LABELS[selected.status].label}</strong>
+                  Chứng từ đã được xử lý: <strong style={{ color: (STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending).text, fontWeight: 700 }}>{(STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending).label}</strong>
                   {selected.reviewed_at && ` vào ${new Date(selected.reviewed_at).toLocaleDateString('vi-VN')}`}
                 </p>
               </div>
