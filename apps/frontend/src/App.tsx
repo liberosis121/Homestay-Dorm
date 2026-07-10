@@ -10,7 +10,6 @@ import {
   LogOut, 
   Menu, 
   X, 
-  Database, 
   Building, 
   CheckCircle, 
   Calendar, 
@@ -64,7 +63,6 @@ import AdminRoomsPage from './features/admin/AdminRoomsPage';
 import AdminServicesPage from './features/admin/AdminServicesPage';
 import AdminConditionsPage from './features/admin/AdminConditionsPage';
 import AdminAssetsPage from './features/admin/AdminAssetsPage';
-import AdminBackupPage from './features/admin/AdminBackupPage';
 import AdminDashboardPage from './features/admin/AdminDashboardPage';
 import ManagerDashboardPage from './features/manager/ManagerDashboardPage';
 import ManagerRoomsPage from './features/manager/ManagerRoomsPage';
@@ -208,8 +206,7 @@ function DashboardLayout() {
           { path: '/admin/rooms-catalog', label: 'Phòng & Giường', icon: Layers },
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
           { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
-          { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
-          { path: '/admin/backup', label: 'Sao lưu & Khôi phục', icon: Database }
+          { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings }
         ];
       case 'manager':
         return [
@@ -521,7 +518,6 @@ function DashboardLayout() {
             {user.role === 'admin' && <Route path="/admin/services" element={<AdminServicesPage />} />}
             {user.role === 'admin' && <Route path="/admin/conditions" element={<AdminConditionsPage />} />}
             {user.role === 'admin' && <Route path="/admin/assets" element={<AdminAssetsPage />} />}
-            {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupPage />} />}
             {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
               <Route path="/sale/customers" element={<CustomerLookupPage />} />
             )}
