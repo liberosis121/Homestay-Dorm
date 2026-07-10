@@ -636,7 +636,7 @@ export default function ManagerContractsPage() {
                     </h4>
                     <div className="space-y-3">
                       {[
-                        { label: 'Mã đặt cọc liên kết', val: selected.deposit_code || 'Không có' },
+                        { label: 'Mã đặt cọc liên kết', val: selected.deposit_code ? formatShortId(selected.deposit_code, 'deposit') : 'Không có' },
                         { label: 'Nhân viên kinh doanh lập', val: selected.sale_staff_name || 'Không xác định' },
                         { label: 'Loại hợp đồng', val: selected.contract_type === 'long_term' ? 'Dài hạn' : 'Ngắn hạn' },
                         { label: 'Kỳ thanh toán', val: selected.payment_cycle === '1_month' ? '1 tháng' : selected.payment_cycle === '3_months' ? '3 tháng' : '6 tháng' },

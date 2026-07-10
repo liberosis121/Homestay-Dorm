@@ -571,7 +571,7 @@ export default function ManagerResidencyPage() {
               position: 'absolute', right: 0, top: 0, bottom: 0, width: selectedMember ? 460 : 580, maxWidth: '95vw',
               background: T.surface, borderLeft: 'none', display: 'flex', flexDirection: 'column',
               boxShadow: '-8px 0 48px rgba(111,88,60,0.18)', transition: 'width 0.3s ease, border-radius 0.3s ease',
-              borderTopLeftRadius: 28, borderBottomLeftRadius: 28, overflow: 'hidden',
+              borderTopLeftRadius: selectedMember ? 0 : 28, borderBottomLeftRadius: selectedMember ? 0 : 28, overflow: 'hidden',
               animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
             }}
             onClick={e => e.stopPropagation()}>
@@ -585,7 +585,7 @@ export default function ManagerResidencyPage() {
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Kiểm tra điều kiện lưu trú</p>
                   </div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 22, fontWeight: 800, color: T.text }}>{selectedGroup.room_name}</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {formatShortId(selectedGroup.deposit_ref, 'deposit')} • {selectedGroup.members.length} thành viên</p>
+                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {formatShortId(selectedGroup.deposit_ref, 'deposit')} , {selectedGroup.members.length} thành viên</p>
                 </div>
                 <button onClick={() => { setSelectedGroup(null); setSelectedMember(null); }}
                   style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -643,9 +643,9 @@ export default function ManagerResidencyPage() {
                           <p style={{ fontFamily: "'Lexend', sans-serif", fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 2 }}>{member.customer_name}</p>
                           <div className="flex flex-wrap gap-x-3 gap-y-1">
                             <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>{member.customer_phone}</span>
-                            <span style={{ fontSize: 11, color: T.textFaint }}>• {age} tuổi</span>
+                            <span style={{ fontSize: 11, color: T.textFaint }}>{age} tuổi</span>
                             <span style={{ fontSize: 11, color: member.nationality === 'foreign' ? T.amber : T.sage, fontWeight: 600 }}>
-                              • {member.nationality === 'foreign' ? '🌐 Nước ngoài' : '🇻🇳 Việt Nam'}
+                              {member.nationality === 'foreign' ? 'Nước ngoài' : 'Việt Nam'}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -708,9 +708,9 @@ export default function ManagerResidencyPage() {
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <p style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 10 }}>Xác nhận ghi nhận kết quả kiểm tra</p>
                 <div style={{ background: T.bg, borderRadius: 16, padding: '12px 14px', marginBottom: 12, fontSize: 12, color: T.textMuted, lineHeight: 1.7, border: `1px solid ${T.border}` }}>
-                  <p>• <strong>{eligibleMembers.length}</strong> thành viên đủ điều kiện sẽ được xác định trong danh sách ký hợp đồng.</p>
-                  <p>• <strong>{selectedGroup.members.length - eligibleMembers.length}</strong> thành viên không đạt sẽ bị loại khỏi danh sách.</p>
-                  <p>• Kết quả sẽ được ghi vào CSDL và thông báo cho nhân viên Sale.</p>
+                  <p>- <strong>{eligibleMembers.length}</strong> thành viên đủ điều kiện sẽ được xác định trong danh sách ký hợp đồng.</p>
+                  <p>- <strong>{selectedGroup.members.length - eligibleMembers.length}</strong> thành viên không đạt sẽ bị loại khỏi danh sách.</p>
+                  <p>- Kết quả sẽ được ghi vào CSDL và thông báo cho nhân viên Sale.</p>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirmingGroup(false)}
@@ -740,30 +740,17 @@ export default function ManagerResidencyPage() {
               onClick={e => e.stopPropagation()}>
 
               {/* Sub-drawer Header */}
-              <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
+              <div style={{ padding: '20px 24px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Thẩm định thành viên</p>
                     <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 19, fontWeight: 800, color: T.text }}>{selectedMember.customer_name}</h3>
-                    <p style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{formatShortId(selectedMember.id, 'customer')} • {selectedMember.room_name}</p>
                   </div>
                   <button onClick={() => setSelectedMember(null)}
                     style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
                     className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
                     <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                   </button>
-                </div>
-
-                {/* Current status */}
-                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ background: STATUS_CFG[selectedMember.status].bg, color: STATUS_CFG[selectedMember.status].text, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${STATUS_CFG[selectedMember.status].text}1A` }}>
-                    {STATUS_CFG[selectedMember.status].label}
-                  </span>
-                  {memberResult && (
-                    <span style={{ background: memberResult === 'approved' ? T.sageBg : T.redBg, color: memberResult === 'approved' ? T.sage : T.red, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${memberResult === 'approved' ? T.sage : T.red}1A` }}>
-                      ✓ Vừa cập nhật
-                    </span>
-                  )}
                 </div>
               </div>
 
