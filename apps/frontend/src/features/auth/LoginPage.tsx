@@ -216,8 +216,8 @@ export default function LoginPage() {
                     { email: 'quanly@homestay.com', name: 'Quản lý (Manager)' },
                     { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)' },
                     { email: 'ketoan@homestay.com', name: 'Kế toán (Accountant)' },
-                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)' },
-                    { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thuê)', password: '12345678' },
+                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)', password: '12345678' },
+                    { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thuê)' },
                     { email: 'khach_moi@homestay.com', name: 'Khách hàng mới (Chưa thuê)' }
                   ].map((p) => (
                     <button
