@@ -6,7 +6,7 @@ import { getRoomsApi } from '../../rooms/rooms.api';
 
 // GET /api/viewing-schedules — danh sách lịch xem phòng của Sale
 export const fetchSchedules = async () => {
-  const res = await apiClient.get('/viewing-schedules');
+  const res = await apiClient.get('/viewing-schedules', { params: { staff_only: true } });
   return (res.data as any).data || res.data;
 };
 
@@ -19,9 +19,18 @@ export const getScheduleByIdApi = async (id: string) => {
 // PUT /api/viewing-schedules/:id/result — ghi kết quả xem phòng
 export const updateScheduleApi = async (
   id: string,
-  payload: { scheduled_time?: string; note?: string; result?: string },
+  payload: { note?: string; result: 'completed' | 'cancelled' },
 ) => {
   const res = await apiClient.put(`/viewing-schedules/${id}/result`, payload);
+  return (res.data as any).data || res.data;
+};
+
+// PUT /api/viewing-schedules/:id/staff-reschedule — Sale dời lịch phụ trách của mình
+export const rescheduleScheduleApi = async (
+  id: string,
+  payload: { newScheduledTime: string; note?: string },
+) => {
+  const res = await apiClient.put(`/viewing-schedules/${id}/staff-reschedule`, payload);
   return (res.data as any).data || res.data;
 };
 

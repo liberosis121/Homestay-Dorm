@@ -25,7 +25,6 @@ interface SaleRoom {
   branch_id: string;
   room_type: string;
   capacity?: number;
-  current_occupants?: number;
   gender_type?: string;
   price?: number;
   amenities?: string[];
@@ -97,9 +96,7 @@ const genderLabel = (value?: string) => ({
 
 const statusLabel = (value?: string) => ({
   available: 'Còn trống',
-  partial: 'Còn chỗ',
   occupied: 'Đã thuê',
-  maintenance: 'Bảo trì',
 }[value || ''] || 'Chưa rõ');
 
 const formatDate = (value?: string) => {
@@ -207,10 +204,10 @@ export default function CreateFromRegistrationModal({
       { label: 'Chi nhánh', ok: !registration.preferred_branch_id || room.branch_id === registration.preferred_branch_id, need: branchName(registration.preferred_branch_id), actual: branchName(room.branch_id) },
       { label: 'Loại phòng', ok: !registration.preferred_room_type || room.room_type === registration.preferred_room_type, need: registration.preferred_room_type || 'Linh hoạt', actual: room.room_type },
       { label: 'Ngân sách', ok: !room.price || room.price <= maxBudget(registration.budget_range), need: budgetLabel(registration.budget_range), actual: money(room.price) },
-      { label: 'Số người', ok: (room.capacity || 0) >= (registration.occupants_count || 1), need: `${registration.occupants_count || 1} người`, actual: `${room.current_occupants || 0}/${room.capacity || 0} người` },
+      { label: 'Sức chứa tối đa', ok: (room.capacity || 0) >= (registration.occupants_count || 1), need: `${registration.occupants_count || 1} người`, actual: room.capacity ? `${room.capacity} người` : '—' },
       { label: 'Giới tính', ok: room.gender_type === 'unisex' || registration.gender === 'group' || !registration.gender || room.gender_type === registration.gender, need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
       { label: 'Tiện ích', ok: preferredAmenities.length === 0 || matchedAmenities >= Math.ceil(preferredAmenities.length * 0.6), need: preferredAmenities.join(', ') || 'Không yêu cầu', actual: roomAmenities.join(', ') || 'Chưa có' },
-      { label: 'Trạng thái', ok: ['available', 'partial'].includes(room.status || ''), need: 'Có thể xếp lịch', actual: statusLabel(room.status) },
+      { label: 'Trạng thái', ok: room.status === 'available', need: 'Còn trống', actual: statusLabel(room.status) },
     ];
     const score = checks.reduce((sum, item) => sum + (item.ok ? 1 : 0), 0);
     return {
@@ -389,7 +386,7 @@ export default function CreateFromRegistrationModal({
                       {!isSale && <CustomSelect value={filters.branchId} onChange={(value) => setFilters((prev) => ({ ...prev, branchId: value }))} options={[{ value: '', label: 'Tất cả CN' }, ...branches.map((branch) => ({ value: branch.id, label: branch.name.replace('Chi nhánh ', '') }))]} className="w-full min-w-[150px] sm:w-[168px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[200px]" theme="sale" />}
                       <CustomSelect value={filters.roomType} onChange={(value) => setFilters((prev) => ({ ...prev, roomType: value }))} options={[{ value: '', label: 'Mọi loại phòng' }, ...Array.from(new Set(rooms.map((room) => room.room_type))).map((type) => ({ value: type, label: type }))]} className="w-full min-w-[140px] sm:w-[154px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[190px]" theme="sale" />
                       <CustomSelect value={filters.priceRange} onChange={(value) => setFilters((prev) => ({ ...prev, priceRange: value }))} options={[{ value: '', label: 'Mọi mức giá' }, { value: 'under_2m', label: 'Dưới 2tr' }, { value: '2m_5m', label: '2-5tr' }, { value: '5m_7m', label: '5-7tr' }]} className="w-full min-w-[150px] sm:w-[164px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[185px]" theme="sale" />
-                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'partial', label: 'Còn chỗ' }, { value: 'occupied', label: 'Đã thuê' }]} className="w-full min-w-[160px] sm:w-[178px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[205px]" theme="sale" />
+                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'occupied', label: 'Đã thuê' }]} className="w-full min-w-[160px] sm:w-[178px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[205px]" theme="sale" />
                     </div>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {allAmenities.map((amenity) => {
@@ -420,7 +417,7 @@ export default function CreateFromRegistrationModal({
                                   </span>
                                   <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{room.room_type}</span>
                                   <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{money(room.price)}</span>
-                                  <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{room.current_occupants || 0}/{room.capacity || 0} người</span>
+                                  <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">Tối đa {room.capacity || '—'} người</span>
                                   <span className="inline-flex items-center rounded-full border border-[#c8d9c0] bg-[#eef6ea] px-2.5 py-1 text-[11px] font-bold text-[#4f6f4a]">{statusLabel(room.status)}</span>
                                 </div>
                                 {(room.amenities || []).length > 0 && (

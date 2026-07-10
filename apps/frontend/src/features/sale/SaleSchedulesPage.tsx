@@ -149,17 +149,27 @@ const SaleSchedulesPage: React.FC = () => {
     setFilter('selectedDate', date || null);
   };
 
-  const handleCancelConfirm = () => {
+  const handleCancelConfirm = async () => {
     if (confirmCancelId) {
-      cancelSchedule(confirmCancelId);
-      setConfirmCancelId(null);
+      try {
+        await cancelSchedule(confirmCancelId);
+        showToast('Đã hủy lịch hẹn trên hệ thống.');
+        setConfirmCancelId(null);
+      } catch (err: any) {
+        showToast(err?.message || 'Không thể hủy lịch hẹn.');
+      }
     }
   };
 
-  const handleCompleteConfirm = () => {
+  const handleCompleteConfirm = async () => {
     if (confirmCompleteId) {
-      completeSchedule(confirmCompleteId);
-      setConfirmCompleteId(null);
+      try {
+        await completeSchedule(confirmCompleteId);
+        showToast('Đã ghi nhận hoàn thành lịch xem phòng.');
+        setConfirmCompleteId(null);
+      } catch (err: any) {
+        showToast(err?.message || 'Không thể ghi nhận hoàn thành lịch.');
+      }
     }
   };
 
@@ -208,8 +218,7 @@ const SaleSchedulesPage: React.FC = () => {
       <div className="rounded-2xl px-4 py-2.5 text-xs flex items-start gap-2 bg-[#fdf6ec] text-[#7a5a2e] border border-[#e7d3b5]">
         <FileText className="w-3.5 h-3.5 mt-0.5 shrink-0" />
         <span>
-          Danh sách, <b>Tạo lịch</b> &amp; <b>Dời lịch</b> đã đồng bộ máy chủ thật. Thao tác <b>Hủy / Hoàn thành</b> hiện chỉ cập nhật tạm thời
-          (bảng lịch chưa có cột trạng thái để lưu CSDL).
+          Danh sách, <b>Tạo lịch</b>, <b>Dời lịch</b>, <b>Hủy</b> và <b>Hoàn thành</b> đã đồng bộ máy chủ thật qua lịch của nhân viên sale đăng nhập.
         </span>
       </div>
 
