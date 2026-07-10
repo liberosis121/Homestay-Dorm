@@ -98,15 +98,22 @@ const toDepositRecord = (d: EligibleDeposit): DepositRecord => ({
 });
 
 // Hợp đồng thật (GET /sale/contracts) → CreatedContract cho danh sách "Hợp đồng đã lập".
-const toCreatedContract = (c: any): CreatedContract => ({
-  contractCode: c.contract_code || c.id || '—',
-  invoiceCode: '',
-  handoverCode: '',
-  customerName: c.customer_name || 'Khách thuê',
-  roomCode: c.room_name || c.room_id || '—',
-  branch: (c.branch_name || '').replace('Chi nhánh ', ''),
-  startDate: formatDate(c.start_date),
-});
+// Lưu ý: sale-contract.repo trả dữ liệu LỒNG NHAU (deposit_requests → rooms/branches,
+// rental_registrations → customers), không phẳng như /manager/deposits.
+const toCreatedContract = (c: any): CreatedContract => {
+  const dep = c.deposit_requests || {};
+  const room = dep.rooms || {};
+  const customer = dep.rental_registrations?.customers || {};
+  return {
+    contractCode: c.contract_code || c.id || '—',
+    invoiceCode: '',
+    handoverCode: '',
+    customerName: customer.full_name || 'Khách thuê',
+    roomCode: room.name || dep.room_id || '—',
+    branch: (room.branches?.name || '').replace('Chi nhánh ', ''),
+    startDate: formatDate(c.start_date),
+  };
+};
 
 function getCurrentTime() {
   return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) +

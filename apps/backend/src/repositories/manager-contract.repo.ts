@@ -1,4 +1,57 @@
+import { randomUUID } from 'crypto';
 import { supabase } from '../utils/supabase';
+
+/**
+ * Kích hoạt tài nguyên sau khi lập hợp đồng (khách chính thức thuê):
+ *  - Cọc theo giường: giường → 'occupied'; phòng → 'occupied' nếu hết giường trống.
+ *  - Cọc theo phòng nguyên: phòng → 'occupied'.
+ *  - Đơn đăng ký thuê → 'completed'.
+ * Bám theo schema thật: rooms.status & beds.status chỉ dùng 'available'/'occupied'
+ * (không có cột current_occupants, không dùng 'partial'/'full').
+ */
+async function activateResourcesAfterContract(depositId: string) {
+  if (!depositId) return;
+
+  const { data: dep, error: depErr } = await supabase
+    .from('deposit_requests')
+    .select('*')
+    .eq('id', depositId)
+    .maybeSingle();
+  if (depErr) throw depErr;
+  if (!dep) throw new Error('Không tìm thấy phiếu cọc tương ứng để kích hoạt tài nguyên thuê.');
+
+  if (dep.bed_id) {
+    // Cọc theo giường → giường 'occupied'
+    const { error: bedErr } = await supabase
+      .from('beds').update({ status: 'occupied' }).eq('id', dep.bed_id);
+    if (bedErr) throw bedErr;
+
+    // Sau khi cập nhật, nếu phòng không còn giường 'available' nào → phòng 'occupied'
+    if (dep.room_id) {
+      const { data: roomBeds, error: rbErr } = await supabase
+        .from('beds').select('status').eq('room_id', dep.room_id);
+      if (rbErr) throw rbErr;
+      const stillAvailable = (roomBeds || []).some((b) => b.status === 'available');
+      if (!stillAvailable) {
+        const { error: roomErr } = await supabase
+          .from('rooms').update({ status: 'occupied' }).eq('id', dep.room_id);
+        if (roomErr) throw roomErr;
+      }
+    }
+  } else if (dep.room_id) {
+    // Cọc theo phòng nguyên → phòng 'occupied'
+    const { error: roomErr } = await supabase
+      .from('rooms').update({ status: 'occupied' }).eq('id', dep.room_id);
+    if (roomErr) throw roomErr;
+  }
+
+  // Đơn đăng ký thuê → 'completed'
+  if (dep.registration_id) {
+    const { error: regErr } = await supabase
+      .from('rental_registrations').update({ status: 'completed' }).eq('id', dep.registration_id);
+    if (regErr) throw regErr;
+  }
+}
 
 export const managerContractRepo = {
   findAll: async (filters?: { customer_id?: string; status?: string }) => {
@@ -158,8 +211,14 @@ export const managerContractRepo = {
   },
 
   create: async (contract: any) => {
+    // staff_id BẮT BUỘC là nhân viên thật (khóa ngoại contracts.staff_id → employees.id).
+    // Trước đây fallback về id mock 'e001e001-...' (không tồn tại trong DB) gây lỗi FK khi tạo HĐ.
+    if (!contract.staff_id) {
+      throw new Error('Thiếu nhân viên phụ trách (staff_id) khi tạo hợp đồng.');
+    }
     const dbContract = {
-      id: contract.id || `CON-${Math.floor(1000 + Math.random() * 9000)}`,
+      // contracts.id là UUID → phải sinh UUID hợp lệ (trước đây dùng chuỗi 'CON-xxxx' gây lỗi kiểu dữ liệu).
+      id: contract.id || randomUUID(),
       contract_code: contract.contract_code,
       created_date: new Date().toISOString().slice(0, 10),
       start_date: contract.start_date,
@@ -169,7 +228,7 @@ export const managerContractRepo = {
       payment_cycle: contract.payment_cycle,
       status: contract.status || 'active',
       deposit_id: contract.deposit_code || contract.deposit_id,
-      staff_id: contract.staff_id || 'e001e001-e001-e001-e001-e001e001e001'
+      staff_id: contract.staff_id
     };
 
     const { data, error } = await supabase
@@ -178,6 +237,16 @@ export const managerContractRepo = {
       .select()
       .single();
     if (error) throw error;
+
+    // Kích hoạt tài nguyên (giường/phòng → occupied, đơn → completed).
+    // Nếu lỗi → rollback HĐ vừa tạo để tránh trạng thái không nhất quán.
+    try {
+      await activateResourcesAfterContract(dbContract.deposit_id);
+    } catch (sideErr) {
+      await supabase.from('contracts').delete().eq('id', data.id);
+      throw sideErr;
+    }
+
     return data;
   },
 
