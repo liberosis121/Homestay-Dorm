@@ -208,7 +208,33 @@ export const invoiceService = {
       throw new Error('Invoice ID is required');
     }
     const paymentTime = new Date().toISOString();
+
+    // 1. Fetch invoice info to check if it's a deposit invoice
+    const { data: inv, error: fErr } = await supabase
+      .from('invoices')
+      .select('invoice_type, deposit_id')
+      .eq('id', invoiceId)
+      .maybeSingle();
+
+    if (fErr) {
+      console.error('[payInvoice] Error fetching invoice info:', fErr.message);
+    }
+
+    // 2. Update invoice status to paid
     await invoiceRepo.updateStatus(invoiceId, 'paid', paymentMethod, paymentTime);
+
+    // 3. If it's a deposit invoice, update associated deposit request status to paid
+    if (inv && inv.invoice_type === 'deposit' && inv.deposit_id) {
+      const { error: dErr } = await supabase
+        .from('deposit_requests')
+        .update({ status: 'paid', deposit_time: paymentTime })
+        .eq('id', inv.deposit_id);
+
+      if (dErr) {
+        console.error('[payInvoice] Error updating deposit request status:', dErr.message);
+      }
+    }
+
     return { success: true, paidAt: paymentTime };
   },
 

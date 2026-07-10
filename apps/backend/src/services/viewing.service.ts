@@ -142,5 +142,58 @@ export const viewingService = {
    */
   getAllSchedules: async () => {
     return await viewingRepo.getAllSchedules();
+  },
+
+  /**
+   * Khách hàng tự hủy lịch hẹn xem phòng.
+   */
+  cancelSchedule: async (userId: string, scheduleId: string) => {
+    const customer = await getCustomerByUserId(userId);
+    if (!customer) {
+      throw new Error('Khong tim thay thong tin khach hang.');
+    }
+
+    const schedule = await viewingRepo.getScheduleById(scheduleId);
+    if (!schedule) {
+      throw new Error('Lich hen xem phong khong ton tai.');
+    }
+
+    if (schedule.rental_registrations.cccd !== customer.cccd) {
+      throw new Error('Ban khong co quyen huy lich hen nay.');
+    }
+
+    // Cập nhật kết quả lịch hẹn thành 'cancelled'
+    const updated = await viewingRepo.updateScheduleResult(scheduleId, VIEWING_STATUS.CANCELLED, 'Khách hàng tự hủy lịch hẹn');
+
+    // Đồng thời cập nhật trạng thái đơn đăng ký thuê về 'pending_schedule' để xếp lịch lại
+    await leaseRepo.updateRegistrationStatus(schedule.registration_id, REGISTRATION_STATUS.PENDING_SCHEDULE, null);
+
+    return updated;
+  },
+
+  /**
+   * Khách hàng đổi thời gian lịch hẹn xem phòng.
+   */
+  rescheduleSchedule: async (userId: string, scheduleId: string, newScheduledTime: string) => {
+    const customer = await getCustomerByUserId(userId);
+    if (!customer) {
+      throw new Error('Khong tim thay thong tin khach hang.');
+    }
+
+    const schedule = await viewingRepo.getScheduleById(scheduleId);
+    if (!schedule) {
+      throw new Error('Lich hen xem phong khong ton tai.');
+    }
+
+    if (schedule.rental_registrations.cccd !== customer.cccd) {
+      throw new Error('Ban khong co quyen doi lich hen nay.');
+    }
+
+    const scheduledDate = new Date(newScheduledTime);
+    if (scheduledDate <= new Date()) {
+      throw new Error('Thoi gian hen xem phong phai o tuong lai.');
+    }
+
+    return await viewingRepo.updateScheduleTime(scheduleId, newScheduledTime);
   }
 };

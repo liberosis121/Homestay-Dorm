@@ -11,6 +11,7 @@ import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import FormLabel from '../../components/ui/FormLabel';
 import { fetchProfile, updateProfileApi } from './services/profile.service';
+import { changePasswordApi } from '../auth/auth.api';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
@@ -37,18 +38,23 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const strengthLabel = ['', 'Yếu', 'Trung bình', 'Khá tốt', 'Mạnh'][strength];
   const strengthColor = ['', 'bg-error', 'bg-yellow-400', 'bg-blue-400', 'bg-[#4a6549]'][strength];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!oldPassword) { setError('Vui lòng nhập mật khẩu hiện tại.'); return; }
     if (newPassword.length < 8) { setError('Mật khẩu mới phải có ít nhất 8 ký tự.'); return; }
     if (newPassword !== confirmPassword) { setError('Mật khẩu xác nhận không khớp.'); return; }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await changePasswordApi(newPassword);
       setSuccess(true);
       setTimeout(() => { onClose(); }, 1800);
-    }, 1200);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || err.message || 'Lỗi khi thay đổi mật khẩu.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

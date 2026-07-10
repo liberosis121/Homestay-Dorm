@@ -133,3 +133,12 @@ export const forgotPasswordApi = async (email: string): Promise<{ success: boole
   const response = await apiClient.post('/auth/forgot-password', { email });
   return response.data;
 };
+
+/**
+ * Đổi mật khẩu tài khoản hiện tại.
+ * Gọi: POST /api/auth/change-password
+ */
+export const changePasswordApi = async (newPassword: string): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.post('/auth/change-password', { newPassword });
+  return response.data;
+};

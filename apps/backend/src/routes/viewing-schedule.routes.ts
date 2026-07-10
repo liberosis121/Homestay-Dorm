@@ -91,4 +91,35 @@ router.put('/:id/result', requireAuth, requireRole(USER_ROLE.SALE), async (req, 
   }
 });
 
+/**
+ * 🔗 PUT /api/viewing-schedules/:id/cancel
+ * 📝 Khách hàng tự hủy lịch hẹn xem phòng.
+ */
+router.put('/:id/cancel', requireAuth, async (req, res) => {
+  try {
+    const result = await viewingService.cancelSchedule(req.user!.id, req.params.id);
+    return sendSuccess(res, result, 'Hủy lịch hẹn xem phòng thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi hủy lịch hẹn xem phòng.');
+  }
+});
+
+/**
+ * 🔗 PUT /api/viewing-schedules/:id/reschedule
+ * 📝 Khách hàng đổi thời gian lịch hẹn xem phòng.
+ * 📥 Body: { newScheduledTime }
+ */
+router.put('/:id/reschedule', requireAuth, async (req, res) => {
+  try {
+    const { newScheduledTime } = req.body;
+    if (!newScheduledTime) {
+      return sendError(res, null, 'Vui lòng cung cấp thời gian hẹn mới (newScheduledTime).', 400);
+    }
+    const result = await viewingService.rescheduleSchedule(req.user!.id, req.params.id, newScheduledTime);
+    return sendSuccess(res, result, 'Đổi thời gian hẹn xem phòng thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi đổi thời gian hẹn xem phòng.');
+  }
+});
+
 export default router;

@@ -3,10 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarCheck, CheckCircle, Clock, CreditCard, Receipt, Search, XCircle } from 'lucide-react';
 import { CustomerDepositRequest, ManagerDeposit } from '../../lib/supabaseClient';
 import { getMyDepositsApi } from './deposit.api';
-import { fetchMyInvoices, payInvoiceApi } from './services/invoice.service';
 import { useAuthStore } from '../../stores/authStore';
-import PaymentDialog from './components/PaymentDialog';
-import { Invoice } from './store/useInvoiceStore';
 
 const getDynamicStatus = (request: CustomerDepositRequest, matchingMgrDep?: ManagerDeposit) => {
   if (request.status === 'paid' || matchingMgrDep?.status === 'approved') {
@@ -114,10 +111,6 @@ export default function DepositHistoryPage() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Payment dialog states
-  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -137,62 +130,6 @@ export default function DepositHistoryPage() {
     };
     loadData();
   }, [user, navigate]);
-
-  // Map deposit request to Invoice type for PaymentDialog
-  const selectedInvoice = useMemo((): Invoice | null => {
-    if (!selectedRequest) return null;
-    const rawRoomName = selectedRequest.room_name || '';
-    const cleanRoomName = rawRoomName.startsWith('Phòng') ? rawRoomName.substring(6) : rawRoomName;
-    
-    return {
-      id: selectedRequest.id,
-      billingPeriod: `Đặt cọc giữ chỗ phòng ${cleanRoomName}`,
-      month: new Date(selectedRequest.created_at).getMonth() + 1,
-      year: new Date(selectedRequest.created_at).getFullYear(),
-      type: 'incidental' as const,
-      typeName: 'Đặt cọc giữ chỗ',
-      roomPrice: 0,
-      electricityPrice: 0,
-      electricityUsage: '',
-      waterPrice: 0,
-      waterUsage: '',
-      servicePrice: selectedRequest.deposit_amount,
-      serviceDetails: `Đặt cọc phòng ${cleanRoomName} (${selectedRequest.branch_name})`,
-      totalAmount: selectedRequest.deposit_amount,
-      dueDate: selectedRequest.expected_move_in_date,
-      status: 'unpaid' as const,
-    };
-  }, [selectedRequest]);
-
-  const handlePaymentSuccess = async (method: 'qr' | 'wallet' | 'card') => {
-    if (!selectedRequest || !user) return;
-    setIsLoading(true);
-    try {
-      // 1. Tải danh sách hóa đơn để đối chiếu
-      const invoices = await fetchMyInvoices(user.email!);
-      // Tìm hóa đơn đặt cọc tương ứng
-      const invoice = invoices.find((inv: any) => 
-        inv.deposit_id === selectedRequest.id || 
-        inv.id === `HDTT-DEP-${selectedRequest.id}`
-      );
-      
-      const invoiceId = invoice?.id || `HDTT-DEP-${selectedRequest.id}`;
-      const paymentMethodName = method === 'card' ? 'Thẻ tín dụng' : method === 'wallet' ? 'Ví điện tử' : 'Chuyển khoản ngân hàng';
-
-      // 2. Gọi API thanh toán hóa đơn cọc thật
-      await payInvoiceApi(user.email!, invoiceId, paymentMethodName);
-
-      // 3. Reload lại dữ liệu cọc
-      const deposits = await getMyDepositsApi();
-      setRequests(deposits);
-      setIsPaymentOpen(false);
-      setSelectedRequest(null);
-    } catch (err: any) {
-      alert(err?.message || 'Có lỗi xảy ra khi thực hiện thanh toán hóa đơn cọc.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const filtered = useMemo(() => {
     if (!query.trim()) return requests;
@@ -344,19 +281,29 @@ export default function DepositHistoryPage() {
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 pt-3 border-t border-outline-variant/30">
                       <p className="text-xs text-on-surface-variant leading-relaxed">{statusInfo.desc}</p>
-                      {statusInfo.showPayBtn && (
+                      <div className="flex gap-2 self-end sm:self-auto">
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedRequest(request);
-                            setIsPaymentOpen(true);
+                            navigate('/customer/deposit', { state: { depositRequest: request } });
                           }}
-                          className="px-5 py-2.5 bg-primary text-on-primary rounded-full text-xs font-semibold hover:opacity-90 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 self-end sm:self-auto"
+                          className="px-4 py-2 border border-outline-variant text-on-surface-variant rounded-full text-xs font-semibold hover:bg-surface-container-low transition-all cursor-pointer"
                         >
-                          <CreditCard className="w-3.5 h-3.5" />
-                          Thanh toán cọc
+                          Chi tiết
                         </button>
-                      )}
+                        {statusInfo.showPayBtn && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigate('/customer/deposit', { state: { depositRequest: request } });
+                            }}
+                            className="px-5 py-2 bg-primary text-on-primary rounded-full text-xs font-semibold hover:opacity-90 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CreditCard className="w-3.5 h-3.5" />
+                            Thanh toán cọc
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -365,18 +312,6 @@ export default function DepositHistoryPage() {
           </div>
         )}
       </section>
-
-      {isPaymentOpen && selectedInvoice && (
-        <PaymentDialog
-          isOpen={isPaymentOpen}
-          invoice={selectedInvoice}
-          onClose={() => {
-            setIsPaymentOpen(false);
-            setSelectedRequest(null);
-          }}
-          onSuccess={handlePaymentSuccess}
-        />
-      )}
     </div>
   );
 }

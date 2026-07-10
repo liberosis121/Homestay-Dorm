@@ -5,6 +5,7 @@ import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import { useAuthStore } from '../../stores/authStore';
 import { createLeaseRegistrationApi } from './lease.api';
+import { getBranchesApi } from '../rooms/rooms.api';
 
 type InterestedRoomState = {
   interestedRoomId?: string;
@@ -33,13 +34,6 @@ const genderOptions = [
   { value: 'male', label: 'Nam' },
   { value: 'female', label: 'Nữ' },
   { value: 'other', label: 'Khác' },
-];
-
-const branchOptions = [
-  { value: 'b-1', label: 'Chi nhánh Quận 1' },
-  { value: 'b-2', label: 'Chi nhánh Quận 7' },
-  { value: 'b-3', label: 'Thủ Đức - Làng Đại Học' },
-  { value: 'any', label: 'Chưa quyết định' },
 ];
 
 const budgetOptions = [
@@ -71,6 +65,7 @@ export const RegisterLeasePage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [branches, setBranches] = useState<any[]>([]);
 
   const [form, setForm] = useState({
     fullName: user?.full_name || '',
@@ -104,8 +99,20 @@ export const RegisterLeasePage: React.FC = () => {
     }
     if (user.renting_room_name) {
       navigate('/profile');
+      return;
     }
+
+    getBranchesApi()
+      .then((data) => setBranches(data))
+      .catch((err) => console.error('Lỗi khi tải chi nhánh:', err));
   }, [user, navigate, location]);
+
+  const branchOptions = useMemo(() => {
+    return [
+      ...branches.map((b: any) => ({ value: b.id, label: b.name })),
+      { value: 'any', label: 'Chưa quyết định' }
+    ];
+  }, [branches]);
 
   const interestedRoomLabel = useMemo(() => {
     if (!interested.interestedRoomName) return null;
@@ -114,7 +121,7 @@ export const RegisterLeasePage: React.FC = () => {
       branch: interested.preferredBranchName || branchOptions.find(b => b.value === interested.preferredBranchId)?.label || 'Chi nhánh đang cập nhật',
       price: interested.preferredBudget ? `${interested.preferredBudget.toLocaleString('vi-VN')}đ/tháng` : 'Giá đang cập nhật',
     };
-  }, [interested]);
+  }, [interested, branchOptions]);
 
   const setField = (key: keyof typeof form, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));

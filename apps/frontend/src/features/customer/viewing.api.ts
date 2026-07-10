@@ -88,3 +88,26 @@ export const getMyViewingSchedulesApi = async (): Promise<ViewingSchedule[]> => 
   );
   return (response.data.data || []).map(mapViewingResponse);
 };
+
+/**
+ * Khách hàng tự hủy lịch hẹn xem phòng.
+ * Gọi: PUT /api/viewing-schedules/:id/cancel
+ */
+export const cancelViewingScheduleApi = async (scheduleId: string): Promise<ViewingSchedule> => {
+  const response = await apiClient.put<{ success: boolean; data: any }>(
+    `/viewing-schedules/${scheduleId}/cancel`
+  );
+  return mapViewingResponse(response.data.data);
+};
+
+/**
+ * Khách hàng đổi thời gian lịch hẹn xem phòng.
+ * Gọi: PUT /api/viewing-schedules/:id/reschedule
+ */
+export const rescheduleViewingScheduleApi = async (scheduleId: string, newScheduledTime: string): Promise<ViewingSchedule> => {
+  const response = await apiClient.put<{ success: boolean; data: any }>(
+    `/viewing-schedules/${scheduleId}/reschedule`,
+    { newScheduledTime }
+  );
+  return mapViewingResponse(response.data.data);
+};

@@ -297,4 +297,23 @@ export const authService = {
 
     return { success: true };
   },
+
+  /**
+   * Đổi mật khẩu của người dùng qua admin API.
+   */
+  changePassword: async (userId: string, newPassword: string) => {
+    if (!userId) {
+      throw new Error('User ID là bắt buộc');
+    }
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('Mật khẩu mới phải có ít nhất 8 ký tự');
+    }
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+      password: newPassword
+    });
+    if (error) {
+      throw new Error(`Lỗi khi cập nhật mật khẩu: ${error.message}`);
+    }
+    return { success: true };
+  },
 };

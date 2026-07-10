@@ -193,4 +193,28 @@ router.put('/profile', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * 🔗 POST /api/auth/change-password
+ * 📝 Khách hàng tự đổi mật khẩu.
+ * 📥 Body input: { newPassword }
+ */
+router.post('/change-password', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { newPassword } = req.body;
+
+    if (!userId) {
+      return sendError(res, null, 'Phiên đăng nhập không hợp lệ.', 401);
+    }
+    if (!newPassword || newPassword.length < 8) {
+      return sendError(res, null, 'Mật khẩu mới phải có ít nhất 8 ký tự.', 400);
+    }
+
+    const result = await authService.changePassword(userId, newPassword);
+    return sendSuccess(res, result, 'Đổi mật khẩu thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi thay đổi mật khẩu.');
+  }
+});
+
 export default router;

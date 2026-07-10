@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { ViewingSchedule, getMyViewingSchedulesApi } from './viewing.api';
+import { ViewingSchedule, getMyViewingSchedulesApi, cancelViewingScheduleApi, rescheduleViewingScheduleApi } from './viewing.api';
 import { getMyDepositsApi, createDepositApi } from './deposit.api';
 import { getRoomDetailApi } from '../rooms/rooms.api';
-import { getMockDB, saveMockDB, CustomerDepositRequest } from '../../lib/supabaseClient';
+import { CustomerDepositRequest } from '../../lib/supabaseClient';
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -515,7 +515,8 @@ export default function ViewingSchedulePage() {
   const {
     activeTab, setActiveTab,
     searchQuery, setSearchQuery,
-    setCancellingId, setReschedulingId
+    setCancellingId, setReschedulingId,
+    rescheduleDate, rescheduleTime
   } = useViewingScheduleStore();
 
   const [allSchedules, setAllSchedules] = useState<ViewingSchedule[]>([]);
@@ -589,22 +590,30 @@ export default function ViewingSchedulePage() {
     );
   }, [allSchedules, activeTab, searchQuery, initialDepositScheduleIds]);
 
-  const handleCancel = (id: string) => {
-    const db = getMockDB();
-    const list = db.viewing_schedules || [];
-    const idx = list.findIndex((s: ViewingSchedule) => s.id === id);
-    if (idx !== -1) {
-      list[idx].status = 'cancelled';
-      list[idx].timeline_step = 1;
-      saveMockDB({ ...db, viewing_schedules: list });
-      setAllSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled', timeline_step: 1 } : s));
+  const handleCancel = async (id: string) => {
+    try {
+      const updated = await cancelViewingScheduleApi(id);
+      setAllSchedules(prev => prev.map(s => s.id === id ? updated : s));
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi hủy lịch xem phòng.');
     }
     setCancellingId(null);
   };
 
-  const handleReschedule = (id: string) => {
+  const handleReschedule = async (id: string) => {
+    try {
+      const dateStr = rescheduleDate; // vd: 2026-06-25
+      const timeStr = rescheduleTime; // vd: 09:30
+      const isoTime = `${dateStr}T${timeStr}:00.000Z`; // convert to ISO String
+      
+      const updated = await rescheduleViewingScheduleApi(id, isoTime);
+      setAllSchedules(prev => prev.map(s => s.id === id ? updated : s));
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi đổi lịch xem phòng.');
+    }
     setReschedulingId(null);
-    setAllSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'confirmed' } : s));
   };
 
   const handleCreateDepositRequest = async (schedule: ViewingSchedule) => {

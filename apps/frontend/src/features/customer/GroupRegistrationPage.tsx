@@ -8,6 +8,8 @@ import { useGroupRegistrationStore } from './store/useGroupRegistrationStore';
 import { CheckCircle, ChevronLeft, ChevronRight, Info, Plus, Trash2, Users } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import { getRoomDetailApi } from '../rooms/rooms.api';
+import { createLeaseRegistrationApi } from './lease.api';
 
 const memberSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
@@ -43,6 +45,7 @@ export const GroupRegistrationPage: React.FC = () => {
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
   const [genderType, setGenderType] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roomDetail, setRoomDetail] = useState<any>(null);
 
   useEffect(() => {
     if (!user) {
@@ -62,6 +65,11 @@ export const GroupRegistrationPage: React.FC = () => {
       setAvailableBeds(state.availableBeds || 4);
       setSelectedBeds(state.selectedBedsNames || []);
       setGenderType(state.genderType || '');
+
+      // Load room details
+      getRoomDetailApi(state.roomId)
+        .then((detail) => setRoomDetail(detail))
+        .catch((err) => console.error('Lỗi khi tải chi tiết phòng:', err));
     } else {
       navigate('/rooms');
     }
@@ -141,12 +149,38 @@ export const GroupRegistrationPage: React.FC = () => {
     setCurrentStep(3);
   };
 
-  const handleSubmitFinal = () => {
+  const handleSubmitFinal = async () => {
+    if (!roomDetail || !user) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const preferredArea = roomDetail.branches?.name || 'Chi nhánh mặc định';
+      const preferredRoomType = roomDetail.room_type || 'Dorm';
+      const preferredPrice = `${(roomDetail.price || 0).toLocaleString('vi-VN')} VNĐ/tháng`;
+      
+      await createLeaseRegistrationApi({
+        occupants_count: draftData.members.length,
+        preferred_area: preferredArea,
+        preferred_room_type: preferredRoomType,
+        preferred_price: preferredPrice,
+        viewing_preference: 'Chưa quyết định',
+        expected_move_in_date: draftData.moveInDate || '',
+        rental_duration: `${draftData.leaseTerm || '6'} tháng`,
+        other_criteria: JSON.stringify({
+          isGroup: true,
+          roomId: roomDetail.id,
+          roomName: roomDetail.name,
+          beds: selectedBeds,
+          members: draftData.members
+        })
+      });
+
       setCurrentStep(4);
-    }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi gửi đơn đăng ký thuê nhóm');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFinish = () => {
