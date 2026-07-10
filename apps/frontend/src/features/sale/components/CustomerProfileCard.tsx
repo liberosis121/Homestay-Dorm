@@ -1,5 +1,5 @@
 import { formatShortId } from '../../../lib/utils';
-import { Customer } from '../../../lib/mockCustomers';
+import { Customer } from '../services/customerLookup.service';
 export type { Customer };
 
 interface CustomerProfileCardProps {

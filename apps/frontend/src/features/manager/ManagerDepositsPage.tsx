@@ -325,7 +325,7 @@ export default function ManagerDepositsPage() {
                   padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                }}></th>
+                }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -375,7 +375,7 @@ export default function ManagerDepositsPage() {
 
                     {/* Số tiền */}
                     <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 800, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
-                      {dep.amount.toLocaleString('vi-VN')}đ
+                      {(dep.amount ?? 0).toLocaleString('vi-VN')}đ
                     </td>
 
                     {/* Ngân hàng */}
@@ -450,40 +450,10 @@ export default function ManagerDepositsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiết đặt cọc</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Mã cọc: {formatShortId(selected.id, 'deposit')} • {selected.customer_name}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }} className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
                   <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                 </button>
-              </div>
-              {/* Status + Type badges */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                {(() => {
-                  const statusMeta = STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending;
-                  return (
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      background: statusMeta.bg, color: statusMeta.text,
-                      fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
-                      border: `1px solid ${statusMeta.text}1A`
-                    }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{statusMeta.icon}</span>
-                      {statusMeta.label}
-                    </span>
-                  );
-                })()}
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: getTypeCfg(selected.deposit_type).bg,
-                  color: getTypeCfg(selected.deposit_type).text,
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
-                  border: `1px solid ${getTypeCfg(selected.deposit_type).text}1A`
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-                    {getTypeCfg(selected.deposit_type).icon}
-                  </span>
-                  {getTypeCfg(selected.deposit_type).label}
-                </span>
               </div>
             </div>
 
@@ -493,7 +463,14 @@ export default function ManagerDepositsPage() {
                 <div style={{ padding: '10px 16px', borderBottom: `1px solid ${T.border}` }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase' }}>Ảnh bill chuyển khoản</p>
                 </div>
-                <img src={selected.bill_image_url} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
+                {selected.bill_image_url ? (
+                  <img src={selected.bill_image_url} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
+                ) : (
+                  <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textFaint }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 6 }}>image_not_supported</span>
+                    <p style={{ fontSize: 12 }}>Chưa có ảnh bill minh chứng</p>
+                  </div>
+                )}
               </div>
 
               {/* Info grid */}
@@ -506,7 +483,7 @@ export default function ManagerDepositsPage() {
                     { label: 'Loại đặt cọc',  val: getTypeCfg(selected.deposit_type).label, highlight: true },
                     { label: 'Phòng đăng ký', val: selected.room_name },
                     ...(selected.bed_name ? [{ label: 'Giường', val: selected.bed_name }] : []),
-                    { label: 'Số tiền cọc',   val: `${selected.amount.toLocaleString('vi-VN')}đ`, isAmount: true },
+                    { label: 'Số tiền cọc',   val: `${(selected.amount ?? 0).toLocaleString('vi-VN')}đ`, isAmount: true },
                     { label: 'Ngân hàng',     val: selected.bank_name },
                     { label: 'Số tài khoản',  val: selected.account_number },
                     { label: 'Ngày cọc',      val: formatDate(selected.deposit_date) },
@@ -590,7 +567,7 @@ export default function ManagerDepositsPage() {
             {selected.status !== 'pending' && (
               <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <p style={{ fontSize: 12.5, color: T.textMuted, textAlign: 'center', fontWeight: 500 }}>
-                  Chứng từ đã được xử lý: <strong style={{ color: STATUS_LABELS[selected.status].text, fontWeight: 700 }}>{STATUS_LABELS[selected.status].label}</strong>
+                  Chứng từ đã được xử lý: <strong style={{ color: (STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending).text, fontWeight: 700 }}>{(STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending).label}</strong>
                   {selected.reviewed_at && ` vào ${new Date(selected.reviewed_at).toLocaleDateString('vi-VN')}`}
                 </p>
               </div>

@@ -45,6 +45,10 @@ interface DashboardStats {
   depositRate: number;
   checkinRate: number;
   monthlyRate: number;
+  totalExpected: number;
+  depositExpected: number;
+  checkinExpected: number;
+  monthlyExpected: number;
   pendingInvoicesCount: number;
   pendingRefundsCount: number;
   pendingPayoutsCount: number;
@@ -59,6 +63,11 @@ const computeDashboardStats = (
   const checkinRev = sumByStatus(chkInvoices, ['paid']);
   const monthlyRev = sumByStatus(monInvoices, ['paid']);
   const totalRevenue = depositRev + checkinRev + monthlyRev;
+
+  const depositExpected = (depInvoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + amountOf(inv), 0);
+  const checkinExpected = (chkInvoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + amountOf(inv), 0);
+  const monthlyExpected = (monInvoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + amountOf(inv), 0);
+  const totalExpected = depositExpected + checkinExpected + monthlyExpected;
 
   const depositOut = sumByStatus(depInvoices, OUTSTANDING_STATUSES);
   const checkinOut = sumByStatus(chkInvoices, OUTSTANDING_STATUSES);
@@ -125,6 +134,10 @@ const computeDashboardStats = (
     depositRate: collectionPct(depositRev, depositOut),
     checkinRate: collectionPct(checkinRev, checkinOut),
     monthlyRate: collectionPct(monthlyRev, monthlyOut),
+    totalExpected,
+    depositExpected,
+    checkinExpected,
+    monthlyExpected,
     pendingInvoicesCount,
     pendingRefundsCount,
     pendingPayoutsCount,
@@ -146,6 +159,10 @@ export default function AccountantDashboardPage() {
     depositRate: 0,
     checkinRate: 0,
     monthlyRate: 0,
+    totalExpected: 0,
+    depositExpected: 0,
+    checkinExpected: 0,
+    monthlyExpected: 0,
     pendingInvoicesCount: 0,
     pendingRefundsCount: 0,
     pendingPayoutsCount: 0,
@@ -178,7 +195,6 @@ export default function AccountantDashboardPage() {
     };
     loadStats();
   }, [user]);
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':

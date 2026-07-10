@@ -3,7 +3,7 @@ import {
   User, Phone, Mail, CreditCard, MapPin, Receipt,
   CheckCircle2, Clock, AlertTriangle, ShieldCheck
 } from 'lucide-react';
-import { CreatedContract, MOCK_DEPOSITS } from '../SaleContractsPage';
+import { CreatedContract, DepositRecord } from '../SaleContractsPage';
 
 interface Props {
   contract: CreatedContract;
@@ -12,10 +12,9 @@ interface Props {
 }
 
 export default function ContractDetailModal({ contract, onClose, onPrint }: Props) {
-  // Find matching deposit record for richer info (phone, email, CCCD, roomType, depositAmount etc.)
-  const deposit = MOCK_DEPOSITS.find(
-    (d) => d.roomCode === contract.roomCode || d.customerName === contract.customerName
-  );
+  // Dữ liệu hợp đồng rút gọn không kèm thông tin khách/phòng chi tiết → ẩn các mục phụ
+  // thuộc thay vì hiển thị dữ liệu giả (đã bỏ MOCK_DEPOSITS).
+  const deposit = null as DepositRecord | null;
 
   const steps = [
     { label: 'Lập hợp đồng', done: true, time: 'Đã hoàn thành' },
@@ -222,25 +221,25 @@ export default function ContractDetailModal({ contract, onClose, onPrint }: Prop
               {[
                 {
                   label: 'Kết quả kiểm tra điều kiện lưu trú',
-                  code: 'KQ-LT-PASS',
+                  code: 'Đạt – Đủ điều kiện thuê phòng',
                   status: 'Hợp lệ',
                   statusColor: 'text-[#4a6549] bg-[#eff3ef] border-[#a8c3a5]/40',
                   icon: CheckCircle2,
                 },
-                {
+                ...(contract.invoiceCode ? [{
                   label: 'Hóa đơn cọc & thanh toán tháng đầu',
                   code: contract.invoiceCode,
                   status: 'Chờ thanh toán',
                   statusColor: 'text-[#92400e] bg-[#fef3c7] border-[#fcd34d]',
                   icon: FileText,
-                },
-                {
+                }] : []),
+                ...(contract.handoverCode ? [{
                   label: 'Biên bản bàn giao tài sản phòng',
                   code: contract.handoverCode,
                   status: 'Chờ ký biên bản',
                   statusColor: 'text-[#4e453c] bg-[#faf2ec] border-[#d1c4b9]/50',
                   icon: FileText,
-                },
+                }] : []),
               ].map((doc, idx) => {
                 const Icon = doc.icon;
                 return (

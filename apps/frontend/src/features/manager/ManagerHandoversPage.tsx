@@ -108,6 +108,39 @@ export default function ManagerHandoversPage() {
     return { 'Content-Type': 'application/json' };
   };
 
+  const getCurrentUserId = (): string | null => {
+    try {
+      // Priority 1: Supabase access_token stored by authStore — decode JWT sub
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken) {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        if (payload?.sub) return payload.sub;
+      }
+      // Priority 2: Supabase native session (sb-*-auth-token)
+      const tokenKey = Object.keys(localStorage).find(
+        key => key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        if (sessionData?.user?.id) return sessionData.user.id;
+      }
+      // Priority 3: Mock session fallback
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser?.id) return mockUser.id;
+        const email = (mockUser?.email || '').toLowerCase();
+        if (email.includes('manager')) return 'e002e002-e002-e002-e002-e002e002e002';
+        if (email.includes('sale')) return 'e001e001-e001-e001-e001-e001e001e001';
+        if (email.includes('accountant') || email.includes('ketoan')) return 'e003e003-e003-e003-e003-e003e003e003';
+        if (email.includes('admin')) return 'e004e004-e004-e004-e004-e004e004e004';
+      }
+    } catch (err) {
+      console.error('Error resolving current user id:', err);
+    }
+    return null;
+  };
+
   const loadData = async () => {
     try {
       const headers = await getAuthHeaders();
@@ -244,7 +277,7 @@ export default function ManagerHandoversPage() {
         customer_confirmed: false, // Starts as unsigned, to be signed by customer
         staff_confirmed: true,    // Signed by manager performing it
         note: handoverNotes || '',
-        staff_id: 'e002e002-e002-e002-e002-e002e002e002' // manager UUID
+        staff_id: getCurrentUserId() // dynamically resolved from logged-in user session
       };
 
       const detailsList = selectedAssets.map(asset => ({
@@ -459,7 +492,7 @@ export default function ManagerHandoversPage() {
                       padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                    }}></th>
+                    }}>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -545,7 +578,7 @@ export default function ManagerHandoversPage() {
                       padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                    }}></th>
+                    }}>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -641,7 +674,10 @@ export default function ManagerHandoversPage() {
                       <div className="flex-1">
                         <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{item.item}</p>
                         <p style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-                          Tình trạng: {item.condition} &nbsp;•&nbsp; Số lượng: {item.quantity || 1}
+                          Tình trạng: {item.condition}
+                        </p>
+                        <p style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
+                          Số lượng: {item.quantity || 1}
                         </p>
                         {item.note && <p style={{ fontSize: 11.5, color: T.amber, marginTop: 1, fontWeight: 600 }}>Ghi chú: {item.note}</p>}
                       </div>

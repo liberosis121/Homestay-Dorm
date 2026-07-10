@@ -48,10 +48,9 @@ export default function LoginPage() {
     window.location.href = oauthUrl;
   };
 
-  const fillCredential = (presetEmail: string) => {
+  const fillCredential = (presetEmail: string, presetPassword = '123456') => {
     setEmail(presetEmail);
-    // Mật khẩu thực tế trong script nạp dữ liệu (seed data) là '123456'
-    setPassword('123456');
+    setPassword(presetPassword);
   };
 
   return (
@@ -217,14 +216,14 @@ export default function LoginPage() {
                     { email: 'quanly@homestay.com', name: 'Quản lý (Manager)' },
                     { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)' },
                     { email: 'ketoan@homestay.com', name: 'Kế toán (Accountant)' },
-                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)' },
+                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)', password: '12345678' },
                     { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thuê)' },
                     { email: 'khach_moi@homestay.com', name: 'Khách hàng mới (Chưa thuê)' }
                   ].map((p) => (
                     <button
                       key={p.email}
                       type="button"
-                      onClick={() => fillCredential(p.email)}
+                      onClick={() => fillCredential(p.email, (p as any).password)}
                       className="w-full text-left bg-surface-container-low hover:bg-surface-container border border-surface-variant rounded-xl p-3 flex items-center justify-between transition-all cursor-pointer animate-fade-in"
                     >
                       <div>

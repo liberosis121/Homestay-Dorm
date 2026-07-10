@@ -126,6 +126,23 @@ export const viewingRepo = {
   },
 
   /**
+   * Cap nhat ghi chu cua lich hen xem phong.
+   */
+  updateScheduleNote: async (id: string, note: string) => {
+    const { data, error } = await supabase
+      .from('viewing_schedules')
+      .update({ note })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`[ViewingRepo] Loi khi cap nhat ghi chu lich hen xem phong id=${id}: ${error.message}`);
+    }
+    return data;
+  },
+
+  /**
    * Lay chi tiet mot lich hen xem phong.
    */
   getScheduleById: async (id: string) => {

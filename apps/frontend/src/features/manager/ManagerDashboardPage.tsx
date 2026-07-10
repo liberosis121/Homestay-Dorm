@@ -157,13 +157,13 @@ export default function ManagerDashboardPage() {
 
         const activities = [
           ...deposits.filter((d: any) => d.status === 'pending').slice(0, 3).map((d: any) => ({
-            icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, detail: `${d.room_name} • ${(d.amount / 1000000).toFixed(1)}Mđ`, time: 'Mới nhận', link: '/manager/deposits'
+            icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, badges: [d.room_name, `${(d.amount / 1000000).toFixed(1)}Mđ`], time: 'Mới nhận', link: '/manager/deposits'
           })),
           ...handovers.filter((h: any) => h.status === 'pending' || h.status === 'partial').slice(0, 2).map((h: any) => ({
-            icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, detail: h.room_name, time: 'Mới nhận', link: '/manager/handovers'
+            icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, badges: [h.room_name], time: 'Mới nhận', link: '/manager/handovers'
           })),
           ...residency.filter((r: any) => r.status === 'pending').slice(0, 2).map((r: any) => ({
-            icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, detail: `${r.room_name} • CCCD: ${r.id_number}`, time: 'Mới nhận', link: '/manager/residency-checks'
+            icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, badges: [r.room_name, `CCCD: ${r.id_number}`], time: 'Mới nhận', link: '/manager/residency-checks'
           })),
         ].slice(0, 6);
         setRecentActivity(activities);
@@ -297,10 +297,23 @@ export default function ManagerDashboardPage() {
                 <p style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {act.title}
                 </p>
-                <p style={{ color: T.textMuted, fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {act.detail}
-                </p>
-                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 3 }}>{act.time}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {act.badges && act.badges.map((badge: string, index: number) => (
+                    <span key={index} style={{
+                      backgroundColor: `${act.color}15`,
+                      color: act.color,
+                      border: `1px solid ${act.color}30`,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 9999,
+                      display: 'inline-block'
+                    }}>
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 6 }}>{act.time}</span>
               </div>
               <div style={{
                 opacity: 0,

@@ -26,15 +26,14 @@ export const managerDepositService = {
       supabase.from('customers').select('*')
     ]);
 
-    // 3. Merge related details into ManagerDeposit format expected by the frontend, filtering only deposits that have invoices
-    let result = deposits
-      .filter(dep => invoices?.some(i => i.deposit_id === dep.id))
-      .map(dep => {
-        const invoice = invoices?.find(i => i.deposit_id === dep.id) || {};
-        const room = rooms?.find(r => r.id === dep.room_id) || {};
-        const bed = beds?.find(b => b.id === dep.bed_id) || {};
-        const registration = registrations?.find(r => r.id === dep.registration_id) || {};
-        const customer = customers?.find(c => c.cccd === registration.cccd) || {};
+    // 3. Merge related details into ManagerDeposit format expected by the frontend
+    // NOTE: include ALL deposits even if no invoice exists yet (use graceful fallbacks)
+    const result_all = deposits.map(dep => {
+        const invoice = invoices?.find(i => i.deposit_id === dep.id) ?? {};
+        const room = rooms?.find(r => r.id === dep.room_id) ?? {};
+        const bed = beds?.find(b => b.id === dep.bed_id) ?? {};
+        const registration = registrations?.find(r => r.id === dep.registration_id) ?? {};
+        const customer = customers?.find(c => c.cccd === registration.cccd) ?? {};
 
         let frontendStatus = dep.status;
         if (frontendStatus === 'paid') {
@@ -43,20 +42,20 @@ export const managerDepositService = {
 
         return {
           id: dep.id,
-          customer_id: customer.user_id || '',
-          customer_name: customer.full_name || 'Khách hàng',
-          customer_phone: customer.phone || '',
+          customer_id: (customer as any).user_id || '',
+          customer_name: (customer as any).full_name || 'Khách hàng',
+          customer_phone: (customer as any).phone || '',
           room_id: dep.room_id,
-          room_name: room.name || dep.room_id || 'Phòng',
+          room_name: (room as any).name || dep.room_id || 'Phòng',
           deposit_type: dep.bed_id ? 'bed' : 'room',
-          bed_name: bed.name || dep.bed_id || '',
+          bed_name: (bed as any).name || dep.bed_id || '',
           amount: Number(dep.deposit_amount) || 0,
           deposit_date: dep.deposit_time || dep.created_at,
-          bill_image_url: invoice.evidence_url || '',
-          bank_name: invoice.payment_method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt',
-          account_number: invoice.reconciliation_id || '',
+          bill_image_url: (invoice as any).evidence_url || '',
+          bank_name: (invoice as any).payment_method === 'transfer' ? 'Chuyển khoản' : ((invoice as any).payment_method || 'Tiền mặt'),
+          account_number: (invoice as any).reconciliation_id || '',
           status: frontendStatus,
-          note: invoice.status || '',
+          note: (invoice as any).status || '',
           reviewer_note: dep.note || '',
           reviewed_at: dep.updated_at || '',
           created_at: dep.created_at
@@ -64,6 +63,7 @@ export const managerDepositService = {
       });
 
     // Apply filter search client side if provided
+    let result = result_all;
     if (filters?.search) {
       const q = filters.search.toLowerCase().trim();
       result = result.filter((d: any) =>

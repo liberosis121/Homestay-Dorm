@@ -6,8 +6,6 @@ import {
   Layers,
   Users,
   Folder,
-  Database,
-  ArrowRight,
   TrendingUp,
   Calendar,
   RefreshCw
@@ -109,12 +107,7 @@ export default function AdminDashboardPage() {
       return seg;
     });
 
-  const quickActions = [
-    { label: 'Cấu hình chi nhánh', path: '/admin/branches', icon: Building, color: 'bg-[#e8ede7] text-[#5f745d] border-[#d8e2d6] hover:bg-[#d8e2d6]/50' },
-    { label: 'Cấu hình phòng/giường', path: '/admin/rooms-catalog', icon: Layers, color: 'bg-[#faf2ec] text-[#6f583c] border-[#eadacd] hover:bg-[#eadacd]/50' },
-    { label: 'Danh mục dịch vụ', path: '/admin/services', icon: Folder, color: 'bg-[#eef3f0] text-[#738a71] border-[#d0dfcf] hover:bg-[#d0dfcf]/50' },
-    { label: 'Sao lưu dữ liệu', path: '/admin/backup', icon: Database, color: 'bg-[#faf6f0] text-[#8a7051] border-[#ebdcc8] hover:bg-[#ebdcc8]/50' },
-  ];
+
 
   return (
     <div className="space-y-8 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
@@ -320,53 +313,12 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Quick Administration Actions */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-[#4e453c] uppercase tracking-wider">Lối tắt quản trị nhanh</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {quickActions.map((act) => {
-                const Icon = act.icon;
-                return (
-                  <Link
-                    key={act.label}
-                    to={act.path}
-                    className={`flex flex-col items-center justify-center gap-3 p-4 rounded-2xl text-center shadow-sm border transition-all hover:shadow hover:scale-[1.02] active:scale-95 ${act.color}`}
-                  >
-                    <div className="p-2 bg-white rounded-lg shadow-sm border border-[#d1c4b9]">
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-bold text-[#1e1b17] leading-snug">{act.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
+
 
         </div>
 
-        {/* Column 3: System Logs timeline & Backup summary */}
+        {/* Column 3: System Logs timeline */}
         <div className="space-y-6">
-
-          {/* Backup Summary Widget */}
-          <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-extrabold text-[#1e1b17]">
-                TRẠNG THÁI SAO LƯU
-              </h3>
-            </div>
-
-            <div className="p-4 bg-[#faf2ec] rounded-2xl border border-[#d1c4b9] text-xs text-center text-[#7f756b]">
-              Chưa có bản ghi sao lưu nào.
-            </div>
-
-            <Link
-              to="/admin/backup"
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#6f583c] hover:bg-[#54422c] active:scale-95 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:gap-3 cursor-pointer duration-200"
-            >
-              Vào trang Sao lưu & Khôi phục
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
 
           {/* System Audit Logs */}
           <div className="bg-white border border-[#d1c4b9] rounded-3xl p-6 shadow-sm">
