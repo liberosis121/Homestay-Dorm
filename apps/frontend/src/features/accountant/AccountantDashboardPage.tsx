@@ -22,6 +22,10 @@ export default function AccountantDashboardPage() {
     depositRev: 0,
     checkinRev: 0,
     monthlyRev: 0,
+    totalExpected: 0,
+    depositExpected: 0,
+    checkinExpected: 0,
+    monthlyExpected: 0,
     pendingInvoicesCount: 0,
     pendingRefundsCount: 0,
     pendingPayoutsCount: 0,
@@ -44,6 +48,11 @@ export default function AccountantDashboardPage() {
         const checkinRev = (chkInvoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
         const monthlyRev = (monInvoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
         const totalRevenue = depositRev + checkinRev + monthlyRev;
+
+        const depositExpected = (depInvoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + inv.amount, 0);
+        const checkinExpected = (chkInvoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+        const monthlyExpected = (monInvoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+        const totalExpected = depositExpected + checkinExpected + monthlyExpected;
 
         const pendingDeposit = (depInvoices || []).filter((inv: any) => inv.status === 'pending').length;
         const pendingCheckin = (chkInvoices || []).filter((inv: any) => inv.status === 'pending').length;
@@ -97,6 +106,10 @@ export default function AccountantDashboardPage() {
           depositRev,
           checkinRev,
           monthlyRev,
+          totalExpected,
+          depositExpected,
+          checkinExpected,
+          monthlyExpected,
           pendingInvoicesCount,
           pendingRefundsCount,
           pendingPayoutsCount,
@@ -109,6 +122,12 @@ export default function AccountantDashboardPage() {
         const checkinRev = (db.checkin_invoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
         const monthlyRev = (db.monthly_invoices || []).filter((inv: any) => inv.status === 'paid').reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
         const totalRevenue = depositRev + checkinRev + monthlyRev;
+
+        const depositExpected = (db.deposit_invoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + inv.amount, 0);
+        const checkinExpected = (db.checkin_invoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
+        const monthlyExpected = (db.monthly_invoices || []).filter((inv: any) => inv.status !== 'cancelled').reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
+        const totalExpected = depositExpected + checkinExpected + monthlyExpected;
+
         const pendingDeposit = (db.deposit_invoices || []).filter((inv: any) => inv.status === 'pending').length;
         const pendingCheckin = (db.checkin_invoices || []).filter((inv: any) => inv.status === 'pending').length;
         const pendingMonthly = (db.monthly_invoices || []).filter((inv: any) => inv.status === 'pending').length;
@@ -156,6 +175,10 @@ export default function AccountantDashboardPage() {
           depositRev,
           checkinRev,
           monthlyRev,
+          totalExpected,
+          depositExpected,
+          checkinExpected,
+          monthlyExpected,
           pendingInvoicesCount,
           pendingRefundsCount,
           pendingPayoutsCount,
@@ -166,7 +189,10 @@ export default function AccountantDashboardPage() {
     loadStats();
   }, [user]);
 
-  const collectionRate = 88; // Static/calculated indicator
+  const collectionRate = stats.totalExpected > 0 ? Math.round((stats.totalRevenue / stats.totalExpected) * 100) : 100;
+  const depositRate = stats.depositExpected > 0 ? Math.round((stats.depositRev / stats.depositExpected) * 100) : 100;
+  const checkinRate = stats.checkinExpected > 0 ? Math.round((stats.checkinRev / stats.checkinExpected) * 100) : 100;
+  const monthlyRate = stats.monthlyExpected > 0 ? Math.round((stats.monthlyRev / stats.monthlyExpected) * 100) : 100;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -230,7 +256,7 @@ export default function AccountantDashboardPage() {
           <div className="mt-2">
             <div className="text-2xl font-bold text-[#5F7D4E] tabular-nums">{stats.totalRevenue.toLocaleString('vi-VN')} ₫</div>
             <p className="text-[10px] text-[#5F7D4E] font-semibold flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" /> +14.2% so với tháng trước
+              <TrendingUp className="w-3 h-3" /> Đã thu {collectionRate}% tổng dự kiến
             </p>
           </div>
         </div>
@@ -309,17 +335,17 @@ export default function AccountantDashboardPage() {
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
                   <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Cọc giữ chỗ</span>
                   <span className="text-sm font-bold text-[#5C4632]">{stats.depositRev.toLocaleString('vi-VN')} ₫</span>
-                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt 100%</span>
+                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt {depositRate}%</span>
                 </div>
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
                   <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Nhận phòng</span>
                   <span className="text-sm font-bold text-[#5C4632]">{stats.checkinRev.toLocaleString('vi-VN')} ₫</span>
-                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt 92%</span>
+                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt {checkinRate}%</span>
                 </div>
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
                   <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Định kỳ dịch vụ</span>
                   <span className="text-sm font-bold text-[#5C4632]">{stats.monthlyRev.toLocaleString('vi-VN')} ₫</span>
-                  <span className="text-[10px] text-[#B9792B] block mt-1 font-semibold">Thu đạt 76%</span>
+                  <span className="text-[10px] text-[#B9792B] block mt-1 font-semibold">Thu đạt {monthlyRate}%</span>
                 </div>
               </div>
             </div>
