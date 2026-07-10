@@ -5,6 +5,10 @@
  */
 
 import apiClient from '../../lib/api.client';
+import roomDorm from '../../assets/room-dorm.jpg';
+import roomSingle from '../../assets/room-single.jpg';
+import roomStudio from '../../assets/room-studio.jpg';
+import roomTwin from '../../assets/room-twin.jpg';
 
 export interface CreateDepositPayload {
   registration_id: string; // ID đơn đăng ký thuê liên quan
@@ -17,6 +21,7 @@ export interface DepositRequest {
   bed_id: string;
   room_id: string;
   room_name: string;
+  room_image_url: string;
   branch_name: string;
   viewing_schedule_id: string;
   deposit_amount: number;
@@ -41,12 +46,20 @@ const mapDepositResponse = (d: any): DepositRequest => {
     ? d.payment_deadline.split('T')[0] 
     : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+  // Xác định ảnh phòng dựa trên loại phòng
+  let room_image_url = roomSingle;
+  const roomType = d.rooms?.room_type?.toLowerCase() || '';
+  if (roomType.includes('dorm') || roomType.includes('ktx')) room_image_url = roomDorm;
+  else if (roomType.includes('twin')) room_image_url = roomTwin;
+  else if (roomType.includes('studio')) room_image_url = roomStudio;
+
   return {
     id: d.id,
     registration_id: d.registration_id,
     bed_id: d.bed_id,
     room_id: d.room_id,
     room_name: d.rooms?.name || 'Phòng đang cập nhật',
+    room_image_url,
     branch_name: d.rooms?.branches?.name || 'Chi nhánh đang cập nhật',
     viewing_schedule_id: d.registration_id, // Gắn bằng registration_id để map khớp với đơn thuê/lịch xem phòng
     deposit_amount: Number(d.deposit_amount),
