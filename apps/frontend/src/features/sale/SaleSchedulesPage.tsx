@@ -208,8 +208,8 @@ const SaleSchedulesPage: React.FC = () => {
       <div className="rounded-2xl px-4 py-2.5 text-xs flex items-start gap-2 bg-[#fdf6ec] text-[#7a5a2e] border border-[#e7d3b5]">
         <FileText className="w-3.5 h-3.5 mt-0.5 shrink-0" />
         <span>
-          Danh sách &amp; <b>Dời lịch</b> đã đồng bộ máy chủ thật. Thao tác <b>Tạo / Hủy / Hoàn thành</b> hiện ở chế độ thử nghiệm
-          (chưa lưu CSDL do bảng lịch chưa có cột trạng thái).
+          Danh sách, <b>Tạo lịch</b> &amp; <b>Dời lịch</b> đã đồng bộ máy chủ thật. Thao tác <b>Hủy / Hoàn thành</b> hiện chỉ cập nhật tạm thời
+          (bảng lịch chưa có cột trạng thái để lưu CSDL).
         </span>
       </div>
 
