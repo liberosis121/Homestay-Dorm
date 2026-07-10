@@ -47,7 +47,7 @@ export default function CustomSelect({
   });
 
   // Find active option label
-  const activeOption = normalizedOptions.find((opt) => opt.value === value);
+  const activeOption = normalizedOptions.find((opt) => opt.value === value || (value !== '' && opt.value.toLowerCase() === value?.toLowerCase()));
   const displayLabel = (value === '' && placeholder) ? placeholder : (activeOption ? activeOption.label : placeholder || value || '');
 
   // Calculate coordinates when dropdown opens
@@ -64,7 +64,22 @@ export default function CustomSelect({
       updateCoords();
 
       window.addEventListener('resize', updateCoords);
-      const handleScroll = () => setIsOpen(false);
+      const handleScroll = (event: Event) => {
+        if (
+          dropdownRef.current &&
+          (dropdownRef.current === event.target || dropdownRef.current.contains(event.target as Node))
+        ) {
+          return;
+        }
+        if (
+          containerRef.current &&
+          (containerRef.current === event.target || containerRef.current.contains(event.target as Node))
+        ) {
+          updateCoords();
+          return;
+        }
+        setIsOpen(false);
+      };
       window.addEventListener('scroll', handleScroll, true);
 
       return () => {
@@ -172,7 +187,7 @@ export default function CustomSelect({
             <div className="px-4 py-2 text-xs text-on-surface-variant italic">Không có lựa chọn</div>
           ) : (
             normalizedOptions.map((opt) => {
-              const isSelected = opt.value === value;
+              const isSelected = opt.value === value || (value !== '' && opt.value.toLowerCase() === value?.toLowerCase());
               const itemActiveStyle = isSale
                 ? 'bg-[#E8E1D3] text-[#5E503F] font-bold'
                 : isAccountant 

@@ -206,16 +206,26 @@ export default function CreateFromRegistrationModal({
 
   const branchName = (id?: string) => branches.find((branch) => branch.id === id)?.name || id || 'Chưa chọn';
 
+  const normalizeType = (str?: string) => {
+    if (!str) return '';
+    const t = str.trim().toLowerCase();
+    if (t === 'dorm' || t === 'ký túc xá' || t === 'kx' || t.includes('dorm')) return 'dorm';
+    if (t === 'studio' || t.includes('studio')) return 'studio';
+    if (t === 'twin' || t.includes('twin') || t.includes('đôi')) return 'twin';
+    if (t === 'single' || t.includes('single') || t.includes('đơn')) return 'single';
+    return t;
+  };
+
   const matchInfo = (room: SaleRoom, registration: RentalRegistration) => {
     const preferredAmenities = registration.preferred_amenities || [];
     const roomAmenities = room.amenities || [];
     const matchedAmenities = preferredAmenities.filter((item) => roomAmenities.includes(item)).length;
     const checks = [
       { label: 'Chi nhánh', ok: !registration.preferred_branch_id || room.branch_id === registration.preferred_branch_id, need: branchName(registration.preferred_branch_id), actual: branchName(room.branch_id) },
-      { label: 'Loại phòng', ok: !registration.preferred_room_type || room.room_type === registration.preferred_room_type, need: registration.preferred_room_type || 'Linh hoạt', actual: room.room_type },
+      { label: 'Loại phòng', ok: !registration.preferred_room_type || normalizeType(room.room_type) === normalizeType(registration.preferred_room_type), need: registration.preferred_room_type || 'Linh hoạt', actual: room.room_type },
       { label: 'Ngân sách', ok: !room.price || room.price <= maxBudget(registration.budget_range), need: budgetLabel(registration.budget_range), actual: money(room.price) },
       { label: 'Sức chứa tối đa', ok: (room.capacity || 0) >= (registration.occupants_count || 1), need: `${registration.occupants_count || 1} người`, actual: room.capacity ? `${room.capacity} người` : '—' },
-      { label: 'Giới tính', ok: room.gender_type === 'unisex' || registration.gender === 'group' || !registration.gender || room.gender_type === registration.gender, need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
+      { label: 'Giới tính', ok: room.gender_type === 'unisex' || registration.gender === 'group' || !registration.gender || (room.gender_type || '').toLowerCase() === (registration.gender || '').toLowerCase(), need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
       { label: 'Tiện ích', ok: preferredAmenities.length === 0 || matchedAmenities >= Math.ceil(preferredAmenities.length * 0.6), need: preferredAmenities.join(', ') || 'Không yêu cầu', actual: roomAmenities.join(', ') || 'Chưa có' },
       { label: 'Trạng thái', ok: room.status === 'available', need: 'Còn trống', actual: statusLabel(room.status) },
     ];
@@ -234,7 +244,7 @@ export default function CreateFromRegistrationModal({
       .filter((room) => {
         if (excludeRoomId && room.id === excludeRoomId) return false;
         if (filters.branchId && room.branch_id !== filters.branchId) return false;
-        if (filters.roomType && room.room_type !== filters.roomType) return false;
+        if (filters.roomType && normalizeType(room.room_type) !== normalizeType(filters.roomType)) return false;
         if (filters.capacity && (room.capacity || 0) < Number(filters.capacity)) return false;
         if (filters.status && room.status !== filters.status) return false;
         if (filters.priceRange === 'under_2m' && (room.price || 0) >= 2000000) return false;
@@ -251,13 +261,13 @@ export default function CreateFromRegistrationModal({
     setHoveredRoom(null);
     setErrors({});
     setFilters({
-      branchId: registration.preferred_branch_id || '',
-      roomType: registration.preferred_room_type || '',
+      branchId: '',
+      roomType: '',
       priceRange: '',
-      capacity: registration.occupants_count ? String(registration.occupants_count) : '',
+      capacity: '',
       status: '',
     });
-    setAmenityFilters(registration.preferred_amenities || []);
+    setAmenityFilters([]);
     const [start = '', end = ''] = (registration.preferred_viewing_time || '').split('-');
     setForm({
       viewDate: registration.preferred_viewing_date || '',
