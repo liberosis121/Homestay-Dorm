@@ -15,6 +15,7 @@ const todayLabel = today.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: TodayAppointment['status'] }) {
   const map = {
+    pending: { label: 'CHỜ XÁC NHẬN', cls: 'bg-[#f4ede6] text-[#7f756b]' },
     confirmed: { label: 'ĐÃ XÁC NHẬN', cls: 'bg-[#d2e9cd] text-[#384c37]' },
     completed: { label: 'HOÀN THÀNH', cls: 'bg-[#e8e1db] text-[#4e453c]' },
     cancelled: { label: 'ĐÃ HỦY',      cls: 'bg-[#ffdad6] text-[#93000a]' },

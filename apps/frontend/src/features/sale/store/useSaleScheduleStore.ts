@@ -210,7 +210,9 @@ const mapApiSchedule = (s: any): SaleSchedule => {
       ? 'completed'
       : s.result === 'cancelled'
         ? 'cancelled'
-        : 'confirmed';
+        : s.result === 'pending'
+          ? 'pending'
+          : 'confirmed';
 
   const reg = s.rental_registrations || {};
   const kh = reg.customers || {};

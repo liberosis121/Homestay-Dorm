@@ -11,7 +11,7 @@ export interface TodayAppointment {
   customer_name: string;
   room_type: string;            // tên phòng
   branch: string;
-  status: 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
 }
 
 export interface RecentRegistration {
@@ -69,7 +69,13 @@ const mapTodayAppointment = (s: any): TodayAppointment => {
   const valid = !isNaN(d.getTime());
   const time = valid ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}` : '--:--';
   const status: TodayAppointment['status'] =
-    valid && d.getTime() < Date.now() ? 'completed' : 'confirmed';
+    s.result === 'completed'
+      ? 'completed'
+      : s.result === 'cancelled'
+        ? 'cancelled'
+        : s.result === 'pending'
+          ? 'pending'
+          : 'confirmed';
   return {
     id: s.id,
     time,
