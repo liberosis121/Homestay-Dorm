@@ -9,6 +9,7 @@ export interface IncidentalCostDto {
   status: string;
   recorded_date: string;
   recorded_by: string;
+  invoice_id?: string | null;
 }
 
 export const incidentalCostRepo = {

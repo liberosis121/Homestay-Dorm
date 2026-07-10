@@ -156,14 +156,15 @@ export const monthlyInvoiceService = {
       contract_id: data.contractId,
       water_record_id: reading.id,
       reconciliation_id: null,
-      staff_id: data.staffId
+      staff_id: data.staffId,
+      note: data.note || null
     };
 
     const invoice = await monthlyInvoiceRepo.createMonthlyInvoice(invoiceData);
 
     // 4. Danh dau cac khoan phi phat sinh da duoc tinh vao hoa don nay, tranh bi tinh trung o ky sau.
     await Promise.all(
-      confirmedIncidentals.map(c => incidentalCostRepo.update(c.id, { status: 'billed' }))
+      confirmedIncidentals.map(c => incidentalCostRepo.update(c.id, { status: 'billed', invoice_id: invoice.id }))
     );
 
     return invoice;
