@@ -20,6 +20,13 @@ const uniqueReconciliationsByCheckout = (records: any[]) => {
   });
 };
 
+const formatNumberInput = (val: string | number): string => {
+  const str = typeof val === 'number' ? val.toString() : val;
+  const cleanVal = str.replace(/\D/g, '');
+  if (!cleanVal) return '0';
+  return Number(cleanVal).toLocaleString('vi-VN');
+};
+
 export default function AccountantRefundsPage() {
   const { user } = useAuthStore();
   const [refunds, setRefunds] = useState<LiveRefundRecord[]>([]);
@@ -29,9 +36,9 @@ export default function AccountantRefundsPage() {
   
   // Refund calculation states
   const [residencyRate, setResidencyRate] = useState<number>(100); // 80, 50, 70, 100
-  const [elecWaterDeduction, setElecWaterDeduction] = useState('350000');
-  const [damageDeduction, setDamageDeduction] = useState('850000');
-  const [cleaningDeduction, setCleaningDeduction] = useState('200000');
+  const [elecWaterDeduction, setElecWaterDeduction] = useState('350.000');
+  const [damageDeduction, setDamageDeduction] = useState('850.000');
+  const [cleaningDeduction, setCleaningDeduction] = useState('200.000');
   const [violationDeduction, setViolationDeduction] = useState('0');
   
   // Calculation results state
@@ -131,16 +138,16 @@ export default function AccountantRefundsPage() {
       if (activeRefund.type === 'cancellation') {
         setResidencyRate(80); // 80% for cancellation
         const penalty = activeRefund.total_deductions !== undefined ? activeRefund.total_deductions : 0;
-        setViolationDeduction(penalty.toString());
+        setViolationDeduction(formatNumberInput(penalty));
         setElecWaterDeduction('0');
         setDamageDeduction('0');
         setCleaningDeduction('0');
       } else {
         setResidencyRate(100); // default to 100% for normal checkout, accountant can select others
         const damageTotal = activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0;
-        setDamageDeduction(damageTotal.toString());
-        setElecWaterDeduction(activeRefund.debt_deductions?.toString() || '0');
-        setCleaningDeduction('200000'); // default cleaning fee
+        setDamageDeduction(formatNumberInput(damageTotal));
+        setElecWaterDeduction(formatNumberInput(activeRefund.debt_deductions || 0));
+        setCleaningDeduction(formatNumberInput(200000)); // default cleaning fee
         setViolationDeduction('0');
       }
     }
@@ -453,7 +460,7 @@ export default function AccountantRefundsPage() {
                         <input
                           type="text"
                           value={violationDeduction}
-                          onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
+                          onChange={(e) => { setViolationDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
                           className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
@@ -471,7 +478,7 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={elecWaterDeduction}
-                            onChange={(e) => { setElecWaterDeduction(e.target.value); setIsCalculated(false); }}
+                            onChange={(e) => { setElecWaterDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
                             className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
@@ -496,7 +503,7 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={damageDeduction}
-                            onChange={(e) => { setDamageDeduction(e.target.value); setIsCalculated(false); }}
+                            onChange={(e) => { setDamageDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
                             className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
@@ -512,7 +519,7 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={cleaningDeduction}
-                            onChange={(e) => { setCleaningDeduction(e.target.value); setIsCalculated(false); }}
+                            onChange={(e) => { setCleaningDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
                             className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
@@ -528,7 +535,7 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={violationDeduction}
-                            onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
+                            onChange={(e) => { setViolationDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
                             className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
