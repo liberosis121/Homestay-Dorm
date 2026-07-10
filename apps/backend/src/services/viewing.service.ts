@@ -116,6 +116,40 @@ export const viewingService = {
   },
 
   /**
+   * Nhan vien Sale doi thoi gian lich hen ma minh phu trach.
+   */
+  rescheduleByStaff: async (staffUserId: string, scheduleId: string, newScheduledTime: string, note?: string) => {
+    const staff = await getStaffByUserId(staffUserId);
+    if (!staff) {
+      throw new Error('Khong xac dinh duoc nhan vien phu trach.');
+    }
+
+    const schedule = await viewingRepo.getScheduleById(scheduleId);
+    if (!schedule) {
+      throw new Error('Lich xem phong khong ton tai.');
+    }
+
+    if (schedule.staff_id !== staff.id) {
+      throw new Error('Ban khong phai nhan vien duoc phan cong phu trach lich hen nay.');
+    }
+
+    if (schedule.result !== null && schedule.result !== undefined && schedule.result !== '') {
+      throw new Error('Lich xem phong nay da co ket qua, khong the doi lich.');
+    }
+
+    const scheduledDate = new Date(newScheduledTime);
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+      throw new Error('Thoi gian hen xem phong phai o tuong lai.');
+    }
+
+    const updated = await viewingRepo.updateScheduleTime(scheduleId, newScheduledTime);
+    if (note && note.trim()) {
+      return await viewingRepo.updateScheduleNote(scheduleId, note.trim());
+    }
+    return updated;
+  },
+
+  /**
    * Lay lich xem phong cua khach hang dang dang nhap.
    */
   getCustomerSchedules: async (userId: string) => {
