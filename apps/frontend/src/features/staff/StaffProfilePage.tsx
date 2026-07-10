@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import {
   User, Shield, Lock, ChevronRight,
-  X, Eye, EyeOff, Check, Camera, Briefcase, MapPin
+  X, Eye, EyeOff, Check, Briefcase, MapPin
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import FormLabel from '../../components/ui/FormLabel';
+import apiClient from '../../lib/api.client';
 
 // ─── Brown Tone Palette (Staff Dashboard) ─────────────────────────────────────
 // Primary accent: #6f583c  |  Surface: #faf2ec  |  Border: #d1c4b9
@@ -15,6 +16,7 @@ import FormLabel from '../../components/ui/FormLabel';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuthStore();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,18 +40,37 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const strengthLabel = ['', 'Yếu', 'Trung bình', 'Khá tốt', 'Mạnh'][strength];
   const strengthColor = ['', 'bg-error', 'bg-yellow-400', 'bg-blue-400', 'bg-[#6f583c]'][strength];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!oldPassword) { setError('Vui lòng nhập mật khẩu hiện tại.'); return; }
     if (newPassword.length < 8) { setError('Mật khẩu mới phải có ít nhất 8 ký tự.'); return; }
     if (newPassword !== confirmPassword) { setError('Mật khẩu xác nhận không khớp.'); return; }
+    if (oldPassword === newPassword) { setError('Mật khẩu mới phải khác mật khẩu hiện tại.'); return; }
+    if (!user?.email) { setError('Không xác định được tài khoản. Vui lòng đăng nhập lại.'); return; }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      // 1. Xác minh mật khẩu HIỆN TẠI (backend change-password không kiểm tra mật khẩu cũ,
+      //    nên FE tự xác minh bằng một lần đăng nhập thử — không ảnh hưởng phiên đang dùng).
+      try {
+        await apiClient.post('/auth/login', { email: user.email, password: oldPassword });
+      } catch {
+        setError('Mật khẩu hiện tại không đúng.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Đổi sang mật khẩu mới (POST /api/auth/change-password — cập nhật qua Supabase Admin).
+      await apiClient.post('/auth/change-password', { newPassword });
+
       setIsLoading(false);
       setSuccess(true);
       setTimeout(() => { onClose(); }, 1800);
-    }, 1200);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Lỗi khi đổi mật khẩu. Vui lòng thử lại.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -257,12 +278,10 @@ export default function StaffProfilePage() {
     gender: 'female',
     issue_date: '',
     issue_place: '',
-    nationality: 'Việt Nam',
     permanent_address: '',
     department: '',
     position: '',
     branch: '',
-    employee_code: '',
     start_date: '',
   });
 
@@ -270,6 +289,7 @@ export default function StaffProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const roleInfo = user ? getRoleDisplayInfo(user.role) : getRoleDisplayInfo('sale');
 
@@ -351,12 +371,10 @@ export default function StaffProfilePage() {
           gender: normalizeGender(profileData.gender),
           issue_date: profileData.issue_date || '',
           issue_place: profileData.issue_place || '',
-          nationality: profileData.nationality || 'Việt Nam',
           permanent_address: profileData.permanent_address || profileData.address || '',
           department: profileData.department || roleInfo.dept,
           position: profileData.position || roleInfo.label,
-          branch: profileData.branch_name || profileData.branch_id || 'Chi nhánh Quận 1',
-          employee_code: profileData.employee_code || 'NV-' + (profileData.id || '001').toUpperCase().slice(-3),
+          branch: profileData.branch_name || profileData.branch_id || '—',
           start_date: profileData.join_date || (profileData.created_at ? profileData.created_at.slice(0, 10) : ''),
         };
         setFormData(mappedData);
@@ -388,14 +406,17 @@ export default function StaffProfilePage() {
     if (!isDirty) return;
     setIsSaving(true);
     setSaveSuccess(false);
+    setSaveError('');
     try {
       const headers = await getAuthHeaders();
+      // Chuẩn hoá gender về đúng quy ước DB ('Nam'/'Nữ'/'Khác') thay vì 'male'/'female'.
+      const genderDb = formData.gender === 'male' ? 'Nam' : formData.gender === 'female' ? 'Nữ' : 'Khác';
+      // Chỉ gửi các trường thực sự cho phép chỉnh sửa (không gửi join_date read-only để tránh ghi đè nhầm).
       const updateData = {
         full_name: formData.full_name,
         phone: formData.phone,
         dob: formData.dob || null,
-        gender: formData.gender,
-        join_date: formData.start_date || null
+        gender: genderDb,
       };
 
       const res = await fetch(`${API_BASE}/auth/me`, {
@@ -411,10 +432,10 @@ export default function StaffProfilePage() {
         setIsEditing(false);
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
-        console.error(result.message);
+        setSaveError(result.message || 'Lưu hồ sơ thất bại. Vui lòng thử lại.');
       }
-    } catch (err) {
-      console.error('Error saving profile:', err);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Lỗi kết nối khi lưu hồ sơ.');
     } finally {
       setIsSaving(false);
     }
@@ -517,9 +538,6 @@ export default function StaffProfilePage() {
                       </span>
                     )}
                   </div>
-                  <button className="absolute bottom-1 right-1 p-2 bg-[#6f583c] text-white rounded-full border-[3px] border-white shadow-sm cursor-pointer hover:bg-[#5a4630] transition-colors">
-                    <Camera className="w-4 h-4" />
-                  </button>
                 </div>
 
                 {/* Info */}
@@ -535,11 +553,7 @@ export default function StaffProfilePage() {
                     {formData.department}
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex justify-between items-center bg-[#faf2ec] p-3.5 px-5 rounded-2xl text-sm border border-[#d1c4b9]">
-                      <span className="text-[#4e453c] font-medium">Mã NV:</span>
-                      <span className="font-bold text-[#6f583c]">{formData.employee_code}</span>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex justify-between items-center bg-[#faf2ec] p-3.5 px-5 rounded-2xl text-sm border border-[#d1c4b9]">
                       <span className="text-[#4e453c] font-medium">Chi nhánh:</span>
                       <span className="font-semibold text-[#1e1b17] text-xs">{formData.branch}</span>
@@ -595,7 +609,6 @@ export default function StaffProfilePage() {
                   <Briefcase className="w-3.5 h-3.5" /> Thông tin công tác
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <ReadOnlyField label="Mã nhân viên" value={formData.employee_code} />
                   <ReadOnlyField label="Chức vụ" value={formData.position} />
                   <ReadOnlyField label="Phòng ban" value={formData.department} />
                   <ReadOnlyField label="Chi nhánh làm việc" value={formData.branch} icon={<MapPin className="w-4 h-4" />} />
@@ -633,9 +646,6 @@ export default function StaffProfilePage() {
                   </div>
 
                   <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" isEditing={isEditing} onChange={handleProfileChange} />
-                  <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} isEditing={isEditing} onChange={handleProfileChange} />
-
-
                 </div>
               </div>
 
@@ -646,6 +656,9 @@ export default function StaffProfilePage() {
                     <span className="text-sm text-[#6f583c] font-semibold animate-fade-in flex items-center gap-1">
                       <Check className="w-4 h-4" /> Đã cập nhật thành công!
                     </span>
+                  )}
+                  {saveError && (
+                    <span className="text-sm text-error font-semibold flex items-center gap-1">{saveError}</span>
                   )}
                   <button
                     onClick={saveProfile}

@@ -53,6 +53,47 @@ async function activateResourcesAfterContract(depositId: string) {
   }
 }
 
+/**
+ * Nhả tài nguyên khi hợp đồng kết thúc/thanh lý:
+ *  - Cọc theo giường: giường -> 'available'; phòng -> 'available' nếu có giường trống.
+ *  - Cọc theo phòng nguyên: phòng -> 'available'.
+ * Bám theo schema thật: rooms.status & beds.status chỉ dùng 'available'/'occupied'.
+ */
+async function releaseResourcesAfterContract(depositId: string) {
+  if (!depositId) return;
+
+  const { data: dep, error: depErr } = await supabase
+    .from('deposit_requests')
+    .select('*')
+    .eq('id', depositId)
+    .maybeSingle();
+  if (depErr) throw depErr;
+  if (!dep) return;
+
+  if (dep.bed_id) {
+    const { error: bedErr } = await supabase
+      .from('beds').update({ status: 'available' }).eq('id', dep.bed_id);
+    if (bedErr) throw bedErr;
+
+    if (dep.room_id) {
+      const { data: roomBeds, error: rbErr } = await supabase
+        .from('beds').select('status').eq('room_id', dep.room_id);
+      if (rbErr) throw rbErr;
+
+      const hasAvailableBed = (roomBeds || []).some((b) => b.status === 'available');
+      if (hasAvailableBed) {
+        const { error: roomErr } = await supabase
+          .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
+        if (roomErr) throw roomErr;
+      }
+    }
+  } else if (dep.room_id) {
+    const { error: roomErr } = await supabase
+      .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
+    if (roomErr) throw roomErr;
+  }
+}
+
 export const managerContractRepo = {
   findAll: async (filters?: { customer_id?: string; status?: string }) => {
     // 1. Fetch contracts from CSDL
@@ -270,46 +311,8 @@ export const managerContractRepo = {
       .single();
     if (error) throw error;
 
-    // Auto release room/bed if contract is terminated or expired
     if (updates.status === 'terminated' || updates.status === 'expired') {
-      const { data: dep } = await supabase
-        .from('deposit_requests')
-        .select('*')
-        .eq('id', data.deposit_id)
-        .maybeSingle();
-      
-      if (dep) {
-        if (dep.bed_id) {
-          // Release bed
-          await supabase
-            .from('beds')
-            .update({ status: 'available' })
-            .eq('id', dep.bed_id);
-          
-          // Decrement occupants in room
-          const { data: room } = await supabase
-            .from('rooms')
-            .select('*')
-            .eq('id', dep.room_id)
-            .maybeSingle();
-          if (room) {
-            const nextOccupants = Math.max(0, (room.current_occupants || 0) - 1);
-            await supabase
-              .from('rooms')
-              .update({
-                current_occupants: nextOccupants,
-                status: nextOccupants === 0 ? 'available' : 'partial'
-              })
-              .eq('id', dep.room_id);
-          }
-        } else {
-          // Release room
-          await supabase
-            .from('rooms')
-            .update({ status: 'available', current_occupants: 0 })
-            .eq('id', dep.room_id);
-        }
-      }
+      await releaseResourcesAfterContract(data.deposit_id);
     }
 
     return data;
