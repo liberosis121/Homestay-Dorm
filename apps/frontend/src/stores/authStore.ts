@@ -28,6 +28,7 @@ export interface UserProfile {
   // Trường phụ dùng trong UI (từ mock cũ — giữ lại để không break component khác)
   renting_room_name?: string;
   has_contract_history?: boolean;
+  branch_name?: string;
 }
 
 interface AuthState {
@@ -78,6 +79,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         avatar_url: u.avatar_url,
         renting_room_name: u.renting_room_name,
         has_contract_history: u.has_contract_history,
+        branch_name: u.branch_name,
       };
       localStorage.setItem('user_profile', JSON.stringify(userProfile));
 
