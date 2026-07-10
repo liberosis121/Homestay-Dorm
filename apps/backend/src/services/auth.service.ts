@@ -113,9 +113,26 @@ export const authService = {
 
     let rentingRoomName: string | undefined = undefined;
     let hasContractHistory = false;
+    let branchName: string | undefined = undefined;
+
     if (profile.role === USER_ROLE.CUSTOMER) {
       rentingRoomName = await profileRepo.getRentingRoomName(data.user.id);
       hasContractHistory = await profileRepo.hasContractHistory(data.user.id);
+    } else {
+      // Load branch name for employees
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('branch_id')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      if (employee?.branch_id) {
+        const { data: branch } = await supabase
+          .from('branches')
+          .select('name')
+          .eq('id', employee.branch_id)
+          .maybeSingle();
+        branchName = branch?.name || employee.branch_id;
+      }
     }
 
     return {
@@ -133,6 +150,7 @@ export const authService = {
         avatar_url: profile.avatar_url,
         renting_room_name: rentingRoomName,
         has_contract_history: hasContractHistory,
+        branch_name: branchName,
       },
     };
   },
