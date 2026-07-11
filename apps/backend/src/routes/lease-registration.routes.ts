@@ -29,8 +29,11 @@ router.post('/', requireAuth, async (req, res) => {
       other_criteria
     } = req.body;
 
-    // Validate input basic
-    if (!occupants_count || !preferred_area || !preferred_room_type || !preferred_price || !viewing_preference || !expected_move_in_date || !rental_duration) {
+    // Validate input basic (preferred_price cho phep = 0 nghia la "linh hoat")
+    const priceNum = Number(preferred_price);
+    if (!occupants_count || !preferred_area || !preferred_room_type ||
+        preferred_price === undefined || preferred_price === null || preferred_price === '' || Number.isNaN(priceNum) ||
+        !viewing_preference || !expected_move_in_date || !rental_duration) {
       return sendError(res, null, 'Vui long dien day du cac truong bat buoc.', 400);
     }
 
@@ -38,7 +41,7 @@ router.post('/', requireAuth, async (req, res) => {
       occupants_count: parseInt(occupants_count, 10),
       preferred_area,
       preferred_room_type,
-      preferred_price,
+      preferred_price: priceNum,
       viewing_preference,
       expected_move_in_date,
       rental_duration,

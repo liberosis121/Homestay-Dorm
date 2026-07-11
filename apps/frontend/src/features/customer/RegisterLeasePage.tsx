@@ -154,16 +154,28 @@ export const RegisterLeasePage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Map khoảng giá (categorical) -> ngân sách tối đa dạng số (cột preferred_price là numeric)
+      const budgetToPrice: Record<string, number> = {
+        under_2m: 2000000,
+        '2m_5m': 5000000,
+        over_5m: 8000000,
+        flexible: 0, // 0 = linh hoạt / chưa xác định
+      };
+      // Gửi TÊN khu vực (không phải branch ID) để Sale đọc được
+      const areaLabel = branchOptions.find(b => b.value === form.preferredBranchId)?.label || 'Chưa quyết định';
+      const viewingTimeLabel = viewingTimeOptions.find(t => t.value === form.preferredViewingTime)?.label || form.preferredViewingTime;
+
       // Map form fields sang format backend yêu cầu
       await createLeaseRegistrationApi({
         occupants_count: parseInt(form.occupantsCount, 10),
-        preferred_area: form.preferredBranchId,           // branch ID / 'any'
-        preferred_room_type: form.preferredRoomType.toLowerCase(), // 'dorm' | 'twin' | 'single' | 'any'
-        preferred_price: form.budgetRange,                 // '2m_5m' etc.
-        viewing_preference: `${form.preferredViewingDate} ${form.preferredViewingTime}`,
+        preferred_area: areaLabel,
+        preferred_room_type: form.preferredRoomType.toLowerCase(), // 'dorm' | 'twin' | 'studio' | 'any'
+        preferred_price: budgetToPrice[form.budgetRange] ?? 0,
+        viewing_preference: `${form.preferredViewingDate} (${viewingTimeLabel})`,
         expected_move_in_date: form.moveInDate,
         rental_duration: `${form.leaseTerm} tháng`,
         other_criteria: [
+          interested.interestedRoomName ? `Phòng quan tâm: ${interested.interestedRoomName}` : '',
           form.note,
           form.amenities.join(', '),
           form.viewingTimeNote,
@@ -365,6 +377,13 @@ export const RegisterLeasePage: React.FC = () => {
                 </Field>
               </div>
             </FormSection>
+
+            {errors.submit && (
+              <div className="flex items-start gap-3 rounded-24 border border-error/40 bg-error/10 px-5 py-4 text-sm text-error">
+                <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                <span className="leading-6">{errors.submit}</span>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-surface-variant">
               <p className="text-xs text-on-surface-variant leading-relaxed max-w-xl">
