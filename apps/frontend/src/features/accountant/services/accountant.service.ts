@@ -228,6 +228,27 @@ export const accountantService = {
     return result.data;
   },
 
+  createCancellationRefund: async (_email: string, data: {
+    depositRequestId: string;
+    originalDeposit: number;
+    refundRate: number;
+    totalDeductions: number;
+    finalRefund: number;
+    note?: string;
+  }) => {
+    const res = await fetch(`${API}/api/accountant/cancellation-refunds`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Lỗi khi lập hoàn cọc chưa ký HĐ');
+    }
+    const result = await res.json();
+    return result.data;
+  },
+
   createRefundReconciliation: async (_email: string, data: {
     checkoutId: string;
     contractId: string;

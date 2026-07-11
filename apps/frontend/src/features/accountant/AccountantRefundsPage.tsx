@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, X, Info } from 'lucide-react';
 import { RefundRecord } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
@@ -51,9 +51,8 @@ export default function AccountantRefundsPage() {
   // Inspection report drawer
   const [damageDrawerOpen, setDamageDrawerOpen] = useState(false);
 
-  // Load Data
-  useEffect(() => {
-    const loadData = async () => {
+  // Load Data (dung chung cho lan tai dau va sau moi lan duyet hoan coc)
+  const loadRefundData = useCallback(async () => {
       const email = user?.email || 'accountant@homestay.vn';
       try {
         const [pendingCheckouts, liveReconciliations, cancellationRefunds] = await Promise.all([
@@ -136,9 +135,11 @@ export default function AccountantRefundsPage() {
         console.warn('[AccountantRefunds] Failed to fetch live data:', err);
         setRefunds([]);
       }
-    };
-    loadData();
   }, [user]);
+
+  useEffect(() => {
+    loadRefundData();
+  }, [loadRefundData]);
 
   const activeRefund = refunds.find(r => r.id === selectedRefundId);
   const isCancellation = activeRefund?.type === 'cancellation';
@@ -211,6 +212,26 @@ export default function AccountantRefundsPage() {
     const checkoutId = activeRefund.checkout_id || activeRefund.id;
     const contractId = activeRefund.contract_id;
 
+    // Nhanh HOAN COC CHUA KY HD (hoan 80%): khong co checkout/contract, tao hoa don hoan coc gan deposit_id.
+    if (activeRefund.type === 'cancellation') {
+      try {
+        await accountantService.createCancellationRefund(email, {
+          depositRequestId: activeRefund.id,
+          originalDeposit: activeRefund.deposit_original,
+          refundRate: residencyRate / 100,
+          totalDeductions,
+          finalRefund: netRefund,
+          note: `Hoàn cọc hủy thuê (chưa ký HĐ) cho ${activeRefund.customer_name}`
+        });
+        alert('Duyệt hoàn cọc (chưa ký HĐ) thành công! Lệnh chi đã chuyển sang phân hệ Chi tiền.');
+        setIsCalculated(false);
+        await loadRefundData();
+      } catch (err) {
+        alert((err as Error)?.message || 'Không thể duyệt hoàn cọc.');
+      }
+      return;
+    }
+
     if (!contractId) {
       alert('Không tìm thấy hợp đồng liên kết với hồ sơ trả phòng này.');
       return;
@@ -252,59 +273,7 @@ export default function AccountantRefundsPage() {
 
       alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
       setIsCalculated(false);
-
-      const pendingCheckouts = await accountantService.fetchPendingCheckouts(email);
-      const liveReconciliations = await accountantService.fetchRefundReconciliations(email);
-
-      const mappedCheckouts = (pendingCheckouts || []).map((ch: any) => {
-        const contract = ch.contracts || {};
-        const profile = contract.profiles || {};
-        return {
-          id: ch.id,
-          checkout_id: ch.id,
-          contract_id: contract.id,
-          customer_id: profile.id || contract.customer_id,
-          customer_name: profile.full_name || 'Khách hàng',
-          room_id: contract.rooms?.id || contract.room_id || '',
-          room_name: contract.rooms?.name || 'Phòng',
-          checkout_date: ch.request_date || '',
-          deposit_original: Number(contract.deposit_amount || contract.rent_price || 0),
-          damage_deductions: [],
-          debt_deductions: 0,
-          status: ch.status === 'pending' ? 'pending' : 'calculated',
-          created_at: ch.request_date || new Date().toISOString(),
-          type: 'checkout' as const,
-          refund_amount: 0,
-          total_deductions: 0
-        };
-      });
-
-      const mappedReconciliations = uniqueReconciliationsByCheckout(liveReconciliations || []).map((rec: any) => {
-        const checkout = rec.checkouts || {};
-        const contract = checkout.contracts || {};
-        const customer_name = contract.profiles?.full_name || 'Khách hàng';
-        return {
-          id: rec.id,
-          checkout_id: rec.checkout_id,
-          contract_id: contract.id || checkout.contract_id,
-          reconciliation_id: rec.id,
-          customer_id: contract.profiles?.id || contract.customer_id || '',
-          customer_name,
-          room_id: contract.rooms?.id || contract.room_id || '',
-          room_name: contract.rooms?.name || 'Phòng',
-          checkout_date: checkout.request_date || rec.reconciliation_date || '',
-          deposit_original: Number(rec.original_deposit || contract.deposit_amount || contract.rent_price || 0),
-          damage_deductions: [],
-          debt_deductions: 0,
-          status: rec.status === 'paid' ? 'paid' : 'confirmed',
-          created_at: rec.reconciliation_date || new Date().toISOString(),
-          type: 'checkout' as const,
-          refund_amount: Number(rec.final_refund || 0),
-          total_deductions: Number(rec.total_deductions || 0)
-        };
-      });
-
-      setRefunds([...mappedCheckouts, ...mappedReconciliations]);
+      await loadRefundData();
     } catch (err) {
       console.warn('[AccountantRefunds] Live API failed:', err);
       alert((err as Error)?.message || 'Không thể lập bảng đối soát hoàn cọc trên dữ liệu hiện tại.');

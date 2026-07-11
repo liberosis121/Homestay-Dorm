@@ -19,7 +19,6 @@ export interface Customer {
     email: string;
     birthDate: string;
     nationality: string;
-    job: string;
     address: string;
   };
   registrations: Array<{
@@ -59,12 +58,6 @@ export interface Customer {
     contractType?: string;
     paymentCycle?: string;
   }>;
-  recentActivities: Array<{
-    icon: string;
-    iconBg: string;
-    time: string;
-    title: string;
-  }>;
 }
 
 const EMPTY_FIELD = '—';
@@ -98,7 +91,6 @@ const normalizeCustomer = (raw: any): Customer => {
       email: textOrDash(personalInfo.email || raw.email),
       birthDate: textOrDash(personalInfo.birthDate),
       nationality: textOrDash(personalInfo.nationality),
-      job: EMPTY_FIELD,
       address: textOrDash(personalInfo.address),
     },
     registrations: Array.isArray(raw.registrations) ? raw.registrations : [],
@@ -113,7 +105,6 @@ const normalizeCustomer = (raw: any): Customer => {
       : [],
     deposits: Array.isArray(raw.deposits) ? raw.deposits : [],
     contracts: Array.isArray(raw.contracts) ? raw.contracts : [],
-    recentActivities: Array.isArray(raw.recentActivities) ? raw.recentActivities : [],
   };
 };
 

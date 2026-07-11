@@ -146,7 +146,16 @@ export const refundRepo = {
       .select('deposit_id')
       .in('deposit_id', paidDepositIds);
     const signedSet = new Set((signed || []).map(c => c.deposit_id));
-    const candidateIds = paidDepositIds.filter(id => !signedSet.has(id));
+
+    // 2b. Loai bo cac phieu DA duoc lap hoan coc (da co hoa don type='refund' gan deposit_id)
+    const { data: refunded } = await supabase
+      .from('invoices')
+      .select('deposit_id')
+      .eq('invoice_type', 'refund')
+      .in('deposit_id', paidDepositIds);
+    const refundedSet = new Set((refunded || []).map(r => r.deposit_id).filter(Boolean));
+
+    const candidateIds = paidDepositIds.filter(id => !signedSet.has(id) && !refundedSet.has(id));
     if (candidateIds.length === 0) return [];
 
     // 3. Lay chi tiet phieu coc + phong + khach hang
