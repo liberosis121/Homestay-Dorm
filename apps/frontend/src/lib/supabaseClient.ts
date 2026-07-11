@@ -266,6 +266,7 @@ export interface PayoutRecord {
   status: 'pending' | 'processing' | 'completed';
   paid_at?: string;
   created_at: string;
+  is_liquidated?: boolean;
 }
 
 // ─── Manager Phase Interfaces ────────────────────────────────────────────────

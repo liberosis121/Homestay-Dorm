@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
-  Search, Copy, Check, Eye, X, ArrowUpRight, Upload, FileText
+  Search, Check, Eye, X, ArrowUpRight, Upload, FileText
 } from 'lucide-react';
 import { getMockDB, saveMockDB, PayoutRecord, RefundRecord } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -24,8 +24,45 @@ export default function AccountantPayoutsPage() {
   
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [voucherUploaded, setVoucherUploaded] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ name: string; size: string; previewUrl?: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Dung lượng file tối đa là 5MB!');
+        return;
+      }
+      const sizeStr = file.size > 1024 * 1024 
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+        : `${(file.size / 1024).toFixed(0)} KB`;
+      
+      let previewUrl = undefined;
+      if (file.type.startsWith('image/')) {
+        previewUrl = URL.createObjectURL(file);
+      }
+      
+      setSelectedFile({
+        name: file.name,
+        size: sizeStr,
+        previewUrl
+      });
+      setVoucherUploaded(true);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    if (selectedFile?.previewUrl) {
+      URL.revokeObjectURL(selectedFile.previewUrl);
+    }
+    setSelectedFile(null);
+    setVoucherUploaded(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Payment processing states (UC Xử lý hoàn cọc - Step 5)
   const [payMethod, setPayMethod] = useState<'transfer' | 'cash'>('transfer');
@@ -60,7 +97,8 @@ export default function AccountantPayoutsPage() {
             payment_method: p.payment_method || p.payout_method || 'transfer',
             status: normalizePayoutStatus(p.status || p.payout_status),
             paid_at: p.payment_time,
-            created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString()
+            created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
+            is_liquidated: contract.status === 'terminated'
           };
         });
 
@@ -110,17 +148,13 @@ export default function AccountantPayoutsPage() {
     }
   }, [selectedPayoutId, activePayout]);
 
-  const handleCopyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+
 
   const handleConfirmPayout = async () => {
     if (!activePayout) return;
 
     const email = user?.email || 'accountant@homestay.vn';
-    const details = payMethod === 'transfer' ? `${bankName} - ${bankAccount} - ${accountHolder}` : 'Tiền mặt';
+    const details = payMethod === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Tiền mặt';
 
     try {
       await accountantService.confirmPayout(email, activePayout.id, details, payMethod);
@@ -152,7 +186,8 @@ export default function AccountantPayoutsPage() {
           payment_method: p.payment_method || p.payout_method || 'transfer',
           status: normalizePayoutStatus(p.status || p.payout_status),
           paid_at: p.payment_time,
-          created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString()
+          created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
+          is_liquidated: contract.status === 'terminated'
         };
       });
 
@@ -275,7 +310,7 @@ export default function AccountantPayoutsPage() {
   const handleLiquidation = () => {
     if (!activePayout) return;
     alert(`Đã hoàn tất thanh lý hợp đồng thuê cho khách hàng ${activePayout.customer_name}. Hợp đồng chính thức đóng lại!`);
-    setDrawerOpen(false);
+    setPayouts(prev => prev.map(p => p.id === activePayout.id ? { ...p, is_liquidated: true } : p));
   };
 
   // Stats
@@ -382,7 +417,7 @@ export default function AccountantPayoutsPage() {
               {filteredPayouts.map((p) => (
                 <tr
                   key={p.id}
-                  onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); setVoucherUploaded(false); }}
+                  onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); handleRemoveFile(); }}
                   className="hover:bg-[#f6f3f2] cursor-pointer transition-colors"
                 >
                   <td className="p-4  font-bold text-[#5a462d]">{formatShortId(p.refund_id, 'refund')}</td>
@@ -401,7 +436,7 @@ export default function AccountantPayoutsPage() {
                   </td>
                   <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); setVoucherUploaded(false); }}
+                      onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); handleRemoveFile(); }}
                       className="p-1 hover:bg-[#e4e2e1] rounded text-[#5e5f5d]"
                     >
                       <Eye className="w-4 h-4" />
@@ -531,59 +566,7 @@ export default function AccountantPayoutsPage() {
                     )}
                   </div>
 
-                  {/* Bank Transfer Details */}
-                  {payMethod === 'transfer' && (
-                    activePayout.status === 'completed' ? (
-                      <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded flex justify-between items-center">
-                        <div>
-                          <div className="font-bold text-xs text-[#1b1c1c]">{bankName}</div>
-                          <div className=" text-xs text-[#5e5f5d] mt-1">
-                            {bankAccount} - {accountHolder}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleCopyText(`${bankName} ${bankAccount} ${accountHolder}`)}
-                          className="text-[#5a462d] p-1.5 hover:bg-[#e4e2e1] rounded transition cursor-pointer"
-                          title="Sao chép thông tin"
-                        >
-                          {copied ? <Check className="w-4 h-4 text-[#2E7D32]" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded space-y-2.5">
-                        <div>
-                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Tên ngân hàng</label>
-                          <input
-                            type="text"
-                            value={bankName}
-                            onChange={(e) => setBankName(e.target.value)}
-                            placeholder="Ví dụ: Vietcombank, Techcombank..."
-                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Số tài khoản</label>
-                          <input
-                            type="text"
-                            value={bankAccount}
-                            onChange={(e) => setBankAccount(e.target.value)}
-                            placeholder="Nhập số tài khoản ngân hàng..."
-                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Tên chủ tài khoản</label>
-                          <input
-                            type="text"
-                            value={accountHolder}
-                            onChange={(e) => setAccountHolder(e.target.value)}
-                            placeholder="Nhập tên viết hoa không dấu..."
-                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
-                          />
-                        </div>
-                      </div>
-                    )
-                  )}
+
 
                   {payMethod === 'cash' && (
                     <div className="bg-[#FFF3E0] border border-[#FFE0B2] p-3 rounded text-xs font-semibold text-[#E65100]">
@@ -598,17 +581,35 @@ export default function AccountantPayoutsPage() {
               {/* Section 4: Document upload placeholder */}
               <div>
                 <h4 className="font-label-caps text-[11px] text-[#5a462d] font-bold uppercase tracking-wider mb-2">Chứng từ thanh toán</h4>
-                {voucherUploaded ? (
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept=".jpg,.jpeg,.png,.pdf" 
+                  className="hidden" 
+                />
+                {voucherUploaded && selectedFile ? (
                   <div className="border border-[#2E7D32] bg-[#E8F5E9] rounded-lg p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <FileText className="w-5 h-5 text-[#2E7D32]" />
-                      <span className="text-xs font-semibold text-[#2E7D32]">uynhiemchi_hoancoc.pdf (1.2 MB)</span>
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      {selectedFile.previewUrl ? (
+                        <img 
+                          src={selectedFile.previewUrl} 
+                          alt="Voucher preview" 
+                          className="w-10 h-10 object-cover rounded border border-[#2E7D32]" 
+                        />
+                      ) : (
+                        <FileText className="w-5 h-5 text-[#2E7D32] shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-[#2E7D32] truncate">{selectedFile.name}</p>
+                        <p className="text-[10px] text-[#2E7D32]/80">{selectedFile.size}</p>
+                      </div>
                     </div>
-                    <button onClick={() => setVoucherUploaded(false)} className="text-xs text-[#5e5f5d] hover:underline">Xóa</button>
+                    <button onClick={handleRemoveFile} className="text-xs text-[#5e5f5d] hover:underline ml-4 shrink-0">Xóa</button>
                   </div>
                 ) : (
                   <div
-                    onClick={() => setVoucherUploaded(true)}
+                    onClick={() => fileInputRef.current?.click()}
                     className="border-2 border-dashed border-[#7f756c] rounded-lg p-6 flex flex-col items-center justify-center text-center bg-[#fbf9f8] hover:border-[#5a462d] transition-colors cursor-pointer"
                   >
                     <Upload className="w-6 h-6 text-[#5e5f5d] mb-1.5" />
@@ -641,14 +642,14 @@ export default function AccountantPayoutsPage() {
                 <p className="text-[10px] text-[#5e5f5d] mb-1.5 text-center font-semibold">Chỉ khả dụng sau khi hoàn tất chi tiền hoàn cọc</p>
                 <button
                   onClick={handleLiquidation}
-                  disabled={activePayout.status !== 'completed'}
+                  disabled={activePayout.status !== 'completed' || activePayout.is_liquidated}
                   className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm border transition ${
-                    activePayout.status !== 'completed'
+                    (activePayout.status !== 'completed' || activePayout.is_liquidated)
                       ? 'border-[#d1c4b9] text-[#7f756c] bg-[#e4e2e1] cursor-not-allowed opacity-55'
                       : 'border-[#5a462d] text-[#5a462d] bg-transparent hover:bg-[#5a462d] hover:text-white'
                   }`}
                 >
-                  Thanh lý hợp đồng
+                  {activePayout.is_liquidated ? 'Đã thanh lý hợp đồng' : 'Thanh lý hợp đồng'}
                 </button>
               </div>
             </div>

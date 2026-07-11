@@ -325,7 +325,7 @@ export default function AccountantMonthlyPage() {
       await accountantService.createMonthlyInvoice(email, {
         contractId: selectedContract.id,
         roomId: selectedContract.room_id,
-        billingPeriod: toApiPeriod(selectedPeriod),
+        billingPeriod: toApiPeriod(selectedContract.period),
         prevElectricity: elecOld,
         newElectricity: elecNew,
         prevWater: waterOld,
@@ -432,7 +432,8 @@ export default function AccountantMonthlyPage() {
       c.customer_name.toLowerCase().includes(contractSearchQuery.toLowerCase()) ||
       c.room_name.toLowerCase().includes(contractSearchQuery.toLowerCase()) ||
       c.id.toLowerCase().includes(contractSearchQuery.toLowerCase());
-    return matchesBranch && matchesSearch;
+    const matchesPeriod = toApiPeriod(c.period) <= toApiPeriod(selectedPeriod);
+    return matchesBranch && matchesSearch && matchesPeriod;
   });
 
   // Financial Stats
