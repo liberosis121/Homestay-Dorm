@@ -15,7 +15,7 @@ export interface ResidencyInfoDto {
 export const residencyInfoRepo = {
   findAll: async (filters?: { contract_id?: string; check_result?: string }) => {
     let query = supabase.from('residency_info').select('*');
-    
+
     if (filters?.contract_id) {
       query = query.eq('contract_id', filters.contract_id);
     }
@@ -24,6 +24,16 @@ export const residencyInfoRepo = {
     }
 
     const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  findByCccd: async (cccd: string) => {
+    const { data, error } = await supabase
+      .from('residency_info')
+      .select('*')
+      .eq('cccd', cccd)
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
   },

@@ -8,6 +8,8 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { authService } from '../services/auth.service';
 import { profileService } from '../services/profile.service';
+import { residencyService } from '../services/residency.service';
+import { getCustomerByUserId } from '../repositories/profile.repo';
 import { sendSuccess, sendError } from '../utils/response.util';
 import { supabase } from '../utils/supabase';
 
@@ -260,6 +262,81 @@ router.get('/profile', requireAuth, async (req, res) => {
     return sendSuccess(res, profileData, 'Lấy thông tin hồ sơ thành công!');
   } catch (error: any) {
     return sendError(res, error, error.message || 'Lỗi khi lấy thông tin hồ sơ.');
+  }
+});
+
+/**
+ * 🔗 GET /api/auth/residency
+ * 📝 Lấy lịch sử khai báo "Thông tin cư trú" của chính khách hàng đang đăng nhập (theo CCCD).
+ */
+router.get('/residency', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return sendError(res, null, 'Phiên đăng nhập không hợp lệ.', 401);
+    }
+
+    const customer = await getCustomerByUserId(userId);
+    if (!customer?.cccd) {
+      return sendSuccess(res, [], 'Chưa có thông tin cư trú.');
+    }
+
+    const residencyInfo = await residencyService.getMyResidencyInfo(customer.cccd);
+    return sendSuccess(res, residencyInfo, 'Lấy thông tin cư trú thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi lấy thông tin cư trú.');
+  }
+});
+
+/**
+ * 🔗 GET /api/auth/residency/pending-deposit
+ * 📝 Trả về phiếu cọc đã thanh toán đang chờ khách khai báo cư trú (bước 9), hoặc null.
+ */
+router.get('/residency/pending-deposit', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return sendError(res, null, 'Phiên đăng nhập không hợp lệ.', 401);
+    }
+
+    const customer = await getCustomerByUserId(userId);
+    if (!customer?.cccd) {
+      return sendSuccess(res, null, 'Chưa có phiếu cọc cần khai báo.');
+    }
+
+    const pending = await residencyService.getPendingResidencyDeposit(customer.cccd);
+    return sendSuccess(res, pending, 'OK');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi kiểm tra phiếu cọc cư trú.');
+  }
+});
+
+/**
+ * 🔗 POST /api/auth/residency
+ * 📝 Khách hàng tự khai báo thông tin cư trú (bước 9). Body: { start_date, permanent_address, purpose }.
+ */
+router.post('/residency', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return sendError(res, null, 'Phiên đăng nhập không hợp lệ.', 401);
+    }
+
+    const customer = await getCustomerByUserId(userId);
+    if (!customer?.cccd) {
+      return sendError(res, null, 'Vui lòng cập nhật CCCD ở Hồ sơ cá nhân trước khi khai báo cư trú.', 400);
+    }
+
+    const { start_date, permanent_address, purpose } = req.body;
+    const created = await residencyService.createMyResidency({
+      cccd: customer.cccd,
+      start_date,
+      permanent_address,
+      purpose
+    });
+    return sendSuccess(res, created, 'Khai báo thông tin cư trú thành công! Vui lòng chờ quản lý duyệt.');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi khai báo thông tin cư trú.', error.status || 500);
   }
 });
 
