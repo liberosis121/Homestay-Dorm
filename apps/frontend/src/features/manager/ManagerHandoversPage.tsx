@@ -11,9 +11,9 @@ const T = {
 };
 
 const STATUS_LABELS: Record<AssetHandover['status'], { label: string; bg: string; text: string }> = {
-  signed:  { label: 'Đã ký đầy đủ', bg: T.sageBg,  text: T.sage  },
-  pending: { label: 'Ký một phần',  bg: T.blueBg,  text: T.blue  },
-  partial: { label: 'Ký một phần',  bg: T.blueBg,  text: T.blue  },
+  signed: { label: 'Đã ký đầy đủ', bg: T.sageBg, text: T.sage },
+  pending: { label: 'Ký một phần', bg: T.blueBg, text: T.blue },
+  partial: { label: 'Ký một phần', bg: T.blueBg, text: T.blue },
 };
 
 export default function ManagerHandoversPage() {
@@ -69,7 +69,7 @@ export default function ManagerHandoversPage() {
           const email = mockUser.email.toLowerCase();
           let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
           let role = mockUser.role || 'manager';
-          
+
           if (email.includes('manager')) {
             uid = 'e002e002-e002-e002-e002-e002e002e002';
             role = 'manager';
@@ -83,7 +83,7 @@ export default function ManagerHandoversPage() {
             uid = 'e004e004-e004-e004-e004-e004e004e004';
             role = 'admin';
           }
-          
+
           let emailVal = mockUser.email;
           if (emailVal.includes('@homestay.com')) {
             emailVal = emailVal.replace('.com', '.vn');
@@ -174,15 +174,15 @@ export default function ManagerHandoversPage() {
       ]);
 
       await loadData();
-      
+
       const now = new Date().toISOString();
-      setSelected(prev => prev ? { 
-        ...prev, 
-        status: 'signed', 
-        manager_signed: true, 
-        customer_signed: true, 
-        signature_ip: '192.168.1.1', 
-        signature_timestamp: now 
+      setSelected(prev => prev ? {
+        ...prev,
+        status: 'signed',
+        manager_signed: true,
+        customer_signed: true,
+        signature_ip: '192.168.1.1',
+        signature_timestamp: now
       } : null);
 
       showToast('Biên bản đã được ký xác nhận thành công!', 'success');
@@ -199,7 +199,7 @@ export default function ManagerHandoversPage() {
     setUtilityDebt(0);
     setCleaningFee(200000);
     setViolationPenalty(0);
-    
+
     // Auto-populate room assets compensations with default 0
     setCompensations({});
     setCheckoutDrawerOpen(true);
@@ -285,7 +285,7 @@ export default function ManagerHandoversPage() {
       {/* Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Trả phòng & Đền bù tài sản</h1>
-        
+
         {/* Tab switcher */}
         <div style={{ display: 'flex', background: '#FAF2EC', borderRadius: 20, padding: 4, border: `1.5px solid ${T.border}` }}>
           {[
@@ -448,7 +448,7 @@ export default function ManagerHandoversPage() {
                             borderRadius: 9999, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: T.primary, cursor: 'pointer', whiteSpace: 'nowrap',
                             transition: 'all 0.15s ease-in-out'
                           }}
-                          className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
+                            className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
                         </td>
                       </tr>
                     );
@@ -467,13 +467,13 @@ export default function ManagerHandoversPage() {
             <>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
                   <col style={{ width: '20%' }} />
                   <col style={{ width: '12%' }} />
-                  <col style={{ width: '14%' }} />
                   <col style={{ width: '15%' }} />
-                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '12%' }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: T.bg }}>
@@ -527,7 +527,7 @@ export default function ManagerHandoversPage() {
                           borderRadius: 12, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
                           transition: 'all 0.15s ease-in-out'
                         }}
-                        className="hover:opacity-90 active:scale-[0.95] shadow-sm">
+                          className="hover:opacity-90 active:scale-[0.95] shadow-sm">
                           {ch.status === 'pending' ? 'Kiểm kê' : 'Xem lại'}
                         </button>
                       </td>
@@ -625,7 +625,7 @@ export default function ManagerHandoversPage() {
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   transition: 'all 0.15s'
                 }}
-                className="hover:opacity-90 active:scale-[0.98] shadow-sm">
+                  className="hover:opacity-90 active:scale-[0.98] shadow-sm">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>draw</span> Xác nhận ký biên bản
                 </button>
               )}
@@ -639,7 +639,7 @@ export default function ManagerHandoversPage() {
                 fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 transition: 'all 0.15s ease-in-out'
               }}
-              className="hover:opacity-95 active:scale-[0.98] shadow-sm">
+                className="hover:opacity-95 active:scale-[0.98] shadow-sm">
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>print</span> In biên bản
               </button>
             </div>
@@ -665,7 +665,7 @@ export default function ManagerHandoversPage() {
               overflow: 'hidden', animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
             }}
               onClick={e => e.stopPropagation()}>
-              
+
               {/* Header */}
               <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
                 <div className="flex items-start justify-between">
@@ -685,7 +685,7 @@ export default function ManagerHandoversPage() {
 
               {/* Content Body */}
               <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
-                
+
                 {/* Room / Customer Info */}
                 <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 16 }}>
                   <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Thông tin trả phòng</p>
@@ -771,7 +771,7 @@ export default function ManagerHandoversPage() {
                   <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Kiểm kê & đền bù tài sản phòng ({roomAssets.length} tài sản)
                   </p>
-                  
+
                   {roomAssets.length === 0 ? (
                     <div style={{ padding: '24px 16px', textAlign: 'center', color: T.textMuted, border: `1.5px dashed ${T.border}`, borderRadius: 14 }}>
                       <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: 0.6, marginBottom: 8 }}>inventory_2</span>
@@ -852,7 +852,7 @@ export default function ManagerHandoversPage() {
                   background: T.surface, color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: '12px 20px',
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
                 }}
-                className="hover:bg-primaryLight active:scale-[0.98]">
+                  className="hover:bg-primaryLight active:scale-[0.98]">
                   Hủy bỏ
                 </button>
                 <button onClick={submitCheckoutInspection} style={{
@@ -860,7 +860,7 @@ export default function ManagerHandoversPage() {
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   transition: 'all 0.15s'
                 }}
-                className="hover:opacity-90 active:scale-[0.98] shadow-sm">
+                  className="hover:opacity-90 active:scale-[0.98] shadow-sm">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check</span> Xác nhận & Ghi nhận Trả phòng
                 </button>
               </div>
