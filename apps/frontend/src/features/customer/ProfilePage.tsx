@@ -261,7 +261,7 @@ export default function ProfilePage() {
     gender: 'male',
     issue_date: '',
     issue_place: '',
-    nationality: 'Việt Nam',
+    nationality: '',
     permanent_address: '',
   });
 
