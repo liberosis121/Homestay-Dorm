@@ -281,6 +281,11 @@ export const refundRepo = {
       ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
       : { data: [] as any[] };
 
+    const recIds = reconciliations.map(r => r.id).filter(Boolean);
+    const { data: deductions } = recIds.length > 0
+      ? await supabase.from('deductions').select('*').in('reconciliation_id', recIds)
+      : { data: [] as any[] };
+
     // 5. Map in-memory
     const result = reconciliations.map(rec => {
       const checkout = (checkouts || []).find(ch => ch.id === rec.checkout_id);
@@ -319,9 +324,17 @@ export const refundRepo = {
         };
       }
 
+      const recDeductions = (deductions || []).filter((d: any) => d.reconciliation_id === rec.id);
+
       return {
         ...rec,
-        checkouts: mappedCheckout
+        checkouts: mappedCheckout,
+        deductions: recDeductions.map((d: any) => ({
+          id: d.id,
+          reason: d.reason,
+          amount: Number(d.amount) || 0,
+          note: d.note || ''
+        }))
       };
     });
 

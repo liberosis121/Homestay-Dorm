@@ -119,7 +119,8 @@ export default function AccountantPayoutsPage() {
             created_at: rec.reconciliation_date || new Date().toISOString(),
             type: 'checkout' as const,
             refund_amount: Number(rec.final_refund || 0),
-            total_deductions: Number(rec.total_deductions || 0)
+            total_deductions: Number(rec.total_deductions || 0),
+            deductions: rec.deductions || []
           };
         });
 
@@ -208,7 +209,8 @@ export default function AccountantPayoutsPage() {
           created_at: rec.reconciliation_date || new Date().toISOString(),
           type: 'checkout' as const,
           refund_amount: Number(rec.final_refund || 0),
-          total_deductions: Number(rec.total_deductions || 0)
+          total_deductions: Number(rec.total_deductions || 0),
+          deductions: rec.deductions || []
         };
       });
 
@@ -408,7 +410,6 @@ export default function AccountantPayoutsPage() {
                 <th className="p-4">Mã đối soát</th>
                 <th className="p-4">Khách hàng</th>
                 <th className="p-4 text-right">Số tiền hoàn</th>
-                <th className="p-4">Tài khoản nhận</th>
                 <th className="p-4">Trạng thái</th>
                 <th className="p-4 text-center">Thao tác</th>
               </tr>
@@ -426,7 +427,6 @@ export default function AccountantPayoutsPage() {
                     <div className="text-xs text-[#5e5f5d]">{p.payment_method === 'cash' ? 'Nhận tiền mặt' : 'Chuyển khoản ngân hàng'}</div>
                   </td>
                   <td className="p-4 text-right  font-medium text-[#ba1a1a]">{p.amount.toLocaleString('vi-VN')} ₫</td>
-                  <td className="p-4  text-xs text-[#4e453d]">{p.payment_method === 'cash' ? 'N/A (Tiền mặt)' : `${p.bank_account} (${p.bank_name})`}</td>
                   <td className="p-4">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       p.status === 'completed' ? 'bg-[#e4e2e1] text-[#4e453d]' : 'bg-[#d0def1] text-[#3d4a59]'
@@ -514,17 +514,28 @@ export default function AccountantPayoutsPage() {
                     </div>
                   ) : (
                     <>
-                      {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
-                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                          <span>Khấu trừ hư hại tài sản:</span>
-                          <span className=" font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
-                        </div>
-                      )}
-                      {matchedRefund && matchedRefund.debt_deductions > 0 && (
-                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                          <span>Khấu trừ điện nước / nợ cũ:</span>
-                          <span className=" font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
-                        </div>
+                      {matchedRefund && matchedRefund.deductions && matchedRefund.deductions.length > 0 ? (
+                        matchedRefund.deductions.map((ded: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                            <span>Khấu trừ {ded.reason.toLowerCase()}:</span>
+                            <span className=" font-medium">-{ded.amount.toLocaleString('vi-VN')} ₫</span>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
+                            <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                              <span>Khấu trừ hư hại tài sản:</span>
+                              <span className=" font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
+                            </div>
+                          )}
+                          {matchedRefund && matchedRefund.debt_deductions > 0 && (
+                            <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                              <span>Khấu trừ điện nước / nợ cũ:</span>
+                              <span className=" font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
