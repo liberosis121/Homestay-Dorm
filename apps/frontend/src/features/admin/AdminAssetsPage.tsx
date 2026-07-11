@@ -87,7 +87,7 @@ export default function AdminAssetsPage() {
         brand: dbAsset.brand || '',
         purchaseDate: dbAsset.purchase_date ? dbAsset.purchase_date.split('-').reverse().join('/') : '',
         value: dbAsset.value || 0,
-        status: dbAsset.status || 'available',
+        status: dbAsset.status === 'in_stock' ? 'available' : (dbAsset.status || 'available'),
         serialNumber: dbAsset.serial_number
       }));
       setAssets(mapped);
@@ -196,8 +196,11 @@ export default function AdminAssetsPage() {
     const roomObj = allRooms.find(r => r.id === rId);
     const bedObj = bedsForRoom.find(bd => bd.id === bedId);
     
-    if (!branchObj || !roomObj) return '';
+    if (!branchObj) return '';
     const bCode = formatBranchCode(branchObj.name);
+    
+    if (!roomObj) return `CN_${bCode}`;
+    
     const rCode = formatRoomCode(roomObj.name);
     const bdCode = bedObj ? `-${formatBedCode(bedObj.name)}` : '';
     
@@ -231,19 +234,21 @@ export default function AdminAssetsPage() {
       const branchObj = branches.find(b => formatBranchCode(b.name) === bCode);
       if (branchObj) {
         foundBranchId = branchObj.id;
-        const roomObj = allRooms.find(r => r.branch_id === branchObj.id && formatRoomCode(r.name) === rCode);
-        if (roomObj) {
-          foundRoomId = roomObj.id;
-          if (bdCode) {
-            try {
-              const bedsData = await fetchBedsByRoom(roomObj.id);
-              setBedsForRoom(bedsData || []);
-              const bedObj = (bedsData || []).find((bd: any) => formatBedCode(bd.name) === bdCode);
-              if (bedObj) {
-                foundBedId = bedObj.id;
+        if (rCode) {
+          const roomObj = allRooms.find(r => r.branch_id === branchObj.id && formatRoomCode(r.name) === rCode);
+          if (roomObj) {
+            foundRoomId = roomObj.id;
+            if (bdCode) {
+              try {
+                const bedsData = await fetchBedsByRoom(roomObj.id);
+                setBedsForRoom(bedsData || []);
+                const bedObj = (bedsData || []).find((bd: any) => formatBedCode(bd.name) === bdCode);
+                if (bedObj) {
+                  foundBedId = bedObj.id;
+                }
+              } catch (err) {
+                console.error('Lỗi khi parse giường cũ:', err);
               }
-            } catch (err) {
-              console.error('Lỗi khi parse giường cũ:', err);
             }
           }
         }
@@ -265,11 +270,14 @@ export default function AdminAssetsPage() {
       alert("Vui lòng chọn chi nhánh!");
       return;
     }
-    if (!selectedRoomId) {
-      alert("Vui lòng chọn phòng!");
-      return;
+
+    // Nếu không chọn phòng, tự động đưa trạng thái về available nếu đang là in_use
+    let finalStatus = form.status || 'available';
+    if (!selectedRoomId && finalStatus === 'in_use') {
+      finalStatus = 'available';
     }
 
+    const apiStatus = finalStatus === 'available' ? 'in_stock' : finalStatus;
     const computedLocation = computeLocationString(selectedBranchId, selectedRoomId, selectedBedId);
 
     try {
@@ -281,7 +289,7 @@ export default function AdminAssetsPage() {
           location: computedLocation,
           brand: form.brand || '',
           value: form.value || 0,
-          status: form.status || 'available',
+          status: apiStatus,
           purchase_date: pDate
         });
         const na: Asset = {
@@ -291,7 +299,7 @@ export default function AdminAssetsPage() {
           location: created.location,
           brand: created.brand,
           value: created.value,
-          status: created.status as AssetStatus,
+          status: (created.status === 'in_stock' ? 'available' : created.status) as AssetStatus,
           purchaseDate: created.purchase_date ? created.purchase_date.split('-').reverse().join('/') : '',
           serialNumber: created.serial_number
         };
@@ -303,13 +311,13 @@ export default function AdminAssetsPage() {
         const updated = await updateAssetApi(form.serialNumber, {
           location: computedLocation,
           value: form.value,
-          status: form.status
+          status: apiStatus
         });
         setAssets(prev => prev.map(a => a.serialNumber === form.serialNumber ? {
           ...a,
           location: updated.location,
           value: updated.value,
-          status: updated.status as AssetStatus
+          status: (updated.status === 'in_stock' ? 'available' : updated.status) as AssetStatus
         } : a));
         setSuccessMsg("Đã cập nhật thông tin tài sản thành công!");
         setTimeout(() => setSuccessMsg(""), 3500);
