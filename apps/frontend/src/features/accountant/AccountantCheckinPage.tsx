@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
+import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
@@ -230,7 +231,13 @@ export default function AccountantCheckinPage() {
   };
 
   // Summaries
-  const todayCount = invoices.filter(inv => inv.checkin_date === new Date().toISOString().split('T')[0]).length;
+  // "HĐ nhận phòng hôm nay" = số hóa đơn được LẬP trong ngày hôm nay (theo created_at thật).
+  const isSameLocalDay = (iso?: string) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    return !isNaN(d.getTime()) && d.toDateString() === new Date().toDateString();
+  };
+  const todayCount = invoices.filter(inv => isSameLocalDay(inv.created_at)).length;
   const totalPaidSum = invoices
     .filter(inv => inv.status === 'paid')
     .reduce((sum, inv) => sum + inv.total, 0);
@@ -603,16 +610,19 @@ export default function AccountantCheckinPage() {
               />
             </div>
             
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-[#DCCFC0] rounded-lg text-xs py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#5C4632] focus:border-transparent hover:border-[#5C4632] transition-all cursor-pointer"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ thanh toán</option>
-              <option value="paid">Đã thanh toán</option>
-              <option value="draft">Bản nháp</option>
-            </select>
+              onChange={setStatusFilter}
+              theme="accountant"
+              className="w-40"
+              triggerClassName="py-1.5 text-xs"
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'pending', label: 'Chờ thanh toán' },
+                { value: 'paid', label: 'Đã thanh toán' },
+                { value: 'draft', label: 'Bản nháp' },
+              ]}
+            />
           </div>
         </div>
 
@@ -637,7 +647,7 @@ export default function AccountantCheckinPage() {
                   </td>
                   <td className="p-4  text-xs text-[#8A7563] text-left">{formatShortId(inv.deposit_ref, 'deposit')} ({inv.room_name})</td>
                   <td className="p-4 font-semibold text-[#1b1c1c] text-left">{inv.customer_name}</td>
-                  <td className="p-4 text-xs  text-[#8A7563] text-left">{inv.checkin_date}</td>
+                  <td className="p-4 text-xs  text-[#8A7563] text-left">{inv.created_at ? new Date(inv.created_at).toLocaleDateString('vi-VN') : '—'}</td>
                   <td className="p-4 text-right  font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')} ₫</td>
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${

@@ -21,6 +21,14 @@ export default function InvoiceDetailDrawer({
     window.print();
   };
 
+  // Định dạng ngày lập hóa đơn: chấp nhận cả ISO thô lẫn chuỗi "YYYY-MM-DD HH:mm" đã format sẵn.
+  const formatInvoiceDate = (val: any) => {
+    if (!val) return '---';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toLocaleDateString('vi-VN');
+  };
+
   // Status badge style helper
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -131,8 +139,8 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right font-semibold text-[#1b1c1c]">{invoiceData.room_name || '---'}</div>
                   
                   <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.created_at || '---'}</div>
-                  
+                  <div className="text-right text-[#1b1c1c]  text-xs">{formatInvoiceDate(invoiceData.created_at)}</div>
+
                   <div className="text-[#8A7563]">Hạn thanh toán:</div>
                   <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.deadline || '---'}</div>
 
@@ -178,8 +186,8 @@ export default function InvoiceDetailDrawer({
                     <div className="text-right  font-semibold text-[#5C4632]">{invoiceData.id || '---'}</div>
                     
                     <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                    <div className="text-right text-[#5C4632] ">{invoiceData.created_at || '---'}</div>
-                    
+                    <div className="text-right text-[#5C4632] ">{formatInvoiceDate(invoiceData.created_at)}</div>
+
                     <div className="text-[#8A7563]">Hạn thanh toán:</div>
                     <div className="text-right text-[#5C4632] ">
                       {invoiceData.deadline || invoiceData.checkin_date || (invoiceData.created_at ? invoiceData.created_at.substring(0, 10) : '---')}
@@ -299,7 +307,7 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.due_date || '---'}</div>
 
                   <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{formatInvoiceDate(invoiceData.created_at)}</div>
                 </div>
               </div>
 

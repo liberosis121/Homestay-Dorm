@@ -698,17 +698,20 @@ export default function AccountantDepositPage() {
             </div>
             
             {/* Filter Status */}
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-[#DCCFC0] rounded text-xs py-1.5 px-3 focus:outline-none focus:border-[#5C4632] cursor-pointer"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ thanh toán</option>
-              <option value="paid">Đã thanh toán</option>
-              <option value="overdue">Quá hạn</option>
-              <option value="cancelled">Hủy</option>
-            </select>
+              onChange={setStatusFilter}
+              theme="accountant"
+              className="w-40"
+              triggerClassName="py-1.5 text-xs"
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'pending', label: 'Chờ thanh toán' },
+                { value: 'paid', label: 'Đã thanh toán' },
+                { value: 'overdue', label: 'Quá hạn' },
+                { value: 'cancelled', label: 'Hủy' },
+              ]}
+            />
           </div>
         </div>
 

@@ -281,6 +281,19 @@ router.get('/checkouts/pending', async (req, res) => {
 });
 
 /**
+ * 🔗 GET /api/accountant/cancellation-refunds
+ * 📝 Lay ung vien hoan coc khi chua ky HD (hoan 80%): da coc paid nhung khong co contract.
+ */
+router.get('/cancellation-refunds', async (req, res) => {
+  try {
+    const data = await refundService.getCancellationRefunds();
+    return sendSuccess(res, data, 'Lay danh sach hoan coc chua ky HD thanh cong!');
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi lay danh sach hoan coc chua ky HD.');
+  }
+});
+
+/**
  * 🔗 GET /api/accountant/refunds
  * 📝 Lay toan bo danh sach phieu doi soat hoan coc.
  */

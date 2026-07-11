@@ -219,6 +219,15 @@ export const accountantService = {
     return result.data;
   },
 
+  fetchCancellationRefunds: async (_email: string) => {
+    const res = await fetch(`${API}/api/accountant/cancellation-refunds`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Không thể tải danh sách hoàn cọc chưa ký HĐ');
+    const result = await res.json();
+    return result.data;
+  },
+
   createRefundReconciliation: async (_email: string, data: {
     checkoutId: string;
     contractId: string;

@@ -52,6 +52,12 @@ export const customerLookupService = {
           .in('registration_id', registrationIds)
       : { data: [] as any[] };
 
+    // 3b. Lay ten nhan vien Sale phu trach cac lich hen xem phong (viewing_schedules.staff_id)
+    const viewingStaffIds = Array.from(new Set((viewings || []).map((v: any) => v.staff_id).filter(Boolean)));
+    const { data: viewingStaff } = viewingStaffIds.length > 0
+      ? await supabase.from('profiles').select('id, full_name').in('id', viewingStaffIds)
+      : { data: [] as any[] };
+
     // 4. Lay tat ca phieu dat coc (deposit_requests)
     const { data: deposits } = registrationIds.length > 0
       ? await supabase
@@ -144,7 +150,7 @@ export const customerLookupService = {
         roomName: v.rooms?.name || '',
         branch: v.rooms?.branches?.name || '',
         date: v.scheduled_time ? new Date(v.scheduled_time).toLocaleDateString('vi-VN') : '',
-        staffName: '',
+        staffName: (viewingStaff || []).find((s: any) => s.id === v.staff_id)?.full_name || '',
         status: v.result === 'completed' ? 'viewed' : v.result === 'cancelled' ? 'cancelled' : 'confirmed'
       }));
 
