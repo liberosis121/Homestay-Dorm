@@ -203,7 +203,7 @@ export const invoiceService = {
     });
   },
 
-  payInvoice: async (userId: string, invoiceId: string, paymentMethod: string) => {
+  payInvoice: async (userId: string, invoiceId: string, paymentMethod: string, actorRole = 'customer') => {
     if (!invoiceId) {
       throw new Error('Invoice ID is required');
     }
@@ -212,12 +212,18 @@ export const invoiceService = {
     // 1. Fetch invoice info to check if it's a deposit invoice
     const { data: inv, error: fErr } = await supabase
       .from('invoices')
-      .select('invoice_type, deposit_id')
+        .select('invoice_type, deposit_id, status, payment_time')
       .eq('id', invoiceId)
       .maybeSingle();
 
     if (fErr) {
       console.error('[payInvoice] Error fetching invoice info:', fErr.message);
+    }
+    if (!inv) {
+      throw new Error('Hoa don khong ton tai.');
+    }
+    if ((inv as any).status === 'paid') {
+      return { success: true, paidAt: (inv as any).payment_time || paymentTime, alreadyPaid: true };
     }
 
     if (inv && inv.invoice_type === 'deposit' && inv.deposit_id) {
@@ -237,17 +243,22 @@ export const invoiceService = {
       // GATE quyen thanh toan: chi NGUOI DAI DIEN (cccd cua phieu dang ky) moi duoc tra
       // hoa don coc. Thanh vien nhom xem duoc nhung khong thanh toan duoc.
       // (Dong thoi va lo hong cu: truoc day payInvoice khong kiem tra quyen so huu.)
-      const payer = await getCustomerByUserId(userId);
-      const regCccd = (deposit as any).rental_registrations?.cccd;
-      if (!payer || !regCccd || payer.cccd !== regCccd) {
-        throw new Error('Chi nguoi dai dien moi duoc thanh toan hoa don dat coc nay.');
+      if (actorRole !== 'accountant') {
+        const payer = await getCustomerByUserId(userId);
+        const regCccd = (deposit as any).rental_registrations?.cccd;
+        if (!payer || !regCccd || payer.cccd !== regCccd) {
+          throw new Error('Chi nguoi dai dien moi duoc thanh toan hoa don dat coc nay.');
+        }
       }
 
       if (deposit.status === DEPOSIT_STATUS.CANCELLED) {
         throw new Error('Yeu cau dat coc nay da bi huy, khong the thanh toan.');
       }
       if (deposit.status === DEPOSIT_STATUS.PAID) {
-        throw new Error('Yeu cau dat coc nay da duoc thanh toan truoc do.');
+        if ((inv as any).status !== 'paid') {
+          await invoiceRepo.updateStatus(invoiceId, 'paid', paymentMethod, (inv as any).payment_time || paymentTime);
+        }
+        return { success: true, paidAt: (inv as any).payment_time || paymentTime, alreadyPaid: true };
       }
       if (deposit.status !== DEPOSIT_STATUS.INVOICE_CREATED) {
         throw new Error('Yeu cau dat coc chua o trang thai cho thanh toan.');

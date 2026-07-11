@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Search, CreditCard, Save, Eye, QrCode, CheckCircle2
 } from 'lucide-react';
-import { mockSupabase, getMockDB, saveMockDB, DepositInvoice, Profile, Room, CustomerDepositRequest } from '../../lib/supabaseClient';
+import { DepositInvoice, CustomerDepositRequest } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import { useAuthStore } from '../../stores/authStore';
@@ -12,8 +12,6 @@ import { formatShortId } from '../../lib/utils';
 export default function AccountantDepositPage() {
   const { user } = useAuthStore();
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
-  const [customers, setCustomers] = useState<Profile[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
   
   const [selectedRequestId, setSelectedRequestId] = useState('');
@@ -94,12 +92,8 @@ export default function AccountantDepositPage() {
         setDepositRequests(mappedRequests);
         setInvoices(mappedInvoices);
       } catch (err) {
-        console.warn('[AccountantDeposit] Failed to fetch backend data, falling back to mock:', err);
-        const db = getMockDB();
-        setInvoices(db.deposit_invoices || []);
-        setCustomers(db.profiles?.filter((p: Profile) => p.role === 'customer') || []);
-        setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
-        setDepositRequests(db.customer_deposit_requests || []);
+        console.error('[AccountantDeposit] Failed to fetch backend data:', err);
+        setToastMessage('Không thể tải dữ liệu hóa đơn cọc từ hệ thống thật.');
       }
     };
     loadData();
@@ -196,55 +190,9 @@ export default function AccountantDepositPage() {
       setDepositRequests(mappedRequests);
       setInvoices(mappedInvoices);
     } catch (err: any) {
-      console.warn('[AccountantDeposit] Live API failed, falling back to mock DB:', err);
-      const customer = customers.find(c => c.id === selectedCustomerId);
-      const room = rooms.find(r => r.id === selectedRoomId);
-      const req = depositRequests.find(r => r.id === selectedRequestId);
-      if (!req) return;
-
-      const parsedAmount = parseInt(amount.replace(/\D/g, '')) || req.deposit_amount || 0;
-      const deadlineDate = new Date();
-      if (deadlineType === '24h') {
-        deadlineDate.setDate(deadlineDate.getDate() + 1);
-      } else if (deadlineType === '48h') {
-        deadlineDate.setDate(deadlineDate.getDate() + 2);
-      } else {
-        deadlineDate.setDate(deadlineDate.getDate() + 3);
-      }
-
-      const newInvoice: Omit<DepositInvoice, 'id'> = {
-        customer_id: selectedCustomerId,
-        customer_name: customer?.full_name || req.customer_name,
-        room_id: selectedRoomId,
-        room_name: room?.name || req.room_name,
-        amount: parsedAmount,
-        deadline: deadlineDate.toISOString().replace('T', ' ').substring(0, 16),
-        payment_method: paymentMethod,
-        status: 'pending',
-        created_at: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        note: note || undefined
-      };
-
-      const res = mockSupabase.from('deposit_invoices').insert(newInvoice);
-      if (res.data) {
-        const db = getMockDB();
-        setInvoices(db.deposit_invoices || []);
-        const updatedRooms = db.rooms.map((r: Room) => {
-          if (r.id === selectedRoomId) return { ...r, status: 'deposited' };
-          return r;
-        });
-        db.rooms = updatedRooms;
-        const updatedRequests = (db.customer_deposit_requests || []).map((r: CustomerDepositRequest) => {
-          if (r.id === selectedRequestId) return { ...r, status: 'invoice_created' };
-          return r;
-        });
-        db.customer_deposit_requests = updatedRequests;
-        saveMockDB(db);
-        setRooms(updatedRooms.filter((r: Room) => r.status === 'available' || r.status === 'partial'));
-        setDepositRequests(updatedRequests);
-        handleResetForm();
-        setToastMessage('Tạo hóa đơn cọc thành công (Mock DB).');
-      }
+      console.error('[AccountantDeposit] Live API create invoice failed:', err);
+      setToastMessage(err?.message || 'Không thể tạo hóa đơn cọc trên hệ thống thật.');
+      return;
     }
   };
 
@@ -256,8 +204,31 @@ export default function AccountantDepositPage() {
       await accountantService.confirmInvoicePayment(email, id, 'transfer');
       setToastMessage('Đã xác nhận thu tiền thành công.');
 
-      // Refresh invoices
-      const depInvoices = await accountantService.fetchDepositInvoices(email);
+      // Refresh live data
+      const [pendingRequests, depInvoices] = await Promise.all([
+        accountantService.fetchPendingDepositRequests(email),
+        accountantService.fetchDepositInvoices(email)
+      ]);
+      const mappedRequests = (pendingRequests || []).map((req: any) => {
+        const kh = req.rental_registrations?.customers || {};
+        const prof = kh.profiles || {};
+        return {
+          id: req.id,
+          customer_id: kh.user_id || req.customer_id,
+          customer_name: prof.full_name || req.customer_name || 'Khách hàng',
+          customer_phone: prof.phone || req.customer_phone || '',
+          room_id: req.room_id,
+          room_name: req.rooms?.name || req.room_name || 'Phòng',
+          room_image_url: req.room_image_url || '',
+          branch_name: req.rooms?.branches?.name || req.branch_name || '',
+          viewing_schedule_id: req.viewing_schedule_id || '',
+          deposit_amount: req.deposit_amount,
+          expected_move_in_date: req.expected_move_in_date || '',
+          status: req.status,
+          note: req.note || '',
+          created_at: req.created_at || ''
+        };
+      });
       const mappedInvoices = (depInvoices || []).map((inv: any) => {
         const req = inv.deposit_requests || {};
         const rawDeadline = inv.deadline || req.payment_deadline || '';
@@ -276,20 +247,12 @@ export default function AccountantDepositPage() {
           note: inv.note
         };
       });
+      setDepositRequests(mappedRequests);
       setInvoices(mappedInvoices);
-    } catch (err) {
-      console.warn('[AccountantDeposit] Live API confirm payment failed, falling back to mock DB:', err);
-      const db = getMockDB();
-      const updatedInvoices = (db.deposit_invoices || []).map((inv: any) => {
-        if (inv.id === id) {
-          return { ...inv, status: 'paid' as const };
-        }
-        return inv;
-      });
-      db.deposit_invoices = updatedInvoices;
-      saveMockDB(db);
-      setInvoices(updatedInvoices);
-      setToastMessage('Đã xác nhận thu tiền thành công (Mock DB).');
+    } catch (err: any) {
+      console.error('[AccountantDeposit] Live API confirm payment failed:', err);
+      setToastMessage(err?.message || 'Không thể xác nhận thu tiền trên hệ thống thật.');
+      return;
     }
   };
 

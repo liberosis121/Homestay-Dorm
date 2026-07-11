@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.middleware';
+import { requireAuth, requireRole } from '../middleware/auth.middleware';
 import { invoiceService } from '../services/invoice.service';
 import { sendSuccess, sendError } from '../utils/response.util';
+import { USER_ROLE } from '../types/constants';
 
 const router = Router();
 
@@ -20,7 +21,7 @@ router.get('/my-invoices', requireAuth, async (req, res) => {
 });
 
 // Route for customer to pay an invoice
-router.post('/:invoiceId/pay', requireAuth, async (req, res) => {
+router.post('/:invoiceId/pay', requireAuth, requireRole(USER_ROLE.CUSTOMER, USER_ROLE.ACCOUNTANT), async (req, res) => {
   try {
     const { invoiceId } = req.params;
     const { paymentMethod } = req.body;
@@ -29,7 +30,7 @@ router.post('/:invoiceId/pay', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phương thức thanh toán là bắt buộc' });
     }
 
-    const data = await invoiceService.payInvoice(req.user!.id, invoiceId, paymentMethod);
+    const data = await invoiceService.payInvoice(req.user!.id, invoiceId, paymentMethod, req.profile!.role);
     sendSuccess(res, data, 'Thanh toán hóa đơn thành công!');
   } catch (err) {
     sendError(res, err, 'Lỗi khi thanh toán hóa đơn');
