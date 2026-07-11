@@ -3,6 +3,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCustomerServicesStore } from './store/useCustomerServicesStore';
 import ServiceCard from './components/ServiceCard';
 import { useNavigate } from 'react-router-dom';
+import { useInvoiceStore, Invoice } from './store/useInvoiceStore';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import {
   Search, X, Zap, AlertCircle, CheckCircle2,
@@ -907,6 +908,7 @@ function RenterServicesView({
   onViewDetail,
   onCancelSub,
   userRoomName,
+  invoices,
 }: {
   services: Service[];
   subscriptions: ServiceSubscription[];
@@ -917,12 +919,19 @@ function RenterServicesView({
   onViewDetail: (svc: Service) => void;
   onCancelSub: (subId: string) => void;
   userRoomName: string;
+  invoices: Invoice[];
 }) {
   const navigate = useNavigate();
 
   // Catalog Tab local filters
   const [renterSearch, setRenterSearch] = useState('');
   const [renterCategory, setRenterCategory] = useState('all');
+
+  const latestMonthlyInvoice = useMemo(() => {
+    const monthlyInvoices = invoices.filter(inv => inv.type === 'monthly');
+    if (monthlyInvoices.length === 0) return null;
+    return [...monthlyInvoices].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())[0];
+  }, [invoices]);
 
   const activeSubs = useMemo(() => subscriptions.filter((s) => s.status === 'active'), [subscriptions]);
   const totalMonthlyCost = useMemo(() => activeSubs.reduce((sum, s) => sum + s.monthly_cost, 0), [activeSubs]);
@@ -1287,41 +1296,77 @@ function RenterServicesView({
           </div>
 
           {/* Monthly Cost Summary */}
-          <div className="bg-primary text-on-primary rounded-2xl p-6 shadow-xl border border-primary/20">
-            <h4 className="inline-flex items-center rounded-full border border-on-tertiary-fixed/25 bg-tertiary-fixed/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-on-tertiary-fixed mb-5">
-              Tóm tắt phí tháng 10
-            </h4>
-            <div className="space-y-3.5 mb-6 text-sm">
-              <div className="flex justify-between items-center font-medium">
-                <span className="text-on-primary/80">Tiền phòng</span>
-                <span className="font-bold">4.500.000đ</span>
-              </div>
-              <div className="flex justify-between items-center font-medium">
-                <span className="text-on-primary/80">Điện &amp; Nước</span>
-                <span className="font-bold">415.000đ</span>
-              </div>
-              <div className="flex justify-between items-center font-medium">
-                <span className="text-on-primary/80">Dịch vụ (4)</span>
-                <span className="font-bold">435.000đ</span>
+          {latestMonthlyInvoice ? (
+            <div className="bg-primary text-on-primary rounded-2xl p-6 shadow-xl border border-primary/20 animate-fade-in">
+              <h4 className="inline-flex items-center rounded-full border border-on-tertiary-fixed/25 bg-tertiary-fixed/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-on-tertiary-fixed mb-5">
+                Tóm tắt phí {latestMonthlyInvoice.billingPeriod.toLowerCase()}
+              </h4>
+              <div className="space-y-3.5 mb-6 text-sm">
+                <div className="flex justify-between items-center font-medium">
+                  <span className="text-on-primary/80">Tiền phòng</span>
+                  <span className="font-bold">{(latestMonthlyInvoice.roomPrice || 0).toLocaleString('vi-VN')}đ</span>
+                </div>
+                <div className="flex justify-between items-center font-medium">
+                  <span className="text-on-primary/80">Điện &amp; Nước</span>
+                  <span className="font-bold">{((latestMonthlyInvoice.electricityPrice || 0) + (latestMonthlyInvoice.waterPrice || 0)).toLocaleString('vi-VN')}đ</span>
+                </div>
+                <div className="flex justify-between items-center font-medium">
+                  <span className="text-on-primary/80">Dịch vụ</span>
+                  <span className="font-bold">{(latestMonthlyInvoice.servicePrice || 0).toLocaleString('vi-VN')}đ</span>
+                </div>
+
+                <div className="pt-4 border-t border-on-primary/20 flex justify-between items-end">
+                  <span className="font-bold text-xs uppercase tracking-wide">Tổng cộng</span>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold font-lexend">{(latestMonthlyInvoice.totalAmount || 0).toLocaleString('vi-VN')}đ</p>
+                    <p className="text-[10px] text-on-primary/60 font-medium">Đã bao gồm thuế GTGT</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-on-primary/20 flex justify-between items-end">
-                <span className="font-bold text-xs uppercase tracking-wide">Tổng cộng</span>
-                <div className="text-right">
-                  <p className="text-2xl font-bold font-lexend">5.350.000đ</p>
-                  <p className="text-[10px] text-on-primary/60 font-medium">Đã bao gồm thuế GTGT</p>
+              {latestMonthlyInvoice.status !== 'paid' ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/customer/payment/${latestMonthlyInvoice.id}`)}
+                  className="w-full bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-surface-container hover:shadow-lg transition-all cursor-pointer active:scale-[0.97] shadow-md"
+                >
+                  Thanh toán ngay
+                </button>
+              ) : (
+                <div className="w-full bg-primary-container text-on-primary-container py-3.5 rounded-xl font-bold text-sm text-center border border-on-primary/10">
+                  ✓ Đã thanh toán
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-primary text-on-primary rounded-2xl p-6 shadow-xl border border-primary/20">
+              <h4 className="inline-flex items-center rounded-full border border-on-tertiary-fixed/25 bg-tertiary-fixed/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-on-tertiary-fixed mb-5">
+                Tóm tắt phí tháng này
+              </h4>
+              <div className="space-y-3.5 mb-6 text-sm">
+                <div className="flex justify-between items-center font-medium">
+                  <span className="text-on-primary/80">Tiền phòng</span>
+                  <span className="font-bold">0đ</span>
+                </div>
+                <div className="flex justify-between items-center font-medium">
+                  <span className="text-on-primary/80">Điện &amp; Nước</span>
+                  <span className="font-bold">0đ</span>
+                </div>
+                <div className="flex justify-between items-center font-medium">
+                  <span className="text-on-primary/80">Dịch vụ ({activeSubs.length})</span>
+                  <span className="font-bold">{totalMonthlyCost.toLocaleString('vi-VN')}đ</span>
+                </div>
+
+                <div className="pt-4 border-t border-on-primary/20 flex justify-between items-end">
+                  <span className="font-bold text-xs uppercase tracking-wide">Tổng cộng</span>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold font-lexend">{totalMonthlyCost.toLocaleString('vi-VN')}đ</p>
+                    <p className="text-[10px] text-on-primary/60 font-medium">Chưa phát hành hóa đơn</p>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/customer/invoices', { state: { filterType: 'service', from: '/customer/services' } })}
-              className="w-full bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-surface-container hover:shadow-lg transition-all cursor-pointer active:scale-[0.97] shadow-md"
-            >
-              Thanh toán ngay
-            </button>
-          </div>
+          )}
 
           {/* System Health Check Widget */}
           <div className="bg-surface-container-low border border-outline-variant/60 rounded-2xl p-5">
@@ -1363,12 +1408,17 @@ export default function CustomerServicesPage() {
     isLoading, error
   } = useCustomerServicesStore();
 
+  const { invoices, fetchInvoices } = useInvoiceStore();
+
   const isRenting = !!user?.renting_room_name;
   const userRoomName = user?.renting_room_name ?? '';
 
   useEffect(() => {
     loadData(user?.email ?? '');
-  }, [user?.email, loadData]);
+    if (user?.email) {
+      fetchInvoices(user.email);
+    }
+  }, [user?.email, loadData, fetchInvoices]);
 
   // Toast state
   const [toast, setToast] = useState<string | null>(null);
@@ -1426,6 +1476,7 @@ export default function CustomerServicesPage() {
           onViewDetail={openDetail}
           onCancelSub={openCancelConfirm}
           userRoomName={userRoomName}
+          invoices={invoices}
         />
       ) : (
         <GuestServicesView

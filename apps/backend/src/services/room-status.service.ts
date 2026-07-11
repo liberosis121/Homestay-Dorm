@@ -11,6 +11,7 @@ export interface Room {
   amenities: string[];
   price: number;
   status: string;
+  gender_type?: string;
 }
 
 export const roomStatusService = {

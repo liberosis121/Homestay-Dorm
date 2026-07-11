@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, FileText, Printer, Download, CreditCard,
+  ArrowLeft, FileText, Printer, CreditCard,
   Building2, ShieldCheck, AlertCircle,
-  FileSignature, CheckCircle2, ClipboardList
+  FileSignature, ClipboardList
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
@@ -46,7 +46,6 @@ export default function CustomerContractsPage() {
   const { user } = useAuthStore();
   const [contractsList, setContractsList] = useState<ContractData[]>([]);
   const [selectedContractId, setSelectedContractId] = useState<string>('');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,10 +131,7 @@ export default function CustomerContractsPage() {
 
   const contract = contractsList.find((c) => c.id === selectedContractId) || contractsList[0];
 
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
+
 
   const getStatusBadge = (status: 'active' | 'expired' | 'terminated') => {
     switch (status) {
@@ -165,13 +161,6 @@ export default function CustomerContractsPage() {
 
   return (
     <div className="max-w-container-max mx-auto px-4 md:px-8 pt-0 pb-8 space-y-6 animate-fade-in-up">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-24 right-6 z-50 bg-[#334537] text-white border border-[#4a5d4e] px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-2.5 animate-slide-in-right">
-          <CheckCircle2 className="w-5 h-5 text-white" />
-          <span className="text-sm font-semibold">{toastMessage}</span>
-        </div>
-      )}
 
       {/* Styles for animation */}
       <style>{`
@@ -457,15 +446,7 @@ export default function CustomerContractsPage() {
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest border-b border-[#eee7e1] pb-2">
               Hành động nhanh
             </h3>
-            
             <div className="flex flex-col gap-2.5">
-              <button
-                onClick={() => triggerToast(`Đang khởi tạo tải xuống PDF cho hợp đồng ${contract.contractCode}...`)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-primary text-primary font-bold text-xs rounded-xl hover:bg-primary/5 transition active:scale-95 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                Tải xuống PDF Hợp đồng
-              </button>
               <button
                 onClick={() => window.print()}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white font-bold text-xs rounded-xl hover:bg-[#334537] transition active:scale-95 cursor-pointer shadow-sm"
@@ -473,7 +454,7 @@ export default function CustomerContractsPage() {
                 <Printer className="w-4 h-4" />
                 In bản hợp đồng
               </button>
-              {(contract.status === 'active' || contract.status === 'expired') && (
+              {contract.status === 'active' && (
                 <button
                   onClick={() => navigate('/customer/checkout-request', { state: { contractId: contract.id } })}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#b87d4b] hover:bg-[#9c663b] text-white font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer shadow-sm"

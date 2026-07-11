@@ -68,6 +68,7 @@ export type ViewingStatus = typeof VIEWING_STATUS[keyof typeof VIEWING_STATUS];
  *   cancelled  ←  [KH tự hủy trước khi được duyệt]
  */
 export const DEPOSIT_STATUS = {
+  INVOICE_CREATED: 'invoice_created',
   PENDING: 'pending',     // Chờ kế toán xác nhận
   PAID: 'paid',           // Đã xác nhận đặt cọc thành công
   REJECTED: 'rejected',   // Kế toán từ chối
@@ -115,6 +116,17 @@ export const ROOM_TYPE = {
 export type RoomType = typeof ROOM_TYPE[keyof typeof ROOM_TYPE];
 
 // ============================================================
+// 6b. ĐỐI TƯỢNG GIỚI TÍNH CỦA PHÒNG (bảng rooms)
+// ============================================================
+export const GENDER_TYPE = {
+  MALE: 'male',
+  FEMALE: 'female',
+  UNISEX: 'unisex',
+} as const;
+
+export type GenderType = typeof GENDER_TYPE[keyof typeof GENDER_TYPE];
+
+// ============================================================
 // 7. VAI TRÒ NGƯỜI DÙNG (bảng profiles)
 // ============================================================
 export const USER_ROLE = {
@@ -146,10 +158,10 @@ export const ID_PREFIX = {
 // 9. CÁC HẰNG SỐ NGHIỆP VỤ KHÁC
 // ============================================================
 /**
- * Số ngày deadline thanh toán cọc sau khi gửi phiếu.
- * Sau 7 ngày mà KH chưa chuyển khoản → tự động hủy phiếu cọc (xử lý bằng Cron Job).
+ * Số giờ thanh toán cọc sau khi hóa đơn đặt cọc được gửi cho khách.
+ * Sau 24 giờ mà KH chưa hoàn tất thanh toán → tự động hủy yêu cầu đặt cọc.
  */
-export const DEPOSIT_DEADLINE_DAYS = 7;
+export const DEPOSIT_PAYMENT_DEADLINE_HOURS = 24;
 
 /**
  * Số lượng tối đa đơn đăng ký đang chờ xử lý mà một KH được phép có.

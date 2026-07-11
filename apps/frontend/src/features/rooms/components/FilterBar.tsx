@@ -32,17 +32,17 @@ export default function FilterBar({ onToggleFilters, showExtended }: Props) {
 
 
   const roomTypeOptions = [
-    { value: 'Loại phòng', label: 'Loại phòng' },
-    { value: 'Studio', label: 'Studio' },
-    { value: 'Twin', label: 'Twin' },
-    { value: 'Dorm', label: 'KTX (Dorm)' },
+    { value: 'Tất cả loại phòng', label: 'Tất cả loại phòng' },
+    { value: 'studio', label: 'Studio' },
+    { value: 'twin', label: 'Twin' },
+    { value: 'dorm', label: 'KTX (Dorm)' },
   ];
 
   const genderOptions = [
-    { value: 'Giới tính', label: 'Giới tính' },
-    { value: 'Male', label: 'Nam' },
-    { value: 'Female', label: 'Nữ' },
-    { value: 'All', label: 'Tất cả' },
+    { value: 'Tất cả giới tính', label: 'Tất cả giới tính' },
+    { value: 'male', label: 'Nam' },
+    { value: 'female', label: 'Nữ' },
+    { value: 'unisex', label: 'Hỗn hợp' },
   ];
 
   const sortOptions = [
@@ -112,7 +112,7 @@ export default function FilterBar({ onToggleFilters, showExtended }: Props) {
           onChange={setSortBy}
           options={sortOptions}
           pill={true}
-          triggerClassName="bg-[#f1f4f0] border-none"
+          triggerClassName="!bg-white !border-[#c3c8bf]"
         />
       </div>
     </div>

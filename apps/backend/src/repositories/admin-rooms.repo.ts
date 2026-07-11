@@ -10,6 +10,7 @@ export interface DbRoom {
   amenities: string[];
   price: number;
   status: string;
+  gender_type: string;
 }
 
 export interface DbBed {
@@ -41,6 +42,7 @@ export const adminRoomsRepo = {
     amenities?: string[];
     price: number;
     status?: string;
+    gender_type?: string;
   }): Promise<DbRoom> => {
     // Room ID format: P-{floor}{2-digit sequence}, e.g. floor 1 -> P-101, P-102
     const { data: existing, error: existErr } = await supabase
@@ -73,7 +75,8 @@ export const adminRoomsRepo = {
         room_type: room.room_type,
         amenities: room.amenities ?? [],
         price: room.price,
-        status: room.status ?? 'available'
+        status: room.status ?? 'available',
+        gender_type: room.gender_type ?? 'unisex'
       })
       .select()
       .single();
@@ -91,6 +94,7 @@ export const adminRoomsRepo = {
     amenities?: string[];
     price?: number;
     status?: string;
+    gender_type?: string;
   }): Promise<DbRoom> => {
     const { data, error } = await supabase
       .from('rooms')
@@ -102,7 +106,8 @@ export const adminRoomsRepo = {
         room_type: room.room_type,
         amenities: room.amenities,
         price: room.price,
-        status: room.status
+        status: room.status,
+        gender_type: room.gender_type
       })
       .eq('id', id)
       .select()

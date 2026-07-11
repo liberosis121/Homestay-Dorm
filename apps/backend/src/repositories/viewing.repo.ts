@@ -39,6 +39,8 @@ export const viewingRepo = {
         rooms!inner (
           id,
           name,
+          room_type,
+          image_url,
           branches!inner (
             id,
             name,

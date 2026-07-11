@@ -15,6 +15,7 @@ export const adminRoomsService = {
     amenities?: string[];
     price: number;
     status?: string;
+    gender_type?: string;
   }): Promise<DbRoom> => {
     if (!room.branch_id || !room.name) {
       throw new Error('Chi nhánh và tên phòng là bắt buộc');
@@ -34,6 +35,7 @@ export const adminRoomsService = {
     amenities?: string[];
     price?: number;
     status?: string;
+    gender_type?: string;
   }): Promise<DbRoom> => {
     if (!id) {
       throw new Error('ID phòng là bắt buộc');

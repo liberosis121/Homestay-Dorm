@@ -62,9 +62,15 @@ export default function InvoicesDashboardPage() {
 
   useEffect(() => {
     if (location.state?.filterType) {
-      setFilters({ type: location.state.filterType });
+      setFilters({ 
+        type: location.state.filterType,
+        status: 'Tất cả'
+      });
     } else if (location.state?.from === '/profile') {
-      setFilters({ type: 'Tất cả' });
+      setFilters({ 
+        type: 'Tất cả',
+        status: 'Tất cả'
+      });
     }
   }, [location.state?.filterType, location.state?.from, setFilters]);
 

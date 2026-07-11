@@ -176,7 +176,7 @@ export const depositInvoiceRepo = {
   /**
    * Tao mot hoa don dat coc moi va cap nhat phieu dat coc sang trang thai 'invoice_created'.
    */
-  createDepositInvoice: async (invoiceData: any, requestId: string) => {
+  createDepositInvoice: async (invoiceData: any, requestId: string, paymentDeadline: string) => {
     const { data: invoice, error: invError } = await supabase
       .from('invoices')
       .insert({
@@ -192,7 +192,7 @@ export const depositInvoiceRepo = {
 
     const { error: reqError } = await supabase
       .from('deposit_requests')
-      .update({ status: 'invoice_created' })
+      .update({ status: 'invoice_created', payment_deadline: paymentDeadline })
       .eq('id', requestId);
 
     if (reqError) {

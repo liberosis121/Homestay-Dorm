@@ -53,6 +53,7 @@ export interface RoomFilters {
   status?: string;
   min_price?: number;
   max_price?: number;
+  gender_type?: string;
 }
 
 /**

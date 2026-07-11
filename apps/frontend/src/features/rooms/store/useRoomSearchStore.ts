@@ -31,8 +31,8 @@ interface RoomSearchState {
 const initialState = {
   keyword: '',
   branch: 'Tất cả chi nhánh',
-  roomType: 'Loại phòng',
-  gender: 'Giới tính',
+  roomType: 'Tất cả loại phòng',
+  gender: 'Tất cả giới tính',
   sortBy: 'Mới nhất',
   
   amenities: [],

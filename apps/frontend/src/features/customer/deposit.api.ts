@@ -45,12 +45,15 @@ const mapDepositResponse = (d: any): DepositRequest => {
     ? d.payment_deadline.split('T')[0] 
     : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  // Xác định ảnh phòng dựa trên loại phòng
-  let room_image_url = roomSingle;
-  const roomType = d.rooms?.room_type?.toLowerCase() || '';
-  if (roomType.includes('dorm') || roomType.includes('ktx')) room_image_url = roomDorm;
-  else if (roomType.includes('twin')) room_image_url = roomTwin;
-  else if (roomType.includes('studio')) room_image_url = roomStudio;
+  // Ưu tiên ảnh thật từ DB (rooms.image_url), fallback theo room_type nếu không có
+  let room_image_url: string = d.rooms?.image_url || '';
+  if (!room_image_url) {
+    const roomType = d.rooms?.room_type?.toLowerCase() || '';
+    if (roomType.includes('dorm') || roomType.includes('ktx')) room_image_url = roomDorm;
+    else if (roomType.includes('twin')) room_image_url = roomTwin;
+    else if (roomType.includes('studio')) room_image_url = roomStudio;
+    else room_image_url = roomSingle;
+  }
 
   return {
     id: d.id,
