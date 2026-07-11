@@ -1,4 +1,3 @@
-import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 import { Room } from '../../lib/supabaseClient';
 
@@ -103,7 +102,9 @@ export default function ManagerRoomsPage() {
             capacity: r.max_occupants ?? r.capacity ?? 4,
             has_ac: r.has_ac ?? true,
             has_private_wc: r.has_private_wc ?? true,
-            price: Number(r.price) || 0
+            price: Number(r.price) || 0,
+            area: r.area ?? '',
+            amenities: r.amenities || []
           }));
           setRooms(mapped);
         }
@@ -344,7 +345,7 @@ export default function ManagerRoomsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 22, fontWeight: 800, color: T.text }}>{selectedRoom.name}</h3>
-                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 3 }}>Mã phòng: {formatShortId(selectedRoom.id, 'room')} • Tầng {selectedRoom.floor}</p>
+                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 3 }}>Mã phòng: {selectedRoom.id} • Tầng {selectedRoom.floor}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: 8, cursor: 'pointer' }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.textMuted }}>close</span>
@@ -365,17 +366,38 @@ export default function ManagerRoomsPage() {
                 <div className="space-y-3">
                   {[
                     { label: 'Sức chứa', val: `${selectedRoom.capacity} giường` },
+                    { label: 'Diện tích', val: selectedRoom.area || 'Chưa cập nhật' },
                     { label: 'Giới tính', val: selectedRoom.gender_type === 'male' ? 'Nam' : selectedRoom.gender_type === 'female' ? 'Nữ' : 'Hỗn hợp' },
                     { label: 'Loại phòng', val: selectedRoom.room_type },
                     { label: 'Đơn giá', val: `${selectedRoom.price.toLocaleString('vi-VN')}đ/tháng` },
-                    { label: 'Điều hoà', val: selectedRoom.has_ac ? 'Có' : 'Không' },
-                    { label: 'WC riêng', val: selectedRoom.has_private_wc ? 'Có' : 'Không' },
                   ].map((row, i) => (
                     <div key={i} className="flex justify-between items-center">
                       <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
                       <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{row.val}</span>
                     </div>
                   ))}
+                  <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 12, marginTop: 12 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', display: 'block', marginBottom: 8, letterSpacing: 0.5 }}>Tiện ích phòng</span>
+                    {selectedRoom.amenities && selectedRoom.amenities.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedRoom.amenities.map((amenity, idx) => (
+                          <span key={idx} style={{
+                            background: T.primaryLight,
+                            color: T.primary,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '4px 10px',
+                            borderRadius: 20,
+                            border: `1px solid ${T.border}`
+                          }}>
+                            {amenity}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: T.textFaint, fontStyle: 'italic' }}>Chưa cập nhật tiện ích</span>
+                    )}
+                  </div>
                 </div>
               </div>
 

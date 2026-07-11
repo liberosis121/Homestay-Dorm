@@ -87,11 +87,23 @@ export const monthlyInvoiceRepo = {
         };
       }
 
+      // Tinh lai tien dien/nuoc tu chi so de suy ra tien dich vu (services_cost) bang cach tru phan du:
+      // amount da luu = rent_price + services_cost + electricity_cost + water_cost (xem monthly-invoice.service.ts)
+      const elecUsage = reading ? (reading.end_electricity - reading.start_electricity) : 0;
+      const waterUsage = reading ? (reading.end_water - reading.start_water) : 0;
+      const electricityCost = elecUsage > 0 ? elecUsage * 3500 : 0;
+      const waterCost = waterUsage > 0 ? waterUsage * 15000 : 0;
+      const rentPrice = mappedContract?.rent_price || 0;
+      const servicesCost = Math.max(0, (inv.amount || 0) - rentPrice - electricityCost - waterCost);
+
       return {
         ...inv,
         customer_name: mappedContract?.customer_name || 'Khách hàng',
         customer_phone: mappedContract?.customer_phone || '',
         room_name: mappedContract?.rooms?.name || 'Phòng',
+        branch_id: mappedContract?.rooms?.branches?.id || '',
+        branch_name: mappedContract?.rooms?.branches?.name || '',
+        services_cost: servicesCost,
         contracts: mappedContract,
         electricity_water_records: reading || null
       };
@@ -123,7 +135,12 @@ export const monthlyInvoiceRepo = {
 
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
-      ? await supabase.from('rooms').select('id, name').in('id', roomIds)
+      ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
+      : { data: [] as any[] };
+
+    const branchIds = (rooms || []).map(r => r.branch_id).filter(Boolean);
+    const { data: branches } = branchIds.length > 0
+      ? await supabase.from('branches').select('id, name').in('id', branchIds)
       : { data: [] as any[] };
 
     const regIds = (depositReqs || []).map(dr => dr.registration_id).filter(Boolean);
@@ -136,9 +153,34 @@ export const monthlyInvoiceRepo = {
       ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
       : { data: [] as any[] };
 
+    // Chi so dien nuoc gan nhat cua tung phong, dung de tinh ky thanh toan TIEP THEO
+    // (khong the hardcode 1 thang co dinh vi moi phong co the da duoc lap hoa don o cac ky khac nhau).
+    const { data: readings } = roomIds.length > 0
+      ? await supabase.from('electricity_water_records').select('room_id, billing_period').in('room_id', roomIds)
+      : { data: [] as any[] };
+
+    const nextPeriodForRoom = (roomId: string): string => {
+      const roomReadings = (readings || []).filter(r => r.room_id === roomId);
+      let latestPeriod: string | null = null;
+      for (const r of roomReadings) {
+        if (!latestPeriod || r.billing_period > latestPeriod) latestPeriod = r.billing_period;
+      }
+
+      if (!latestPeriod) {
+        const now = new Date();
+        return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+      }
+
+      // billing_period dang luu dang 'YYYY-MM' -> ky tiep theo la thang ke tiep
+      const [year, month] = latestPeriod.split('-').map(Number);
+      const next = new Date(year, month, 1); // month (1-based) lam index 0-based cua Date = thang ke tiep
+      return `${String(next.getMonth() + 1).padStart(2, '0')}/${next.getFullYear()}`;
+    };
+
     return contracts.map(c => {
       const depReq = (depositReqs || []).find(dr => dr.id === c.deposit_id);
       const room = depReq ? (rooms || []).find(r => r.id === depReq.room_id) : null;
+      const branch = room ? (branches || []).find(b => b.id === room.branch_id) : null;
       const reg = depReq ? (regs || []).find(rg => rg.id === depReq.registration_id) : null;
       const customer = reg ? (customers || []).find(cust => cust.cccd === reg.cccd) : null;
 
@@ -149,8 +191,13 @@ export const monthlyInvoiceRepo = {
         customer_phone: customer?.phone || '',
         room_id: room?.id || '',
         room_name: room?.name || 'Chưa xếp phòng',
+        branch_id: branch?.id || '',
+        branch_name: branch?.name || '',
         rent_price: c.rent_price || 1500000,
-        period: '06/2026'
+        period: room ? nextPeriodForRoom(room.id) : (() => {
+          const now = new Date();
+          return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        })()
       };
     });
   },

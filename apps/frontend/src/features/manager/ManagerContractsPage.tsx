@@ -375,14 +375,14 @@ export default function ManagerContractsPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '11%' }} /> {/* Mã hợp đồng */}
-              <col style={{ width: '18%' }} /> {/* Khách hàng */}
-              <col style={{ width: '15%' }} /> {/* Phòng / Giường */}
-              <col style={{ width: '10%' }} /> {/* Loại thuê */}
-              <col style={{ width: '12%' }} /> {/* Tiền thuê / tháng */}
-              <col style={{ width: '11%' }} /> {/* Thời hạn */}
-              <col style={{ width: '12%' }} /> {/* Trạng thái */}
-              <col style={{ width: '11%' }} /> {/* Action */}
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
@@ -434,7 +434,7 @@ export default function ManagerContractsPage() {
                 const typeCfg = DEPOSIT_TYPE_CONFIG[c.deposit_type];
 
                 return (
-                  <tr key={formatShortId(c.id, 'contract')}
+                  <tr key={c.id}
                     onClick={() => handleOpenDrawer(c)}
                     style={{ borderBottom: `1px solid ${T.border}`, transition: 'background 0.15s', cursor: 'pointer' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150">

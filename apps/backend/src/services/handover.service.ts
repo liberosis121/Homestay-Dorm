@@ -3,8 +3,19 @@ import { assetRepo } from '../repositories/asset.repo';
 import { supabase } from '../utils/supabase';
 
 export const handoverService = {
-  getHandovers: async (filters?: { contract_id?: string }) => {
-    return await handoverRepo.findAll(filters);
+  getHandovers: async (filters?: { contract_id?: string }, managerId?: string) => {
+    let result = await handoverRepo.findAll(filters);
+    if (managerId) {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('branch_id')
+        .eq('id', managerId)
+        .maybeSingle();
+      if (employee && employee.branch_id) {
+        result = result.filter((h: any) => h.branch_id === employee.branch_id);
+      }
+    }
+    return result;
   },
 
   getHandoverById: async (id: string) => {

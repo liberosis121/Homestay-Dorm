@@ -8,6 +8,57 @@ import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
+// Han thanh toan = ngay 10 cua thang KE TIEP sau ky ghi chi so (theo dung quy dinh da neu o Dashboard).
+const computeDueDate = (billingPeriod: string): string => {
+  const [year, month] = billingPeriod.split('-').map(Number);
+  if (!year || !month) return '';
+  const due = new Date(year, month, 10); // month (1-based) lam index 0-based cua Date = thang ke tiep
+  return due.toISOString().split('T')[0];
+};
+
+// Chuyen 'YYYY-MM' (dinh dang billing_period trong DB) sang 'MM/YYYY' (dinh dang hien thi/filter cua trang).
+const toDisplayPeriod = (billingPeriod: string): string => {
+  const match = billingPeriod?.match(/^(\d{4})-(\d{2})$/);
+  return match ? `${match[2]}/${match[1]}` : billingPeriod || '';
+};
+
+// Chieu nguoc lai: 'MM/YYYY' (dropdown chon ky) -> 'YYYY-MM' (dinh dang can gui len API/DB).
+const toApiPeriod = (displayPeriod: string): string => {
+  const match = displayPeriod?.match(/^(\d{2})\/(\d{4})$/);
+  return match ? `${match[2]}-${match[1]}` : displayPeriod || '';
+};
+
+// Chuan hoa danh sach hoa don dinh ky tu response API — dung chung cho lan tai dau va cac lan refresh.
+const mapMonthlyInvoices = (liveInvoices: any[]): MonthlyInvoice[] =>
+  (liveInvoices || []).map((inv: any) => {
+    const contract = inv.contracts || {};
+    const reading = inv.electricity_water_records || {};
+    const elecUse = Math.max(0, (reading.end_electricity ?? 0) - (reading.start_electricity ?? 0));
+    const waterUse = Math.max(0, (reading.end_water ?? 0) - (reading.start_water ?? 0));
+    const billingPeriod: string = reading.billing_period || '';
+
+    return {
+      id: inv.id,
+      customer_id: contract.id || inv.customer_id,
+      customer_name: inv.customer_name || 'Khách hàng',
+      room_id: contract.room_id || inv.room_id,
+      room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+      branch_id: inv.branch_id || '',
+      branch_name: inv.branch_name || '',
+      period: billingPeriod ? toDisplayPeriod(billingPeriod) : '',
+      rent_amount: contract.rent_price || 0,
+      electricity_kwh: elecUse,
+      electricity_cost: elecUse * 3500,
+      water_m3: waterUse,
+      water_cost: waterUse * 15000,
+      services_cost: inv.services_cost ?? 0,
+      total: inv.amount,
+      due_date: billingPeriod ? computeDueDate(billingPeriod) : '',
+      status: inv.status,
+      created_at: inv.created_at || ''
+    };
+  });
+
 const STANDARD_INCIDENTALS = [
   { value: 'voi_sen', label: 'Đền bù làm hỏng vòi sen tắm', code: 'CPPS-8821', amount: 150000 },
   { value: 'the_tu', label: 'Đền bù làm mất thẻ từ/chìa khóa', code: 'CPPS-4102', amount: 100000 },
@@ -69,31 +120,7 @@ export default function AccountantMonthlyPage() {
           accountantService.fetchActiveContracts(email)
         ]);
 
-        const mappedInvoices = (liveInvoices || []).map((inv: any) => {
-          const contract = inv.contracts || {};
-          const reading = inv.electricity_water_records || {};
-          const elecUse = reading.end_electricity - reading.start_electricity;
-          const waterUse = reading.end_water - reading.start_water;
-          return {
-            id: inv.id,
-            customer_id: contract.id || inv.customer_id,
-            customer_name: inv.customer_name || 'Khách hàng',
-            room_id: contract.room_id || inv.room_id,
-            room_name: inv.room_name || contract.rooms?.name || 'Phòng',
-            period: reading.billing_period || inv.period || '06/2026',
-            rent_amount: contract.rent_price || 1500000,
-            electricity_kwh: elecUse > 0 ? elecUse : 80,
-            electricity_cost: elecUse > 0 ? elecUse * 3500 : 80 * 3500,
-            water_m3: waterUse > 0 ? waterUse : 6,
-            water_cost: waterUse > 0 ? waterUse * 15000 : 6 * 15000,
-            services_cost: 150000,
-            total: inv.amount,
-            due_date: inv.due_date || '2026-07-10',
-            status: inv.status,
-            created_at: inv.created_at || ''
-          };
-        });
-        setInvoices(mappedInvoices);
+        setInvoices(mapMonthlyInvoices(liveInvoices));
         setContracts(liveContracts || []);
       } catch (err) {
         console.warn('[AccountantMonthly] Failed to load from backend, falling back to mock:', err);
@@ -115,6 +142,26 @@ export default function AccountantMonthlyPage() {
 
   const selectedContract = contracts.find(c => c.id === selectedContractId);
 
+  const loadContractIncidentals = async (contractId: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      const contractIncidentals = await accountantService.fetchContractIncidentals(email, contractId);
+      // Bo qua cac khoan da 'billed' (da duoc tinh vao mot hoa don truoc do) — tranh tinh trung phi cho ky nay.
+      setIncidentals((contractIncidentals || [])
+        .filter((c: any) => c.status !== 'billed')
+        .map((c: any) => ({
+          id: c.id,
+          name: c.cost_name,
+          amount: Number(c.penalty_amount) || 0,
+          confirmed: c.status !== 'pending',
+          dateRecorded: c.recorded_date
+        })));
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to load contract incidentals:', err);
+      setIncidentals([]);
+    }
+  };
+
   useEffect(() => {
     if (selectedContract) {
       const fetchReading = async () => {
@@ -127,20 +174,17 @@ export default function AccountantMonthlyPage() {
             setWaterOld(reading.end_water);
             setWaterNew(reading.end_water + 6);
           } else {
-            const oldE = 1200 + (selectedContract.id === 'HD-2026-0001' ? 80 : 40);
-            const oldW = 45 + (selectedContract.id === 'HD-2026-0001' ? 8 : 4);
-            setElecOld(oldE);
-            setElecNew(oldE + 85);
-            setWaterOld(oldW);
-            setWaterNew(oldW + 6);
+            // Chua tung ghi chi so cho phong nay (lan lap hoa don dau tien) -> bat dau tu 0.
+            setElecOld(0);
+            setElecNew(85);
+            setWaterOld(0);
+            setWaterNew(6);
           }
         } catch (err) {
-          const oldE = 1200 + (selectedContract.id === 'HD-2026-0001' ? 80 : 40);
-          const oldW = 45 + (selectedContract.id === 'HD-2026-0001' ? 8 : 4);
-          setElecOld(oldE);
-          setElecNew(oldE + 85);
-          setWaterOld(oldW);
-          setWaterNew(oldW + 6);
+          setElecOld(0);
+          setElecNew(85);
+          setWaterOld(0);
+          setWaterNew(6);
         }
       };
       fetchReading();
@@ -168,13 +212,7 @@ export default function AccountantMonthlyPage() {
       };
       fetchServices();
 
-      if (selectedContract.customer_id === 'u-5') {
-        setIncidentals([
-          { id: 'CPPS-8821', name: 'Đền bù làm hỏng vòi sen tắm (báo cáo bởi Quản lý)', amount: 150000, confirmed: false, dateRecorded: '2026-06-05' }
-        ]);
-      } else {
-        setIncidentals([]);
-      }
+      loadContractIncidentals(selectedContract.id);
     }
   }, [selectedContractId]);
 
@@ -190,12 +228,25 @@ export default function AccountantMonthlyPage() {
 
   const hasUnconfirmedIncidentals = incidentals.some(inc => !inc.confirmed);
   
-  const handleConfirmAllIncidentals = () => {
-    setIncidentals(prev => prev.map(inc => ({ ...inc, confirmed: true })));
+  const handleConfirmAllIncidentals = async () => {
+    const email = user?.email || 'accountant@homestay.vn';
+    const pendingIds = incidentals.filter(inc => !inc.confirmed).map(inc => inc.id);
+    try {
+      await Promise.all(pendingIds.map(id => accountantService.confirmContractIncidental(email, id)));
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to confirm all incidentals:', err);
+    }
+    if (selectedContract) await loadContractIncidentals(selectedContract.id);
   };
 
-  const handleConfirmIncidental = (id: string) => {
-    setIncidentals(prev => prev.map(inc => inc.id === id ? { ...inc, confirmed: true } : inc));
+  const handleConfirmIncidental = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmContractIncidental(email, id);
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to confirm incidental:', err);
+    }
+    if (selectedContract) await loadContractIncidentals(selectedContract.id);
   };
 
   const handleAddIncidental = () => {
@@ -224,23 +275,36 @@ export default function AccountantMonthlyPage() {
     }
   };
 
-  const handleSubmitIncidental = (e: React.FormEvent) => {
+  const handleSubmitIncidental = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalName = selectedIncidentalType === 'other' ? newIncidentalName : STANDARD_INCIDENTALS.find(item => item.value === selectedIncidentalType)?.label;
-    if (!finalName || !finalName.trim()) return;
+    if (!finalName || !finalName.trim() || !selectedContract) return;
 
-    setIncidentals(prev => [...prev, {
-      id: newIncidentalCode.trim() || `CPPS-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: finalName,
-      amount: newIncidentalAmount,
-      confirmed: newIncidentalStatus === 'confirmed',
-      dateRecorded: newIncidentalDate
-    }]);
-    setShowAddIncidentalModal(false);
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.createContractIncidental(email, {
+        id: newIncidentalCode.trim() || `CPPS-${Math.floor(1000 + Math.random() * 9000)}`,
+        contractId: selectedContract.id,
+        costName: finalName,
+        amount: newIncidentalAmount,
+        status: newIncidentalStatus,
+        recordedDate: newIncidentalDate
+      });
+      setShowAddIncidentalModal(false);
+      await loadContractIncidentals(selectedContract.id);
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to create incidental:', err);
+    }
   };
 
-  const handleDeleteIncidental = (id: string) => {
-    setIncidentals(prev => prev.filter(inc => inc.id !== id));
+  const handleDeleteIncidental = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.deleteContractIncidental(email, id);
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to delete incidental:', err);
+    }
+    if (selectedContract) await loadContractIncidentals(selectedContract.id);
   };
 
   const handleCreateMonthlyInvoice = async (e: React.FormEvent) => {
@@ -258,7 +322,7 @@ export default function AccountantMonthlyPage() {
       await accountantService.createMonthlyInvoice(email, {
         contractId: selectedContract.id,
         roomId: selectedContract.room_id,
-        billingPeriod: selectedPeriod,
+        billingPeriod: toApiPeriod(selectedPeriod),
         prevElectricity: elecOld,
         newElectricity: elecNew,
         prevWater: waterOld,
@@ -270,41 +334,14 @@ export default function AccountantMonthlyPage() {
 
       alert(`Lập hóa đơn định kỳ thành công!`);
 
-      // Refresh list
-      const liveInvoices = await accountantService.fetchMonthlyInvoices(email);
-      const mappedInvoices = (liveInvoices || []).map((inv: any) => {
-        const contract = inv.contracts || {};
-        const reading = inv.electricity_water_records || {};
-        const elecUse = reading.end_electricity - reading.start_electricity;
-        const waterUse = reading.end_water - reading.start_water;
-        return {
-          id: inv.id,
-          customer_id: contract.id || inv.customer_id,
-          customer_name: inv.customer_name || 'Khách hàng',
-          room_id: contract.room_id || inv.room_id,
-          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
-          period: reading.billing_period || inv.period || '06/2026',
-          rent_amount: contract.rent_price || 1500000,
-          electricity_kwh: elecUse > 0 ? elecUse : 80,
-          electricity_cost: elecUse > 0 ? elecUse * 3500 : 80 * 3500,
-          water_m3: waterUse > 0 ? waterUse : 6,
-          water_cost: waterUse > 0 ? waterUse * 15000 : 6 * 15000,
-          services_cost: 150000,
-          total: inv.amount,
-          due_date: inv.due_date || '2026-07-10',
-          status: inv.status,
-          created_at: inv.created_at || ''
-        };
-      });
-      setInvoices(mappedInvoices);
-
-      const updatedContracts = contracts.map(c => {
-        if (c.id === selectedContract.id) {
-          return { ...c, period: '07/2026' };
-        }
-        return c;
-      });
-      setContracts(updatedContracts);
+      // Refresh danh sach hoa don + hop dong active (ky thanh toan tiep theo se duoc backend tinh lai dung
+      // dua tren chi so dien nuoc vua ghi nhan, khong con can gia lap o phia client nua).
+      const [liveInvoices, liveContracts] = await Promise.all([
+        accountantService.fetchMonthlyInvoices(email),
+        accountantService.fetchActiveContracts(email)
+      ]);
+      setInvoices(mapMonthlyInvoices(liveInvoices));
+      setContracts(liveContracts || []);
 
       setSelectedContractId('');
       setIncidentals([]);
@@ -356,31 +393,7 @@ export default function AccountantMonthlyPage() {
     try {
       await accountantService.confirmInvoicePayment(email, id, 'transfer');
       const liveInvoices = await accountantService.fetchMonthlyInvoices(email);
-      const mappedInvoices = (liveInvoices || []).map((inv: any) => {
-        const contract = inv.contracts || {};
-        const reading = inv.electricity_water_records || {};
-        const elecUse = reading.end_electricity - reading.start_electricity;
-        const waterUse = reading.end_water - reading.start_water;
-        return {
-          id: inv.id,
-          customer_id: contract.id || inv.customer_id,
-          customer_name: inv.customer_name || 'Khách hàng',
-          room_id: contract.room_id || inv.room_id,
-          room_name: inv.room_name || contract.rooms?.name || 'Phòng',
-          period: reading.billing_period || inv.period || '06/2026',
-          rent_amount: contract.rent_price || 1500000,
-          electricity_kwh: elecUse > 0 ? elecUse : 80,
-          electricity_cost: elecUse > 0 ? elecUse * 3500 : 80 * 3500,
-          water_m3: waterUse > 0 ? waterUse : 6,
-          water_cost: waterUse > 0 ? waterUse * 15000 : 6 * 15000,
-          services_cost: 150000,
-          total: inv.amount,
-          due_date: inv.due_date || '2026-07-10',
-          status: inv.status,
-          created_at: inv.created_at || ''
-        };
-      });
-      setInvoices(mappedInvoices);
+      setInvoices(mapMonthlyInvoices(liveInvoices));
       if (selectedInvoice && selectedInvoice.id === id) {
         setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
       }
@@ -400,21 +413,23 @@ export default function AccountantMonthlyPage() {
   // Filtered List
   const filteredInvoices = invoices.filter(inv => {
     const matchesPeriod = inv.period === selectedPeriod;
+    const matchesBranch = selectedBranch === 'all' ? true : inv.branch_id === selectedBranch;
     const matchesStatus = selectedStatus === 'all' ? true : inv.status === selectedStatus;
-    const matchesSearch = 
+    const matchesSearch =
       inv.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.room_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesPeriod && matchesStatus && matchesSearch;
+    return matchesPeriod && matchesBranch && matchesStatus && matchesSearch;
   });
 
   // Filtered Contracts for Left List
   const filteredContracts = contracts.filter(c => {
-    const matchesSearch = 
+    const matchesBranch = selectedBranch === 'all' ? true : c.branch_id === selectedBranch;
+    const matchesSearch =
       c.customer_name.toLowerCase().includes(contractSearchQuery.toLowerCase()) ||
       c.room_name.toLowerCase().includes(contractSearchQuery.toLowerCase()) ||
       c.id.toLowerCase().includes(contractSearchQuery.toLowerCase());
-    return matchesSearch;
+    return matchesBranch && matchesSearch;
   });
 
   // Financial Stats
@@ -423,15 +438,25 @@ export default function AccountantMonthlyPage() {
   const debtMonthlySum = expectedMonthlySum - paidMonthlySum;
   const paymentRate = expectedMonthlySum > 0 ? ((paidMonthlySum / expectedMonthlySum) * 100).toFixed(1) : '0';
 
-  const periodOptions = [
-    { value: '06/2026', label: 'Tháng 06/2026' },
-    { value: '05/2026', label: 'Tháng 05/2026' }
-  ];
+  // Cac ky thanh toan thuc te xuat hien trong du lieu da tai (khong hardcode 2 ky co dinh nua).
+  const periodOptions = Array.from(new Set([
+    ...invoices.map(inv => inv.period).filter(Boolean),
+    ...contracts.map(c => c.period).filter(Boolean),
+    selectedPeriod
+  ]))
+    .sort((a, b) => toApiPeriod(b).localeCompare(toApiPeriod(a)))
+    .map(p => ({ value: p, label: `Tháng ${p}` }));
 
+  // Cac chi nhanh thuc te xuat hien trong du lieu da tai (khong hardcode ten/id chi nhanh gia nua).
   const branchOptions = [
     { value: 'all', label: 'Tất cả chi nhánh' },
-    { value: 'b1', label: 'Chi nhánh Q1' },
-    { value: 'b2', label: 'Chi nhánh Thủ Đức' }
+    ...Array.from(
+      new Map(
+        [...invoices, ...contracts]
+          .filter((x: any) => x.branch_id && x.branch_name)
+          .map((x: any) => [x.branch_id, x.branch_name])
+      ).entries()
+    ).map(([id, name]) => ({ value: id as string, label: name as string }))
   ];
 
   const statusOptions = [

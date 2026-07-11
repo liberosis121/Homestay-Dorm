@@ -1,8 +1,20 @@
 import { managerContractRepo } from '../repositories/manager-contract.repo';
+import { supabase } from '../utils/supabase';
 
 export const managerContractService = {
-  getContracts: async (filters?: { customer_id?: string; status?: string }) => {
-    return await managerContractRepo.findAll(filters);
+  getContracts: async (filters?: { customer_id?: string; status?: string }, managerId?: string) => {
+    let result = await managerContractRepo.findAll(filters);
+    if (managerId) {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('branch_id')
+        .eq('id', managerId)
+        .maybeSingle();
+      if (employee && employee.branch_id) {
+        result = result.filter(c => c.branch_id === employee.branch_id);
+      }
+    }
+    return result;
   },
 
   getContractById: async (id: string) => {

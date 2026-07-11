@@ -445,13 +445,13 @@ export default function ManagerResidencyPage() {
         <div className="overflow-x-auto">
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '14%' }} /> {/* Phiếu đặt cọc */}
-              <col style={{ width: '16%' }} /> {/* Phòng */}
-              <col style={{ width: '13%' }} /> {/* Số thành viên */}
-              <col style={{ width: '22%' }} /> {/* Đạt / Chờ / Không đạt */}
-              <col style={{ width: '12%' }} /> {/* Tiến độ */}
-              <col style={{ width: '13%' }} /> {/* Trạng thái */}
-              <col style={{ width: '10%' }} /> {/* Action */}
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>

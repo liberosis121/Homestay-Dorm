@@ -1,4 +1,6 @@
 import { monthlyInvoiceRepo } from '../repositories/monthly-invoice.repo';
+import { serviceRegistrationRepo } from '../repositories/service-registration.repo';
+import { incidentalCostRepo } from '../repositories/incidental-cost.repo';
 
 export const monthlyInvoiceService = {
   /**
@@ -13,6 +15,71 @@ export const monthlyInvoiceService = {
    */
   getActiveContracts: async () => {
     return await monthlyInvoiceRepo.getActiveContracts();
+  },
+
+  /**
+   * Lay danh sach dich vu co dinh dang active ma hop dong da dang ky (bang service_registrations that).
+   */
+  getContractServices: async (contractId: string) => {
+    if (!contractId) throw new Error('Yeu cau contractId');
+    const regs = await serviceRegistrationRepo.findSubscriptionsByContractIds([contractId]);
+    return regs
+      .filter(r => !r.end_date) // chi lay dich vu dang con hieu luc
+      .map(r => ({
+        id: r.service_id,
+        service_name: r.services?.name || 'Dịch vụ',
+        monthly_cost: r.amount
+      }));
+  },
+
+  /**
+   * Lay danh sach khoan phi phat sinh (incidental_costs) that cua mot hop dong.
+   */
+  getContractIncidentals: async (contractId: string) => {
+    if (!contractId) throw new Error('Yeu cau contractId');
+    return await incidentalCostRepo.findAll({ contract_id: contractId });
+  },
+
+  /**
+   * Ghi nhan mot khoan phi phat sinh moi cho hop dong.
+   */
+  createContractIncidental: async (data: {
+    id: string;
+    contractId: string;
+    costName: string;
+    amount: number;
+    status: string;
+    recordedDate: string;
+    staffId: string;
+  }) => {
+    if (!data.contractId || !data.costName || !data.amount) {
+      throw new Error('Cac truong thong tin bat buoc: contractId, costName, amount');
+    }
+    return await incidentalCostRepo.create({
+      id: data.id,
+      contract_id: data.contractId,
+      cost_name: data.costName,
+      penalty_amount: data.amount,
+      status: data.status,
+      recorded_date: data.recordedDate,
+      recorded_by: data.staffId
+    });
+  },
+
+  /**
+   * Cap nhat trang thai (xac nhan) mot khoan phi phat sinh.
+   */
+  updateContractIncidentalStatus: async (id: string, status: string) => {
+    if (!id || !status) throw new Error('Yeu cau id, status');
+    return await incidentalCostRepo.update(id, { status });
+  },
+
+  /**
+   * Xoa mot khoan phi phat sinh (chua duoc dua vao hoa don).
+   */
+  deleteContractIncidental: async (id: string) => {
+    if (!id) throw new Error('Yeu cau id');
+    return await incidentalCostRepo.remove(id);
   },
 
   /**
@@ -48,6 +115,11 @@ export const monthlyInvoiceService = {
       throw new Error('Cac truong thong tin bat buoc: contractId, roomId, billingPeriod');
     }
 
+    // Lay cac khoan phi phat sinh DA XAC NHAN nhung CHUA duoc tinh vao hoa don nao (status='confirmed')
+    // de cong vao tong tien hoa don, tranh truong hop khoan phat sinh bi bo sot khi lap hoa don.
+    const confirmedIncidentals = await incidentalCostRepo.findAll({ contract_id: data.contractId, status: 'confirmed' });
+    const incidentalsTotal = confirmedIncidentals.reduce((sum, c) => sum + (Number(c.penalty_amount) || 0), 0);
+
     // 1. Ghi nhan chi so dien nuoc
     const readingData = {
       room_id: data.roomId,
@@ -68,7 +140,7 @@ export const monthlyInvoiceService = {
     const electricityCost = elecUsage > 0 ? elecUsage * 3500 : 0;
     const waterCost = waterUsage > 0 ? waterUsage * 15000 : 0;
 
-    const totalAmount = data.rentPrice + data.servicePrice + electricityCost + waterCost;
+    const totalAmount = data.rentPrice + data.servicePrice + electricityCost + waterCost + incidentalsTotal;
 
     // 3. Tao hoa don dinh ky
     const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
@@ -84,9 +156,17 @@ export const monthlyInvoiceService = {
       contract_id: data.contractId,
       water_record_id: reading.id,
       reconciliation_id: null,
-      staff_id: data.staffId
+      staff_id: data.staffId,
+      note: data.note || null
     };
 
-    return await monthlyInvoiceRepo.createMonthlyInvoice(invoiceData);
+    const invoice = await monthlyInvoiceRepo.createMonthlyInvoice(invoiceData);
+
+    // 4. Danh dau cac khoan phi phat sinh da duoc tinh vao hoa don nay, tranh bi tinh trung o ky sau.
+    await Promise.all(
+      confirmedIncidentals.map(c => incidentalCostRepo.update(c.id, { status: 'billed', invoice_id: invoice.id }))
+    );
+
+    return invoice;
   }
 };

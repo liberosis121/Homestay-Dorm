@@ -1,7 +1,7 @@
 import { supabase } from '../utils/supabase';
 
 export const managerDepositService = {
-  getDeposits: async (filters?: { status?: string; search?: string }) => {
+  getDeposits: async (filters?: { status?: string; search?: string }, managerId?: string) => {
     // 1. Fetch deposit_requests from DB
     let query = supabase.from('deposit_requests').select('*');
     if (filters?.status && filters.status !== 'all') {
@@ -26,6 +26,19 @@ export const managerDepositService = {
       supabase.from('customers').select('*')
     ]);
 
+    // Lookup manager branch if managerId is provided
+    let managerBranchId: string | null = null;
+    if (managerId) {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('branch_id')
+        .eq('id', managerId)
+        .maybeSingle();
+      if (employee) {
+        managerBranchId = employee.branch_id;
+      }
+    }
+
     // 3. Merge related details into ManagerDeposit format expected by the frontend
     // NOTE: include ALL deposits even if no invoice exists yet (use graceful fallbacks)
     const result_all = deposits.map(dep => {
@@ -38,6 +51,8 @@ export const managerDepositService = {
         let frontendStatus = dep.status;
         if (frontendStatus === 'paid') {
           frontendStatus = 'approved';
+        } else if (frontendStatus === 'invoice_created') {
+          frontendStatus = 'pending';
         }
 
         return {
@@ -47,6 +62,7 @@ export const managerDepositService = {
           customer_phone: (customer as any).phone || '',
           room_id: dep.room_id,
           room_name: (room as any).name || dep.room_id || 'Phòng',
+          branch_id: (room as any).branch_id || '',
           deposit_type: dep.bed_id ? 'bed' : 'room',
           bed_name: (bed as any).name || dep.bed_id || '',
           amount: Number(dep.deposit_amount) || 0,
@@ -62,8 +78,13 @@ export const managerDepositService = {
         };
       });
 
-    // Apply filter search client side if provided
+    // Apply branch filtering
     let result = result_all;
+    if (managerBranchId) {
+      result = result.filter((d: any) => d.branch_id === managerBranchId);
+    }
+
+    // Apply filter search client side if provided
     if (filters?.search) {
       const q = filters.search.toLowerCase().trim();
       result = result.filter((d: any) =>
@@ -84,8 +105,7 @@ export const managerDepositService = {
     const { data: updatedDeposit, error: updateErr } = await supabase
       .from('deposit_requests')
       .update({
-        status: newStatus,
-        note: reviewerNote // We can store reviewerNote in deposit_requests.note column
+        status: newStatus === 'approved' ? 'paid' : newStatus
       })
       .eq('id', id)
       .select()

@@ -333,7 +333,7 @@ export default function ManagerDepositsPage() {
                 const meta    = STATUS_LABELS[dep.status] ?? STATUS_LABELS.pending;
                 const typeCfg = getTypeCfg(dep.deposit_type);
                 return (
-                  <tr key={formatShortId(dep.id, 'deposit')}
+                  <tr key={dep.id}
                     style={{ borderBottom: `1px solid ${T.border}`, transition: 'background 0.15s', cursor: 'pointer' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150"
                     onClick={() => openDrawer(dep)}>
@@ -496,51 +496,7 @@ export default function ManagerDepositsPage() {
                 </div>
               </div>
 
-              {/* Reviewer note */}
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-                  Ghi chú duyệt / Lý do
-                </label>
-                <textarea
-                  value={reviewerNote}
-                  onChange={e => setReviewerNote(e.target.value)}
-                  placeholder="Nhập ghi chú hoặc lý do từ chối/yêu cầu bổ sung..."
-                  rows={3}
-                  style={{ width: '100%', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: T.text, resize: 'none', background: T.bg, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s ease-in-out' }}
-                  className="focus:border-[#5C4632]"
-                />
-              </div>
 
-              {/* Quick actions */}
-              <div>
-                <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Hành động nhanh</h4>
-                <div className="space-y-2">
-                  {[
-                    { label: 'Liên hệ qua Zalo / SĐT', icon: 'chat', onClick: () => window.open(`tel:${selected.customer_phone}`) },
-                    { label: 'Tải xuống ảnh minh chứng cọc', icon: 'download', onClick: () => window.open(selected.bill_image_url, '_blank') },
-                    { label: 'Lịch sử giao dịch phòng', icon: 'history' },
-                  ].map((action, i) => (
-                    <button key={i} onClick={action.onClick} style={{ 
-                      width: '100%', 
-                      padding: '12px 14px', 
-                      borderRadius: 12, 
-                      border: `1px solid ${T.border}`, 
-                      background: T.surface, 
-                      cursor: 'pointer', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 10, 
-                      fontSize: 13, 
-                      color: T.text, 
-                      fontWeight: 600, 
-                      transition: 'all 0.15s ease-in-out' 
-                    }} className="hover:bg-[#FAF9F7] hover:border-primary/25 hover:text-primary active:scale-[0.98]">
-                      <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.primary }}>{action.icon}</span>
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* Actions */}

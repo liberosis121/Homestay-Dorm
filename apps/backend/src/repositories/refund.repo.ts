@@ -23,6 +23,19 @@ export const refundRepo = {
       ? await supabase.from('contracts').select('*').in('id', contractIds)
       : { data: [] as any[] };
 
+    // 2b. Fetch cac khoan phi phat sinh / den bu hu hong that (incidental_costs) theo hop dong,
+    // de tu dong dien vao bang doi soat hoan coc thay vi de k- toan nhap tay.
+    const { data: incidentals } = contractIds.length > 0
+      ? await supabase.from('incidental_costs').select('*').in('contract_id', contractIds)
+      : { data: [] as any[] };
+
+    // 2c. Fetch cac hoa don dinh ky CHUA thanh toan (dien nuoc con no) theo hop dong.
+    const { data: unpaidInvoices } = contractIds.length > 0
+      ? await supabase.from('invoices').select('contract_id, amount, status')
+          .eq('invoice_type', 'monthly').not('water_record_id', 'is', null)
+          .in('contract_id', contractIds).in('status', ['pending', 'unpaid'])
+      : { data: [] as any[] };
+
     // 3. Resolve deposit_requests to get room details
     const depositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
     const { data: depositReqs } = depositIds.length > 0
@@ -87,9 +100,84 @@ export const refundRepo = {
         };
       }
 
+      // Khoan khau tru = cac incidental_costs cua hop dong CHUA duoc tinh vao hoa don dinh ky (status != 'billed').
+      const contractIncidentals = (incidentals || [])
+        .filter(ic => ic.contract_id === checkout.contract_id && ic.status !== 'billed')
+        .map(ic => ({
+          id: ic.id,
+          name: ic.cost_name,
+          amount: Number(ic.penalty_amount) || 0
+        }));
+
+      // Tien dien nuoc/dich vu con no = tong cac hoa don dinh ky chua thanh toan cua hop dong.
+      const debtAmount = (unpaidInvoices || [])
+        .filter(inv => inv.contract_id === checkout.contract_id)
+        .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+
       return {
         ...checkout,
-        contracts: mappedContract
+        contracts: mappedContract,
+        incidental_costs: contractIncidentals,
+        debt_amount: debtAmount
+      };
+    });
+  },
+
+  /**
+   * Lay danh sach ung vien HOAN COC KHI CHUA KY HOP DONG (hoan 80%):
+   * deposit_requests co hoa don coc da 'paid' (da nhan tien) NHUNG khong co contract nao (chua ky HD).
+   * Dung cho tab "Huy thue / chua ky HD" ben Frontend.
+   */
+  getCancellationRefunds: async () => {
+    // 1. Cac phieu coc co hoa don da thanh toan
+    const { data: paidDepInvoices } = await supabase
+      .from('invoices')
+      .select('deposit_id')
+      .eq('invoice_type', 'deposit')
+      .eq('status', 'paid')
+      .not('deposit_id', 'is', null);
+
+    const paidDepositIds = Array.from(new Set((paidDepInvoices || []).map(i => i.deposit_id).filter(Boolean)));
+    if (paidDepositIds.length === 0) return [];
+
+    // 2. Loai bo cac phieu da co contract (da ky HD)
+    const { data: signed } = await supabase
+      .from('contracts')
+      .select('deposit_id')
+      .in('deposit_id', paidDepositIds);
+    const signedSet = new Set((signed || []).map(c => c.deposit_id));
+    const candidateIds = paidDepositIds.filter(id => !signedSet.has(id));
+    if (candidateIds.length === 0) return [];
+
+    // 3. Lay chi tiet phieu coc + phong + khach hang
+    const { data: deposits } = await supabase.from('deposit_requests').select('*').in('id', candidateIds);
+    const roomIds = (deposits || []).map(d => d.room_id).filter(Boolean);
+    const { data: rooms } = roomIds.length > 0
+      ? await supabase.from('rooms').select('id, name').in('id', roomIds)
+      : { data: [] as any[] };
+    const regIds = (deposits || []).map(d => d.registration_id).filter(Boolean);
+    const { data: regs } = regIds.length > 0
+      ? await supabase.from('rental_registrations').select('id, cccd').in('id', regIds)
+      : { data: [] as any[] };
+    const cccds = (regs || []).map(r => r.cccd).filter(Boolean);
+    const { data: customers } = cccds.length > 0
+      ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
+      : { data: [] as any[] };
+
+    return (deposits || []).map(d => {
+      const room = (rooms || []).find(r => r.id === d.room_id);
+      const reg = (regs || []).find(r => r.id === d.registration_id);
+      const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
+      return {
+        id: d.id,
+        deposit_request_id: d.id,
+        customer_name: customer?.full_name || 'Khách hàng',
+        room_id: d.room_id || '',
+        room_name: room?.name || 'Phòng',
+        deposit_amount: Number(d.deposit_amount) || 0,
+        request_date: d.deposit_time || d.created_at || '',
+        // 'rejected' = quan ly tu choi ky do khong du dieu kien; con lai = khach chu dong huy
+        cancellation_reason: d.status === 'rejected' ? 'failed_residency' : 'user_cancelled'
       };
     });
   },
