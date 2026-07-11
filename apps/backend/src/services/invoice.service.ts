@@ -2,6 +2,7 @@ import { contractRepo } from '../repositories/contract.repo';
 import { invoiceRepo, DbInvoice } from '../repositories/invoice.repo';
 import { supabase } from '../utils/supabase';
 import { customerDepositService } from './customer-deposit.service';
+import { getCustomerByUserId } from '../repositories/profile.repo';
 import { DEPOSIT_STATUS } from '../types/constants';
 
 // Utility helpers
@@ -202,7 +203,7 @@ export const invoiceService = {
     });
   },
 
-  payInvoice: async (invoiceId: string, paymentMethod: string) => {
+  payInvoice: async (userId: string, invoiceId: string, paymentMethod: string) => {
     if (!invoiceId) {
       throw new Error('Invoice ID is required');
     }
@@ -222,7 +223,7 @@ export const invoiceService = {
     if (inv && inv.invoice_type === 'deposit' && inv.deposit_id) {
       const { data: deposit, error: depErr } = await supabase
         .from('deposit_requests')
-        .select('id, status, payment_deadline')
+        .select('id, status, payment_deadline, rental_registrations(cccd)')
         .eq('id', inv.deposit_id)
         .maybeSingle();
 
@@ -232,6 +233,16 @@ export const invoiceService = {
       if (!deposit) {
         throw new Error('Yeu cau dat coc cua hoa don nay khong ton tai.');
       }
+
+      // GATE quyen thanh toan: chi NGUOI DAI DIEN (cccd cua phieu dang ky) moi duoc tra
+      // hoa don coc. Thanh vien nhom xem duoc nhung khong thanh toan duoc.
+      // (Dong thoi va lo hong cu: truoc day payInvoice khong kiem tra quyen so huu.)
+      const payer = await getCustomerByUserId(userId);
+      const regCccd = (deposit as any).rental_registrations?.cccd;
+      if (!payer || !regCccd || payer.cccd !== regCccd) {
+        throw new Error('Chi nguoi dai dien moi duoc thanh toan hoa don dat coc nay.');
+      }
+
       if (deposit.status === DEPOSIT_STATUS.CANCELLED) {
         throw new Error('Yeu cau dat coc nay da bi huy, khong the thanh toan.');
       }

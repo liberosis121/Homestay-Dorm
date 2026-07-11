@@ -26,6 +26,28 @@ export const managerDepositService = {
       supabase.from('customers').select('*')
     ]);
 
+    // Bo sung du lieu cho coc NHOM: danh sach giuong (deposit_beds) + thanh vien nhom.
+    const depositIds = deposits.map((d) => d.id);
+    const regIds = deposits.map((d) => d.registration_id).filter(Boolean);
+    const [depBedsRes, membersRes] = await Promise.all([
+      depositIds.length > 0
+        ? supabase.from('deposit_beds').select('deposit_id, bed_id').in('deposit_id', depositIds)
+        : Promise.resolve({ data: [] as any[] }),
+      regIds.length > 0
+        ? supabase.from('rental_registration_members')
+            .select('registration_id, customer_user_id, is_representative')
+            .in('registration_id', regIds)
+        : Promise.resolve({ data: [] as any[] })
+    ]);
+    const groupBedIdsByDeposit: Record<string, string[]> = {};
+    for (const r of (depBedsRes.data || [])) {
+      (groupBedIdsByDeposit[(r as any).deposit_id] ||= []).push((r as any).bed_id);
+    }
+    const membersByReg: Record<string, Array<{ customer_user_id: string; is_representative: boolean }>> = {};
+    for (const m of (membersRes.data || [])) {
+      (membersByReg[(m as any).registration_id] ||= []).push(m as any);
+    }
+
     // Lookup manager branch if managerId is provided
     let managerBranchId: string | null = null;
     if (managerId) {
@@ -55,6 +77,32 @@ export const managerDepositService = {
           frontendStatus = 'pending';
         }
 
+        // Giuong thue: coc le = 1 giuong (bed_id); coc nhom = N giuong (deposit_beds).
+        const groupBedIds = groupBedIdsByDeposit[dep.id] || [];
+        const groupBedNames = groupBedIds
+          .map((id) => (beds?.find((b) => b.id === id) as any)?.name)
+          .filter(Boolean);
+        const bedNames: string[] = dep.bed_id
+          ? ((bed as any).name ? [(bed as any).name] : [])
+          : groupBedNames;
+        const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
+
+        // Thanh vien nhom (tu rental_registration_members → customers da fetch).
+        const regMembers = membersByReg[dep.registration_id] || [];
+        const tenants = regMembers
+          .map((m) => {
+            const c = (customers?.find((cu) => (cu as any).user_id === m.customer_user_id) || {}) as any;
+            return {
+              name: c.full_name || 'Khách thuê',
+              cccd: c.cccd || '',
+              phone: c.phone || '',
+              email: c.email || '',
+              role: m.is_representative ? 'representative' : 'member'
+            };
+          })
+          // Trưởng nhóm hiển thị trước.
+          .sort((a, b) => (a.role === 'representative' ? -1 : 1) - (b.role === 'representative' ? -1 : 1));
+
         return {
           id: dep.id,
           customer_id: (customer as any).user_id || '',
@@ -63,8 +111,12 @@ export const managerDepositService = {
           room_id: dep.room_id,
           room_name: (room as any).name || dep.room_id || 'Phòng',
           branch_id: (room as any).branch_id || '',
-          deposit_type: dep.bed_id ? 'bed' : 'room',
-          bed_name: (bed as any).name || dep.bed_id || '',
+          deposit_type: depositType,
+          bed_name: bedNames[0] || dep.bed_id || '',
+          bed_names: bedNames,
+          occupants_count: (registration as any).occupants_count || (depositType === 'group' ? bedNames.length : 1),
+          room_capacity: (room as any).capacity,
+          tenants,
           amount: Number(dep.deposit_amount) || 0,
           deposit_date: dep.deposit_time || dep.created_at,
           bill_image_url: (invoice as any).evidence_url || '',
@@ -134,13 +186,20 @@ export const managerDepositService = {
         .maybeSingle();
       
       if (dep) {
+        // Coc nhom: lay danh sach giuong tu bang noi (rong neu la coc 1 giuong / nguyen phong)
+        const { data: depBeds } = await supabase
+          .from('deposit_beds')
+          .select('bed_id')
+          .eq('deposit_id', id);
+        const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
+
         if (dep.bed_id) {
-          // Release bed
+          // Release 1 giuong le
           await supabase
             .from('beds')
             .update({ status: 'available' })
             .eq('id', dep.bed_id);
-          
+
           // Re-evaluate room status: if room has any available beds, set room status to 'available'
           if (dep.room_id) {
             const { data: roomBeds } = await supabase
@@ -155,8 +214,29 @@ export const managerDepositService = {
                 .eq('id', dep.room_id);
             }
           }
+        } else if (groupBedIds.length > 0) {
+          // Release N giuong cua nhom
+          await supabase
+            .from('beds')
+            .update({ status: 'available' })
+            .in('id', groupBedIds);
+
+          // Phong con giuong trong → 'available'
+          if (dep.room_id) {
+            const { data: roomBeds } = await supabase
+              .from('beds')
+              .select('status')
+              .eq('room_id', dep.room_id);
+            const hasAvailableBed = (roomBeds || []).some(b => b.status === 'available');
+            if (hasAvailableBed) {
+              await supabase
+                .from('rooms')
+                .update({ status: 'available' })
+                .eq('id', dep.room_id);
+            }
+          }
         } else if (dep.room_id) {
-          // Release room
+          // Release nguyen phong
           await supabase
             .from('rooms')
             .update({ status: 'available' })

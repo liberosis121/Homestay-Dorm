@@ -1,4 +1,6 @@
 import { contractRepo } from '../repositories/contract.repo';
+import { registrationMemberRepo } from '../repositories/registration-member.repo';
+import { supabase } from '../utils/supabase';
 import { CONTRACT_TEMPLATES } from '../config/contract-templates';
 
 interface DbContract {
@@ -67,7 +69,43 @@ export const contractService = {
       throw new Error('User ID is required');
     }
 
-    const rawContracts = await contractRepo.findByUserId(userId) as unknown as DbContract[];
+    // Lay hop dong voi tu cach NGUOI DAI DIEN + voi tu cach THANH VIEN nhom.
+    const memberships = await registrationMemberRepo.getRegistrationIdsByUser(userId);
+    const memberRegIds = memberships.map((m) => m.registration_id);
+    const [repContracts, memberContracts] = await Promise.all([
+      contractRepo.findByUserId(userId),
+      contractRepo.findByRegistrationIds(memberRegIds)
+    ]);
+
+    // Gop unique theo id hop dong.
+    const contractsById = new Map<string, any>();
+    for (const c of [...(repContracts || []), ...(memberContracts || [])]) {
+      contractsById.set(c.id, c);
+    }
+    const rawContracts = Array.from(contractsById.values()) as unknown as DbContract[];
+
+    // Bo sung ten cac giuong cho HOP DONG NHOM (deposit.bed_id null) tu bang noi deposit_beds.
+    const groupDepositIds = rawContracts
+      .map((c: any) => c.deposit_requests)
+      .filter((d: any) => d && !d.bed_id)
+      .map((d: any) => d.id);
+    const bedNamesByDeposit: Record<string, string[]> = {};
+    if (groupDepositIds.length > 0) {
+      const { data: depBeds } = await supabase
+        .from('deposit_beds')
+        .select('deposit_id, bed_id')
+        .in('deposit_id', groupDepositIds);
+      const allBedIds = (depBeds || []).map((r: any) => r.bed_id);
+      const { data: bedsRows } = allBedIds.length > 0
+        ? await supabase.from('beds').select('id, name').in('id', allBedIds)
+        : { data: [] as any[] };
+      const bedNameById = new Map((bedsRows || []).map((b: any) => [b.id, b.name]));
+      for (const row of depBeds || []) {
+        const nm = bedNameById.get((row as any).bed_id);
+        if (!nm) continue;
+        (bedNamesByDeposit[(row as any).deposit_id] ||= []).push(nm);
+      }
+    }
 
     // Map database results to frontend ContractData interface format
     return rawContracts.map((c: DbContract) => {
@@ -75,6 +113,11 @@ export const contractService = {
       const room = depReq.rooms || {};
       const bed = depReq.beds || {};
       const branch = room.branches || {};
+      // HD nhom: hien thi danh sach N giuong; HD le: 1 giuong theo bed_id.
+      const groupBedNames = bedNamesByDeposit[depReq.id];
+      const bedLabel = (groupBedNames && groupBedNames.length > 0)
+        ? groupBedNames.join(', ')
+        : (bed.name || 'N/A');
       const staff: { full_name?: string; phone?: string } = c.employees || {};
 
       const totalMonths = calculateMonthsDifference(c.start_date, c.end_date);
@@ -99,7 +142,7 @@ export const contractService = {
         // Room
         branch: branch.name || 'N/A',
         roomCode: room.name || 'N/A',
-        bedCode: bed.name || 'N/A',
+        bedCode: bedLabel,
         roomType: room.room_type === 'dorm' ? 'Dormitory' : room.room_type || 'N/A',
         roomImage: room.image_url || CONTRACT_TEMPLATES.defaultRoomImage,
         // Finance
@@ -107,7 +150,7 @@ export const contractService = {
         depositAmount: depReq.deposit_amount || c.rent_price,
         serviceFee: CONTRACT_TEMPLATES.serviceFee,
         // Terms
-        terms: CONTRACT_TEMPLATES.getTermsTemplate(bed.name || 'N/A', room.name || 'N/A', branch.name || 'N/A'),
+        terms: CONTRACT_TEMPLATES.getTermsTemplate(bedLabel, room.name || 'N/A', branch.name || 'N/A'),
         paymentPolicy: CONTRACT_TEMPLATES.getPaymentPolicyTemplate(c.rent_price),
         terminationPolicy: CONTRACT_TEMPLATES.getTerminationPolicyTemplate(),
         // Timeline

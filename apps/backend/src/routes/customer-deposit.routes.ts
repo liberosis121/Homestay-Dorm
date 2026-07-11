@@ -36,6 +36,29 @@ router.post('/', requireAuth, requireRole(USER_ROLE.CUSTOMER), async (req, res) 
 });
 
 /**
+ * 🔗 POST /api/deposit-requests/group
+ * 📝 Nguoi dai dien nhom gui yeu cau dat coc giu cho NHIEU giuong bang 1 phieu.
+ */
+router.post('/group', requireAuth, requireRole(USER_ROLE.CUSTOMER), async (req, res) => {
+  try {
+    const { registration_id, bed_ids } = req.body;
+
+    if (!registration_id || !Array.isArray(bed_ids) || bed_ids.length === 0) {
+      return sendError(res, null, 'Vui long cung cap registration_id va danh sach bed_ids.', 400);
+    }
+
+    const result = await customerDepositService.createGroupDeposit(req.user!.id, {
+      registration_id,
+      bed_ids
+    });
+
+    return sendSuccess(res, result, 'Gui yeu cau dat coc nhom thanh cong!', 201);
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Loi khi tao yeu cau dat coc nhom.');
+  }
+});
+
+/**
  * 🔗 GET /api/deposit-requests/my
  * 📝 Khach hang xem danh sach yeu cau dat coc cua minh.
  */

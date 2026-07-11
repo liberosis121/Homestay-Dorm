@@ -29,7 +29,7 @@ router.post('/:invoiceId/pay', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phương thức thanh toán là bắt buộc' });
     }
 
-    const data = await invoiceService.payInvoice(invoiceId, paymentMethod);
+    const data = await invoiceService.payInvoice(req.user!.id, invoiceId, paymentMethod);
     sendSuccess(res, data, 'Thanh toán hóa đơn thành công!');
   } catch (err) {
     sendError(res, err, 'Lỗi khi thanh toán hóa đơn');

@@ -4,12 +4,31 @@
  */
 
 import { depositRequestRepo } from '../repositories/deposit-request.repo';
+import { registrationMemberRepo } from '../repositories/registration-member.repo';
 import { leaseRepo } from '../repositories/lease.repo';
 import { getCustomerByUserId, getStaffByUserId } from '../repositories/profile.repo';
 import { roomRepo } from '../repositories/room.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX, DEPOSIT_STATUS, BED_STATUS, ROOM_STATUS, DEPOSIT_PAYMENT_DEADLINE_HOURS } from '../types/constants';
 import { supabase } from '../utils/supabase';
+
+/**
+ * Nha (tra ve 'available') cac giuong ma mot phieu coc dang giu cho.
+ *  - Coc 1 giuong le: nha dung giuong o deposit_requests.bed_id.
+ *  - Coc NHOM: nha tat ca giuong liet ke o bang noi deposit_beds.
+ * (Coc nguyen phong bed_id=NULL + khong deposit_beds: khong xu ly o day, giu nguyen
+ *  hanh vi cu — phong duoc nha o cho goi rieng.)
+ */
+async function releaseReservedBeds(deposit: { id: string; bed_id?: string | null }) {
+  if (deposit.bed_id) {
+    await roomRepo.updateBedStatus(deposit.bed_id, BED_STATUS.AVAILABLE);
+    return;
+  }
+  const bedIds = await depositRequestRepo.getBedIdsByDeposit(deposit.id);
+  for (const bedId of bedIds) {
+    await roomRepo.updateBedStatus(bedId, BED_STATUS.AVAILABLE);
+  }
+}
 
 export const customerDepositService = {
   /**
@@ -121,6 +140,133 @@ export const customerDepositService = {
   },
 
   /**
+   * Tao phieu dat coc NHOM: 1 phieu giu cho NHIEU giuong cung mot phong.
+   * Chi NGUOI DAI DIEN (registration.cccd) duoc tao. Tao 1 phieu (bed_id=NULL) +
+   * ghi danh sach giuong vao bang noi deposit_beds → sinh dung 1 hoa don chung.
+   */
+  createGroupDeposit: async (userId: string, data: {
+    registration_id: string;
+    bed_ids: string[];
+  }) => {
+    // 1. Nguoi dat coc phai la nguoi dai dien cua phieu dang ky, co CCCD hop le.
+    const customer = await getCustomerByUserId(userId);
+    if (!customer) {
+      throw new Error('Khong tim thay thong tin khach hang. Vui long cap nhat ho so.');
+    }
+    if (!customer.cccd || customer.cccd.startsWith('TEMP-')) {
+      throw new Error('Ban phai cap nhat so CCCD hop le trong ho so ca nhan truoc khi dat coc.');
+    }
+
+    const registration = await leaseRepo.getRegistrationById(data.registration_id);
+    if (!registration) {
+      throw new Error('Don dang ky thue khong ton tai.');
+    }
+    if (registration.cccd !== customer.cccd) {
+      throw new Error('Chi nguoi dai dien nhom moi duoc dat coc cho phieu dang ky nay.');
+    }
+    if (registration.status === REGISTRATION_STATUS.DEPOSITED) {
+      throw new Error('Don dang ky thue nay da duoc dat coc.');
+    }
+    if (registration.status === REGISTRATION_STATUS.COMPLETED) {
+      throw new Error('Don dang ky thue nay da hoan thanh hop dong.');
+    }
+    if (registration.status === REGISTRATION_STATUS.CANCELLED) {
+      throw new Error('Don dang ky thue nay da bi huy.');
+    }
+
+    // 2. Validate danh sach giuong: khong rong, khong trung, va bang so thanh vien nhom.
+    const bedIds = Array.isArray(data.bed_ids) ? data.bed_ids.filter(Boolean) : [];
+    if (bedIds.length === 0) {
+      throw new Error('Vui long chon giuong cho nhom.');
+    }
+    const uniqueBedIds = Array.from(new Set(bedIds));
+    if (uniqueBedIds.length !== bedIds.length) {
+      throw new Error('Co giuong bi chon trung. Vui long kiem tra lai.');
+    }
+    const expectedCount = registration.occupants_count || uniqueBedIds.length;
+    if (uniqueBedIds.length !== expectedCount) {
+      throw new Error(
+        `So giuong chon (${uniqueBedIds.length}) phai bang so thanh vien nhom (${expectedCount}).`
+      );
+    }
+
+    // 3. Chan spam: khach dang co phieu coc dang cho xu ly.
+    const existingDeposits = await depositRequestRepo.getDepositsByCustomer(customer.cccd);
+    const hasPendingDeposit = existingDeposits.some(
+      (d) => d.status === DEPOSIT_STATUS.PENDING || d.status === DEPOSIT_STATUS.INVOICE_CREATED
+    );
+    if (hasPendingDeposit) {
+      throw new Error('Ban dang co mot yeu cau dat coc dang cho xu ly. Khong the tao them yeu cau moi.');
+    }
+
+    // 4. Kiem tra tung giuong: ton tai, con trong, cung mot phong, phong khong bao tri.
+    let roomId: string | null = null;
+    let totalBedPrice = 0;
+    for (const bedId of uniqueBedIds) {
+      const bed = await roomRepo.getBedById(bedId);
+      if (!bed) {
+        throw new Error(`Giuong ${bedId} khong ton tai.`);
+      }
+      if (bed.status !== BED_STATUS.AVAILABLE) {
+        throw new Error(`Giuong ${bed.name || bedId} hien khong con trong de dat coc.`);
+      }
+      if (!bed.rooms) {
+        throw new Error('Khong tim thay thong tin phong cua giuong.');
+      }
+      if (bed.rooms.status === ROOM_STATUS.MAINTENANCE) {
+        throw new Error('Phong cua giuong nay dang bao tri, khong the dat coc.');
+      }
+      if (roomId === null) {
+        roomId = bed.room_id;
+      } else if (roomId !== bed.room_id) {
+        throw new Error('Cac giuong cua nhom phai thuoc cung mot phong.');
+      }
+      totalBedPrice += Number(bed.price) || 0;
+    }
+
+    // 5. Tinh tien coc = tong gia N giuong * 2 thang; deadline +24h.
+    const depositAmount = totalBedPrice * 2;
+    const paymentDeadline = new Date();
+    paymentDeadline.setHours(paymentDeadline.getHours() + DEPOSIT_PAYMENT_DEADLINE_HOURS);
+
+    // 6. Tao 1 phieu coc nhom (bed_id=NULL, room_id=phong chung).
+    const nextId = await generateNextId(ID_PREFIX.DEPOSIT_REQUEST, 'deposit_requests');
+    const newRecord = {
+      id: nextId,
+      registration_id: data.registration_id,
+      bed_id: null,
+      room_id: roomId,
+      deposit_amount: depositAmount,
+      deposit_time: new Date().toISOString(),
+      payment_deadline: paymentDeadline.toISOString(),
+      status: DEPOSIT_STATUS.PENDING,
+      staff_id: registration.staff_id || null
+    };
+    const savedDeposit = await depositRequestRepo.createDepositRequest(newRecord);
+
+    // 7. Ghi bang noi + giu cho N giuong + chuyen phieu dang ky sang deposited.
+    //    Rollback thu cong (huy phieu) neu buoc nao that bai — khong co transaction.
+    try {
+      await depositRequestRepo.createDepositBeds(
+        uniqueBedIds.map((bedId) => ({ deposit_id: nextId, bed_id: bedId }))
+      );
+      for (const bedId of uniqueBedIds) {
+        await roomRepo.updateBedStatus(bedId, BED_STATUS.DEPOSITED);
+      }
+      await leaseRepo.updateRegistrationStatus(
+        data.registration_id,
+        REGISTRATION_STATUS.DEPOSITED,
+        registration.staff_id
+      );
+    } catch (err) {
+      await depositRequestRepo.updateDepositStatus(nextId, DEPOSIT_STATUS.CANCELLED).catch(() => {});
+      throw err;
+    }
+
+    return savedDeposit;
+  },
+
+  /**
    * Khach hang chu dong huy yeu cau dat coc cua minh.
    * Chi cho phep khi phieu dat coc dang o trang thai cho (pending).
    */
@@ -150,8 +296,8 @@ export const customerDepositService = {
     // 5. Cap nhat trang thai phieu dat coc sang cancelled
     const updatedDeposit = await depositRequestRepo.updateDepositStatus(depositId, DEPOSIT_STATUS.CANCELLED);
 
-    // 6. Tra lai trang thai giuong ve available
-    await roomRepo.updateBedStatus(deposit.bed_id, BED_STATUS.AVAILABLE);
+    // 6. Tra lai trang thai giuong ve available (ho tro ca coc 1 giuong lan coc nhom N giuong)
+    await releaseReservedBeds(deposit);
 
     // 7. Khoi phuc lai trang thai don dang ky thue
     // Neu co nhan vien Sale phu trach thi khoi phuc sang scheduled, nguoc lai pending_schedule
@@ -176,7 +322,51 @@ export const customerDepositService = {
     if (!customer) {
       throw new Error('Khong tim thay thong tin khach hang.');
     }
-    return await depositRequestRepo.getDepositsByCustomer(customer.cccd);
+
+    // Lay coc voi tu cach NGUOI DAI DIEN (theo cccd) + voi tu cach THANH VIEN nhom
+    // (theo cac phieu dang ky ma user co mat trong rental_registration_members).
+    const memberships = await registrationMemberRepo.getRegistrationIdsByUser(userId);
+    const memberRegIds = memberships.map((m) => m.registration_id);
+
+    const [ownDeposits, memberDeposits] = await Promise.all([
+      depositRequestRepo.getDepositsByCustomer(customer.cccd),
+      depositRequestRepo.getDepositsByRegistrationIds(memberRegIds)
+    ]);
+
+    // Gop unique theo id (dai dien vua la thanh vien nen co the trung).
+    const byId = new Map<string, any>();
+    for (const d of [...(ownDeposits || []), ...(memberDeposits || [])]) {
+      byId.set(d.id, d);
+    }
+    const deposits = Array.from(byId.values());
+
+    // Bo sung ten cac giuong cho phieu coc NHOM (bed_id null) tu bang noi deposit_beds.
+    const bedNamesByDeposit: Record<string, string[]> = {};
+    const groupDepositIds = deposits.filter((d) => !d.bed_id).map((d) => d.id);
+    if (groupDepositIds.length > 0) {
+      const { data: depBeds } = await supabase
+        .from('deposit_beds')
+        .select('deposit_id, bed_id')
+        .in('deposit_id', groupDepositIds);
+      const allBedIds = (depBeds || []).map((r: any) => r.bed_id);
+      const { data: bedsRows } = allBedIds.length > 0
+        ? await supabase.from('beds').select('id, name').in('id', allBedIds)
+        : { data: [] as any[] };
+      const bedNameById = new Map((bedsRows || []).map((b: any) => [b.id, b.name]));
+      for (const row of depBeds || []) {
+        const nm = bedNameById.get((row as any).bed_id);
+        if (!nm) continue;
+        (bedNamesByDeposit[(row as any).deposit_id] ||= []).push(nm);
+      }
+    }
+
+    // Danh dau quyen: chi NGUOI DAI DIEN (cccd trung) moi duoc thanh toan.
+    return deposits.map((d) => ({
+      ...d,
+      is_representative: d.rental_registrations?.cccd === customer.cccd,
+      can_pay: d.rental_registrations?.cccd === customer.cccd,
+      bed_names: bedNamesByDeposit[d.id] || (d.beds?.name ? [d.beds.name] : [])
+    }));
   },
 
   /**
@@ -240,8 +430,8 @@ export const customerDepositService = {
         // 1. Cap nhat trang thai phieu dat coc sang cancelled
         await depositRequestRepo.updateDepositStatus(dep.id, DEPOSIT_STATUS.CANCELLED);
 
-        // 2. Tra lai trang thai giuong ve available
-        await roomRepo.updateBedStatus(dep.bed_id, BED_STATUS.AVAILABLE);
+        // 2. Tra lai trang thai giuong ve available (ho tro ca coc 1 giuong lan coc nhom)
+        await releaseReservedBeds(dep);
 
         // 3. Khoi phuc lai trang thai don dang ky thue
         const staffId = (dep.rental_registrations as any)?.staff_id;

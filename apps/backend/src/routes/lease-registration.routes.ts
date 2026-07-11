@@ -63,6 +63,7 @@ router.post('/group', requireAuth, async (req, res) => {
   try {
     const {
       members,
+      room_id,
       preferred_area,
       preferred_room_type,
       preferred_price,
@@ -76,6 +77,10 @@ router.post('/group', requireAuth, async (req, res) => {
       return sendError(res, null, 'Danh sách thành viên nhóm không hợp lệ.', 400);
     }
 
+    if (!room_id) {
+      return sendError(res, null, 'Thiếu thông tin phòng đăng ký (room_id).', 400);
+    }
+
     const priceNum = Number(preferred_price);
     if (!preferred_area || !preferred_room_type ||
         preferred_price === undefined || preferred_price === null || preferred_price === '' || Number.isNaN(priceNum) ||
@@ -87,9 +92,9 @@ router.post('/group', requireAuth, async (req, res) => {
       members: members.map((m: any) => ({
         fullName: m.fullName,
         cccd: m.cccd,
-        email: m.email,
         phone: m.phone
       })),
+      room_id,
       preferred_area,
       preferred_room_type,
       preferred_price: priceNum,

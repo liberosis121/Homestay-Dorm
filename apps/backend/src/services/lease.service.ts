@@ -5,6 +5,7 @@
 
 import { leaseRepo } from '../repositories/lease.repo';
 import { registrationMemberRepo } from '../repositories/registration-member.repo';
+import { roomRepo } from '../repositories/room.repo';
 import { getCustomerByUserId, getStaffByUserId, getCustomerByCccd } from '../repositories/profile.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX } from '../types/constants';
@@ -37,6 +38,29 @@ function getMissingProfileFields(customer: Record<string, any>): string[] {
 /** Chuan hoa chuoi de so sanh mem (trim, lowercase, gop khoang trang). */
 function normalizeText(value: string | null | undefined): string {
   return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Chuan hoa so dien thoai de so sanh: chi giu chu so, quy '+84'/'84' dau ve '0'.
+ * Tranh lech do dinh dang (khoang trang, dau gach, tien to quoc gia).
+ */
+function normalizePhone(value: string | null | undefined): string {
+  let digits = (value || '').replace(/\D/g, '');
+  if (digits.startsWith('84')) {
+    digits = '0' + digits.slice(2);
+  }
+  return digits;
+}
+
+/**
+ * Quy gioi tinh trong ho so KH ('Nam'/'Nữ'/'Khác') ve chuan gender_type cua phong
+ * ('male'/'female'/'other') de doi chieu voi rang buoc gioi tinh cua phong.
+ */
+function mapCustomerGenderToRoomType(gender: string | null | undefined): string {
+  const g = normalizeText(gender);
+  if (g === 'nam') return 'male';
+  if (g === 'nữ' || g === 'nu') return 'female';
+  return 'other';
 }
 
 /** Cac trang thai coi la "dang xu ly" — chan tao/them vao don moi de tranh trung. */
@@ -95,6 +119,20 @@ export const leaseService = {
       );
     }
 
+    // 2b. Chan neu dang la THANH VIEN cua mot nhom dang xu ly (doi xung voi luong nhom).
+    //     Vi cccd cua thanh vien khong nam tren rental_registrations cua nhom, phai tra qua
+    //     bang noi rental_registration_members moi phat hien duoc.
+    const memberships = await registrationMemberRepo.getMembershipsByUserIds([customer.user_id]);
+    const activeMembership = (memberships || []).find((mm: any) =>
+      BLOCKING_STATUSES.includes(mm.rental_registrations?.status)
+    );
+    if (activeMembership) {
+      throw new Error(
+        `Không thể tạo phiếu đăng ký mới vì bạn đang thuộc một nhóm đăng ký thuê đang được xử lý ` +
+        `(mã ${activeMembership.registration_id}). Vui lòng chờ hoàn tất hoặc hủy trước khi đăng ký lại.`
+      );
+    }
+
     // 3. Tu dong sinh ID duy nhat cho don dang ky (Vi du: DKT-001)
     const nextId = await generateNextId(ID_PREFIX.RENTAL_REGISTRATION, 'rental_registrations');
 
@@ -114,7 +152,24 @@ export const leaseService = {
       staff_id: null
     };
 
-    return await leaseRepo.createRegistration(newRecord);
+    const created = await leaseRepo.createRegistration(newRecord);
+
+    // 5. Dong nhat voi luong nhom: MOI phieu deu co nguoi dai dien trong bang members.
+    //    Phieu ca nhan = "nhom 1 nguoi" -> chen chinh khach dang nhap lam dai dien.
+    try {
+      await registrationMemberRepo.createMembers([{
+        registration_id: nextId,
+        customer_user_id: customer.user_id,
+        is_representative: true
+      }]);
+    } catch (err) {
+      // Rollback thu cong: huy phieu vua tao neu chen thanh vien that bai
+      // (khong co transaction qua PostgREST).
+      await leaseRepo.updateRegistrationStatus(nextId, REGISTRATION_STATUS.CANCELLED).catch(() => {});
+      throw err;
+    }
+
+    return created;
   },
 
   /**
@@ -135,9 +190,9 @@ export const leaseService = {
     members: Array<{
       fullName: string;
       cccd: string;
-      email: string;
-      phone?: string;
+      phone: string;
     }>;
+    room_id: string;
     preferred_area: string;
     preferred_room_type: string;
     preferred_price: number;
@@ -163,6 +218,27 @@ export const leaseService = {
     if (members.length < 1) {
       throw new Error('Nhóm phải có ít nhất 1 thành viên.');
     }
+
+    // 1b. Doi chieu so giuong TRONG THUC TE cua phong (nguon chan ly = DB, khong tin so tu client).
+    //     Neu so thanh vien vuot qua so giuong trong hien tai -> chan dang ky.
+    if (!data.room_id) {
+      throw new Error('Thiếu thông tin phòng đăng ký.');
+    }
+    const beds = await roomRepo.getBedsByRoomId(data.room_id);
+    if (!beds || beds.length === 0) {
+      throw new Error('Phòng đăng ký không tồn tại hoặc chưa có giường.');
+    }
+    const availableBeds = beds.filter((b: any) => b.status === 'available').length;
+    if (members.length > availableBeds) {
+      throw new Error(
+        `Số thành viên nhóm (${members.length}) vượt quá số giường trống hiện tại của phòng (${availableBeds}). ` +
+        `Vui lòng giảm số thành viên hoặc chọn phòng khác.`
+      );
+    }
+
+    // 1c. Doc rang buoc gioi tinh cua phong (dung de doi chieu tung thanh vien o buoc 4).
+    const room = await roomRepo.getRoomById(data.room_id);
+    const roomGenderType: string = room?.gender_type || 'unisex';
 
     // 2. Chan trung CCCD giua cac thanh vien
     const cccdList = members.map(m => m.cccd);
@@ -205,13 +281,25 @@ export const leaseService = {
         );
       }
 
-      if (!m.email || m.email.trim() === '') {
-        throw new Error(`Vui lòng nhập email cho thành viên có CCCD ${m.cccd}.`);
+      if (!m.phone || m.phone.trim() === '') {
+        throw new Error(`Vui lòng nhập số điện thoại cho thành viên có CCCD ${m.cccd}.`);
       }
-      if (normalizeText(account.email) !== normalizeText(m.email)) {
+      if (normalizePhone(account.phone) !== normalizePhone(m.phone)) {
         throw new Error(
-          `Email nhập cho CCCD ${m.cccd} ("${m.email}") không khớp với email tài khoản.`
+          `Số điện thoại nhập cho CCCD ${m.cccd} ("${m.phone}") không khớp với hồ sơ tài khoản.`
         );
+      }
+
+      // Doi chieu gioi tinh voi rang buoc cua phong (phong 'unisex' bo qua).
+      if (roomGenderType !== 'unisex') {
+        const memberGender = mapCustomerGenderToRoomType(account.gender);
+        if (memberGender !== roomGenderType) {
+          const roomGenderLabel = roomGenderType === 'female' ? 'Nữ' : 'Nam';
+          throw new Error(
+            `Phòng này chỉ dành cho ${roomGenderLabel}. Giới tính trong hồ sơ của thành viên ` +
+            `"${account.full_name || m.cccd}" không phù hợp.`
+          );
+        }
       }
 
       validatedAccounts.push(account);
