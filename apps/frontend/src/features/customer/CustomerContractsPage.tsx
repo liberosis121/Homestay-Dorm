@@ -20,7 +20,6 @@ export interface ContractData {
   statusLabel: string;
   // Room
   branch: string;
-  building: string;
   roomCode: string;
   bedCode: string;
   roomType: string;
@@ -304,16 +303,12 @@ export default function CustomerContractsPage() {
                   <p className="text-sm font-bold text-on-surface mt-0.5">{contract.branch}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-on-surface-variant uppercase font-semibold">Tòa nhà</p>
-                  <p className="text-sm font-bold text-on-surface mt-0.5">{contract.building}</p>
-                </div>
-                <div>
                   <p className="text-[10px] text-on-surface-variant uppercase font-semibold">Vị trí giường</p>
                   <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary text-xs font-extrabold rounded-md mt-0.5 border border-primary/20">
                     {contract.bedCode}
                   </span>
                 </div>
-                <div className="col-span-2">
+                <div>
                   <p className="text-[10px] text-on-surface-variant uppercase font-semibold">Loại phòng</p>
                   <p className="text-sm font-bold text-on-surface mt-0.5">{contract.roomType}</p>
                 </div>
