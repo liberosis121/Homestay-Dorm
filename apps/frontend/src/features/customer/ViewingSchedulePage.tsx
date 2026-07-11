@@ -2,9 +2,13 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { ViewingSchedule, getMyViewingSchedulesApi, cancelViewingScheduleApi, rescheduleViewingScheduleApi } from './viewing.api';
-import { getMyDepositsApi, createDepositApi } from './deposit.api';
+import { getMyDepositsApi, createDepositApi, DepositRequest } from './deposit.api';
 import { getRoomDetailApi } from '../rooms/rooms.api';
-import { CustomerDepositRequest } from '../../lib/supabaseClient';
+
+// Khóa liên kết phiếu cọc <-> lịch xem phòng: một phiếu cọc gắn với đúng buổi xem
+// của cùng đơn đăng ký (registration_id) VÀ cùng phòng (room_id) đã dẫn tới việc đặt cọc.
+const depositKey = (d: { registration_id: string; room_id: string }) => `${d.registration_id}|${d.room_id}`;
+const scheduleKey = (s: { registration_id: string; room_id: string }) => `${s.registration_id}|${s.room_id}`;
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -242,7 +246,7 @@ const AppointmentCard = ({
   onCreateDepositRequest,
 }: {
   schedule: ViewingSchedule;
-  depositRequest?: CustomerDepositRequest;
+  depositRequest?: DepositRequest;
   onCancel: (id: string) => void;
   onReschedule: (id: string) => void;
   onCreateDepositRequest: (schedule: ViewingSchedule) => Promise<{ ok: boolean; message: string }> | { ok: boolean; message: string };
@@ -419,7 +423,7 @@ const AppointmentCard = ({
         {schedule.status === 'completed' && (
           <div className="mt-4">
             {depositRequest ? (() => {
-              const depStatus = depositRequest.status;
+              const depStatus: string = depositRequest.status;
               let title = 'Yêu cầu đặt cọc đang chờ xác nhận';
               let desc = 'Nhân viên Sale sẽ kiểm tra phòng/giường sau buổi xem và liên hệ bạn để xác nhận khoản đặt cọc.';
               let isSuccess = false;
@@ -520,8 +524,8 @@ export default function ViewingSchedulePage() {
   } = useViewingScheduleStore();
 
   const [allSchedules, setAllSchedules] = useState<ViewingSchedule[]>([]);
-  const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
-  const [initialDepositScheduleIds, setInitialDepositScheduleIds] = useState<Set<string>>(new Set());
+  const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
+  const [depositedKeys, setDepositedKeys] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -532,8 +536,8 @@ export default function ViewingSchedulePage() {
       getMyDepositsApi()
     ]).then(([schedulesList, depositsList]) => {
       setAllSchedules(schedulesList);
-      setDepositRequests(depositsList as any);
-      setInitialDepositScheduleIds(new Set(depositsList.map(r => r.viewing_schedule_id)));
+      setDepositRequests(depositsList);
+      setDepositedKeys(new Set(depositsList.map(depositKey)));
     }).catch(err => {
       console.error('Lỗi khi tải lịch xem phòng hoặc đặt cọc:', err);
     }).finally(() => {
@@ -560,8 +564,8 @@ export default function ViewingSchedulePage() {
     // Sort past schedules to push completed & deposit-request-less ones to the top
     if (activeTab === 'past') {
       tabFiltered.sort((a, b) => {
-        const aHasDep = initialDepositScheduleIds.has(a.id);
-        const bHasDep = initialDepositScheduleIds.has(b.id);
+        const aHasDep = depositedKeys.has(scheduleKey(a));
+        const bHasDep = depositedKeys.has(scheduleKey(b));
         
         // Prioritize completed over cancelled
         if (a.status === 'completed' && b.status !== 'completed') return -1;
@@ -588,7 +592,7 @@ export default function ViewingSchedulePage() {
       s.room_name.toLowerCase().includes(q) ||
       s.branch_name.toLowerCase().includes(q)
     );
-  }, [allSchedules, activeTab, searchQuery, initialDepositScheduleIds]);
+  }, [allSchedules, activeTab, searchQuery, depositedKeys]);
 
   const handleCancel = async (id: string) => {
     try {
@@ -636,8 +640,8 @@ export default function ViewingSchedulePage() {
 
       // 3. Tải lại danh sách cọc để đồng bộ UI
       const depositsList = await getMyDepositsApi();
-      setDepositRequests(depositsList as any);
-      setInitialDepositScheduleIds(new Set(depositsList.map(r => r.viewing_schedule_id)));
+      setDepositRequests(depositsList);
+      setDepositedKeys(new Set(depositsList.map(depositKey)));
 
       return { ok: true, message: 'Đã tạo yêu cầu đặt cọc giường thành công trên hệ thống!' };
     } catch (error: any) {
@@ -747,7 +751,7 @@ export default function ViewingSchedulePage() {
                   <AppointmentCard
                      key={s.id}
                      schedule={s}
-                     depositRequest={depositRequests.find(r => r.viewing_schedule_id === s.id)}
+                     depositRequest={depositRequests.find(r => r.registration_id === s.registration_id && r.room_id === s.room_id)}
                      onCancel={handleCancel}
                      onReschedule={handleReschedule}
                      onCreateDepositRequest={handleCreateDepositRequest}
