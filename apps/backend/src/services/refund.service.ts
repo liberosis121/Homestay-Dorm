@@ -17,6 +17,13 @@ export const refundService = {
   },
 
   /**
+   * Lay danh sach ung vien hoan coc khi chua ky hop dong (hoan 80%).
+   */
+  getCancellationRefunds: async () => {
+    return await refundRepo.getCancellationRefunds();
+  },
+
+  /**
    * Lap ban doi soat hoan coc va cap nhat trang thai don tra phong.
    */
   createReconciliation: async (data: {

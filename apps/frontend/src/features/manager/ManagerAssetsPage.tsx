@@ -298,7 +298,7 @@ export default function ManagerAssetsPage() {
                     const meta = STATUS_META[asset.status] || STATUS_META.available;
                     const isSelected = selected?.id === asset.id;
                     return (
-                      <tr key={formatShortId(asset.id, 'checkout')} style={{
+                      <tr key={asset.id} style={{
                         borderBottom: `1px solid ${T.border}`,
                         background: isSelected ? T.primaryLight : 'transparent',
                         cursor: 'pointer'

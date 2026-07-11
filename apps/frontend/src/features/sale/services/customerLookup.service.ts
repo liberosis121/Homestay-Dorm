@@ -65,7 +65,6 @@ export interface Customer {
     time: string;
     title: string;
   }>;
-  importantNote: string;
 }
 
 const EMPTY_FIELD = '—';
@@ -115,7 +114,6 @@ const normalizeCustomer = (raw: any): Customer => {
     deposits: Array.isArray(raw.deposits) ? raw.deposits : [],
     contracts: Array.isArray(raw.contracts) ? raw.contracts : [],
     recentActivities: Array.isArray(raw.recentActivities) ? raw.recentActivities : [],
-    importantNote: EMPTY_FIELD,
   };
 };
 
@@ -124,10 +122,5 @@ export const customerLookupService = {
     const res = await apiClient.get('/staff/customers');
     const rows = (res.data as any).data || [];
     return Array.isArray(rows) ? rows.map(normalizeCustomer) : [];
-  },
-
-  updateCustomerNote: async (customerId: string, note: string) => {
-    const res = await apiClient.put(`/staff/customers/${customerId}/note`, { note });
-    return (res.data as any).data;
   },
 };

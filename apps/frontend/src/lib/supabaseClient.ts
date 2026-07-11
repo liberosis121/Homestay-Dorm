@@ -45,6 +45,7 @@ export interface Room {
   has_private_wc: boolean;
   price: number;
   amenities: string[];
+  area?: number;
   image_url: string;
   status: 'available' | 'deposited' | 'occupied' | 'maintenance' | 'partial';
 }
@@ -87,7 +88,8 @@ export interface CustomerDepositRequest {
   viewing_schedule_id: string;
   deposit_amount: number;
   expected_move_in_date: string;
-  status: 'pending_sale_confirmation' | 'confirmed' | 'invoice_created' | 'paid' | 'cancelled';
+  // 'pending' là giá trị thật từ DB Supabase; 'pending_sale_confirmation' là giá trị mock DB cũ.
+  status: 'pending' | 'pending_sale_confirmation' | 'confirmed' | 'invoice_created' | 'paid' | 'cancelled';
   note?: string;
   created_at: string;
 }
@@ -201,8 +203,10 @@ export interface CheckinInvoice {
   customer_name: string;
   room_id: string;
   room_name: string;
+  room_type?: string;
   checkin_date: string;
   rent_amount: number;
+  deposit_amount?: number;
   deposit_ref: string;    // ref to DepositInvoice
   services: { name: string; amount: number }[];
   total: number;
@@ -216,6 +220,8 @@ export interface MonthlyInvoice {
   customer_name: string;
   room_id: string;
   room_name: string;
+  branch_id?: string;
+  branch_name?: string;
   period: string;         // "06/2026"
   rent_amount: number;
   electricity_kwh: number;

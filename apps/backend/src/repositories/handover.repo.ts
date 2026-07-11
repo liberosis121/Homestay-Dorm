@@ -78,6 +78,7 @@ export const handoverRepo = {
         customer_name: customer.full_name || 'Khách thuê',
         room_id: dep.room_id || '',
         room_name: room.name || 'Phòng',
+        branch_id: room.branch_id || '',
         handover_date: h.handover_time ? h.handover_time.slice(0, 10) : new Date().toISOString().slice(0, 10),
         checklist,
         customer_signed: h.customer_confirmed,

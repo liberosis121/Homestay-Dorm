@@ -215,18 +215,8 @@ export const customerLookupService = {
         viewings: accurateFormattedViewings,
         deposits: formattedDeposits,
         contracts: formattedContracts,
-        recentActivities,
-        importantNote: ''
+        recentActivities
       };
     });
-  },
-
-  /**
-   * Cap nhat ghi chu cho khach hang.
-   */
-  updateNote: async (customerId: string, note: string) => {
-    // Do bang khach_hang khong co cot note thuc te trong DB, ta tra ve mo phong thanh cong de tranh loi runtime
-    console.log(`[CustomerLookupService] Cap nhat ghi chu cho khach hang (CCCD=${customerId}): ${note}`);
-    return { cccd: customerId, note };
   }
 };

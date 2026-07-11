@@ -33,7 +33,12 @@ export const checkinInvoiceRepo = {
     // 4. Fetch rooms
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
-      ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
+      ? await supabase.from('rooms').select('id, name, branch_id, room_type').in('id', roomIds)
+      : { data: [] as any[] };
+
+    // 4b. Fetch so tien coc that (hoa don dat coc goc) de hien thi dung trong chi tiet hoa don nhan phong
+    const { data: depositInvoices } = depositIds.length > 0
+      ? await supabase.from('invoices').select('deposit_id, amount').eq('invoice_type', 'deposit').in('deposit_id', depositIds)
       : { data: [] as any[] };
 
     // 5. Fetch branches
@@ -64,14 +69,17 @@ export const checkinInvoiceRepo = {
         const branch = room ? (branches || []).find(b => b.id === room.branch_id) : null;
         const reg = req ? (regs || []).find(rg => rg.id === req.registration_id) : null;
         const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
+        const depositInvoice = (depositInvoices || []).find(di => di.deposit_id === contract.deposit_id);
 
         mappedContract = {
           ...contract,
           customer_name: customer?.full_name || 'Khách hàng',
           customer_phone: customer?.phone || '',
+          deposit_amount: depositInvoice?.amount ?? null,
           rooms: room ? {
             id: room.id,
             name: room.name,
+            room_type: room.room_type,
             branches: branch ? {
               id: branch.id,
               name: branch.name
@@ -85,6 +93,8 @@ export const checkinInvoiceRepo = {
         customer_name: mappedContract?.customer_name || 'Khách hàng',
         customer_phone: mappedContract?.customer_phone || '',
         room_name: mappedContract?.rooms?.name || 'Phòng',
+        room_type: mappedContract?.rooms?.room_type || '',
+        deposit_amount: mappedContract?.deposit_amount ?? null,
         contracts: mappedContract,
         created_at: inv.created_at || mappedContract?.created_date || mappedContract?.created_at || ''
       };
