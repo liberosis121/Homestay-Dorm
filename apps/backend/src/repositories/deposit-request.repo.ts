@@ -59,6 +59,45 @@ export const depositRequestRepo = {
   },
 
   /**
+   * Lay danh sach phieu dat coc theo danh sach ma phieu dang ky (registration_id).
+   * Dung de thanh vien nhom xem coc cua phieu ma minh tham gia (khong chi dai dien).
+   * Cung shape join voi getDepositsByCustomer.
+   */
+  getDepositsByRegistrationIds: async (registrationIds: string[]) => {
+    if (!registrationIds || registrationIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('deposit_requests')
+      .select(`
+        *,
+        rental_registrations!inner (
+          id,
+          cccd
+        ),
+        rooms (
+          id,
+          name,
+          room_type,
+          image_url,
+          branches (
+            id,
+            name
+          )
+        ),
+        beds (
+          id,
+          name
+        )
+      `)
+      .in('registration_id', registrationIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`[DepositRequestRepo] Loi khi lay coc theo phieu dang ky: ${error.message}`);
+    }
+    return data || [];
+  },
+
+  /**
    * Lay chi tiet mot phieu dat coc.
    */
   getDepositById: async (id: string) => {
@@ -68,7 +107,7 @@ export const depositRequestRepo = {
         *,
         rental_registrations!inner (
           *,
-          customers!inner (
+          customers!cccd!inner (
             *,
             profiles!inner (
               id,
@@ -101,7 +140,7 @@ export const depositRequestRepo = {
         rental_registrations!inner (
           id,
           cccd,
-          customers!inner (
+          customers!cccd!inner (
             profiles!inner (
               full_name,
               phone
@@ -131,6 +170,37 @@ export const depositRequestRepo = {
       throw new Error(`[DepositRequestRepo] Loi khi lay danh sach phieu dat coc: ${error.message}`);
     }
     return data;
+  },
+
+  /**
+   * Chen danh sach giuong cua mot phieu dat coc NHOM (bang noi deposit_beds).
+   */
+  createDepositBeds: async (rows: Array<{ deposit_id: string; bed_id: string }>) => {
+    const { data, error } = await supabase
+      .from('deposit_beds')
+      .insert(rows)
+      .select();
+
+    if (error) {
+      throw new Error(`[DepositRequestRepo] Loi khi luu giuong cua phieu coc nhom: ${error.message}`);
+    }
+    return data;
+  },
+
+  /**
+   * Lay danh sach bed_id thuoc mot phieu dat coc nhom.
+   * Tra ve [] neu la coc 1 giuong le (khong dung bang noi) hoac coc nguyen phong.
+   */
+  getBedIdsByDeposit: async (depositId: string): Promise<string[]> => {
+    const { data, error } = await supabase
+      .from('deposit_beds')
+      .select('bed_id')
+      .eq('deposit_id', depositId);
+
+    if (error) {
+      throw new Error(`[DepositRequestRepo] Loi khi lay giuong cua phieu coc id=${depositId}: ${error.message}`);
+    }
+    return (data || []).map((r: any) => r.bed_id);
   },
 
   /**

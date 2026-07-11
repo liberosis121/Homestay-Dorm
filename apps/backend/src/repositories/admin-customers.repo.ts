@@ -73,7 +73,7 @@ export const adminCustomersRepo = {
             name
           ),
           rental_registrations (
-            customers (
+            customers!cccd (
               user_id
             )
           )

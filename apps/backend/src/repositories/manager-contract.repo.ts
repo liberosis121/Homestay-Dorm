@@ -20,6 +20,12 @@ async function activateResourcesAfterContract(depositId: string) {
   if (depErr) throw depErr;
   if (!dep) throw new Error('Không tìm thấy phiếu cọc tương ứng để kích hoạt tài nguyên thuê.');
 
+  // Cọc nhóm: lấy danh sách giường từ bảng nối (rỗng nếu là cọc 1 giường / nguyên phòng).
+  const { data: depBeds, error: dbErr } = await supabase
+    .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
+  if (dbErr) throw dbErr;
+  const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
+
   if (dep.bed_id) {
     // Cọc theo giường → giường 'occupied'
     const { error: bedErr } = await supabase
@@ -27,6 +33,24 @@ async function activateResourcesAfterContract(depositId: string) {
     if (bedErr) throw bedErr;
 
     // Sau khi cập nhật, nếu phòng không còn giường 'available' nào → phòng 'occupied'
+    if (dep.room_id) {
+      const { data: roomBeds, error: rbErr } = await supabase
+        .from('beds').select('status').eq('room_id', dep.room_id);
+      if (rbErr) throw rbErr;
+      const stillAvailable = (roomBeds || []).some((b) => b.status === 'available');
+      if (!stillAvailable) {
+        const { error: roomErr } = await supabase
+          .from('rooms').update({ status: 'occupied' }).eq('id', dep.room_id);
+        if (roomErr) throw roomErr;
+      }
+    }
+  } else if (groupBedIds.length > 0) {
+    // Cọc nhóm N giường → tất cả giường của nhóm 'occupied'
+    const { error: bedErr } = await supabase
+      .from('beds').update({ status: 'occupied' }).in('id', groupBedIds);
+    if (bedErr) throw bedErr;
+
+    // Nếu phòng không còn giường 'available' nào → phòng 'occupied'
     if (dep.room_id) {
       const { data: roomBeds, error: rbErr } = await supabase
         .from('beds').select('status').eq('room_id', dep.room_id);
@@ -70,6 +94,12 @@ async function releaseResourcesAfterContract(depositId: string) {
   if (depErr) throw depErr;
   if (!dep) return;
 
+  // Cọc nhóm: lấy danh sách giường từ bảng nối (rỗng nếu là cọc 1 giường / nguyên phòng).
+  const { data: depBeds, error: dbErr } = await supabase
+    .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
+  if (dbErr) throw dbErr;
+  const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
+
   if (dep.bed_id) {
     const { error: bedErr } = await supabase
       .from('beds').update({ status: 'available' }).eq('id', dep.bed_id);
@@ -86,6 +116,17 @@ async function releaseResourcesAfterContract(depositId: string) {
           .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
         if (roomErr) throw roomErr;
       }
+    }
+  } else if (groupBedIds.length > 0) {
+    // Cọc nhóm N giường → nhả tất cả giường của nhóm.
+    const { error: bedErr } = await supabase
+      .from('beds').update({ status: 'available' }).in('id', groupBedIds);
+    if (bedErr) throw bedErr;
+
+    if (dep.room_id) {
+      const { error: roomErr } = await supabase
+        .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
+      if (roomErr) throw roomErr;
     }
   } else if (dep.room_id) {
     const { error: roomErr } = await supabase

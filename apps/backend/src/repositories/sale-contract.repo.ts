@@ -7,7 +7,7 @@ const CONTRACT_SELECT = `
     *,
     rooms ( *, branches (*) ),
     beds (*),
-    rental_registrations ( *, customers (*) )
+    rental_registrations ( *, customers!cccd (*) )
   )
 `;
 

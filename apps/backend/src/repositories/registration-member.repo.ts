@@ -47,6 +47,23 @@ export const registrationMemberRepo = {
   },
 
   /**
+   * Lay danh sach phieu dang ky (registration_id) ma mot user dang la thanh vien,
+   * kem co is_representative. Dung de mot thanh vien nhom xem duoc coc/HD/hoa don
+   * cua phieu ma minh tham gia (khong chi rieng nguoi dai dien).
+   */
+  getRegistrationIdsByUser: async (userId: string): Promise<Array<{ registration_id: string; is_representative: boolean }>> => {
+    const { data, error } = await supabase
+      .from('rental_registration_members')
+      .select('registration_id, is_representative')
+      .eq('customer_user_id', userId);
+
+    if (error) {
+      throw new Error(`[RegMemberRepo] Loi khi lay phieu theo user: ${error.message}`);
+    }
+    return (data || []) as Array<{ registration_id: string; is_representative: boolean }>;
+  },
+
+  /**
    * Kiem tra cac tai khoan (user_id) dang la thanh vien cua nhung phieu dang ky nao
    * (kem trang thai phieu). Dung de chan mot khach dang o trong nhom con hieu luc
    * lai duoc them vao nhom khac.

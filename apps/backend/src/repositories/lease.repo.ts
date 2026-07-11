@@ -46,7 +46,7 @@ export const leaseRepo = {
       .from('rental_registrations')
       .select(`
         *,
-        customers (*, profiles (id, full_name, phone))
+        customers!cccd (*, profiles (id, full_name, phone))
       `)
       .eq('id', id)
       .single();
@@ -67,7 +67,7 @@ export const leaseRepo = {
       .from('rental_registrations')
       .select(`
         *,
-        customers (*, profiles (id, full_name, phone))
+        customers!cccd (*, profiles (id, full_name, phone))
       `)
       .order('created_at', { ascending: false });
 

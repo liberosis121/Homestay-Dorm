@@ -21,7 +21,7 @@ const SCHEDULE_SELECT = `
   employees ( id, full_name, phone ),
   rental_registrations (
     id, cccd, status, expected_move_in_date,
-    customers ( cccd, full_name, phone, email )
+    customers!cccd ( cccd, full_name, phone, email )
   )
 `;
 
