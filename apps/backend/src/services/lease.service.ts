@@ -26,22 +26,33 @@ export const leaseService = {
     // 1. Lay thong tin chi tiet khach hang tu userId
     const customer = await getCustomerByUserId(userId);
     if (!customer) {
-      throw new Error('Khong tim thay thong tin khach hang. Vui long cap nhat ho so.');
+      throw new Error('Không tìm thấy thông tin khách hàng. Vui lòng cập nhật hồ sơ.');
     }
 
     // Yeu cau bat buoc phai co CCCD hop le moi duoc dang ky thue
     if (!customer.cccd || customer.cccd.startsWith('TEMP-')) {
-      throw new Error('Ban phai cap nhat so CCCD hop le trong ho so ca nhan truoc khi dang ky thue.');
+      throw new Error('Bạn phải cập nhật số CCCD hợp lệ trong hồ sơ cá nhân trước khi đăng ký thuê.');
     }
 
-    // 2. Kiem tra xem khach hang da co don nao dang cho xu ly hay chua de tranh spam
+    // 2. Kiem tra xem khach hang da co giao dich thue nao dang hoat dong hay chua (tranh spam / trung don).
+    //    Chan khi don dang: cho xep lich (pending_schedule), da co lich (scheduled) hoac da dat coc (deposited).
+    //    Don da completed/cancelled thi cho phep tao don moi (KH da thue xong hoac da huy truoc do).
     const existingRegistrations = await leaseRepo.getRegistrationsByCustomer(customer.cccd);
-    const hasActiveRegistration = existingRegistrations.some(
-      (r) => r.status === REGISTRATION_STATUS.PENDING_SCHEDULE || r.status === REGISTRATION_STATUS.SCHEDULED
+    const blockingRegistration = existingRegistrations.find(
+      (r) => r.status === REGISTRATION_STATUS.PENDING_SCHEDULE ||
+             r.status === REGISTRATION_STATUS.SCHEDULED ||
+             r.status === REGISTRATION_STATUS.DEPOSITED
     );
 
-    if (hasActiveRegistration) {
-      throw new Error('Ban dang co mot don dang ky thue dang trong qua trinh xu ly. Khong the tao them don moi.');
+    if (blockingRegistration) {
+      // Thong bao thay doi theo tinh trang thuc te de KH hieu ro dang vuong o buoc nao.
+      const contextDetail = blockingRegistration.status === REGISTRATION_STATUS.DEPOSITED
+        ? 'bạn đã đặt cọc giữ chỗ và đang chờ hoàn tất hợp đồng thuê'
+        : 'bạn đang có một đơn đăng ký thuê đang được xử lý';
+      throw new Error(
+        `Không thể tạo phiếu đăng ký mới vì ${contextDetail}. ` +
+        `Vui lòng chờ hoàn tất hoặc liên hệ nhân viên Sale phụ trách để được hỗ trợ.`
+      );
     }
 
     // 3. Tu dong sinh ID duy nhat cho don dang ky (Vi du: DKT-001)
@@ -74,35 +85,35 @@ export const leaseService = {
     // 1. Lay thong tin khach hang de lay CCCD
     const customer = await getCustomerByUserId(userId);
     if (!customer) {
-      throw new Error('Khong tim thay thong tin khach hang.');
+      throw new Error('Không tìm thấy thông tin khách hàng.');
     }
 
     // 2. Doc chi tiet don dang ky thue
     const registration = await leaseRepo.getRegistrationById(registrationId);
     if (!registration) {
-      throw new Error('Don dang ky thue khong ton tai.');
+      throw new Error('Đơn đăng ký thuê không tồn tại.');
     }
 
     // 3. Xac minh quyen so huu don dang ky
     if (registration.cccd !== customer.cccd) {
-      throw new Error('Ban khong co quyen huy don dang ky nay.');
+      throw new Error('Bạn không có quyền hủy đơn đăng ký này.');
     }
 
     // 4. Validate trang thai: chi cho phep huy khi don chua duoc len lich
     if (registration.status === REGISTRATION_STATUS.SCHEDULED) {
-      throw new Error('Don dang ky da duoc len lich xem phong. Neu muon huy, vui long lien he nhan vien Sale phu trach.');
+      throw new Error('Đơn đăng ký đã được lên lịch xem phòng. Nếu muốn hủy, vui lòng liên hệ nhân viên Sale phụ trách.');
     }
     if (registration.status === REGISTRATION_STATUS.DEPOSITED) {
-      throw new Error('Don dang ky da dat coc, khong the tu huy. Vui long lien he ban quan ly.');
+      throw new Error('Đơn đăng ký đã đặt cọc, không thể tự hủy. Vui lòng liên hệ ban quản lý.');
     }
     if (registration.status === REGISTRATION_STATUS.COMPLETED) {
-      throw new Error('Don dang ky da hoan thanh hop dong, khong the huy.');
+      throw new Error('Đơn đăng ký đã hoàn thành hợp đồng, không thể hủy.');
     }
     if (registration.status === REGISTRATION_STATUS.CANCELLED) {
-      throw new Error('Don dang ky nay da bi huy truoc do.');
+      throw new Error('Đơn đăng ký này đã bị hủy trước đó.');
     }
     if (registration.status !== REGISTRATION_STATUS.PENDING_SCHEDULE) {
-      throw new Error('Don dang ky khong o trang thai hop le de huy.');
+      throw new Error('Đơn đăng ký không ở trạng thái hợp lệ để hủy.');
     }
 
     // 5. Cap nhat trang thai sang CANCELLED
@@ -116,22 +127,22 @@ export const leaseService = {
     // 1. Lay thong tin ma nhan vien tu profiles UUID cua nhan vien dang nhap
     const staff = await getStaffByUserId(staffUserId);
     if (!staff) {
-      throw new Error('Khong xac dinh duoc nhan vien phu trach.');
+      throw new Error('Không xác định được nhân viên phụ trách.');
     }
 
     // 2. Kiem tra don dang ky
     const registration = await leaseRepo.getRegistrationById(registrationId);
     if (!registration) {
-      throw new Error('Don dang ky thue không tồn tại.');
+      throw new Error('Đơn đăng ký thuê không tồn tại.');
     }
 
     // 3. Chi duoc assign khi don chua bi huy hoac hoan thanh
     // Neu assign cho don da CANCELLED/COMPLETED thi du lieu bi sai lech
     if (registration.status === REGISTRATION_STATUS.CANCELLED) {
-      throw new Error('Don dang ky nay da bi huy, khong the phan cong nhan vien.');
+      throw new Error('Đơn đăng ký này đã bị hủy, không thể phân công nhân viên.');
     }
     if (registration.status === REGISTRATION_STATUS.COMPLETED) {
-      throw new Error('Don dang ky nay da hoan thanh, khong the phan cong lai.');
+      throw new Error('Đơn đăng ký này đã hoàn thành, không thể phân công lại.');
     }
 
     // 4. Cap nhat nhan vien phu trach
@@ -144,7 +155,7 @@ export const leaseService = {
   getCustomerRegistrations: async (userId: string) => {
     const customer = await getCustomerByUserId(userId);
     if (!customer) {
-      throw new Error('Khong tim thay thong tin khach hang.');
+      throw new Error('Không tìm thấy thông tin khách hàng.');
     }
     return await leaseRepo.getRegistrationsByCustomer(customer.cccd);
   },
@@ -162,7 +173,7 @@ export const leaseService = {
   getRegistrationDetail: async (registrationId: string) => {
     const registration = await leaseRepo.getRegistrationById(registrationId);
     if (!registration) {
-      throw new Error('Don dang ky thue khong ton tai.');
+      throw new Error('Đơn đăng ký thuê không tồn tại.');
     }
     return registration;
   }
