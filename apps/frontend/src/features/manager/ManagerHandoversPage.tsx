@@ -32,10 +32,19 @@ export default function ManagerHandoversPage() {
   const [selectedCheckout, setSelectedCheckout] = useState<any | null>(null);
   const [checkoutDrawerOpen, setCheckoutDrawerOpen] = useState(false);
   const [compensations, setCompensations] = useState<Record<string, number>>({});
+  const [checkoutConditions, setCheckoutConditions] = useState<Record<string, string>>({});
+  const [checkoutAssetNotes, setCheckoutAssetNotes] = useState<Record<string, string>>({});
   const [utilityDebt, setUtilityDebt] = useState<number>(0);
   const [cleaningFee, setCleaningFee] = useState<number>(200000);
   const [violationPenalty, setViolationPenalty] = useState<number>(0);
   const [checkoutNotes, setCheckoutNotes] = useState('');
+
+  // Check-in Handover states
+  const [checkinDrawerOpen, setCheckinDrawerOpen] = useState(false);
+  const [checkinNotes, setCheckinNotes] = useState('');
+  const [handoverConditions, setHandoverConditions] = useState<Record<string, string>>({});
+  const [handoverQuantities, setHandoverQuantities] = useState<Record<string, number>>({});
+  const [handoverNotes, setHandoverNotes] = useState<Record<string, string>>({});
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
@@ -199,9 +208,9 @@ export default function ManagerHandoversPage() {
     setUtilityDebt(0);
     setCleaningFee(200000);
     setViolationPenalty(0);
-    
-    // Auto-populate room assets compensations with default 0
     setCompensations({});
+    setCheckoutConditions({});
+    setCheckoutAssetNotes({});
     setCheckoutDrawerOpen(true);
   };
 
@@ -216,10 +225,14 @@ export default function ManagerHandoversPage() {
 
     const damages = roomAssets.map(asset => {
       const comp = compensations[asset.id] || 0;
+      const cond = checkoutConditions[asset.id] || 'Tốt';
+      const assetNote = checkoutAssetNotes[asset.id] || '';
       return {
         assetName: asset.name,
         serialNumber: asset.serial_number || asset.id,
-        compensation: comp
+        compensation: comp,
+        condition: cond,
+        note: assetNote
       };
     });
 
@@ -247,6 +260,76 @@ export default function ManagerHandoversPage() {
       }
     } catch (err) {
       console.error('Error submitting checkout inspection:', err);
+      showToast('Lỗi kết nối máy chủ', 'error');
+    }
+  };
+
+  // Open drawer to handover room at check-in
+  const startCheckinHandover = (task: any) => {
+    setSelectedCheckout(task);
+    setCheckinNotes('');
+    setHandoverConditions({});
+    setHandoverQuantities({});
+    setHandoverNotes({});
+    setCheckinDrawerOpen(true);
+  };
+
+  const submitCheckinHandover = async () => {
+    if (!selectedCheckout) return;
+
+    // Filter room assets
+    const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
+    const branchCode = selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
+    const expectedLocation = `CN_${branchCode}-${roomCode}`;
+    const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
+
+    // Prepare detailsList
+    const detailsList = roomAssets.map(asset => ({
+      serial_number: asset.serial_number || asset.id,
+      quantity: handoverQuantities[asset.id] || 1,
+      condition: handoverConditions[asset.id] || 'Tốt',
+      note: handoverNotes[asset.id] || ''
+    }));
+
+    // Find staff_id from session user or fallback
+    let staffId = 'e002e002-e002-e002-e002-e002e002e002'; // default manager
+    try {
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.id) staffId = mockUser.id;
+      }
+    } catch (e) {}
+
+    const handoverData = {
+      id: `BG-${Math.floor(100000 + Math.random() * 900000)}`,
+      contract_id: selectedCheckout.contract_id,
+      handover_time: new Date().toISOString(),
+      customer_confirmed: false,
+      staff_confirmed: true,
+      note: checkinNotes,
+      staff_id: staffId,
+      detailsList
+    };
+
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/handovers`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(handoverData)
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        await loadData();
+        setCheckinDrawerOpen(false);
+        showToast('Lập biên bản bàn giao tài sản thành công!', 'success');
+      } else {
+        showToast(result.message || 'Tạo biên bản thất bại', 'error');
+      }
+    } catch (err) {
+      console.error('Error submitting checkin handover:', err);
       showToast('Lỗi kết nối máy chủ', 'error');
     }
   };
@@ -284,13 +367,13 @@ export default function ManagerHandoversPage() {
 
       {/* Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Trả phòng & Đền bù tài sản</h1>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Bàn giao & Kiểm kê tài sản</h1>
         
         {/* Tab switcher */}
         <div style={{ display: 'flex', background: '#FAF2EC', borderRadius: 20, padding: 4, border: `1.5px solid ${T.border}` }}>
           {[
             { key: 'handovers', label: 'Biên bản đã lập', icon: 'assignment' },
-            { key: 'checkouts', label: 'Hợp đồng cần trả phòng', icon: 'logout' }
+            { key: 'checkouts', label: 'Hợp đồng chờ xử lý', icon: 'pending_actions' }
           ].map(tab => {
             const isActive = activeTab === tab.key;
             return (
@@ -346,7 +429,7 @@ export default function ManagerHandoversPage() {
           })}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div
             style={{
               background: T.primaryLight,
@@ -358,16 +441,52 @@ export default function ManagerHandoversPage() {
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <div style={{ background: T.primaryLight, borderRadius: 10, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.primary }}>logout</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.primary }}>pending_actions</span>
               </div>
-              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hợp đồng cần trả phòng</span>
+              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hợp đồng chờ xử lý</span>
             </div>
             <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: T.primary, marginTop: 4 }}>
               {pendingCheckouts.length}
             </div>
           </div>
-          <div className="hidden md:block" />
-          <div className="hidden md:block" />
+          <div
+            style={{
+              background: T.blueBg,
+              border: `1.5px solid ${T.blue}`,
+              borderRadius: 16, padding: '16px 20px',
+              textAlign: 'left',
+              boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
+              display: 'flex', flexDirection: 'column', gap: 8
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <div style={{ background: T.blueBg, borderRadius: 10, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.blue }}>login</span>
+              </div>
+              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Chờ bàn giao (Nhận phòng)</span>
+            </div>
+            <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: T.blue, marginTop: 4 }}>
+              {pendingCheckouts.filter(c => c.type === 'checkin').length}
+            </div>
+          </div>
+          <div
+            style={{
+              background: T.amberBg,
+              border: `1.5px solid ${T.amber}`,
+              borderRadius: 16, padding: '16px 20px',
+              textAlign: 'left',
+              boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
+              display: 'flex', flexDirection: 'column', gap: 8
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <div style={{ background: T.amberBg, borderRadius: 10, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.amber }}>logout</span>
+              </div>
+              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Chờ kiểm kê (Trả phòng)</span>
+            </div>
+            <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: T.amber, marginTop: 4 }}>
+              {pendingCheckouts.filter(c => c.type === 'checkout').length}
+            </div>
+          </div>
         </div>
       )}
 
@@ -467,12 +586,13 @@ export default function ManagerHandoversPage() {
             <>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '17%' }} />
-                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '22%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '12%' }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: T.bg }}>
@@ -481,7 +601,7 @@ export default function ManagerHandoversPage() {
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                     }}>Mã yêu cầu</th>
-                    {['Hợp đồng', 'Khách hàng', 'Phòng', 'Ngày yêu cầu', 'Trạng thái'].map(h => (
+                    {['Hợp đồng', 'Phân loại', 'Khách hàng', 'Phòng', 'Trạng thái'].map(h => (
                       <th key={h} style={{
                         padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                         color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -496,48 +616,77 @@ export default function ManagerHandoversPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingCheckouts.map(ch => (
-                    <tr key={ch.id} style={{ borderBottom: `1px solid ${T.border}` }} className="hover:bg-[#FAF2E8] transition-colors duration-150">
-                      <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif" }}>{formatShortId(ch.id, 'checkout')}</td>
-                      <td style={{ padding: '13px 16px', fontSize: 12, fontWeight: 700, color: T.text }}>{formatShortId(ch.contract_code, 'contract')}</td>
-                      <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{ch.customer_name}</p>
-                        <p style={{ fontSize: 11, color: T.textMuted }}>{ch.customer_phone}</p>
-                      </td>
-                      <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ch.room_name}</p>
-                      </td>
-                      <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, fontWeight: 600 }}>{ch.request_date.split('-').reverse().join('/')}</td>
-                      <td style={{ padding: '13px 16px' }}>
-                        <span style={{
-                          background: ch.status === 'pending' ? T.amberBg : T.sageBg,
-                          color: ch.status === 'pending' ? T.amber : T.sage,
-                          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
-                          border: `1px solid ${ch.status === 'pending' ? T.amber : T.sage}1A`,
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {ch.status === 'pending' ? 'Chờ kiểm kê' : 'Đã kiểm kê'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '13px 24px 13px 16px', textAlign: 'right' }}>
-                        <button onClick={() => startCheckoutInspection(ch)} style={{
-                          background: ch.status === 'pending' ? T.primary : T.sage,
-                          border: 'none',
-                          borderRadius: 12, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
-                          transition: 'all 0.15s ease-in-out'
-                        }}
-                        className="hover:opacity-90 active:scale-[0.95] shadow-sm">
-                          {ch.status === 'pending' ? 'Kiểm kê' : 'Xem lại'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {pendingCheckouts.map(ch => {
+                    const isCheckin = ch.type === 'checkin';
+                    return (
+                      <tr key={`${ch.type}-${ch.id}`} style={{ borderBottom: `1px solid ${T.border}` }} className="hover:bg-[#FAF2E8] transition-colors duration-150">
+                        <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif" }}>
+                          {isCheckin ? '—' : formatShortId(ch.id, 'checkout')}
+                        </td>
+                        <td style={{ padding: '13px 16px', fontSize: 12, fontWeight: 700, color: T.text }}>
+                          {formatShortId(ch.contract_code, 'contract')}
+                        </td>
+                        <td style={{ padding: '13px 16px' }}>
+                          <span style={{
+                            background: isCheckin ? T.blueBg : T.amberBg,
+                            color: isCheckin ? T.blue : T.amber,
+                            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
+                            border: `1px solid ${isCheckin ? T.blue : T.amber}1A`,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {isCheckin ? 'Nhận phòng' : 'Trả phòng'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '13px 16px' }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{ch.customer_name}</p>
+                          <p style={{ fontSize: 11, color: T.textMuted }}>{ch.customer_phone}</p>
+                        </td>
+                        <td style={{ padding: '13px 16px' }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ch.room_name}</p>
+                        </td>
+                        <td style={{ padding: '13px 16px' }}>
+                          <span style={{
+                            background: isCheckin ? T.blueBg : (ch.status === 'pending' ? T.amberBg : T.sageBg),
+                            color: isCheckin ? T.blue : (ch.status === 'pending' ? T.amber : T.sage),
+                            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
+                            border: `1px solid ${isCheckin ? T.blue : (ch.status === 'pending' ? T.amber : T.sage)}1A`,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {isCheckin ? 'Chờ bàn giao' : (ch.status === 'pending' ? 'Chờ kiểm kê' : 'Đã kiểm kê')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '13px 24px 13px 16px', textAlign: 'right' }}>
+                          {isCheckin ? (
+                            <button onClick={() => startCheckinHandover(ch)} style={{
+                              background: T.primary,
+                              border: 'none',
+                              borderRadius: 12, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
+                              transition: 'all 0.15s ease-in-out'
+                            }}
+                            className="hover:opacity-90 active:scale-[0.95] shadow-sm">
+                              Bàn giao
+                            </button>
+                          ) : (
+                            <button onClick={() => startCheckoutInspection(ch)} style={{
+                              background: ch.status === 'pending' ? T.amber : T.sage,
+                              border: 'none',
+                              borderRadius: 12, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
+                              transition: 'all 0.15s ease-in-out'
+                            }}
+                            className="hover:opacity-90 active:scale-[0.95] shadow-sm">
+                              {ch.status === 'pending' ? 'Kiểm kê' : 'Xem lại'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {pendingCheckouts.length === 0 && (
                 <div style={{ padding: 56, textAlign: 'center', color: T.textFaint }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 44, display: 'block', marginBottom: 10 }}>logout</span>
-                  <p style={{ fontSize: 13, fontWeight: 600 }}>Không có hợp đồng nào cần trả phòng.</p>
+                  <span className="material-symbols-outlined" style={{ fontSize: 44, display: 'block', marginBottom: 10 }}>assignment_turned_in</span>
+                  <p style={{ fontSize: 13, fontWeight: 600 }}>Không có hợp đồng nào đang chờ xử lý bàn giao hoặc kiểm kê.</p>
                 </div>
               )}
             </>
@@ -718,10 +867,13 @@ export default function ManagerHandoversPage() {
                       <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: T.text, marginBottom: 6 }}>Trừ điện nước / nợ cũ</label>
                       <div className="relative">
                         <input
-                          type="number"
-                          min={0}
-                          value={utilityDebt}
-                          onChange={e => setUtilityDebt(Number(e.target.value) || 0)}
+                          type="text"
+                          placeholder="0"
+                          value={utilityDebt === 0 ? '' : utilityDebt.toLocaleString('vi-VN')}
+                          onChange={e => {
+                            const raw = e.target.value.replace(/\D/g, '');
+                            setUtilityDebt(raw ? parseInt(raw, 10) : 0);
+                          }}
                           style={{
                             width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
                             padding: '6px 10px', fontSize: 13, color: T.text, background: T.bg, outline: 'none'
@@ -734,10 +886,13 @@ export default function ManagerHandoversPage() {
                       <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: T.text, marginBottom: 6 }}>Phí vệ sinh trả phòng</label>
                       <div className="relative">
                         <input
-                          type="number"
-                          min={0}
-                          value={cleaningFee}
-                          onChange={e => setCleaningFee(Number(e.target.value) || 0)}
+                          type="text"
+                          placeholder="0"
+                          value={cleaningFee === 0 ? '' : cleaningFee.toLocaleString('vi-VN')}
+                          onChange={e => {
+                            const raw = e.target.value.replace(/\D/g, '');
+                            setCleaningFee(raw ? parseInt(raw, 10) : 0);
+                          }}
                           style={{
                             width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
                             padding: '6px 10px', fontSize: 13, color: T.text, background: T.bg, outline: 'none'
@@ -751,10 +906,13 @@ export default function ManagerHandoversPage() {
                     <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: T.text, marginBottom: 6 }}>Khoản phạt hủy hợp đồng / vi phạm</label>
                     <div className="relative">
                       <input
-                        type="number"
-                        min={0}
-                        value={violationPenalty}
-                        onChange={e => setViolationPenalty(Number(e.target.value) || 0)}
+                        type="text"
+                        placeholder="0"
+                        value={violationPenalty === 0 ? '' : violationPenalty.toLocaleString('vi-VN')}
+                        onChange={e => {
+                          const raw = e.target.value.replace(/\D/g, '');
+                          setViolationPenalty(raw ? parseInt(raw, 10) : 0);
+                        }}
                         style={{
                           width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
                           padding: '6px 10px', fontSize: 13, color: T.text, background: T.bg, outline: 'none'
@@ -782,39 +940,71 @@ export default function ManagerHandoversPage() {
                       {roomAssets.map((asset) => {
                         const maxVal = asset.purchase_price;
                         const currentCompVal = compensations[asset.id] || 0;
+                        const currentCond = checkoutConditions[asset.id] || 'Tốt';
+                        const currentNote = checkoutAssetNotes[asset.id] || '';
                         return (
                           <div key={asset.id} style={{
                             padding: '14px 16px', borderRadius: 16,
                             background: T.surface, border: `1.5px solid ${T.border}`,
                             boxShadow: '0 2px 8px rgba(111,88,60,0.02)'
                           }}>
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <h5 style={{ fontSize: 13.5, fontWeight: 800, color: T.text }}>{asset.name}</h5>
-                                <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: "'Lexend', sans-serif" }}>Seri: {asset.serial_number || asset.id}</p>
-                                <p style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>Giá gốc: <strong style={{ color: T.textMuted }}>{maxVal.toLocaleString('vi-VN')}đ</strong></p>
+                            <div className="flex flex-col gap-3">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <h5 style={{ fontSize: 13.5, fontWeight: 800, color: T.text }}>{asset.name}</h5>
+                                  <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: "'Lexend', sans-serif" }}>Seri: {asset.serial_number || asset.id}</p>
+                                  <p style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>Giá gốc: <strong style={{ color: T.textMuted }}>{maxVal.toLocaleString('vi-VN')}đ</strong></p>
+                                </div>
+                                <div style={{ width: 140 }}>
+                                  <label style={{ display: 'block', fontSize: 10, color: T.textFaint, textTransform: 'uppercase', fontWeight: 800, marginBottom: 4, textAlign: 'right' }}>Tiền đền bù</label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      placeholder="0"
+                                      value={currentCompVal === 0 ? '' : currentCompVal.toLocaleString('vi-VN')}
+                                      onChange={e => {
+                                        const raw = e.target.value.replace(/\D/g, '');
+                                        let val = raw ? parseInt(raw, 10) : 0;
+                                        if (val > maxVal) val = maxVal;
+                                        setCompensations(prev => ({ ...prev, [asset.id]: val }));
+                                      }}
+                                      style={{
+                                        width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                                        padding: '6px 20px 6px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none',
+                                        textAlign: 'right'
+                                      }}
+                                    />
+                                    <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: T.textFaint }}>đ</span>
+                                  </div>
+                                </div>
                               </div>
-                              <div style={{ width: 160 }}>
-                                <label style={{ display: 'block', fontSize: 10, color: T.textFaint, textTransform: 'uppercase', fontWeight: 800, marginBottom: 4, textAlign: 'right' }}>Tiền đền bù</label>
-                                <div className="relative">
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: 10, color: T.textMuted, fontWeight: 700, marginBottom: 4 }}>Tình trạng lúc trả</label>
                                   <input
-                                    type="number"
-                                    min={0}
-                                    max={maxVal}
-                                    value={currentCompVal}
-                                    onChange={e => {
-                                      let val = parseInt(e.target.value) || 0;
-                                      if (val < 0) val = 0;
-                                      if (val > maxVal) val = maxVal;
-                                      setCompensations(prev => ({ ...prev, [asset.id]: val }));
-                                    }}
+                                    type="text"
+                                    value={currentCond}
+                                    onChange={e => setCheckoutConditions(prev => ({ ...prev, [asset.id]: e.target.value }))}
+                                    placeholder="Tốt, Bị nứt, Mất,..."
                                     style={{
                                       width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
-                                      padding: '6px 20px 6px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none',
-                                      textAlign: 'right'
+                                      padding: '5px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none'
                                     }}
                                   />
-                                  <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: T.textFaint }}>đ</span>
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: 10, color: T.textMuted, fontWeight: 700, marginBottom: 4 }}>Ghi chú hư hại</label>
+                                  <input
+                                    type="text"
+                                    value={currentNote}
+                                    onChange={e => setCheckoutAssetNotes(prev => ({ ...prev, [asset.id]: e.target.value }))}
+                                    placeholder="Chi tiết hư hại..."
+                                    style={{
+                                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                                      padding: '5px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none'
+                                    }}
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -861,6 +1051,193 @@ export default function ManagerHandoversPage() {
                 }}
                 className="hover:opacity-90 active:scale-[0.98] shadow-sm">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check</span> Xác nhận & Ghi nhận Trả phòng
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ================= DRAWER: CHECK-IN ASSET HANDOVER ================= */}
+      {checkinDrawerOpen && selectedCheckout && (() => {
+        // Resolve room assets
+        const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
+        const branchCode = selectedCheckout.branch_name.includes('Qu9') || selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Qu10') || selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
+        const expectedLocation = `CN_${branchCode}-${roomCode}`;
+        const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setCheckinDrawerOpen(false)}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.45)', backdropFilter: 'blur(8px)' }} />
+            <div style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: 620, maxWidth: '96vw',
+              background: T.surface, borderLeft: 'none', display: 'flex', flexDirection: 'column',
+              boxShadow: '-8px 0 40px rgba(111,88,60,0.18)', borderTopLeftRadius: 28, borderBottomLeftRadius: 28,
+              overflow: 'hidden', animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            }}
+              onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Bàn giao tài sản Nhận phòng</h3>
+                    <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>
+                      Hợp đồng: {formatShortId(selectedCheckout.contract_code, 'contract')} — KH: {selectedCheckout.customer_name}
+                    </p>
+                  </div>
+                  <button onClick={() => setCheckinDrawerOpen(false)}
+                    style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Content Body */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
+                
+                {/* Room / Customer Info */}
+                <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 16 }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Thông tin bàn giao phòng</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Phòng:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedCheckout.room_name}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Chi nhánh:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedCheckout.branch_name}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Mã Hợp đồng:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{formatShortId(selectedCheckout.contract_code, 'contract')}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Khách thuê:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>{selectedCheckout.customer_name} ({selectedCheckout.customer_phone})</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Assets Handover List */}
+                <div className="space-y-3">
+                  <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Danh sách tài sản bàn giao ({roomAssets.length} tài sản)
+                  </p>
+                  
+                  {roomAssets.length === 0 ? (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: T.textMuted, border: `1.5px dashed ${T.border}`, borderRadius: 14 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: 0.6, marginBottom: 8 }}>inventory_2</span>
+                      <p style={{ fontSize: 12.5, fontWeight: 700, color: T.textMuted }}>Không tìm thấy tài sản nào đang có trong phòng.</p>
+                      <p style={{ fontSize: 11, color: T.textFaint, marginTop: 4 }}>Hãy kiểm tra kho định vị của phòng này.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {roomAssets.map((asset) => {
+                        const currentCond = handoverConditions[asset.id] || 'Tốt';
+                        const currentQty = handoverQuantities[asset.id] || 1;
+                        const currentNote = handoverNotes[asset.id] || '';
+                        return (
+                          <div key={asset.id} style={{
+                            padding: '14px 16px', borderRadius: 16,
+                            background: T.surface, border: `1.5px solid ${T.border}`,
+                            boxShadow: '0 2px 8px rgba(111,88,60,0.02)'
+                          }}>
+                            <div className="flex flex-col gap-3">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <h5 style={{ fontSize: 13.5, fontWeight: 800, color: T.text }}>{asset.name}</h5>
+                                  <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: "'Lexend', sans-serif" }}>Seri: {asset.serial_number || asset.id}</p>
+                                </div>
+                                <div style={{ width: 100 }}>
+                                  <label style={{ display: 'block', fontSize: 10, color: T.textFaint, textTransform: 'uppercase', fontWeight: 800, marginBottom: 4, textAlign: 'right' }}>Số lượng</label>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={currentQty}
+                                    onChange={e => setHandoverQuantities(prev => ({ ...prev, [asset.id]: Number(e.target.value) || 1 }))}
+                                    style={{
+                                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                                      padding: '6px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none',
+                                      textAlign: 'right'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: 10, color: T.textMuted, fontWeight: 700, marginBottom: 4 }}>Tình trạng bàn giao</label>
+                                  <input
+                                    type="text"
+                                    value={currentCond}
+                                    onChange={e => setHandoverConditions(prev => ({ ...prev, [asset.id]: e.target.value }))}
+                                    placeholder="Tốt, Bình thường,..."
+                                    style={{
+                                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                                      padding: '5px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none'
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: 10, color: T.textMuted, fontWeight: 700, marginBottom: 4 }}>Ghi chú bàn giao</label>
+                                  <input
+                                    type="text"
+                                    value={currentNote}
+                                    onChange={e => setHandoverNotes(prev => ({ ...prev, [asset.id]: e.target.value }))}
+                                    placeholder="Không có ghi chú..."
+                                    style={{
+                                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                                      padding: '5px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* General notes */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Ghi chú bàn giao chung
+                  </label>
+                  <textarea
+                    placeholder="Nhập ghi chú bàn giao chung nếu có..."
+                    value={checkinNotes}
+                    onChange={e => setCheckinNotes(e.target.value)}
+                    rows={3}
+                    style={{
+                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
+                      padding: '10px 14px', fontSize: 13, color: T.text, background: T.surface, outline: 'none',
+                      transition: 'all 0.15s', resize: 'vertical'
+                    }}
+                    className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
+                  />
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 12 }}>
+                <button onClick={() => setCheckinDrawerOpen(false)} style={{
+                  background: T.surface, color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: '12px 20px',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
+                }}
+                className="hover:bg-primaryLight active:scale-[0.98]">
+                  Hủy bỏ
+                </button>
+                <button onClick={submitCheckinHandover} style={{
+                  flex: 1, background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 20px',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  transition: 'all 0.15s'
+                }}
+                className="hover:opacity-90 active:scale-[0.98] shadow-sm">
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check</span> Xác nhận Bàn giao Nhận phòng
                 </button>
               </div>
             </div>

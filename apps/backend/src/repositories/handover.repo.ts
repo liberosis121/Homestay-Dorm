@@ -49,7 +49,7 @@ export const handoverRepo = {
     ]);
 
     // 3. Construct frontend AssetHandover model with full relation info
-    return handovers.map(h => {
+    const mapped = handovers.map(h => {
       const contract = contracts?.find(c => c.id === h.contract_id) || {};
       const dep = deposits?.find(d => d.id === contract.deposit_id) || {};
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
@@ -74,6 +74,7 @@ export const handoverRepo = {
 
       return {
         id: h.id,
+        contract_id: h.contract_id,
         customer_id: customer.user_id || '',
         customer_name: customer.full_name || 'Khách thuê',
         room_id: dep.room_id || '',
@@ -89,6 +90,22 @@ export const handoverRepo = {
         created_at: h.handover_time || new Date().toISOString(),
         note: h.note || ''
       };
+    });
+
+    // Sort chronologically by created_at (handover_time) to determine checkin vs checkout
+    mapped.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    // Assign virtual type based on chronological order per contract_id
+    const contractHandoverCounts: Record<string, number> = {};
+    return mapped.map(item => {
+      const contractId = item.contract_id;
+      if (!contractHandoverCounts[contractId]) {
+        contractHandoverCounts[contractId] = 1;
+        return { ...item, type: 'checkin' };
+      } else {
+        contractHandoverCounts[contractId]++;
+        return { ...item, type: 'checkout' };
+      }
     });
   },
 
