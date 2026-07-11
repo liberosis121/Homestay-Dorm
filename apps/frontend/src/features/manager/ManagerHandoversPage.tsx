@@ -499,7 +499,7 @@ export default function ManagerHandoversPage() {
                   {filtered.map((rec) => {
                     const meta = STATUS_LABELS[rec.status];
                     return (
-                      <tr key={formatShortId(rec.id, 'checkout')} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer' }}
+                      <tr key={rec.id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer' }}
                         onClick={() => { setSelected(rec); setDrawerOpen(true); }}
                         className="hover:bg-[#FAF2E8] transition-colors duration-150">
                         <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>{formatShortId(rec.id, 'checkout')}</td>
@@ -899,7 +899,7 @@ export default function ManagerHandoversPage() {
                         </div>
                       ) : (
                         availableAssets.map(asset => (
-                          <div key={formatShortId(asset.id, 'checkout')} style={{
+                          <div key={asset.id} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             background: T.surface, padding: '8px 12px', borderRadius: 10,
                             border: `1px solid ${T.border}`

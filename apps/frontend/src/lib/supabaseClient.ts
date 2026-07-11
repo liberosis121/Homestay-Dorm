@@ -45,6 +45,7 @@ export interface Room {
   has_private_wc: boolean;
   price: number;
   amenities: string[];
+  area?: number;
   image_url: string;
   status: 'available' | 'deposited' | 'occupied' | 'maintenance' | 'partial';
 }

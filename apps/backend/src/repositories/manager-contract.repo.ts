@@ -54,6 +54,7 @@ export const managerContractRepo = {
         deposit_type: dep.bed_id ? 'bed' : 'room',
         bed_name: bed.name || dep.bed_id || '',
         branch_name: branch.name || 'Chi nhánh',
+        branch_id: room.branch_id || '',
         rent_amount: Number(contract.rent_price) || Number(room.price) || 0,
         deposit_amount: Number(dep.deposit_amount) || 0,
         service_fee: 50000,

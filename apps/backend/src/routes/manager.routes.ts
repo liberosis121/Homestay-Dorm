@@ -17,7 +17,7 @@ router.get('/deposits', async (req, res) => {
   try {
     const status = req.query.status as string;
     const search = req.query.search as string;
-    const data = await managerDepositService.getDeposits({ status, search });
+    const data = await managerDepositService.getDeposits({ status, search }, req.user?.id);
     sendSuccess(res, data, 'Fetched manager deposits successfully');
   } catch (err) {
     sendError(res, err);
@@ -42,7 +42,7 @@ router.get('/contracts', async (req, res) => {
   try {
     const customer_id = req.query.customer_id as string;
     const status = req.query.status as string;
-    const data = await managerContractService.getContracts({ customer_id, status });
+    const data = await managerContractService.getContracts({ customer_id, status }, req.user?.id);
     sendSuccess(res, data, 'Fetched contracts successfully');
   } catch (err) {
     sendError(res, err);
@@ -95,7 +95,7 @@ router.put('/contracts/:id', async (req, res) => {
 router.get('/handovers', async (req, res) => {
   try {
     const contract_id = req.query.contract_id as string;
-    const data = await handoverService.getHandovers({ contract_id });
+    const data = await handoverService.getHandovers({ contract_id }, req.user?.id);
     sendSuccess(res, data, 'Fetched handovers successfully');
   } catch (err) {
     sendError(res, err);

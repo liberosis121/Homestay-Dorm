@@ -104,7 +104,7 @@ function AppRoutes() {
     <>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
+        <Route path="/*" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/" replace />} />
