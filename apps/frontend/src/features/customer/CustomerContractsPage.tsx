@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import {
-  ArrowLeft, FileText, Printer, Download, CreditCard,
+  ArrowLeft, FileText, Printer, CreditCard,
   Building2, ShieldCheck, AlertCircle,
   FileSignature, ClipboardList
 } from 'lucide-react';
@@ -133,127 +131,7 @@ export default function CustomerContractsPage() {
 
   const contract = contractsList.find((c) => c.id === selectedContractId) || contractsList[0];
 
-  const handleDownloadPdf = async () => {
-    const element = document.getElementById('contract-pdf-content');
-    if (!element) return;
 
-    // Create a temporary container on document.body to avoid scroll/overflow bugs
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '-9999px';
-    tempContainer.style.width = '750px'; // Mimic standard page width
-    tempContainer.style.background = 'white';
-    tempContainer.style.padding = '40px';
-    tempContainer.style.color = 'black';
-    tempContainer.style.fontFamily = 'sans-serif';
-    
-    // Clone content
-    const clone = element.cloneNode(true) as HTMLElement;
-    tempContainer.appendChild(clone);
-    document.body.appendChild(tempContainer);
-
-    // 1. Temporarily disable all global stylesheets to prevent html2canvas oklab parser crash
-    const disabledSheets: HTMLStyleElement[] = [];
-    const styleElements = document.querySelectorAll('style, link[rel="stylesheet"]');
-    styleElements.forEach((el: any) => {
-      if (!el.disabled) {
-        el.disabled = true;
-        disabledSheets.push(el);
-      }
-    });
-
-    // 2. Inject a clean, simple custom stylesheet for the PDF layout (using standard hex/rgb colors)
-    const pdfStyle = document.createElement('style');
-    pdfStyle.innerHTML = `
-      #contract-pdf-content {
-        font-family: sans-serif;
-        color: #1b1c1c;
-        line-height: 1.6;
-        font-size: 14px;
-        padding: 20px;
-        max-width: 650px;
-        margin: 0 auto;
-      }
-      .text-center { text-align: center; }
-      .text-right { text-align: right; }
-      .font-extrabold { font-weight: 800; }
-      .font-bold { font-weight: 700; }
-      .text-primary { color: #3d4e3a; }
-      .text-xs { font-size: 12px; }
-      .text-on-surface-variant { color: #5e5f5d; }
-      .italic { font-style: italic; }
-      .my-5 { margin-top: 20px; margin-bottom: 20px; }
-      .mt-4 { margin-top: 16px; }
-      .mt-5 { margin-top: 20px; }
-      .mt-8 { margin-top: 32px; }
-      .pl-3 { padding-left: 12px; }
-      .h-px { height: 1px; background-color: #d1c4b9; }
-      .bg-primary { background-color: #3d4e3a; }
-      .rounded-full { border-radius: 9999px; }
-      .w-1.5 { width: 6px; }
-      .h-3 { height: 12px; }
-      .flex { display: flex; }
-      .items-center { align-items: center; }
-      .gap-1.5 { gap: 6px; }
-      .max-w-prose { max-width: 650px; }
-      .mx-auto { margin-left: auto; margin-right: auto; }
-      .text-on-surface { color: #1b1c1c; }
-      .text-on-surface\\/90 { color: rgba(27, 28, 28, 0.9); }
-      .bg-outline-variant\\/50 { background-color: rgba(209, 196, 185, 0.5); }
-      .mt-0\\.5 { margin-top: 2px; }
-    `;
-    document.head.appendChild(pdfStyle);
-
-    try {
-      // Use html2canvas directly
-      const canvas = await html2canvas(tempContainer, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgWidth = pdfWidth - 20; // 10mm margins left and right
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      let heightLeft = imgHeight;
-      let position = 10; // 10mm margin top
-
-      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`HopDong_${contract.contractCode}.pdf`);
-    } catch (err: any) {
-      console.error('PDF export failed:', err);
-      alert(`Lỗi xuất PDF: ${err?.message || err}`);
-      window.print();
-    } finally {
-      // Re-enable all global stylesheets
-      disabledSheets.forEach((el) => {
-        el.disabled = false;
-      });
-      // Remove temporary PDF style
-      if (document.head.contains(pdfStyle)) {
-        document.head.removeChild(pdfStyle);
-      }
-      if (document.body.contains(tempContainer)) {
-        document.body.removeChild(tempContainer);
-      }
-    }
-  };
 
   const getStatusBadge = (status: 'active' | 'expired' | 'terminated') => {
     switch (status) {
@@ -467,7 +345,7 @@ export default function CustomerContractsPage() {
             </div>
             
             <div className="bg-surface border border-outline-variant/60 rounded-2xl p-5 h-87.5 overflow-y-auto custom-scrollbar font-body-md text-on-surface leading-relaxed text-sm space-y-4">
-              <div className="max-w-prose mx-auto" id="contract-pdf-content">
+              <div className="max-w-prose mx-auto">
                 <h4 className="font-extrabold text-center text-on-surface tracking-wide">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4>
                 <p className="text-center font-bold text-xs text-on-surface-variant mt-0.5">Độc lập - Tự do - Hạnh phúc</p>
                 
@@ -568,15 +446,7 @@ export default function CustomerContractsPage() {
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest border-b border-[#eee7e1] pb-2">
               Hành động nhanh
             </h3>
-            
             <div className="flex flex-col gap-2.5">
-              <button
-                onClick={handleDownloadPdf}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-primary text-primary font-bold text-xs rounded-xl hover:bg-primary/5 transition active:scale-95 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                Tải xuống PDF Hợp đồng
-              </button>
               <button
                 onClick={() => window.print()}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white font-bold text-xs rounded-xl hover:bg-[#334537] transition active:scale-95 cursor-pointer shadow-sm"
