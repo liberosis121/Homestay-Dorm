@@ -15,7 +15,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  
+
   const { register, error: authError, loading } = useAuthStore();
   const navigate = useNavigate();
   
@@ -27,8 +27,14 @@ export default function RegisterPage() {
     setLocalError('');
     setSuccess(false);
 
-    if (!fullName || !email || !phone || !password || !confirmPassword) {
-      setLocalError('Vui lòng điền đầy đủ tất cả các trường thông tin');
+    if (
+      !fullName || 
+      !email || 
+      !phone || 
+      !password || 
+      !confirmPassword
+    ) {
+      setLocalError('Vui lòng điền đầy đủ thông tin đăng ký bắt buộc');
       return;
     }
 
@@ -61,7 +67,19 @@ export default function RegisterPage() {
       return;
     }
 
-    const isSuccess = await register(email, fullName, phone, password);
+    const isSuccess = await register(
+      email, 
+      fullName, 
+      phone, 
+      password,
+      '', // dob để trống lúc đăng ký
+      'male', // gender mặc định
+      '', // nationality để trống
+      '', // cccd để trống
+      '', // issueDate để trống
+      '', // issuePlace để trống
+      ''  // permanentAddress để trống
+    );
     if (isSuccess) {
       setSuccess(true);
       setTimeout(() => {
@@ -245,6 +263,8 @@ export default function RegisterPage() {
                   </button>
                 </div>
               </div>
+
+
 
               {/* Điều khoản chính sách */}
               <div className="pt-2">

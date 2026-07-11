@@ -280,9 +280,9 @@ export default function ProfilePage() {
         cccd: data.details?.cccd || '',
         dob: data.details?.dob || '',
         gender: (data.details?.gender === 'female' || data.details?.gender === 'Nữ') ? 'female' : 'male',
-        issue_date: '2018-05-10',
-        issue_place: 'Cục CSQLHC về TTXH',
-        nationality: data.details?.nationality === 'vietnamese' ? 'Việt Nam' : (data.details?.nationality || 'Việt Nam'),
+        issue_date: data.details?.cccd_issue_date || '',
+        issue_place: data.details?.cccd_issue_place || '',
+        nationality: data.details?.nationality || '',
         permanent_address: data.details?.address || '',
       };
       setFormData(profileData);
