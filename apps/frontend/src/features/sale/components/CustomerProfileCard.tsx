@@ -68,9 +68,7 @@ export default function CustomerProfileCard({
             <span className="inline-flex items-center rounded-full border border-[#d1c4b9]/80 bg-[#faf2ec]/70 px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">
               Mã KH: <span className="ml-1 font-bold text-[#6f583c]">{formatShortId(customer.code, 'customer')}</span>
             </span>
-            <span className="inline-flex items-center rounded-full border border-[#d1c4b9]/70 bg-[#f7f4ef] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">
-              Tham gia từ {customer.joinDate}
-            </span>
+
           </div>
         </div>
       </div>

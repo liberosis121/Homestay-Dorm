@@ -26,7 +26,21 @@ interface CustomerRow {
   accountStatus: "active" | "locked";
   joinDate: string;
   note?: string;
+  customers?: {
+    cccd: string;
+    dob: string;
+    gender: string;
+    nationality: string;
+    address: string;
+  } | null;
 }
+
+const getCustomerCode = (c: CustomerRow) => {
+  if (c.customers?.cccd) {
+    return formatShortId(c.customers.cccd, 'customer');
+  }
+  return formatShortId(c.id, 'customer');
+};
 
 const STATUS_MAP = {
   renting: { label: "Đang thuê", cls: "bg-[#e8ede7] text-[#5f745d]" },
@@ -473,7 +487,7 @@ export default function AdminUsersPage() {
                         style={{ color: A.textMuted }}
                         title={c.id}
                       >
-                        {formatShortId(c.id, 'customer')}
+                        {getCustomerCode(c)}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -670,7 +684,7 @@ export default function AdminUsersPage() {
                     {selectedCustomer.full_name}
                   </h3>
                   <p className="text-xs break-all mt-1" style={{ color: A.textMuted }} title={selectedCustomer.id}>
-                    Mã: {formatShortId(selectedCustomer.id, 'customer')}
+                    Mã: {getCustomerCode(selectedCustomer)}
                   </p>
                   <div className="mt-2 flex justify-center">
                     <span
@@ -1053,7 +1067,7 @@ export default function AdminUsersPage() {
                 <div className="flex justify-between items-center gap-4">
                   <span className="font-semibold text-gray-500">Mã KH:</span>
                   <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmLockCustomer.id}>
-                    {formatShortId(confirmLockCustomer.id, 'customer')}
+                    {getCustomerCode(confirmLockCustomer)}
                   </span>
                 </div>
               </div>

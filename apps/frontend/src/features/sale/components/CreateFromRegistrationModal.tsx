@@ -137,7 +137,7 @@ const mapRegistration = (r: any): RentalRegistration => {
 };
 
 // Các trạng thái đơn đang chờ xếp lịch xem phòng.
-const AWAITING_SCHEDULE_STATUSES = ['pending_schedule', 'pending', 'new'];
+const AWAITING_SCHEDULE_STATUSES = ['pending_schedule', 'scheduled', 'pending', 'new'];
 
 const timeOptions = Array.from({ length: 27 }, (_, index) => {
   const totalMinutes = 7 * 60 + index * 30;
@@ -172,6 +172,7 @@ export default function CreateFromRegistrationModal({
   const { user } = useAuthStore();
   const isSale = user?.role === 'sale';
   const [registrations, setRegistrations] = useState<RentalRegistration[]>([]);
+  const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(true);
   const [selectedRegistration, setSelectedRegistration] = useState<RentalRegistration | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<SaleRoom | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<SaleRoom | null>(null);
@@ -188,6 +189,7 @@ export default function CreateFromRegistrationModal({
 
   useEffect(() => {
     let active = true;
+    setIsLoadingRegistrations(true);
     fetchLeaseRegistrationsApi()
       .then((list: any[]) => {
         if (!active) return;
@@ -200,11 +202,24 @@ export default function CreateFromRegistrationModal({
           .map(mapRegistration);
         setRegistrations(mapped);
       })
-      .catch((err) => console.error('Lỗi khi tải phiếu đăng ký:', err));
+      .catch((err) => console.error('Lỗi khi tải phiếu đăng ký:', err))
+      .finally(() => {
+        if (active) setIsLoadingRegistrations(false);
+      });
     return () => { active = false; };
   }, [initialRegistrationId]);
 
   const branchName = (id?: string) => branches.find((branch) => branch.id === id)?.name || id || 'Chưa chọn';
+
+  const normalizeType = (str?: string) => {
+    if (!str) return '';
+    const t = str.trim().toLowerCase();
+    if (t === 'dorm' || t === 'ký túc xá' || t === 'kx' || t.includes('dorm')) return 'dorm';
+    if (t === 'studio' || t.includes('studio')) return 'studio';
+    if (t === 'twin' || t.includes('twin') || t.includes('đôi')) return 'twin';
+    if (t === 'single' || t.includes('single') || t.includes('đơn')) return 'single';
+    return t;
+  };
 
   const matchInfo = (room: SaleRoom, registration: RentalRegistration) => {
     const preferredAmenities = registration.preferred_amenities || [];
@@ -212,10 +227,10 @@ export default function CreateFromRegistrationModal({
     const matchedAmenities = preferredAmenities.filter((item) => roomAmenities.includes(item)).length;
     const checks = [
       { label: 'Chi nhánh', ok: !registration.preferred_branch_id || room.branch_id === registration.preferred_branch_id, need: branchName(registration.preferred_branch_id), actual: branchName(room.branch_id) },
-      { label: 'Loại phòng', ok: !registration.preferred_room_type || room.room_type === registration.preferred_room_type, need: registration.preferred_room_type || 'Linh hoạt', actual: room.room_type },
+      { label: 'Loại phòng', ok: !registration.preferred_room_type || normalizeType(room.room_type) === normalizeType(registration.preferred_room_type), need: registration.preferred_room_type || 'Linh hoạt', actual: room.room_type },
       { label: 'Ngân sách', ok: !room.price || room.price <= maxBudget(registration.budget_range), need: budgetLabel(registration.budget_range), actual: money(room.price) },
       { label: 'Sức chứa tối đa', ok: (room.capacity || 0) >= (registration.occupants_count || 1), need: `${registration.occupants_count || 1} người`, actual: room.capacity ? `${room.capacity} người` : '—' },
-      { label: 'Giới tính', ok: room.gender_type === 'unisex' || registration.gender === 'group' || !registration.gender || room.gender_type === registration.gender, need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
+      { label: 'Giới tính', ok: room.gender_type === 'unisex' || registration.gender === 'group' || !registration.gender || (room.gender_type || '').toLowerCase() === (registration.gender || '').toLowerCase(), need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
       { label: 'Tiện ích', ok: preferredAmenities.length === 0 || matchedAmenities >= Math.ceil(preferredAmenities.length * 0.6), need: preferredAmenities.join(', ') || 'Không yêu cầu', actual: roomAmenities.join(', ') || 'Chưa có' },
       { label: 'Trạng thái', ok: room.status === 'available', need: 'Còn trống', actual: statusLabel(room.status) },
     ];
@@ -234,7 +249,7 @@ export default function CreateFromRegistrationModal({
       .filter((room) => {
         if (excludeRoomId && room.id === excludeRoomId) return false;
         if (filters.branchId && room.branch_id !== filters.branchId) return false;
-        if (filters.roomType && room.room_type !== filters.roomType) return false;
+        if (filters.roomType && normalizeType(room.room_type) !== normalizeType(filters.roomType)) return false;
         if (filters.capacity && (room.capacity || 0) < Number(filters.capacity)) return false;
         if (filters.status && room.status !== filters.status) return false;
         if (filters.priceRange === 'under_2m' && (room.price || 0) >= 2000000) return false;
@@ -251,13 +266,13 @@ export default function CreateFromRegistrationModal({
     setHoveredRoom(null);
     setErrors({});
     setFilters({
-      branchId: registration.preferred_branch_id || '',
-      roomType: registration.preferred_room_type || '',
+      branchId: '',
+      roomType: '',
       priceRange: '',
-      capacity: registration.occupants_count ? String(registration.occupants_count) : '',
+      capacity: '',
       status: '',
     });
-    setAmenityFilters(registration.preferred_amenities || []);
+    setAmenityFilters([]);
     const [start = '', end = ''] = (registration.preferred_viewing_time || '').split('-');
     setForm({
       viewDate: registration.preferred_viewing_date || '',
@@ -341,7 +356,28 @@ export default function CreateFromRegistrationModal({
 
         {!selectedRegistration ? (
           <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] p-5 pb-8">
-            <RegistrationPicker registrations={registrations} onSelect={selectRegistration} />
+            {isLoadingRegistrations ? (
+              <div className="flex flex-col items-center justify-center py-16 text-[#7f756b]">
+                <div className="w-8 h-8 border-2 border-[#4f6f4a] border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-sm font-semibold">Đang tải dữ liệu phiếu yêu cầu...</p>
+              </div>
+            ) : followUpMode && initialRegistrationId ? (
+              <div className="flex flex-col items-center justify-center py-16 text-[#7f756b] bg-white rounded-2xl border border-[#d8cbb8] max-w-md mx-auto my-6 p-6 shadow-sm">
+                <p className="text-base font-bold text-[#b91c1c] mb-2">Không tìm thấy phiếu yêu cầu gốc ({initialRegistrationId})</p>
+                <p className="text-xs text-[#5e5f5d] text-center mb-6 leading-relaxed">
+                  Phiếu yêu cầu có thể đã hoàn tất hợp đồng hoặc chấm dứt trước đó. Vui lòng kiểm tra lại danh sách phiếu.
+                </p>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-full bg-[#4f6f4a] px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-[#3f6038] transition-all"
+                >
+                  Đóng cửa sổ
+                </button>
+              </div>
+            ) : (
+              <RegistrationPicker registrations={registrations} onSelect={selectRegistration} />
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">

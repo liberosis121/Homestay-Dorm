@@ -98,20 +98,6 @@ export default function CustomerLookupPage() {
 
 
 
-  // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
-  const handleUpdateCustomer = async (updatedCust: Customer) => {
-    try {
-      await customerLookupService.updateCustomerNote(updatedCust.id, updatedCust.importantNote);
-      const liveCustomers = await customerLookupService.fetchCustomers();
-      setCustomers(liveCustomers);
-      const updatedActive = liveCustomers.find((c) => c.id === updatedCust.id);
-      setActiveCustomer(updatedActive || updatedCust);
-    } catch (err) {
-      console.warn('[CustomerLookup] Note update live API failed:', err);
-      setLoadError('Không thể cập nhật dữ liệu khách hàng trên máy chủ.');
-    }
-  };
-
   const getInitials = (name: string) => {
     const words = name.trim().split(/\s+/).filter(Boolean);
     if (words.length === 0) return 'KH';
@@ -321,7 +307,7 @@ export default function CustomerLookupPage() {
 
               {/* Bottom Contents: Detailed Tabs */}
               <div className="w-full">
-                <CustomerTabs customer={activeCustomer} onUpdateCustomer={handleUpdateCustomer} />
+                <CustomerTabs customer={activeCustomer} />
               </div>
 
             </div>

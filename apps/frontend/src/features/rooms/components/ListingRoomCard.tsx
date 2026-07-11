@@ -72,11 +72,7 @@ export default function ListingRoomCard({ room }: Props) {
             </span>
           </div>
         )}
-        <div className="absolute top-4 right-4 flex flex-col gap-2">
-          <button className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-primary hover:bg-white transition-colors">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>favorite</span>
-          </button>
-        </div>
+
       </div>
       
       <div className="p-6 flex-1 flex flex-col">
