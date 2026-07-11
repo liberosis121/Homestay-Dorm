@@ -28,7 +28,8 @@ export const checkoutService = {
         note: '',
         bankName: '',
         bankAccount: '',
-        bankOwner: ''
+        bankOwner: '',
+        createdAt: ''
       };
 
       if (ch.note) {
@@ -40,7 +41,8 @@ export const checkoutService = {
               note: parsed.note || '',
               bankName: parsed.bankName || '',
               bankAccount: parsed.bankAccount || '',
-              bankOwner: parsed.bankOwner || ''
+              bankOwner: parsed.bankOwner || '',
+              createdAt: parsed.createdAt || ''
             };
           }
         } catch (e) {
@@ -82,7 +84,7 @@ export const checkoutService = {
         depositAmount: depReq.deposit_amount || contract?.rent_price || 0,
         status: frontendStatus,
         statusName,
-        createdAt: contract?.created_date ? `${contract.created_date}T00:00:00Z` : new Date().toISOString(),
+        createdAt: parsedNote.createdAt || (contract?.created_date ? `${contract.created_date}T00:00:00Z` : new Date().toISOString()),
         updatedAt: new Date().toISOString(),
         rejectReason: ch.status === 'rejected' ? ch.room_condition : undefined
       };
@@ -110,13 +112,14 @@ export const checkoutService = {
       throw new Error('Hợp đồng không hợp lệ hoặc không thuộc quyền sở hữu của bạn.');
     }
 
-    // 2. Prepare JSON note
+    // 2. Prepare JSON note with request submission timestamp
     const noteJson = JSON.stringify({
       reason: reqData.reason,
       note: reqData.note || '',
       bankName: reqData.bankName,
       bankAccount: reqData.bankAccount,
-      bankOwner: reqData.bankOwner
+      bankOwner: reqData.bankOwner,
+      createdAt: new Date().toISOString()
     });
 
     // 3. Create checkout record in DB

@@ -28,7 +28,28 @@ export const checkoutRepo = {
   },
 
   create: async (contractId: string, requestDate: string, noteJson: string): Promise<DbCheckout> => {
-    const id = `YCTP-${Math.floor(100000 + Math.random() * 900000)}`;
+    let id = '';
+    let isUnique = false;
+    let attempts = 0;
+
+    while (!isUnique && attempts < 10) {
+      id = `YCTP-${Math.floor(100000 + Math.random() * 900000)}`;
+      const { data: existing } = await supabase
+        .from('checkouts')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (!existing) {
+        isUnique = true;
+      }
+      attempts++;
+    }
+
+    if (!isUnique) {
+      id = `YCTP-${Date.now()}`;
+    }
+
     const { data, error } = await supabase
       .from('checkouts')
       .insert({
