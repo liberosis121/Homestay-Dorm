@@ -453,6 +453,32 @@ export default function ProfilePage() {
               </p>
             </div>
 
+            {/* Incomplete Profile Warning Banner */}
+            {activeTab === 'profile' && !isLoading && (
+              !formData.phone.trim() ||
+              !formData.cccd.trim() ||
+              !formData.dob.trim() ||
+              !formData.gender.trim() ||
+              !formData.nationality.trim() ||
+              !formData.issue_date.trim() ||
+              !formData.issue_place.trim() ||
+              !formData.permanent_address.trim()
+            ) && (
+              <div className="bg-[#eff3ef] border border-[#a8c3a5] rounded-32 p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm animate-fade-in mb-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-[#4a6549] text-white rounded-24 shadow-inner shrink-0">
+                    <Info className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-[#4a6549] text-base">Hồ sơ cá nhân chưa hoàn tất!</h4>
+                    <p className="text-sm text-on-surface-variant leading-relaxed">
+                      Bạn cần cập nhật đầy đủ thông tin cá nhân bắt buộc (bao gồm: Số điện thoại, CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày/Nơi cấp CCCD và Địa chỉ thường trú) trước khi thực hiện <strong>đăng ký thuê phòng</strong> hoặc <strong>đặt cọc</strong>. Hãy nhấn nút "Chỉnh sửa" bên dưới để bổ sung.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* New Customer Warning Banner */}
             {isNewCustomer && activeTab === 'profile' && (
               <div className="bg-[#eff3ef] border border-[#a8c3a5] rounded-32 p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm animate-fade-in">

@@ -4,6 +4,7 @@ import { CheckCircle2, Copy, UploadCloud, Clock, QrCode, CreditCard, Wallet, Fil
 import { useAuthStore } from '../../stores/authStore';
 import { getMyDepositsApi, DepositRequest } from './deposit.api';
 import { fetchMyInvoices, payInvoiceApi } from './services/invoice.service';
+import { fetchProfile } from './services/profile.service';
 
 export type DepositStatus = 'pending' | 'submitted' | 'approved' | 'rejected' | 'expired';
 
@@ -28,12 +29,44 @@ export default function DepositRegistrationPage() {
   const [copiedText, setCopiedText] = useState<'stk' | 'ndck' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localStatus, setLocalStatus] = useState<DepositStatus | null>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
+
+    // Kiểm tra tính đầy đủ của hồ sơ
+    fetchProfile()
+      .then((data) => {
+        const phone = data.phone || '';
+        const details = data.details || {};
+        const cccd = details.cccd || '';
+        const dob = details.dob || '';
+        const gender = details.gender || '';
+        const nationality = details.nationality || '';
+        const issueDate = details.cccd_issue_date || '';
+        const issuePlace = details.cccd_issue_place || '';
+        const address = details.address || '';
+
+        const complete = (
+          phone.trim() !== '' &&
+          cccd.trim() !== '' &&
+          dob.trim() !== '' &&
+          gender.trim() !== '' &&
+          nationality.trim() !== '' &&
+          issueDate.trim() !== '' &&
+          issuePlace.trim() !== '' &&
+          address.trim() !== ''
+        );
+        setIsProfileComplete(complete);
+      })
+      .catch((err) => {
+        console.error('Lỗi khi kiểm tra hồ sơ cá nhân:', err);
+        setIsProfileComplete(false);
+      });
+
     if (!depositRequest) {
       setIsLoading(true);
       getMyDepositsApi()
@@ -147,6 +180,42 @@ export default function DepositRegistrationPage() {
     }
     return 'future';
   };
+
+  if (isProfileComplete === null) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-3">
+          <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+          <p className="font-body-md text-sm text-on-surface-variant">Đang kiểm tra hồ sơ cá nhân...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isProfileComplete === false) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-6 bg-surface theme-customer">
+        <div className="w-full max-w-lg bg-white dark:bg-surface-container-highest/80 border border-glass-stroke shadow-2xl rounded-[32px] p-8 md:p-10 text-center flex flex-col items-center gap-6 moss-shadow">
+          <div className="w-20 h-20 bg-amber-50 dark:bg-amber-950/30 rounded-full flex items-center justify-center text-amber-500 shadow-lg shadow-amber-500/10">
+            <span className="material-symbols-outlined text-4xl">warning</span>
+          </div>
+          <div className="space-y-3">
+            <h2 className="font-headline-lg text-2xl font-bold text-on-surface">Cập nhật hồ sơ cá nhân</h2>
+            <p className="font-body-md text-on-surface-variant leading-relaxed text-sm">
+              Bạn cần điền đầy đủ các thông tin cá nhân bắt buộc bao gồm: <strong>Số điện thoại, Số CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày cấp và Nơi cấp CCCD, Địa chỉ thường trú</strong> trong hồ sơ cá nhân của mình trước khi thực hiện thanh toán đặt cọc phòng.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-full h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-all shadow-lg shadow-primary/10 mt-2 cursor-pointer group"
+          >
+            Cập nhật hồ sơ cá nhân
+            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || !depositInfo || !depositRequest) {
     return (
