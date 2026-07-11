@@ -5,6 +5,9 @@ import {
   fetchAdminAssets,
   createAssetApi,
   updateAssetApi,
+  fetchAdminBranches,
+  fetchAdminRooms,
+  fetchBedsByRoom,
 } from './services/admin.service';
 
 const A = {
@@ -60,6 +63,15 @@ export default function AdminAssetsPage() {
   const [form, setForm] = useState<Partial<Asset>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [successMsg, setSuccessMsg] = useState('');
+  
+  // States for branch/room/bed location selectors
+  const [branches, setBranches] = useState<any[]>([]);
+  const [allRooms, setAllRooms] = useState<any[]>([]);
+  const [bedsForRoom, setBedsForRoom] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [selectedBedId, setSelectedBedId] = useState('');
+
   const ITEMS_PER_PAGE = 5;
 
   const loadAssets = async () => {
@@ -89,7 +101,39 @@ export default function AdminAssetsPage() {
 
   useEffect(() => {
     loadAssets();
+    (async () => {
+      try {
+        const [dbBranches, dbRooms] = await Promise.all([
+          fetchAdminBranches(),
+          fetchAdminRooms()
+        ]);
+        setBranches(dbBranches || []);
+        setAllRooms(dbRooms || []);
+      } catch (err) {
+        console.error('Lỗi khi tải danh mục chi nhánh/phòng:', err);
+      }
+    })();
   }, []);
+
+  // Fetch beds when selected room changes
+  useEffect(() => {
+    if (selectedRoomId) {
+      (async () => {
+        try {
+          const data = await fetchBedsByRoom(selectedRoomId);
+          setBedsForRoom(data || []);
+        } catch (err) {
+          console.error('Lỗi khi tải danh sách giường:', err);
+          setBedsForRoom([]);
+        }
+      })();
+    } else {
+      setBedsForRoom([]);
+      setSelectedBedId('');
+    }
+  }, [selectedRoomId]);
+
+  // Reset room and bed when selected branch changes (disabled to avoid overriding state when editing)
 
   const kpis = useMemo(() => {
     const total = assets.length;
@@ -125,15 +169,90 @@ export default function AdminAssetsPage() {
   const pageStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1;
   const pageEnd = Math.min(safeCurrentPage * ITEMS_PER_PAGE, filtered.length);
 
+  const formatBranchCode = (name: string) => {
+    if (!name) return '';
+    return name
+      .replace(/Cơ sở\s+/i, '')
+      .replace(/Quận\s+/i, 'Q')
+      .replace(/\s+/g, '');
+  };
+
+  const formatRoomCode = (name: string) => {
+    if (!name) return '';
+    return name
+      .replace(/Phòng\s+/i, 'P')
+      .replace(/\s+/g, '');
+  };
+
+  const formatBedCode = (name: string) => {
+    if (!name) return '';
+    return name
+      .replace(/Giường\s+/i, 'G')
+      .replace(/\s+/g, '');
+  };
+
+  const computeLocationString = (bId: string, rId: string, bedId: string) => {
+    const branchObj = branches.find(b => b.id === bId);
+    const roomObj = allRooms.find(r => r.id === rId);
+    const bedObj = bedsForRoom.find(bd => bd.id === bedId);
+    
+    if (!branchObj || !roomObj) return '';
+    const bCode = formatBranchCode(branchObj.name);
+    const rCode = formatRoomCode(roomObj.name);
+    const bdCode = bedObj ? `-${formatBedCode(bedObj.name)}` : '';
+    
+    return `CN_${bCode}-${rCode}${bdCode}`;
+  };
+
   const openAdd = () => {
     setModalMode('add');
     setForm({ name: '', category: 'furniture', location: '', brand: '', purchaseDate: '', value: 0, status: 'available', serialNumber: '' });
+    setSelectedBranchId('');
+    setSelectedRoomId('');
+    setSelectedBedId('');
     setShowModal(true);
   };
 
-  const openEdit = (a: Asset) => {
+  const openEdit = async (a: Asset) => {
     setModalMode('edit');
     setForm({ ...a });
+
+    const loc = a.location || '';
+    let foundBranchId = '';
+    let foundRoomId = '';
+    let foundBedId = '';
+
+    if (loc.startsWith('CN_')) {
+      const parts = loc.substring(3).split('-');
+      const bCode = parts[0];
+      const rCode = parts[1];
+      const bdCode = parts[2];
+
+      const branchObj = branches.find(b => formatBranchCode(b.name) === bCode);
+      if (branchObj) {
+        foundBranchId = branchObj.id;
+        const roomObj = allRooms.find(r => r.branch_id === branchObj.id && formatRoomCode(r.name) === rCode);
+        if (roomObj) {
+          foundRoomId = roomObj.id;
+          if (bdCode) {
+            try {
+              const bedsData = await fetchBedsByRoom(roomObj.id);
+              setBedsForRoom(bedsData || []);
+              const bedObj = (bedsData || []).find((bd: any) => formatBedCode(bd.name) === bdCode);
+              if (bedObj) {
+                foundBedId = bedObj.id;
+              }
+            } catch (err) {
+              console.error('Lỗi khi parse giường cũ:', err);
+            }
+          }
+        }
+      }
+    }
+
+    setSelectedBranchId(foundBranchId);
+    setSelectedRoomId(foundRoomId);
+    setSelectedBedId(foundBedId);
     setShowModal(true);
   };
 
@@ -142,17 +261,24 @@ export default function AdminAssetsPage() {
       alert("Tên tài sản không được để trống!");
       return;
     }
-    if (!form.location?.trim()) {
-      alert("Vị trí không được để trống!");
+    if (!selectedBranchId) {
+      alert("Vui lòng chọn chi nhánh!");
       return;
     }
+    if (!selectedRoomId) {
+      alert("Vui lòng chọn phòng!");
+      return;
+    }
+
+    const computedLocation = computeLocationString(selectedBranchId, selectedRoomId, selectedBedId);
+
     try {
       if (modalMode === 'add') {
         const pDate = new Date().toISOString().split('T')[0];
         const created = await createAssetApi({
           name: form.name,
           category: form.category || 'furniture',
-          location: form.location,
+          location: computedLocation,
           brand: form.brand || '',
           value: form.value || 0,
           status: form.status || 'available',
@@ -175,7 +301,7 @@ export default function AdminAssetsPage() {
       } else {
         if (!form.serialNumber) return;
         const updated = await updateAssetApi(form.serialNumber, {
-          location: form.location,
+          location: computedLocation,
           value: form.value,
           status: form.status
         });
@@ -448,41 +574,18 @@ export default function AdminAssetsPage() {
             <div className="grid grid-cols-2 gap-4">
 
               {/* Mã tài sản, Ngày mua, Số Serial (Only in Edit Mode) */}
+              {/* Mã tài sản (Only in Edit Mode) */}
               {modalMode === 'edit' && (
-                <div className="col-span-2 grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mã tài sản</label>
-                    <input
-                      value={form.id || ''}
-                      readOnly
-                      disabled
-                      tabIndex={-1}
-                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Ngày mua</label>
-                    <input
-                      value={form.purchaseDate || ''}
-                      readOnly
-                      disabled
-                      tabIndex={-1}
-                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Số Serial</label>
-                    <input
-                      value={form.serialNumber || ''}
-                      readOnly
-                      disabled
-                      tabIndex={-1}
-                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                    />
-                  </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mã tài sản</label>
+                  <input
+                    value={form.id || ''}
+                    readOnly
+                    disabled
+                    tabIndex={-1}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  />
                 </div>
               )}
 
@@ -571,17 +674,69 @@ export default function AdminAssetsPage() {
                 />
               </div>
 
-              {/* Vị trí - EDITABLE in both modes */}
-              <div className="col-span-2">
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Vị trí <span className="text-red-500">*</span></label>
-                <input
-                  value={form.location || ''}
-                  onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="Vị trí tài sản..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+              {/* Chi nhánh */}
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chi nhánh <span className="text-red-500">*</span></label>
+                <CustomSelect
+                  value={selectedBranchId}
+                  onChange={val => {
+                    setSelectedBranchId(val);
+                    setSelectedRoomId('');
+                    setSelectedBedId('');
+                  }}
+                  options={[
+                    { value: "", label: "-- Chọn chi nhánh --" },
+                    ...branches.map(b => ({ value: b.id, label: b.name }))
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
                 />
               </div>
+
+              {/* Phòng */}
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Phòng <span className="text-red-500">*</span></label>
+                <CustomSelect
+                  value={selectedRoomId}
+                  onChange={val => {
+                    setSelectedRoomId(val);
+                    setSelectedBedId('');
+                  }}
+                  options={[
+                    { value: "", label: selectedBranchId ? "-- Chọn phòng --" : "-- Vui lòng chọn chi nhánh trước --" },
+                    ...allRooms
+                      .filter(r => r.branch_id === selectedBranchId)
+                      .map(r => ({ value: r.id, label: r.name }))
+                  ]}
+                  theme="sale"
+                  disabled={!selectedBranchId}
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
+              </div>
+
+              {/* Giường (Optional) */}
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giường (Không bắt buộc)</label>
+                <CustomSelect
+                  value={selectedBedId}
+                  onChange={val => setSelectedBedId(val)}
+                  options={[
+                    { value: "", label: selectedRoomId ? "Dùng chung cho cả phòng / Không chọn giường" : "-- Vui lòng chọn phòng trước --" },
+                    ...bedsForRoom.map(bd => ({ value: bd.id, label: bd.name }))
+                  ]}
+                  theme="sale"
+                  disabled={!selectedRoomId}
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
+              </div>
+
+              {/* Preview Vị trí */}
+              {selectedBranchId && selectedRoomId && (
+                <div className="col-span-2 p-3 rounded-lg border border-[#5f745d]/20 bg-[#5f745d]/5 text-xs text-[#5f745d] font-semibold flex items-center gap-1.5 animate-fade-in-up">
+                  <span className="material-symbols-outlined text-[16px]">location_on</span>
+                  Vị trí lưu trữ thực tế: <span className="font-extrabold underline">{computeLocationString(selectedBranchId, selectedRoomId, selectedBedId)}</span>
+                </div>
+              )}
 
 
 

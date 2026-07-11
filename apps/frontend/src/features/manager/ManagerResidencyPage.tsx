@@ -146,10 +146,10 @@ export default function ManagerResidencyPage() {
     });
     return Object.entries(map).map(([room_id, members], i) => {
       const allPending = members.every(m => m.status === 'pending');
-      const allConfirmed = members.every(m => m.confirmed);
+      const allEvaluated = members.every(m => m.status === 'approved' || m.status === 'rejected');
       const group_status = allPending 
         ? 'pending' 
-        : (allConfirmed ? 'completed' : 'partial');
+        : (allEvaluated ? 'completed' : 'partial');
       return {
         room_id,
         room_name: members[0].room_name,
@@ -234,8 +234,8 @@ export default function ManagerResidencyPage() {
             m.id === selectedMember.id ? { ...m, status: newStatus, checklist, violation_note: violationNote } : m
           );
           const allPending = updatedMembers.every(m => m.status === 'pending');
-          const allConfirmed = updatedMembers.every(m => m.confirmed);
-          const group_status = allPending ? 'pending' : (allConfirmed ? 'completed' : 'partial');
+          const allEvaluated = updatedMembers.every(m => m.status === 'approved' || m.status === 'rejected');
+          const group_status = allPending ? 'pending' : (allEvaluated ? 'completed' : 'partial');
           setSelectedGroup({
             ...selectedGroup,
             members: updatedMembers,
@@ -298,8 +298,9 @@ export default function ManagerResidencyPage() {
     if (!selectedGroup) return;
     try {
       const headers = await getAuthHeaders();
-      // 1. Update all members to approved status
+      // 1. Update all non-rejected members to approved status
       await Promise.all(selectedGroup.members.map(async (m) => {
+        if (m.status === 'rejected') return;
         return fetch(`${API_BASE}/residency/${m.id}/status`, {
           method: 'PATCH',
           headers,

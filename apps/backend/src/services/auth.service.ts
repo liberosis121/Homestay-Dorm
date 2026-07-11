@@ -373,8 +373,8 @@ export const authService = {
     if (!email || !otp || !newPassword) {
       throw new Error('Thiếu thông tin: email, mã OTP hoặc mật khẩu mới.');
     }
-    if (newPassword.length < 8) {
-      throw new Error('Mật khẩu mới phải có ít nhất 8 ký tự.');
+    if (newPassword.length < 6) {
+      throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự.');
     }
 
     // 1. Lấy OTP từ DB
@@ -433,8 +433,8 @@ export const authService = {
     if (!userId) {
       throw new Error('User ID là bắt buộc');
     }
-    if (!newPassword || newPassword.length < 8) {
-      throw new Error('Mật khẩu mới phải có ít nhất 8 ký tự');
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự');
     }
     const { error } = await supabase.auth.admin.updateUserById(userId, {
       password: newPassword
