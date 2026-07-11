@@ -409,7 +409,7 @@ export default function CustomerContractsPage() {
                     <span className="text-[10px] text-on-surface-variant font-medium">tháng đã trôi qua</span>
                   </div>
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                    {Math.round((contract.monthsPassed / contract.totalMonths) * 100)}%
+                    {Math.min(100, Math.round((contract.monthsPassed / contract.totalMonths) * 100))}%
                   </span>
                 </div>
                 
@@ -417,7 +417,7 @@ export default function CustomerContractsPage() {
                 <div className="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
                   <div
                     className="bg-primary h-full rounded-full transition-all duration-500"
-                    style={{ width: `${(contract.monthsPassed / contract.totalMonths) * 100}%` }}
+                    style={{ width: `${Math.min(100, (contract.monthsPassed / contract.totalMonths) * 100)}%` }}
                   ></div>
                 </div>
 
@@ -433,10 +433,39 @@ export default function CustomerContractsPage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-6 text-on-surface-variant space-y-2">
-                <AlertCircle className="w-10 h-10 text-on-surface-variant/40 mx-auto" />
-                <p className="font-bold text-sm text-on-surface">Hợp đồng không còn hoạt động</p>
-                <p className="text-xs">Hợp đồng này đã hết hạn hiệu lực hoặc đã được thực hiện thanh lý xong.</p>
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-extrabold text-on-surface-variant">
+                      {contract.totalMonths}/{contract.totalMonths}
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant font-medium">tháng cư trú (đã kết thúc)</span>
+                  </div>
+                  <span className="text-xs font-bold text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded-md">
+                    100%
+                  </span>
+                </div>
+                
+                {/* Progress bar */}
+                <div className="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-on-surface-variant/40 h-full rounded-full"
+                    style={{ width: '100%' }}
+                  ></div>
+                </div>
+
+                <div className="pt-3 border-t border-[#eee7e1] space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Trạng thái:</span>
+                    <strong className="text-on-surface-variant">
+                      {contract.status === 'expired' ? 'Đã hết hạn' : 'Đã thanh lý'}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Ngày hết hạn/thanh lý:</span>
+                    <span className="font-semibold text-on-surface">{contract.endDate}</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

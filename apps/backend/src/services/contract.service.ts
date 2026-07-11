@@ -1,4 +1,5 @@
 import { contractRepo } from '../repositories/contract.repo';
+import { CONTRACT_TEMPLATES } from '../config/contract-templates';
 
 interface DbContract {
   id: string;
@@ -100,22 +101,22 @@ export const contractService = {
         roomCode: room.name || 'N/A',
         bedCode: bed.name || 'N/A',
         roomType: room.room_type === 'dorm' ? 'Dormitory' : room.room_type || 'N/A',
-        roomImage: room.image_url || 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?q=80&w=500&auto=format&fit=crop', // default nice placeholder
+        roomImage: room.image_url || CONTRACT_TEMPLATES.defaultRoomImage,
         // Finance
         rentPrice: c.rent_price,
         depositAmount: depReq.deposit_amount || c.rent_price,
-        serviceFee: 250000, // static fee default as per mock
+        serviceFee: CONTRACT_TEMPLATES.serviceFee,
         // Terms
-        terms: `Bên A đồng ý cho bên B thuê 01 vị trí giường (${bed.name || 'N/A'}) tại phòng ${room.name || 'N/A'}, thuộc chi nhánh ${branch.name || 'N/A'}. Tài sản bàn giao bao gồm: 01 nệm cao su, 01 tủ đồ có khóa, hệ thống đèn chiếu sáng cá nhân.`,
-        paymentPolicy: `Giá thuê hàng tháng là ${c.rent_price.toLocaleString('vi-VN')} VNĐ. Thanh toán từ ngày 01 đến ngày 05 hàng tháng bằng hình thức chuyển khoản. Chậm thanh toán quá 03 ngày chịu phí phạt 5%.`,
-        terminationPolicy: `Bên B cần báo trước 30 ngày nếu có ý định trả phòng trước hạn. Hoàn trả phòng sạch sẽ, bàn giao đầy đủ trang thiết bị như ban đầu để nhận lại tiền đặt cọc.`,
+        terms: CONTRACT_TEMPLATES.getTermsTemplate(bed.name || 'N/A', room.name || 'N/A', branch.name || 'N/A'),
+        paymentPolicy: CONTRACT_TEMPLATES.getPaymentPolicyTemplate(c.rent_price),
+        terminationPolicy: CONTRACT_TEMPLATES.getTerminationPolicyTemplate(),
         // Timeline
         monthsPassed: monthsPassed < 0 ? 0 : (monthsPassed > totalMonths ? totalMonths : monthsPassed),
         totalMonths,
         remainingDays,
         managerName: staff.full_name || 'N/A',
         managerPhone: staff.phone || 'N/A',
-        managerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=150&auto=format&fit=crop' // default manager avatar placeholder
+        managerImage: CONTRACT_TEMPLATES.defaultManagerImage
       };
     });
   }
