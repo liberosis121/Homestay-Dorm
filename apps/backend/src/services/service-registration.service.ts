@@ -112,19 +112,27 @@ export const serviceRegistrationService = {
       throw new Error('Dịch vụ không tồn tại trong hệ thống');
     }
 
-    // Check if active subscription already exists
-    const { data: existing } = await supabase
+    // Check if any subscription already exists for this contract and service
+    const { data: existingList, error: exErr } = await supabase
       .from('service_registrations')
       .select('*')
       .eq('contract_id', activeContract.id)
-      .eq('service_id', serviceId)
-      .is('end_date', null)
-      .maybeSingle();
+      .eq('service_id', serviceId);
 
-    if (existing) {
+    if (exErr) throw exErr;
+
+    const activeSub = (existingList || []).find((s) => s.end_date === null);
+    if (activeSub) {
       throw new Error('Dịch vụ này đã được đăng ký và đang có hiệu lực');
     }
 
+    const cancelledSub = (existingList || []).find((s) => s.end_date !== null);
+    if (cancelledSub) {
+      // Reactivate cancelled subscription to avoid primary key constraints
+      return await serviceRegistrationRepo.reactivateSubscription(activeContract.id, serviceId, service.price);
+    }
+
+    // Otherwise, create a new record
     return await serviceRegistrationRepo.addSubscription(activeContract.id, serviceId, service.price);
   },
 

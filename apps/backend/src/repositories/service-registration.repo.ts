@@ -76,6 +76,23 @@ export const serviceRegistrationRepo = {
       })
       .eq('contract_id', contractId)
       .eq('service_id', serviceId)
+      .is('end_date', null)
+      .select('*, services(*)');
+    if (error) throw error;
+    return data[0] as DbServiceRegistration;
+  },
+
+  reactivateSubscription: async (contractId: string, serviceId: string, amount: number): Promise<DbServiceRegistration> => {
+    const { data, error } = await supabase
+      .from('service_registrations')
+      .update({
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: null,
+        amount
+      })
+      .eq('contract_id', contractId)
+      .eq('service_id', serviceId)
+      .not('end_date', 'is', null)
       .select('*, services(*)');
     if (error) throw error;
     return data[0] as DbServiceRegistration;

@@ -110,18 +110,18 @@ export const useCustomerServicesStore = create<CustomerServicesState>((set, get)
     set({ cancelConfirm: { open: false, subscriptionId: null } }),
 
   confirmCancel: async (email: string) => {
-    const { cancelConfirm } = get();
+    const { cancelConfirm, subscriptions } = get();
     if (!cancelConfirm.subscriptionId) return;
 
     set({ isLoading: true, error: null });
     try {
-      // The subscriptionId format is `${contract_id}-${service_id}`.
-      // We extract the service_id from it:
-      const parts = cancelConfirm.subscriptionId.split('-');
-      // serviceId will be the last parts, e.g. "DV-003"
-      const serviceId = parts.slice(1).join('-');
+      // Tìm thông tin đăng ký trong store để lấy chính xác service_id
+      const sub = subscriptions.find((s) => s.id === cancelConfirm.subscriptionId);
+      if (!sub) {
+        throw new Error('Không tìm thấy thông tin đăng ký dịch vụ');
+      }
 
-      await cancelServiceApi(email, serviceId);
+      await cancelServiceApi(email, sub.service_id);
       set({ cancelConfirm: { open: false, subscriptionId: null } });
       await get().loadData(email);
     } catch (err: any) {

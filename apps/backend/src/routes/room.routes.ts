@@ -24,7 +24,7 @@ router.get('/branches', async (req, res) => {
 // GET /api/rooms - Lay danh sach phong, ho tro bo loc
 router.get('/rooms', async (req, res) => {
   try {
-    const { branch_id, room_type, status, min_price, max_price } = req.query;
+    const { branch_id, room_type, status, min_price, max_price, gender_type } = req.query;
 
     // Chuyển đổi định dạng khoảng giá từ query string sang số nguyên
     const filters = {
@@ -33,6 +33,7 @@ router.get('/rooms', async (req, res) => {
       status: status as string,
       min_price: min_price ? parseInt(min_price as string, 10) : undefined,
       max_price: max_price ? parseInt(max_price as string, 10) : undefined,
+      gender_type: gender_type as string,
     };
 
     const data = await roomService.listRooms(filters);

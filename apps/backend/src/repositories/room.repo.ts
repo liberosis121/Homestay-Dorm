@@ -11,6 +11,7 @@ export interface RoomFilter {
   status?: string;
   min_price?: number;
   max_price?: number;
+  gender_type?: string;
 }
 
 export const roomRepo = {
@@ -43,6 +44,10 @@ export const roomRepo = {
     
     if (filters.status) {
       query = query.eq('status', filters.status);
+    }
+    
+    if (filters.gender_type) {
+      query = query.eq('gender_type', filters.gender_type);
     }
     
     if (filters.min_price !== undefined) {

@@ -43,8 +43,8 @@ export default function RoomsPage() {
   const filteredRooms = rooms.filter(room => {
     if (keyword && !room.name.toLowerCase().includes(keyword.toLowerCase())) return false;
     if (branch !== 'Tất cả chi nhánh' && room.branch_id !== branch) return false;
-    if (roomType !== 'Loại phòng' && room.room_type !== roomType) return false;
-    if (gender !== 'Giới tính' && gender !== 'Tất cả' && room.gender_type !== gender) return false;
+    if (roomType !== 'Tất cả loại phòng' && room.room_type.toLowerCase() !== roomType.toLowerCase()) return false;
+    if (gender !== 'Tất cả giới tính' && room.gender_type !== gender) return false;
     
     if (onlyAvailable && room.status !== 'available' && room.status !== 'partial') return false;
     

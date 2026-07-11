@@ -115,6 +115,17 @@ export const ROOM_TYPE = {
 export type RoomType = typeof ROOM_TYPE[keyof typeof ROOM_TYPE];
 
 // ============================================================
+// 6b. ĐỐI TƯỢNG GIỚI TÍNH CỦA PHÒNG (bảng rooms)
+// ============================================================
+export const GENDER_TYPE = {
+  MALE: 'male',
+  FEMALE: 'female',
+  UNISEX: 'unisex',
+} as const;
+
+export type GenderType = typeof GENDER_TYPE[keyof typeof GENDER_TYPE];
+
+// ============================================================
 // 7. VAI TRÒ NGƯỜI DÙNG (bảng profiles)
 // ============================================================
 export const USER_ROLE = {

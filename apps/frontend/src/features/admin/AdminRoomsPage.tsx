@@ -58,6 +58,7 @@ interface RoomFormValues {
   floor?: number;
   capacity?: number;
   price?: number;
+  genderType?: string;
 }
 
 type RoomFormErrors = Partial<Record<keyof RoomFormValues, string>>;
@@ -133,6 +134,7 @@ interface RoomCatalog {
   price: number;
   status: RoomStatus;
   amenities: string[];
+  genderType: string;
 }
 
 const ROOM_TYPE_LABEL: Record<string, string> = {
@@ -236,6 +238,7 @@ export default function AdminRoomsPage() {
   const [editPrice, setEditPrice] = useState<number>(1500000);
   const [editRoomType, setEditRoomType] = useState<string>('dorm');
   const [editStatus, setEditStatus] = useState<RoomStatus>('available');
+  const [editGenderType, setEditGenderType] = useState<string>('unisex');
   const [editErrors, setEditErrors] = useState<RoomFormErrors>({});
   const [successMsg, setSuccessMsg] = useState('');
   const [isErrorToast] = useState(false);
@@ -278,6 +281,7 @@ export default function AdminRoomsPage() {
       setEditPrice(selected.price);
       setEditRoomType(selected.roomType);
       setEditStatus(selected.status);
+      setEditGenderType(selected.genderType);
       setEditErrors({});
       // Reset & nạp lại giường mỗi khi mở phòng khác.
       setEditingBedId(null);
@@ -381,6 +385,7 @@ export default function AdminRoomsPage() {
         price: r.price ?? 0,
         status: normalizeRoomStatus(r.status),
         amenities: Array.isArray(r.amenities) ? r.amenities : [],
+        genderType: r.gender_type ?? 'unisex',
       }));
       setRooms(mapped);
     } catch (err: any) {
@@ -424,7 +429,7 @@ export default function AdminRoomsPage() {
   const pageEnd = Math.min(safeCurrentPage * PAGE_SIZE, filtered.length);
 
   const openAdd = () => {
-    setForm({ name: '', branch: '', floor: 1, capacity: 4, roomType: 'dorm', price: 1500000, status: 'available', amenities: [] });
+    setForm({ name: '', branch: '', floor: 1, capacity: 4, roomType: 'dorm', price: 1500000, status: 'available', amenities: [], genderType: 'unisex' });
     setFormErrors({});
     setShowModal(true);
   };
@@ -450,6 +455,7 @@ export default function AdminRoomsPage() {
       price: form.price ?? 0,
       status: form.status ?? 'available',
       amenities: form.amenities ?? [],
+      gender_type: form.genderType || 'unisex',
     };
     try {
       await createRoomApi(payload);
@@ -482,6 +488,7 @@ export default function AdminRoomsPage() {
         price: editPrice,
         status: editStatus,
         room_type: editRoomType,
+        gender_type: editGenderType,
       });
       setSuccessMsg("Đã cập nhật thông tin phòng thành công!");
       setTimeout(() => setSuccessMsg(""), 3500);
@@ -593,8 +600,8 @@ export default function AdminRoomsPage() {
           <table className="w-full text-left border-collapse">
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
-                {['Mã phòng', 'Tên phòng', 'Chi nhánh', 'Tầng', 'Sức chứa tối đa', 'Loại phòng', 'Đơn giá/tháng', 'Trạng thái', 'Thao tác'].map(h => {
-                  const isCenter = h === 'Mã phòng' || h === 'Loại phòng' || h === 'Sức chứa tối đa' || h === 'Thao tác';
+                {['Mã phòng', 'Tên phòng', 'Chi nhánh', 'Tầng', 'Sức chứa tối đa', 'Loại phòng', 'Đối tượng', 'Đơn giá/tháng', 'Trạng thái', 'Thao tác'].map(h => {
+                  const isCenter = h === 'Mã phòng' || h === 'Loại phòng' || h === 'Sức chứa tối đa' || h === 'Đối tượng' || h === 'Thao tác';
                   return (
                     <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${isCenter ? 'text-center' : ''}`}
                       style={{ color: A.textMuted }}>{h}</th>
@@ -612,6 +619,7 @@ export default function AdminRoomsPage() {
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-10"></div></td>
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div></td>
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12 mx-auto"></div></td>
+                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-12 mx-auto"></div></td>
                     <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
                     <td className="px-4 py-4"><div className="h-6 bg-gray-200 rounded-full w-20 mx-auto"></div></td>
                     <td className="px-4 py-4"><div className="h-8 bg-gray-200 rounded-full w-16 mx-auto"></div></td>
@@ -619,7 +627,7 @@ export default function AdminRoomsPage() {
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center">
+                  <td colSpan={10} className="py-16 text-center">
                     <span className="material-symbols-outlined text-5xl block mb-3 animate-bounce" style={{ color: A.border }}>manage_search</span>
                     <p className="text-sm font-semibold" style={{ color: A.textPrimary }}>Không tìm thấy phòng phù hợp.</p>
                     <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
@@ -627,6 +635,16 @@ export default function AdminRoomsPage() {
                 </tr>
               ) : paginatedRooms.map((r, i) => {
                 const si = ROOM_STATUS_META[r.status];
+                const getGenderLabel = (g: string) => {
+                  if (g === 'male') return 'Nam';
+                  if (g === 'female') return 'Nữ';
+                  return 'Hỗn hợp';
+                };
+                const getGenderCls = (g: string) => {
+                  if (g === 'male') return 'bg-blue-50 text-blue-700';
+                  if (g === 'female') return 'bg-pink-50 text-pink-700';
+                  return 'bg-amber-50 text-amber-700';
+                };
                 return (
                   <tr key={r.id}
                     className="group transition-colors"
@@ -639,6 +657,11 @@ export default function AdminRoomsPage() {
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>Tầng {r.floor}</td>
                     <td className="px-4 py-3 text-sm text-center" style={{ color: A.textPrimary }}>{r.capacity} người</td>
                     <td className="px-4 py-3 text-sm text-center" style={{ color: A.textPrimary }}>{roomTypeLabel(r.roomType)}</td>
+                    <td className="px-4 py-3 text-sm text-center">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${getGenderCls(r.genderType)}`}>
+                        {getGenderLabel(r.genderType)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.primary }}>
                       {r.price.toLocaleString('vi-VN')}đ
                     </td>
@@ -818,7 +841,20 @@ export default function AdminRoomsPage() {
                   />
                 </div>
 
-
+                <div>
+                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đối tượng</label>
+                  <CustomSelect
+                    value={editGenderType}
+                    onChange={val => setEditGenderType(val)}
+                    options={[
+                      { value: "male", label: "Chỉ dành cho Nam" },
+                      { value: "female", label: "Chỉ dành cho Nữ" },
+                      { value: "unisex", label: "Nam & Nữ chung (Hỗn hợp)" }
+                    ]}
+                    theme="sale"
+                    triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9] transition-all focus:!border-[#6f583c]"
+                  />
+                </div>
 
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
@@ -1042,6 +1078,21 @@ export default function AdminRoomsPage() {
                     { value: "dorm", label: "Dorm (KTX)" },
                     { value: "twin", label: "Twin (Đôi)" },
                     { value: "single", label: "Single (Đơn)" }
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đối tượng</label>
+                <CustomSelect
+                  value={form.genderType || 'unisex'}
+                  onChange={val => setForm(prev => ({ ...prev, genderType: val }))}
+                  options={[
+                    { value: "male", label: "Chỉ dành cho Nam" },
+                    { value: "female", label: "Chỉ dành cho Nữ" },
+                    { value: "unisex", label: "Nam & Nữ chung (Hỗn hợp)" }
                   ]}
                   theme="sale"
                   triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
