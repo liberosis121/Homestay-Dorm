@@ -242,7 +242,7 @@ export const RegisterLeasePage: React.FC = () => {
           </div>
           <div className="space-y-3">
             <h2 className="font-headline-lg text-2xl font-bold text-on-surface">Cập nhật hồ sơ cá nhân</h2>
-            <p className="font-body-md text-on-surface-variant leading-relaxed text-sm">
+            <p className="font-body-md text-on-surface-variant leading-relaxed text-sm text-justify">
               Bạn cần điền đầy đủ các thông tin cá nhân bắt buộc bao gồm: <strong>Số điện thoại, Số CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày cấp và Nơi cấp CCCD, Địa chỉ thường trú</strong> trong hồ sơ cá nhân của mình trước khi thực hiện chức năng đăng ký thuê phòng.
             </p>
           </div>

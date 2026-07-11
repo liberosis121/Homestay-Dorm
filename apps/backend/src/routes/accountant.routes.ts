@@ -294,6 +294,23 @@ router.get('/cancellation-refunds', async (req, res) => {
 });
 
 /**
+ * 🔗 POST /api/accountant/cancellation-refunds
+ * 📝 Duyet hoan coc khi chua ky HD (hoan 80%): tao hoa don hoan coc gan deposit_id.
+ */
+router.post('/cancellation-refunds', async (req, res) => {
+  try {
+    const { depositRequestId, originalDeposit, refundRate, totalDeductions, finalRefund, note } = req.body;
+    const staffId = req.profile!.id;
+    const data = await refundService.createCancellationRefund({
+      depositRequestId, originalDeposit, refundRate, totalDeductions, finalRefund, note, staffId
+    });
+    return sendSuccess(res, data, 'Lap hoan coc chua ky HD thanh cong!', 201);
+  } catch (err: any) {
+    return sendError(res, err, err.message || 'Loi khi lap hoan coc chua ky HD.');
+  }
+});
+
+/**
  * 🔗 GET /api/accountant/refunds
  * 📝 Lay toan bo danh sach phieu doi soat hoan coc.
  */

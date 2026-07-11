@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthBackground from '../../components/ui/AuthBackground';
 import Logo from '../../components/ui/Logo';
+import { forgotPasswordApi } from './auth.api';
 
 export default function OTPVerificationPage() {
   const navigate = useNavigate();
@@ -49,11 +50,18 @@ export default function OTPVerificationPage() {
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setOtp(['', '', '', '', '', '']);
     setStatus('normal');
     setTimeLeft(60);
-    setSuccessMessage('Mã xác thực mới đã được gửi lại thành công!');
+    if (email) {
+      try {
+        await forgotPasswordApi(email);
+        setSuccessMessage('Mã OTP mới đã được gửi lại thành công!');
+      } catch {
+        setSuccessMessage('Gửi lại OTP thất bại. Vui lòng thử lại sau.');
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -70,18 +78,14 @@ export default function OTPVerificationPage() {
       return;
     }
 
-    setStatus('verifying');
-
-    // Simulate API call
-    setTimeout(() => {
-      // For demo, anything is success as long as it's 6 digits, or we can hardcode 123456
-      // We will just let anything pass for the prototype
-      if (otpValue.length === 6) {
-        navigate('/reset-password', { state: { message: 'Xác thực mã OTP thành công! Vui lòng tiến hành tạo mật khẩu mới.' } });
-      } else {
-        setStatus('invalid');
-      }
-    }, 1500);
+    // Pass email + OTP to ResetPasswordPage for final verification on backend
+    navigate('/reset-password', {
+      state: {
+        email,
+        otp: otpValue,
+        message: 'Vui lòng nhập mật khẩu mới của bạn.',
+      },
+    });
   };
 
   return (

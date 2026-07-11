@@ -88,6 +88,7 @@ export default function AdminUsersPage() {
   const [addError, setAddError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [isErrorToast, setIsErrorToast] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
@@ -248,6 +249,16 @@ export default function AdminUsersPage() {
 
   const confirmToggleLock = async () => {
     if (!confirmLockCustomer) return;
+    
+    // Nếu muốn khóa và khách thuê đang ở (renting) -> Chặn và báo lỗi
+    if (confirmLockCustomer.accountStatus !== 'locked' && confirmLockCustomer.status === 'renting') {
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể khóa tài khoản do khách hàng đang có hợp đồng hoặc hóa đơn chưa thanh toán!");
+      setTimeout(() => setSuccessMsg(''), 3500);
+      setConfirmLockCustomer(null);
+      return;
+    }
+
     try {
       const res = await toggleCustomerLockApi(confirmLockCustomer.id);
       const nextStatus = res.accountStatus;
@@ -263,9 +274,14 @@ export default function AdminUsersPage() {
           prev ? { ...prev, accountStatus: nextStatus } : null
         );
       }
+      setIsErrorToast(false);
+      setSuccessMsg(nextStatus === 'locked' ? 'Đã khóa tài khoản khách hàng!' : 'Đã mở khóa tài khoản khách hàng!');
+      setTimeout(() => setSuccessMsg(''), 3500);
     } catch (err) {
       console.error("Lỗi khi thay đổi khóa:", err);
-      alert("Không thể thay đổi trạng thái khóa tài khoản!");
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể thay đổi trạng thái khóa tài khoản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
     } finally {
       setConfirmLockCustomer(null);
     }
@@ -294,8 +310,10 @@ export default function AdminUsersPage() {
     >
       {successMsg && (
         <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
-          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+          <div className={`flex items-center gap-2 text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold ${isErrorToast ? 'bg-[#ba1a1a]' : 'bg-[#5f745d]'}`}>
+            <span className="material-symbols-outlined text-[18px]">
+              {isErrorToast ? 'error' : 'check_circle'}
+            </span>
             {successMsg}
           </div>
         </div>

@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthBackground from '../../components/ui/AuthBackground';
 import Logo from '../../components/ui/Logo';
+import { forgotPasswordApi } from './auth.api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'normal' | 'invalid' | 'not_found' | 'sending'>('normal');
+  const [status, setStatus] = useState<'normal' | 'invalid' | 'not_found' | 'sending' | 'error'>('normal');
+  const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
   const validateEmail = (email: string) => {
     return email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !validateEmail(email)) {
       setStatus('invalid');
@@ -20,16 +22,20 @@ export default function ForgotPasswordPage() {
     }
 
     setStatus('sending');
+    setErrorMessage('');
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock logic: if it ends with homestay.com or gmail.com we pretend it exists
-      if (email.endsWith('@homestay.com') || email.endsWith('@gmail.com')) {
-        navigate('/verify-otp', { state: { email, message: `Mã xác thực đã được gửi tới email ${email}!` } });
-      } else {
+    try {
+      await forgotPasswordApi(email);
+      navigate('/verify-otp', { state: { email, message: `Mã OTP đã được gửi tới ${email}. Vui lòng kiểm tra hòm thư!` } });
+    } catch (err: any) {
+      const msg: string = err?.response?.data?.message || err?.message || '';
+      if (msg.includes('chưa được đăng ký') || msg.includes('chưa đăng ký')) {
         setStatus('not_found');
+      } else {
+        setStatus('error');
+        setErrorMessage(msg || 'Lỗi hệ thống khi khôi phục mật khẩu.');
       }
-    }, 1500);
+    }
   };
 
   return (
@@ -54,6 +60,13 @@ export default function ForgotPasswordPage() {
               <div className="mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-start gap-3 animate-fade-in">
                 <span className="material-symbols-outlined text-error">error</span>
                 <p className="font-body-md text-error text-sm">Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại.</p>
+              </div>
+            )}
+
+            {status === 'error' && (
+              <div className="mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-start gap-3 animate-fade-in">
+                <span className="material-symbols-outlined text-error">error</span>
+                <p className="font-body-md text-error text-sm">{errorMessage}</p>
               </div>
             )}
 

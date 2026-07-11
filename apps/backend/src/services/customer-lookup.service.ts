@@ -187,9 +187,6 @@ export const customerLookupService = {
         };
       });
 
-      // Hoat dong gan day (recentActivities)
-      const recentActivities: any[] = [];
-
       return {
         id: c.id || c.cccd,
         code: c.id || c.cccd,
@@ -208,14 +205,12 @@ export const customerLookupService = {
           email: c.email || p.email || '',
           birthDate: c.dob ? new Date(c.dob).toLocaleDateString('vi-VN') : '',
           nationality: c.nationality || '',
-          job: '',
           address: c.address || ''
         },
         registrations: formattedRegistrations,
         viewings: accurateFormattedViewings,
         deposits: formattedDeposits,
-        contracts: formattedContracts,
-        recentActivities
+        contracts: formattedContracts
       };
     });
   }

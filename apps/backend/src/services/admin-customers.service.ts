@@ -65,7 +65,7 @@ export const adminCustomersService = {
           email,
           cccd,
           phone,
-          nationality: 'Việt Nam',
+          nationality: null,
         });
 
       if (customerError) throw customerError;

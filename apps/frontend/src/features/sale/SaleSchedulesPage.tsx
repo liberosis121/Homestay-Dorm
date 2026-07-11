@@ -4,7 +4,7 @@ import {
   Plus, Search, X, CheckCircle, Calendar, Clock,
   RotateCcw, XCircle, Building2, FileText, Filter, CalendarPlus
 } from 'lucide-react';
-import { useSaleScheduleStore, ScheduleStatus, ReschedulePayload } from './store/useSaleScheduleStore';
+import { useSaleScheduleStore, ScheduleStatus, ReschedulePayload, SaleSchedule } from './store/useSaleScheduleStore';
 import ScheduleStatusBadge from './components/ScheduleStatusBadge';
 import ScheduleCalendar from './components/ScheduleCalendar';
 import CreateFromRegistrationModal from './components/CreateFromRegistrationModal';
@@ -53,14 +53,16 @@ const parseLocalDate = (dateStr: string) => {
 // ─── Điều kiện hiển thị thao tác theo trạng thái lịch hẹn ──────────────────────
 // Dùng chung cho panel chi tiết (TimelineWidget). Trạng thái kết thúc
 // (completed / cancelled) không còn thao tác khả dụng.
-const canComplete = (status: ScheduleStatus) =>
-  ['pending', 'confirmed', 'in_progress'].includes(status);
+const canConfirmByStaff = (schedule: SaleSchedule) =>
+  schedule.status === 'pending' && schedule.pendingConfirmationActor === 'staff';
+const canComplete = (schedule: SaleSchedule) =>
+  ['confirmed', 'in_progress'].includes(schedule.status);
 const canReschedule = (status: ScheduleStatus) =>
   ['pending', 'confirmed', 'rescheduled'].includes(status);
 const canCancel = (status: ScheduleStatus) =>
   ['pending', 'confirmed', 'rescheduled'].includes(status);
-const hasAnyAction = (status: ScheduleStatus) =>
-  canComplete(status) || canReschedule(status) || canCancel(status);
+const hasAnyAction = (schedule: SaleSchedule) =>
+  canConfirmByStaff(schedule) || canComplete(schedule) || canReschedule(schedule.status) || canCancel(schedule.status);
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -82,6 +84,7 @@ const SaleSchedulesPage: React.FC = () => {
     openRescheduleModal,
     closeRescheduleModal,
     cancelSchedule,
+    confirmSchedule,
     completeSchedule,
     createSchedule,
     rescheduleAppointment,
@@ -187,6 +190,15 @@ const SaleSchedulesPage: React.FC = () => {
     }
   };
 
+  const handleStaffConfirm = async (id: string) => {
+    try {
+      await confirmSchedule(id);
+      showToast('Đã xác nhận lịch dời do khách hàng đề xuất.');
+    } catch (err: any) {
+      showToast(err?.message || 'Không thể xác nhận lịch hẹn.');
+    }
+  };
+
   const showToast = (message: string) => {
     setToastMessage(message);
     window.setTimeout(() => setToastMessage(''), 3200);
@@ -267,6 +279,7 @@ const SaleSchedulesPage: React.FC = () => {
             schedule={selectedSchedule}
             onReschedule={openRescheduleModal}
             onCancel={(id) => setConfirmCancelId(id)}
+            onConfirm={handleStaffConfirm}
             onComplete={(id) => setConfirmCompleteId(id)}
             onCreateFollowUp={(id) => setRebookingScheduleId(id)}
           />
@@ -651,11 +664,12 @@ interface TimelineWidgetProps {
   schedule: ReturnType<typeof useSaleScheduleStore.getState>['schedules'][0] | undefined | null;
   onReschedule: (id: string) => void;
   onCancel: (id: string) => void;
+  onConfirm: (id: string) => void;
   onComplete: (id: string) => void;
   onCreateFollowUp: (id: string) => void;
 }
 
-const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule, onReschedule, onCancel, onComplete, onCreateFollowUp }) => {
+const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule, onReschedule, onCancel, onConfirm, onComplete, onCreateFollowUp }) => {
   if (!schedule) {
     return (
       <div className="bg-white rounded-2xl border border-[#d1c4b9] p-5 text-center" style={{ boxShadow: '0 4px 12px rgba(45, 42, 38, 0.04)' }}>
@@ -728,9 +742,18 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule, onReschedule,
       {/* Thao tác — chuyển từ cột bảng sang panel chi tiết (phương án B) */}
       <div className="mt-4 pt-4 border-t border-[#d1c4b9]">
         <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-wider mb-2">Thao tác</p>
-        {hasAnyAction(schedule.status) ? (
+        {hasAnyAction(schedule) ? (
           <div className="flex flex-wrap gap-2">
-            {canComplete(schedule.status) && (
+            {canConfirmByStaff(schedule) && (
+              <button
+                onClick={() => onConfirm(schedule.id)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#4d614b] bg-[#4d614b]/10 hover:bg-[#4d614b]/20 transition-all active:scale-95"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Xác nhận lịch
+              </button>
+            )}
+            {canComplete(schedule) && (
               <button
                 onClick={() => onComplete(schedule.id)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#4d614b] bg-[#4d614b]/10 hover:bg-[#4d614b]/20 transition-all active:scale-95"

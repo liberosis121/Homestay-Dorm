@@ -92,52 +92,22 @@ export const viewingRepo = {
   },
 
   /**
-   * Cap nhat ket qua va ghi chu cua buoi xem phong.
+   * Cap nhat linh hoat cac truong cua lich xem phong (scheduled_time / result / note).
+   * Dung cho luong vong doi: xac nhan, doi lich (reset result), huy, hoan thanh.
    */
-  updateScheduleResult: async (id: string, result: string, note: string) => {
+  updateScheduleFields: async (
+    id: string,
+    updates: { scheduled_time?: string; result?: string | null; note?: string | null }
+  ) => {
     const { data, error } = await supabase
       .from('viewing_schedules')
-      .update({ result, note })
+      .update(updates)
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
-      throw new Error(`[ViewingRepo] Loi khi cap nhat ket qua lich hen xem phong id=${id}: ${error.message}`);
-    }
-    return data;
-  },
-
-  /**
-   * Cap nhat thoi gian hen xem phong.
-   */
-  updateScheduleTime: async (id: string, scheduledTime: string) => {
-    const { data, error } = await supabase
-      .from('viewing_schedules')
-      .update({ scheduled_time: scheduledTime })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`[ViewingRepo] Loi khi cap nhat thoi gian lich hen xem phong id=${id}: ${error.message}`);
-    }
-    return data;
-  },
-
-  /**
-   * Cap nhat ghi chu cua lich hen xem phong.
-   */
-  updateScheduleNote: async (id: string, note: string) => {
-    const { data, error } = await supabase
-      .from('viewing_schedules')
-      .update({ note })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`[ViewingRepo] Loi khi cap nhat ghi chu lich hen xem phong id=${id}: ${error.message}`);
+      throw new Error(`[ViewingRepo] Loi khi cap nhat lich xem phong id=${id}: ${error.message}`);
     }
     return data;
   },

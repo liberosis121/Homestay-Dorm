@@ -124,9 +124,29 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     const result = await authService.forgotPassword(email);
-    return sendSuccess(res, result, 'Hệ thống đã gửi email khôi phục mật khẩu. Vui lòng kiểm tra hòm thư của bạn.');
+    return sendSuccess(res, result, 'Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra hòm thư.');
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Lỗi khi yêu cầu đặt lại mật khẩu.');
+    return sendError(res, error, error.message || 'Lỗi khi yêu cầu đặt lại mật khẩu.', 400);
+  }
+});
+
+/**
+ * 🔗 POST /api/auth/reset-password-otp
+ * 📝 Xác thực mã OTP và đặt lại mật khẩu mới.
+ * 📥 Body input: { email, otp, newPassword }
+ */
+router.post('/reset-password-otp', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return sendError(res, null, 'Vui lòng cung cấp đầy đủ email, mã OTP và mật khẩu mới.', 400);
+    }
+
+    const result = await authService.resetPasswordWithOtp(email, otp, newPassword);
+    return sendSuccess(res, result, 'Mật khẩu đã được cập nhật thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi đặt lại mật khẩu.', 400);
   }
 });
 

@@ -59,6 +59,11 @@ export const monthlyInvoiceRepo = {
       ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
       : { data: [] as any[] };
 
+    const invoiceIds = invoices.map(i => i.id).filter(Boolean);
+    const { data: incidentals } = invoiceIds.length > 0
+      ? await supabase.from('incidental_costs').select('*').in('invoice_id', invoiceIds)
+      : { data: [] as any[] };
+
     // 8. Map results in-memory
     const result = invoices.map(inv => {
       const contract = (contracts || []).find(c => c.id === inv.contract_id);
@@ -87,14 +92,18 @@ export const monthlyInvoiceRepo = {
         };
       }
 
+      // Lọc các khoản phí phát sinh của hóa đơn này
+      const invIncidentals = (incidentals || []).filter((c: any) => c.invoice_id === inv.id);
+      const incidentalsTotal = invIncidentals.reduce((sum: number, c: any) => sum + (Number(c.penalty_amount) || 0), 0);
+
       // Tinh lai tien dien/nuoc tu chi so de suy ra tien dich vu (services_cost) bang cach tru phan du:
-      // amount da luu = rent_price + services_cost + electricity_cost + water_cost (xem monthly-invoice.service.ts)
+      // amount da luu = rent_price + services_cost + electricity_cost + water_cost + incidentalsTotal
       const elecUsage = reading ? (reading.end_electricity - reading.start_electricity) : 0;
       const waterUsage = reading ? (reading.end_water - reading.start_water) : 0;
       const electricityCost = elecUsage > 0 ? elecUsage * 3500 : 0;
       const waterCost = waterUsage > 0 ? waterUsage * 15000 : 0;
       const rentPrice = mappedContract?.rent_price || 0;
-      const servicesCost = Math.max(0, (inv.amount || 0) - rentPrice - electricityCost - waterCost);
+      const servicesCost = Math.max(0, (inv.amount || 0) - rentPrice - electricityCost - waterCost - incidentalsTotal);
 
       return {
         ...inv,
@@ -104,6 +113,12 @@ export const monthlyInvoiceRepo = {
         branch_id: mappedContract?.rooms?.branches?.id || '',
         branch_name: mappedContract?.rooms?.branches?.name || '',
         services_cost: servicesCost,
+        incidentals: invIncidentals.map((c: any) => ({
+          id: c.id,
+          name: c.cost_name,
+          amount: Number(c.penalty_amount) || 0,
+          recorded_date: c.recorded_date
+        })),
         contracts: mappedContract,
         electricity_water_records: reading || null
       };
