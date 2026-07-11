@@ -329,6 +329,7 @@ export interface ResidencyCheck {
   created_at?: string;
   permanent_address?: string;
   purpose?: string;
+  deposit_ref?: string;   // Mã phiếu cọc THẬT (dùng để gom nhóm + thao tác lên cọc)
 }
 
 export interface AssetHandover {

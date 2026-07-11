@@ -137,23 +137,25 @@ export default function ManagerResidencyPage() {
     fetchResidencyChecks();
   }, []);
 
-  // Group records by room_id + create deposit ref
+  // Gom bản ghi cư trú theo PHIẾU CỌC THẬT (deposit_ref) — mỗi phiếu cọc nhóm = 1 nhóm.
+  // Fallback theo room_id cho dữ liệu cũ thiếu deposit_ref.
   const groups = useMemo<RoomGroup[]>(() => {
     const map: Record<string, ResidencyCheck[]> = {};
     records.forEach(r => {
-      if (!map[r.room_id]) map[r.room_id] = [];
-      map[r.room_id].push(r);
+      const key = r.deposit_ref || r.room_id;
+      if (!map[key]) map[key] = [];
+      map[key].push(r);
     });
-    return Object.entries(map).map(([room_id, members], i) => {
+    return Object.entries(map).map(([key, members]) => {
       const allPending = members.every(m => m.status === 'pending');
       const allEvaluated = members.every(m => m.status === 'approved' || m.status === 'rejected');
-      const group_status = allPending 
-        ? 'pending' 
+      const group_status = allPending
+        ? 'pending'
         : (allEvaluated ? 'completed' : 'partial');
       return {
-        room_id,
+        room_id: members[0].room_id,
         room_name: members[0].room_name,
-        deposit_ref: `MGR-DEP-${2000 + i + 1}`,
+        deposit_ref: members[0].deposit_ref || key,
         members,
         group_status,
       };
@@ -315,6 +317,14 @@ export default function ManagerResidencyPage() {
           })
         });
       }));
+
+      // 1b. TH3: loại thành viên rớt khỏi phiếu cọc + nhả giường tương ứng.
+      //     No-op nếu không ai rớt (TH1). Chạy sau khi đã set trạng thái cư trú ở trên.
+      await fetch(`${API_BASE}/residency/finalize`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ deposit_id: selectedGroup.deposit_ref })
+      });
 
       // 2. Update deposit status to 'paid' (approved)
       await fetch(`${API_BASE}/deposits/${selectedGroup.deposit_ref}/status`, {

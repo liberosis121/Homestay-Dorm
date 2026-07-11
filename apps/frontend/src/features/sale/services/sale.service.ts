@@ -107,7 +107,8 @@ export const fetchEligibleDepositsApi = async (): Promise<EligibleDeposit[]> => 
   const roomById = new Map<string, any>((rooms as any[]).map((r) => [r.id, r]));
 
   return deposits
-    .filter((d) => !contractedDepositIds.has(d.id))
+    // Chỉ hiện phiếu cọc đã ĐẠT điều kiện lưu trú (bước 11) + chưa có hợp đồng.
+    .filter((d) => !contractedDepositIds.has(d.id) && d.residency_approved === true)
     .map((d): EligibleDeposit => {
       const room = roomById.get(d.room_id) || {};
       return {
