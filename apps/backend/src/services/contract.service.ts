@@ -20,7 +20,7 @@ interface DbContract {
     deposit_amount: number;
     rooms?: {
       name: string;
-      area: string;
+      area?: string;
       room_type: string;
       branches?: {
         name: string;
