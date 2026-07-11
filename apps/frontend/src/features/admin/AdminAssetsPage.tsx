@@ -693,7 +693,7 @@ export default function AdminAssetsPage() {
                     setSelectedBedId('');
                   }}
                   options={[
-                    { value: "", label: "-- Chọn chi nhánh --" },
+                    { value: "", label: "Chọn chi nhánh" },
                     ...branches.map(b => ({ value: b.id, label: b.name }))
                   ]}
                   theme="sale"
@@ -703,7 +703,7 @@ export default function AdminAssetsPage() {
 
               {/* Phòng */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Phòng <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Phòng <span style={{ fontSize: '10px', textTransform: 'none', fontWeight: 500, color: '#8a7563' }}>(bỏ trống = cất vào kho)</span></label>
                 <CustomSelect
                   value={selectedRoomId}
                   onChange={val => {
@@ -711,7 +711,7 @@ export default function AdminAssetsPage() {
                     setSelectedBedId('');
                   }}
                   options={[
-                    { value: "", label: selectedBranchId ? "-- Chọn phòng --" : "-- Vui lòng chọn chi nhánh trước --" },
+                    { value: "", label: selectedBranchId ? "Cất vào kho chi nhánh" : "Vui lòng chọn chi nhánh trước" },
                     ...allRooms
                       .filter(r => r.branch_id === selectedBranchId)
                       .map(r => ({ value: r.id, label: r.name }))
@@ -729,7 +729,7 @@ export default function AdminAssetsPage() {
                   value={selectedBedId}
                   onChange={val => setSelectedBedId(val)}
                   options={[
-                    { value: "", label: selectedRoomId ? "Dùng chung cho cả phòng / Không chọn giường" : "-- Vui lòng chọn phòng trước --" },
+                    { value: "", label: selectedRoomId ? "Dùng chung cho cả phòng" : "Vui lòng chọn phòng trước" },
                     ...bedsForRoom.map(bd => ({ value: bd.id, label: bd.name }))
                   ]}
                   theme="sale"
@@ -739,7 +739,7 @@ export default function AdminAssetsPage() {
               </div>
 
               {/* Preview Vị trí */}
-              {selectedBranchId && selectedRoomId && (
+              {selectedBranchId && (
                 <div className="col-span-2 p-3 rounded-lg border border-[#5f745d]/20 bg-[#5f745d]/5 text-xs text-[#5f745d] font-semibold flex items-center gap-1.5 animate-fade-in-up">
                   <span className="material-symbols-outlined text-[16px]">location_on</span>
                   Vị trí lưu trữ thực tế: <span className="font-extrabold underline">{computeLocationString(selectedBranchId, selectedRoomId, selectedBedId)}</span>
