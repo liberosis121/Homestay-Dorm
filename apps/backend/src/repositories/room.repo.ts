@@ -115,6 +115,22 @@ export const roomRepo = {
     return data || [];
   },
 
+  getBedsByRoomIds: async (roomIds: string[]) => {
+    if (roomIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('beds')
+      .select('*')
+      .in('room_id', roomIds)
+      .order('name', { ascending: true });
+
+    if (error) {
+      throw new Error(`[RoomRepo] Loi khi lay danh sach giuong nhieu phong: ${error.message}`);
+    }
+
+    return data || [];
+  },
+
   /**
    * Lấy thông tin một giường cụ thể bằng ID.
    *

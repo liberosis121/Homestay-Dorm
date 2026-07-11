@@ -6,6 +6,31 @@
 import { roomRepo, RoomFilter } from '../repositories/room.repo';
 import { BED_STATUS } from '../types/constants';
 
+const deriveRoomAvailability = (room: any, beds: any[]) => {
+  const availableCount = beds.filter((bed) => bed.status === BED_STATUS.AVAILABLE).length;
+  const unavailableCount = beds.length - availableCount;
+  let derivedStatus = room.status;
+
+  if (room.status !== 'maintenance') {
+    if (beds.length === 0 || availableCount === 0) {
+      derivedStatus = 'occupied';
+    } else if (availableCount === beds.length) {
+      derivedStatus = 'available';
+    } else {
+      derivedStatus = 'partial';
+    }
+  }
+
+  return {
+    ...room,
+    status: derivedStatus,
+    current_occupants: unavailableCount,
+    beds,
+    available_beds_count: availableCount,
+    is_full: availableCount === 0,
+  };
+};
+
 export const roomService = {
   /**
    * Lấy danh sách phòng có áp dụng bộ lọc và format kết quả.
@@ -13,10 +38,28 @@ export const roomService = {
    * @param filters - Các điều kiện lọc phòng
    */
   listRooms: async (filters: RoomFilter) => {
-    const rooms = await roomRepo.getAllRooms(filters);
+    const { status, ...dbFilters } = filters;
+    const rooms = await roomRepo.getAllRooms(dbFilters);
+    const roomIds = rooms.map((room: any) => room.id).filter(Boolean);
+    const beds = await roomRepo.getBedsByRoomIds(roomIds);
+    const bedsByRoomId = new Map<string, any[]>();
+
+    for (const bed of beds) {
+      const roomBeds = bedsByRoomId.get(bed.room_id) || [];
+      roomBeds.push(bed);
+      bedsByRoomId.set(bed.room_id, roomBeds);
+    }
+
+    const roomsWithAvailability = rooms.map((room: any) =>
+      deriveRoomAvailability(room, bedsByRoomId.get(room.id) || [])
+    );
     
     // Chúng ta có thể format dữ liệu ở đây nếu frontend yêu cầu cấu trúc khác
-    return rooms;
+    if (status) {
+      return roomsWithAvailability.filter((room: any) => room.status === status);
+    }
+
+    return roomsWithAvailability;
   },
 
   /**
@@ -36,16 +79,8 @@ export const roomService = {
 
     // 3. Tính toán nghiệp vụ: Đếm số lượng giường trống
     // Giường trống có status === BED_STATUS.AVAILABLE ('available')
-    const availableBeds = beds.filter(bed => bed.status === BED_STATUS.AVAILABLE);
-    const availableCount = availableBeds.length;
-
     // 4. Gộp dữ liệu trả về cho route handler
-    return {
-      ...room,
-      beds,
-      available_beds_count: availableCount,
-      is_full: availableCount === 0,
-    };
+    return deriveRoomAvailability(room, beds);
   },
 
   /**

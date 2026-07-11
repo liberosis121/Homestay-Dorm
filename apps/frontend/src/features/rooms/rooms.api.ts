@@ -74,7 +74,7 @@ const mapRoomResponse = (r: any): Room => {
   return {
     ...r,
     capacity: r.max_occupants || r.capacity || 1,
-    current_occupants: r.current_occupants || 0,
+    current_occupants: r.current_occupants ?? Math.max((r.capacity || r.max_occupants || 0) - (r.available_beds_count ?? 0), 0),
     gender_type: r.gender_type || 'unisex',
     amenities: r.amenities || [],
     image_url: r.image_url || image,

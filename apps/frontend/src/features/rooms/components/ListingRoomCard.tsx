@@ -14,6 +14,7 @@ interface Room {
   amenities: string[];
   status: string;
   image_url: string;
+  available_beds_count?: number;
   branches?: {
     id: string;
     name: string;
@@ -27,8 +28,8 @@ interface Props {
 
 export default function ListingRoomCard({ room }: Props) {
   const navigate = useNavigate();
-  const isAvailable = room.status === 'available' || room.status === 'partial';
-  const availableBeds = room.capacity - room.current_occupants;
+  const availableBeds = Math.max(room.available_beds_count ?? (room.capacity - room.current_occupants), 0);
+  const isAvailable = (room.status === 'available' || room.status === 'partial') && availableBeds > 0;
   
   // Tag style based on status
   const tagBg = availableBeds === room.capacity ? 'bg-status-success' : 'bg-status-warning';
@@ -115,7 +116,7 @@ export default function ListingRoomCard({ room }: Props) {
             </div>
             <div className="text-right">
               {isAvailable ? (
-                <p className="text-[12px] text-status-success font-medium">Cần {availableBeds} khách</p>
+                <p className="text-[12px] text-status-success font-medium">Còn {availableBeds} giường</p>
               ) : (
                 <p className="text-[12px] text-error font-medium">Đã hết chỗ</p>
               )}

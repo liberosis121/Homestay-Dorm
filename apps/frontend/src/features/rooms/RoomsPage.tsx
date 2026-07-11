@@ -11,6 +11,9 @@ import Footer from '../../components/ui/Footer';
 import heroImage from '../../assets/hero.jpg';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 
+const getAvailableBeds = (room: Room) =>
+  Math.max(room.available_beds_count ?? (room.capacity - room.current_occupants), 0);
+
 export default function RoomsPage() {
   const [showExtendedFilters, setShowExtendedFilters] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -46,7 +49,7 @@ export default function RoomsPage() {
     if (roomType !== 'Tất cả loại phòng' && room.room_type.toLowerCase() !== roomType.toLowerCase()) return false;
     if (gender !== 'Tất cả giới tính' && room.gender_type !== gender) return false;
     
-    if (onlyAvailable && room.status !== 'available' && room.status !== 'partial') return false;
+    if (onlyAvailable && getAvailableBeds(room) <= 0) return false;
     
     if (capacity && capacity !== '') {
       if (capacity === '6+' && room.capacity < 6) return false;
@@ -65,9 +68,9 @@ export default function RoomsPage() {
 
   // Sort Logic
   const sortedRooms = [...filteredRooms].sort((a, b) => {
+    if (sortBy.includes('nhi')) return getAvailableBeds(b) - getAvailableBeds(a);
     if (sortBy === 'Giá thấp nhất') return a.price - b.price;
     if (sortBy === 'Giá cao nhất') return b.price - a.price;
-    if (sortBy === 'Trống nhiều nhất') return (b.capacity - b.current_occupants) - (a.capacity - a.current_occupants);
     // Mới nhất (default)
     return 0;
   });
