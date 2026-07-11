@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthBackground from '../../components/ui/AuthBackground';
 import Logo from '../../components/ui/Logo';
+import { resetPasswordWithOtpApi } from './auth.api';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { message?: string } | null;
+  const state = location.state as { email?: string; otp?: string; message?: string } | null;
+  const email = state?.email || '';
+  const otp = state?.otp || '';
   const initialMessage = state?.message || '';
 
   const [password, setPassword] = useState('');
@@ -47,7 +50,7 @@ export default function ResetPasswordPage() {
     }
   }, [password, confirmPassword, strength, status, successMessage]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!password || strength < 3) {
@@ -62,10 +65,14 @@ export default function ResetPasswordPage() {
 
     setStatus('saving');
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await resetPasswordWithOtpApi({ email, otp, newPassword: password });
       setStatus('success');
-    }, 1500);
+    } catch (err: any) {
+      const msg: string = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi cập nhật mật khẩu.';
+      setSuccessMessage(msg);
+      setStatus('normal');
+    }
   };
 
   // Get strength indicator details

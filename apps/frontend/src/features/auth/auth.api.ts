@@ -142,6 +142,19 @@ export const forgotPasswordApi = async (email: string): Promise<{ success: boole
 };
 
 /**
+ * Xác thực OTP và đặt lại mật khẩu mới.
+ * Gọi: POST /api/auth/reset-password-otp
+ */
+export const resetPasswordWithOtpApi = async (payload: {
+  email: string;
+  otp: string;
+  newPassword: string;
+}): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.post('/auth/reset-password-otp', payload);
+  return response.data;
+};
+
+/**
  * Đổi mật khẩu tài khoản hiện tại.
  * Gọi: POST /api/auth/change-password
  */

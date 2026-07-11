@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthBackground from '../../components/ui/AuthBackground';
 import Logo from '../../components/ui/Logo';
+import { forgotPasswordApi } from './auth.api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ export default function ForgotPasswordPage() {
     return email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !validateEmail(email)) {
       setStatus('invalid');
@@ -21,15 +22,17 @@ export default function ForgotPasswordPage() {
 
     setStatus('sending');
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock logic: if it ends with homestay.com or gmail.com we pretend it exists
-      if (email.endsWith('@homestay.com') || email.endsWith('@gmail.com')) {
-        navigate('/verify-otp', { state: { email, message: `Mã xác thực đã được gửi tới email ${email}!` } });
-      } else {
+    try {
+      await forgotPasswordApi(email);
+      navigate('/verify-otp', { state: { email, message: `Mã OTP đã được gửi tới ${email}. Vui lòng kiểm tra hòm thư!` } });
+    } catch (err: any) {
+      const msg: string = err?.response?.data?.message || err?.message || '';
+      if (msg.toLowerCase().includes('chưa được đăng ký') || msg.toLowerCase().includes('not found')) {
         setStatus('not_found');
+      } else {
+        setStatus('not_found'); // fallback
       }
-    }, 1500);
+    }
   };
 
   return (
