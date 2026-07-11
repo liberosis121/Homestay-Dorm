@@ -920,7 +920,6 @@ export default function AdminRoomsPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-semibold truncate" style={{ color: A.textPrimary }}>{bed.name}</p>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: A.sidebar, color: A.textMuted }}>{formatShortId(bed.id)}</span>
                             </div>
                             <p className="text-xs" style={{ color: A.primary }}>{bed.price.toLocaleString('vi-VN')}đ/tháng</p>
                           </div>
