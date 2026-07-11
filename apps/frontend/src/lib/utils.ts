@@ -16,12 +16,12 @@
  */
 export function formatShortId(
   id?: string,
-  type?: 'contract' | 'invoice' | 'deposit' | 'refund' | 'checkout' | 'schedule' | 'employee' | 'customer' | 'branch' | 'room'
+  type?: 'contract' | 'invoice' | 'deposit' | 'refund' | 'checkout' | 'schedule' | 'employee' | 'customer' | 'branch' | 'room' | 'registration'
 ): string {
   if (!id) return '';
 
   // Strip all known prefixes to get the bare ID segment
-  const cleanId = id.replace(/^(DEP|HD|HĐ|CC|TL|TS|LXM|LH|NV|KH|CS|PH)-/, '');
+  const cleanId = id.replace(/^(DEP|HD|HĐ|CC|TL|TS|LXM|LH|NV|KH|CS|PH|DK)-/, '');
   const slicedId = cleanId.length > 8 ? cleanId.substring(0, 8) : cleanId;
 
   // Explicit type takes priority
@@ -35,6 +35,7 @@ export function formatShortId(
   if (type === 'customer')  return `KH-${slicedId}`;
   if (type === 'branch')    return `CS-${slicedId}`;
   if (type === 'room')      return `PH-${slicedId}`;
+  if (type === 'registration') return `DK-${slicedId}`;
 
   // Auto-detect from original prefix
   if (id.startsWith('DEP-') || id.startsWith('HĐ-')) return `HĐ-${slicedId}`;
@@ -47,6 +48,7 @@ export function formatShortId(
   if (id.startsWith('KH-'))  return `KH-${slicedId}`;
   if (id.startsWith('CS-'))  return `CS-${slicedId}`;
   if (id.startsWith('PH-'))  return `PH-${slicedId}`;
+  if (id.startsWith('DK-'))  return `DK-${slicedId}`;
 
   return slicedId;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Customer } from './CustomerProfileCard';
+import { formatShortId } from '../../../lib/utils';
 import { 
   User, Clipboard, Calendar, Wallet, FileText, CheckCircle2, AlertCircle, XCircle,
   X, Home, Building2, BadgeDollarSign
@@ -339,7 +340,7 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
                   <tbody className="divide-y divide-[#eee7e1] text-sm text-[#1e1b17]">
                     {customer.registrations.map((reg) => (
                       <tr key={reg.id} className="hover:bg-[#fff8f3] transition-colors">
-                        <td className="px-4 py-3 font-mono font-bold text-[#6f583c] whitespace-nowrap w-[150px] min-w-[150px]">{reg.id}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-[#6f583c] whitespace-nowrap w-[150px] min-w-[150px]">{formatShortId(reg.id, 'registration')}</td>
                         <td className="px-4 py-3 font-semibold truncate max-w-[260px]" title={reg.roomType}>{reg.roomType}</td>
                         <td className="px-4 py-3 text-[#4e453c] whitespace-nowrap w-[140px] min-w-[140px]">{reg.date}</td>
                         <td className="px-4 py-3 text-center w-[130px] min-w-[130px] align-middle">{getRegStatusBadge(reg.status)}</td>
