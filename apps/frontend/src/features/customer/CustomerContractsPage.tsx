@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// @ts-ignore
-import html2pdf from 'html2pdf.js/dist/html2pdf.min.js';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import {
   ArrowLeft, FileText, Printer, Download, CreditCard,
   Building2, ShieldCheck, AlertCircle,
@@ -133,7 +133,7 @@ export default function CustomerContractsPage() {
 
   const contract = contractsList.find((c) => c.id === selectedContractId) || contractsList[0];
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const element = document.getElementById('contract-pdf-content');
     if (!element) return;
 
@@ -142,9 +142,9 @@ export default function CustomerContractsPage() {
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.top = '-9999px';
-    tempContainer.style.width = '700px'; // Mimic standard page width
+    tempContainer.style.width = '750px'; // Mimic standard page width
     tempContainer.style.background = 'white';
-    tempContainer.style.padding = '30px';
+    tempContainer.style.padding = '40px';
     tempContainer.style.color = 'black';
     tempContainer.style.fontFamily = 'sans-serif';
     
@@ -153,28 +153,44 @@ export default function CustomerContractsPage() {
     tempContainer.appendChild(clone);
     document.body.appendChild(tempContainer);
 
-    const opt = {
-      margin:       10,
-      filename:     `HopDong_${contract.contractCode}.pdf`,
-      image:        { type: 'jpeg', quality: 0.95 },
-      html2canvas:  { scale: 1.5, useCORS: true, logging: false },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
     try {
-      // @ts-ignore
-      const exporter = html2pdf.default || html2pdf;
-      exporter().set(opt).from(tempContainer).save().finally(() => {
-        if (document.body.contains(tempContainer)) {
-          document.body.removeChild(tempContainer);
-        }
+      // Use html2canvas directly
+      const canvas = await html2canvas(tempContainer, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
       });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgWidth = pdfWidth - 20; // 10mm margins left and right
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 10; // 10mm margin top
+
+      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save(`HopDong_${contract.contractCode}.pdf`);
     } catch (err) {
-      console.error('html2pdf failed, falling back to print:', err);
+      console.error('PDF export failed:', err);
+      window.print();
+    } finally {
       if (document.body.contains(tempContainer)) {
         document.body.removeChild(tempContainer);
       }
-      window.print();
     }
   };
 
