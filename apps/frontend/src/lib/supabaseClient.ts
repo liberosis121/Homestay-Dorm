@@ -233,6 +233,12 @@ export interface MonthlyInvoice {
   due_date: string;
   status: 'pending' | 'paid' | 'overdue';
   created_at: string;
+  incidentals?: {
+    id: string;
+    name: string;
+    amount: number;
+    recorded_date?: string;
+  }[];
 }
 
 export interface RefundRecord {

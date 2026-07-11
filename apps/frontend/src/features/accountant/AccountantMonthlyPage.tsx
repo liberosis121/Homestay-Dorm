@@ -55,7 +55,8 @@ const mapMonthlyInvoices = (liveInvoices: any[]): MonthlyInvoice[] =>
       total: inv.amount,
       due_date: billingPeriod ? computeDueDate(billingPeriod) : '',
       status: inv.status,
-      created_at: inv.created_at || ''
+      created_at: inv.created_at || '',
+      incidentals: inv.incidentals || []
     };
   });
 
@@ -1020,9 +1021,20 @@ export default function AccountantMonthlyPage() {
                       <span>{selectedInvoice.water_cost.toLocaleString('vi-VN')} đ</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Dịch vụ khác:</span>
+                      <span>Dịch vụ cố định:</span>
                       <span>{selectedInvoice.services_cost.toLocaleString('vi-VN')} đ</span>
                     </div>
+                    {selectedInvoice.incidentals && selectedInvoice.incidentals.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-dashed border-[#d1c4b9]/50 space-y-1">
+                        <div className="text-[10px] font-bold text-[#5a462d] uppercase tracking-wider mb-1">Phí phát sinh trong kỳ:</div>
+                        {selectedInvoice.incidentals.map((inc) => (
+                          <div key={inc.id} className="flex justify-between text-[#ba1a1a]">
+                            <span>• {inc.name}:</span>
+                            <span>+{inc.amount.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

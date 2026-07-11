@@ -69,6 +69,7 @@ export default function AdminConditionsPage() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Condition>>({});
+  const [successMsg, setSuccessMsg] = useState('');
 
   const loadConditions = async () => {
     setIsLoading(true);
@@ -157,6 +158,8 @@ export default function AdminConditionsPage() {
           priority
         };
         setConditions(prev => [newCond, ...prev]);
+        setSuccessMsg("Đã thêm điều kiện lưu trú mới thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       } else {
         if (!form.id) return;
         const updated = await updateConditionApi(form.id, {
@@ -173,6 +176,8 @@ export default function AdminConditionsPage() {
           category,
           priority
         } : c));
+        setSuccessMsg("Đã cập nhật điều kiện lưu trú thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       }
       setShowModal(false);
     } catch (err: any) {
@@ -213,6 +218,14 @@ export default function AdminConditionsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
