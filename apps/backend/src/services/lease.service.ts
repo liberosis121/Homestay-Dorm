@@ -17,7 +17,7 @@ export const leaseService = {
     occupants_count: number;
     preferred_area: string;
     preferred_room_type: string;
-    preferred_price: string;
+    preferred_price: number;
     viewing_preference: string;
     expected_move_in_date: string;
     rental_duration: string;
