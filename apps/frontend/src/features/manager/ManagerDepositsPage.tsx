@@ -33,7 +33,7 @@ const STATUS_LABELS: Record<ManagerDeposit['status'], { label: string; bg: strin
 };
 
 const DEPOSIT_TYPE_CONFIG = {
-  group: { label: 'NhÃ³m giÆ°á»ng', icon: 'groups', bg: '#FAF2E8', text: '#5C4632' },
+  group: { label: 'Nhóm', icon: 'groups', bg: '#FAF2E8', text: '#5C4632' },
   room: { label: 'Cả phòng', icon: 'meeting_room', bg: '#FAF2E8', text: '#5C4632' },
   bed:  { label: 'Giường lẻ', icon: 'bed',          bg: '#EAF0E6', text: '#5F7D4E' },
 };
@@ -42,6 +42,15 @@ const DEPOSIT_TYPE_FALLBACK = DEPOSIT_TYPE_CONFIG.room;
 
 const getTypeCfg = (dt?: string) =>
   DEPOSIT_TYPE_CONFIG[dt as keyof typeof DEPOSIT_TYPE_CONFIG] ?? DEPOSIT_TYPE_FALLBACK;
+
+const getPaymentDisplay = (value?: string) => {
+  const raw = (value || '').trim();
+  const lower = raw.toLowerCase();
+  if (!raw) return 'Chưa rõ';
+  if (lower.includes('chuyển khoản') || lower.includes('transfer')) return 'Chuyển khoản';
+  if (lower.includes('tiền mặt') || lower.includes('cash')) return 'Tiền mặt';
+  return raw;
+};
 
 export default function ManagerDepositsPage() {
   const [deposits, setDeposits]         = useState<ManagerDeposit[]>([]);
@@ -150,7 +159,8 @@ export default function ManagerDepositsPage() {
         || d.customer_phone.includes(q)
         || d.room_name.toLowerCase().includes(q)
         || (d.bed_name || '').toLowerCase().includes(q)
-        || d.bank_name.toLowerCase().includes(q);
+        || (d.bed_names || []).join(' ').toLowerCase().includes(q)
+        || getPaymentDisplay(d.bank_name).toLowerCase().includes(q);
       return matchStatus && matchType && matchSearch;
     });
   }, [deposits, filterStatus, filterType, search]);
@@ -159,6 +169,18 @@ export default function ManagerDepositsPage() {
     setSelected(dep);
     setReviewerNote(dep.reviewer_note || '');
     setDrawerOpen(true);
+  };
+
+  const getBedDisplay = (dep: ManagerDeposit) => {
+    if (dep.bed_names && dep.bed_names.length > 0) return dep.bed_names.join(', ');
+    return dep.bed_name || '';
+  };
+
+  const getBedTableDisplay = (dep: ManagerDeposit) => {
+    if (dep.deposit_type === 'group' && dep.bed_names && dep.bed_names.length > 0) {
+      return `${dep.bed_names.length} giường`;
+    }
+    return dep.bed_name || '';
   };
 
   const updateStatus = async (newStatus: ManagerDeposit['status']) => {
@@ -267,6 +289,7 @@ export default function ManagerDepositsPage() {
             { key: 'all',  label: 'Tất cả loại',  icon: 'apps' },
             { key: 'room', label: 'Cả phòng',     icon: 'meeting_room' },
             { key: 'bed',  label: 'Giường lẻ',    icon: 'bed' },
+            { key: 'group', label: 'Nhóm', icon: 'groups' },
           ] as { key: string; label: string; icon: string }[]).map(t => {
             const isSelected = filterType === t.key;
             return (
@@ -315,7 +338,7 @@ export default function ManagerDepositsPage() {
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                 }}>Mã cọc</th>
-                {['Khách hàng', 'Loại cọc', 'Phòng / Giường', 'Số tiền', 'Ngân hàng', 'Ngày cọc', 'Trạng thái'].map(h => (
+                {['Khách hàng', 'Loại cọc', 'Phòng / Giường', 'Số tiền', 'Phương thức', 'Ngày cọc', 'Trạng thái'].map(h => (
                   <th key={h} style={{
                     padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                     color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -366,10 +389,10 @@ export default function ManagerDepositsPage() {
                     {/* Phòng / Giường */}
                     <td style={{ padding: '14px 16px' }}>
                       <p style={{ fontSize: 13, color: T.text, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dep.room_name}</p>
-                      {dep.bed_name && (
-                        <p style={{ fontSize: 11, color: T.textMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      {getBedTableDisplay(dep) && (
+                        <p title={getBedDisplay(dep)} style={{ fontSize: 11, color: T.textMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 }}>
                           <span className="material-symbols-outlined" style={{ fontSize: 12 }}>bed</span>
-                          {dep.bed_name}
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{getBedTableDisplay(dep)}</span>
                         </p>
                       )}
                     </td>
@@ -379,8 +402,8 @@ export default function ManagerDepositsPage() {
                       {(dep.amount ?? 0).toLocaleString('vi-VN')}đ
                     </td>
 
-                    {/* Ngân hàng */}
-                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dep.bank_name}</td>
+                    {/* Phương thức thu */}
+                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getPaymentDisplay(dep.bank_name)}</td>
 
                     {/* Ngày cọc */}
                     <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>{formatDate(dep.deposit_date)}</td>
@@ -483,9 +506,9 @@ export default function ManagerDepositsPage() {
                     { label: 'Số điện thoại', val: selected.customer_phone },
                     { label: 'Loại đặt cọc',  val: getTypeCfg(selected.deposit_type).label, highlight: true },
                     { label: 'Phòng đăng ký', val: selected.room_name },
-                    ...(selected.bed_name ? [{ label: 'Giường', val: selected.bed_name }] : []),
+                    ...(getBedDisplay(selected) ? [{ label: selected.deposit_type === 'group' ? 'Giường nhóm' : 'Giường', val: getBedDisplay(selected) }] : []),
                     { label: 'Số tiền cọc',   val: `${(selected.amount ?? 0).toLocaleString('vi-VN')}đ`, isAmount: true },
-                    { label: 'Ngân hàng',     val: selected.bank_name },
+                    { label: 'Phương thức thu', val: getPaymentDisplay(selected.bank_name) },
                     { label: 'Số tài khoản',  val: selected.account_number },
                     { label: 'Ngày cọc',      val: formatDate(selected.deposit_date) },
                   ].map((row, i) => (
@@ -507,7 +530,7 @@ export default function ManagerDepositsPage() {
                   style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
                   className="hover:opacity-90 active:scale-[0.98]">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
-                  Duyệt & Giữ {selected.deposit_type === 'bed' ? 'giường' : 'phòng'}
+                  Duyệt & Giữ {selected.deposit_type === 'room' ? 'phòng' : 'giường'}
                 </button>
                 <button onClick={() => updateStatus('need_more')}
                   style={{ flex: 1, background: '#F3F4F6', color: '#4B5563', border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}

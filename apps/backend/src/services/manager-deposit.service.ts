@@ -1,6 +1,22 @@
 import { supabase } from '../utils/supabase';
 import { calculateCurrentDepositMonthlyRent } from '../utils/group-refund';
 
+const parseInvoiceNote = (note: string | null | undefined): Record<string, any> => {
+  if (!note) return {};
+  try {
+    const parsed = JSON.parse(note);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return { note };
+  }
+};
+
+const buildManagerReviewNote = (status: string, reviewerNote?: string) => JSON.stringify({
+  manager_deposit_status: status,
+  reviewer_note: reviewerNote || '',
+  reviewed_at: new Date().toISOString()
+});
+
 export const managerDepositService = {
   getDeposits: async (filters?: { status?: string; search?: string }, managerId?: string) => {
     // 1. Fetch deposit_requests from DB
@@ -77,10 +93,16 @@ export const managerDepositService = {
         const registration = registrations?.find(r => r.id === dep.registration_id) ?? {};
         const customer = customers?.find(c => c.cccd === registration.cccd) ?? {};
 
+        const invoiceNote = parseInvoiceNote((invoice as any).note);
+        const managerReviewStatus = invoiceNote.manager_deposit_status;
         let frontendStatus = dep.status;
-        if (frontendStatus === 'paid') {
+        if (managerReviewStatus === 'approved') {
           frontendStatus = 'approved';
-        } else if (frontendStatus === 'invoice_created') {
+        } else if (managerReviewStatus === 'rejected') {
+          frontendStatus = 'rejected';
+        } else if (managerReviewStatus === 'need_more') {
+          frontendStatus = 'need_more';
+        } else if (frontendStatus === 'paid' || frontendStatus === 'invoice_created') {
           frontendStatus = 'pending';
         }
 
@@ -147,8 +169,8 @@ export const managerDepositService = {
           account_number: (invoice as any).reconciliation_id || '',
           status: frontendStatus,
           note: (invoice as any).status || '',
-          reviewer_note: dep.note || '',
-          reviewed_at: dep.updated_at || '',
+          reviewer_note: invoiceNote.reviewer_note || '',
+          reviewed_at: invoiceNote.reviewed_at || '',
           created_at: dep.created_at
         };
       });
@@ -176,7 +198,10 @@ export const managerDepositService = {
   },
 
   updateStatus: async (id: string, newStatus: string, reviewerNote?: string) => {
-    // 1. Update deposit request status in deposit_requests table
+    const reviewNote = buildManagerReviewNote(newStatus, reviewerNote);
+
+    // 1. Update deposit request status in deposit_requests table.
+    // 'paid' means money was collected by Accountant; manager approval is stored in invoice.note.
     const { data: updatedDeposit, error: updateErr } = await supabase
       .from('deposit_requests')
       .update({
@@ -191,13 +216,13 @@ export const managerDepositService = {
     if (newStatus === 'approved') {
       await supabase
         .from('invoices')
-        .update({ status: 'paid', payment_time: new Date().toISOString() })
+        .update({ status: 'paid', note: reviewNote })
         .eq('deposit_id', id)
         .eq('invoice_type', 'deposit');
     } else if (newStatus === 'rejected') {
       await supabase
         .from('invoices')
-        .update({ status: 'rejected' })
+        .update({ status: 'rejected', note: reviewNote })
         .eq('deposit_id', id)
         .eq('invoice_type', 'deposit');
 
@@ -266,6 +291,12 @@ export const managerDepositService = {
             .eq('id', dep.room_id);
         }
       }
+    } else if (newStatus === 'need_more') {
+      await supabase
+        .from('invoices')
+        .update({ status: 'pending', note: reviewNote })
+        .eq('deposit_id', id)
+        .eq('invoice_type', 'deposit');
     }
 
     return updatedDeposit;
