@@ -81,7 +81,10 @@ export const createEmployeeApi = async (emp: any) => {
     headers: getHeaders(),
     body: JSON.stringify(emp)
   });
-  if (!res.ok) throw new Error('Lỗi khi thêm nhân viên mới');
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || 'Lỗi khi thêm nhân viên mới');
+  }
   const result = await res.json();
   return result.data;
 };

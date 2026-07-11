@@ -280,9 +280,9 @@ export default function ProfilePage() {
         cccd: data.details?.cccd || '',
         dob: data.details?.dob || '',
         gender: (data.details?.gender === 'female' || data.details?.gender === 'Nữ') ? 'female' : 'male',
-        issue_date: '2018-05-10',
-        issue_place: 'Cục CSQLHC về TTXH',
-        nationality: data.details?.nationality === 'vietnamese' ? 'Việt Nam' : (data.details?.nationality || 'Việt Nam'),
+        issue_date: data.details?.cccd_issue_date || '',
+        issue_place: data.details?.cccd_issue_place || '',
+        nationality: data.details?.nationality || '',
         permanent_address: data.details?.address || '',
       };
       setFormData(profileData);
@@ -452,6 +452,32 @@ export default function ProfilePage() {
                   : 'Quản lý cài đặt thông báo, ngôn ngữ và các tùy chọn bảo mật tài khoản.'}
               </p>
             </div>
+
+            {/* Incomplete Profile Warning Banner */}
+            {activeTab === 'profile' && !isLoading && (
+              !formData.phone.trim() ||
+              !formData.cccd.trim() ||
+              !formData.dob.trim() ||
+              !formData.gender.trim() ||
+              !formData.nationality.trim() ||
+              !formData.issue_date.trim() ||
+              !formData.issue_place.trim() ||
+              !formData.permanent_address.trim()
+            ) && (
+              <div className="bg-[#eff3ef] border border-[#a8c3a5] rounded-32 p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm animate-fade-in mb-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-[#4a6549] text-white rounded-24 shadow-inner shrink-0">
+                    <Info className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-[#4a6549] text-base">Hồ sơ cá nhân chưa hoàn tất!</h4>
+                    <p className="text-sm text-on-surface-variant leading-relaxed">
+                      Bạn cần cập nhật đầy đủ thông tin cá nhân bắt buộc (bao gồm: Số điện thoại, CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày/Nơi cấp CCCD và Địa chỉ thường trú) trước khi thực hiện <strong>đăng ký thuê phòng</strong> hoặc <strong>đặt cọc</strong>. Hãy nhấn nút "Chỉnh sửa" bên dưới để bổ sung.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* New Customer Warning Banner */}
             {isNewCustomer && activeTab === 'profile' && (

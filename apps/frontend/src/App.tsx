@@ -104,7 +104,10 @@ function AppRoutes() {
     <>
       <ScrollToTop />
       <Routes>
-        <Route path="/*" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
+        {/* Chỉ khớp ĐÚNG trang gốc "/". Trước đây dùng "/*" khiến route này nuốt hết
+            mọi /customer/* (viewing-schedules, deposit-history, ...) và đá khách về
+            trang chủ, vì React Router v6 ưu tiên route khai báo trước khi cùng điểm khớp. */}
+        <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/" replace />} />

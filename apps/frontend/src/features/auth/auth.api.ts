@@ -23,6 +23,13 @@ export interface RegisterPayload {
   password: string;
   full_name: string;
   phone: string;
+  dob: string;
+  gender: string;
+  nationality: string;
+  cccd: string;
+  issue_date: string;
+  issue_place: string;
+  permanent_address: string;
 }
 
 export interface AuthResponse {

@@ -7,7 +7,6 @@ export interface DbRoom {
   max_occupants: number;
   floor: number;
   room_type: string;
-  area: string;
   amenities: string[];
   price: number;
   status: string;
@@ -39,7 +38,6 @@ export const adminRoomsRepo = {
     max_occupants: number;
     floor: number;
     room_type: string;
-    area?: string;
     amenities?: string[];
     price: number;
     status?: string;
@@ -73,7 +71,6 @@ export const adminRoomsRepo = {
         max_occupants: room.max_occupants,
         floor: room.floor,
         room_type: room.room_type,
-        area: room.area ?? '',
         amenities: room.amenities ?? [],
         price: room.price,
         status: room.status ?? 'available'
@@ -91,7 +88,6 @@ export const adminRoomsRepo = {
     max_occupants?: number;
     floor?: number;
     room_type?: string;
-    area?: string;
     amenities?: string[];
     price?: number;
     status?: string;
@@ -104,7 +100,6 @@ export const adminRoomsRepo = {
         max_occupants: room.max_occupants,
         floor: room.floor,
         room_type: room.room_type,
-        area: room.area,
         amenities: room.amenities,
         price: room.price,
         status: room.status
