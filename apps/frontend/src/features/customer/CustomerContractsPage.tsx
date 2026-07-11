@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @ts-ignore
-import html2pdf from 'html2pdf.js';
+import html2pdf from 'html2pdf.js/dist/html2pdf.min.js';
 import {
   ArrowLeft, FileText, Printer, Download, CreditCard,
   Building2, ShieldCheck, AlertCircle,
@@ -145,8 +145,14 @@ export default function CustomerContractsPage() {
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // @ts-ignore
-    html2pdf().set(opt).from(element).save();
+    try {
+      // @ts-ignore
+      const exporter = html2pdf.default || html2pdf;
+      exporter().set(opt).from(element).save();
+    } catch (err) {
+      console.error('html2pdf failed, falling back to print:', err);
+      window.print();
+    }
   };
 
   const getStatusBadge = (status: 'active' | 'expired' | 'terminated') => {
