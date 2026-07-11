@@ -321,7 +321,8 @@ router.post('/refunds', async (req, res) => {
       totalDeductions,
       finalRefund,
       additionalCharge,
-      note
+      note,
+      deductions
     } = req.body;
     const staffId = req.profile!.id;
 
@@ -335,7 +336,8 @@ router.post('/refunds', async (req, res) => {
       finalRefund,
       additionalCharge,
       note,
-      staffId
+      staffId,
+      deductions
     });
 
     return sendSuccess(res, reconciliation, 'Lap ban doi soat hoan coc thanh cong!', 201);

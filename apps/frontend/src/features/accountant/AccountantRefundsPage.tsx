@@ -216,6 +216,25 @@ export default function AccountantRefundsPage() {
       return;
     }
 
+    const numElec = parseInt(elecWaterDeduction.replace(/\D/g, '')) || 0;
+    const numDamage = parseInt(damageDeduction.replace(/\D/g, '')) || 0;
+    const numClean = parseInt(cleaningDeduction.replace(/\D/g, '')) || 0;
+    const numViolation = parseInt(violationDeduction.replace(/\D/g, '')) || 0;
+
+    const deductionsList = [];
+    if (numElec > 0) {
+      deductionsList.push({ reason: 'Trừ điện nước / công nợ cũ', amount: numElec });
+    }
+    if (numDamage > 0) {
+      deductionsList.push({ reason: 'Trừ hư hỏng tài sản', amount: numDamage });
+    }
+    if (numClean > 0) {
+      deductionsList.push({ reason: 'Phí vệ sinh trả phòng', amount: numClean });
+    }
+    if (numViolation > 0) {
+      deductionsList.push({ reason: 'Khoản phạt hủy hợp đồng / vi phạm', amount: numViolation });
+    }
+
     try {
       // De biet checkoutId co the mapping dung hop dong, ta truyen activeRefund.id lam ca 2
       await accountantService.createRefundReconciliation(email, {
@@ -227,7 +246,8 @@ export default function AccountantRefundsPage() {
         totalDeductions: totalDeductions,
         finalRefund: netRefund,
         additionalCharge: netRefund < 0 ? Math.abs(netRefund) : 0,
-        note: `Bản đối soát hoàn cọc cho ${activeRefund.customer_name}`
+        note: `Bản đối soát hoàn cọc cho ${activeRefund.customer_name}`,
+        deductions: deductionsList
       });
 
       alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');

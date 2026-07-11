@@ -78,7 +78,7 @@ export const invoiceRepo = {
       .select(`
         *,
         electricity_water_records (*),
-        refund_reconciliations (*),
+        refund_reconciliations (*, deductions (*)),
         deposit_requests (*),
         contracts (*)
       `)
