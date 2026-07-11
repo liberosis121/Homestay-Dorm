@@ -37,6 +37,8 @@ export const depositRequestRepo = {
         rooms (
           id,
           name,
+          room_type,
+          image_url,
           branches (
             id,
             name
