@@ -43,21 +43,11 @@ router.post('/register', async (req, res) => {
     const issue_place = cccd_issue_place ?? req.body.issue_place ?? req.body.cccdIssuePlace;
     const addr = address ?? req.body.address ?? req.body.permanent_address;
 
-    // 1. Kiểm tra tính hợp lệ thô của dữ liệu đầu vào (Validation)
-    if (
-      !email || 
-      !password || 
-      !full_name || 
-      !phone || 
-      !dob || 
-      !gender || 
-      !nationality || 
-      !cccd || 
-      !issue_date || 
-      !issue_place || 
-      !addr
-    ) {
-      return sendError(res, null, 'Vui lòng điền đầy đủ tất cả các trường thông tin đăng ký.', 400);
+    // 1. Kiểm tra hợp lệ: khi ĐĂNG KÝ chỉ bắt buộc email + mật khẩu + họ tên.
+    // Các thông tin cá nhân còn lại (CCCD, ngày sinh, địa chỉ...) khách bổ sung sau ở
+    // trang Hồ sơ cá nhân (bắt buộc trước khi đặt cọc — service đặt cọc sẽ kiểm tra CCCD).
+    if (!email || !password || !full_name) {
+      return sendError(res, null, 'Vui lòng cung cấp email, họ tên và mật khẩu.', 400);
     }
 
     if (password.length < 6) {
