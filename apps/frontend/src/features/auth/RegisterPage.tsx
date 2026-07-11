@@ -9,7 +9,6 @@ import BackButton from '../../components/ui/BackButton';
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +29,6 @@ export default function RegisterPage() {
     if (
       !fullName || 
       !email || 
-      !phone || 
       !password || 
       !confirmPassword
     ) {
@@ -45,12 +43,7 @@ export default function RegisterPage() {
       return;
     }
 
-    // Phone validation (Vietnamese phone number format check)
-    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
-    if (!phoneRegex.test(phone)) {
-      setLocalError('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10 chữ số)');
-      return;
-    }
+    // Phone validation removed
 
     if (password.length < 6) {
       setLocalError('Mật khẩu phải chứa ít nhất 6 ký tự');
@@ -70,7 +63,7 @@ export default function RegisterPage() {
     const isSuccess = await register(
       email, 
       fullName, 
-      phone, 
+      '', 
       password,
       '', // dob để trống lúc đăng ký
       'male', // gender mặc định
@@ -196,23 +189,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Số điện thoại */}
-              <div className="space-y-2">
-                <label className="block font-label-md text-sm text-on-surface-variant ml-2">Số điện thoại</label>
-                <div className="relative">
-                  <input 
-                    type="tel" 
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      setLocalError('');
-                    }}
-                    placeholder="0912345678"
-                    className={`w-full h-14 pl-12 pr-4 bg-surface-container-low border ${localError && !phone ? 'border-error' : 'border-transparent'} rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 outline-none transition-all`}
-                  />
-                  <span className="material-symbols-outlined absolute left-4 top-4 pointer-events-none text-on-surface-variant">call</span>
-                </div>
-              </div>
 
               {/* Mật khẩu */}
               <div className="space-y-2">
