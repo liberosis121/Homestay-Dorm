@@ -459,8 +459,10 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
             <div className="flex items-start justify-between gap-4 border-b border-[#eadfd4] bg-[#faf2ec] px-6 py-5">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-[#7f756b]">Chi tiết hợp đồng</p>
-                <h3 className="mt-1 text-xl font-extrabold text-[#1e1b17]">{selectedContract.contractCode || selectedContract.id}</h3>
-                <div className="mt-2">{getContractStatusBadge(selectedContract.status)}</div>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <h3 className="text-xl font-extrabold text-[#1e1b17]">{selectedContract.contractCode || selectedContract.id}</h3>
+                  {getContractStatusBadge(selectedContract.status)}
+                </div>
               </div>
               <button
                 onClick={() => setSelectedContract(null)}
@@ -500,7 +502,7 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 <div className="flex items-start gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf6] p-4">
                   <BadgeDollarSign className="mt-0.5 h-5 w-5 text-[#6f583c]" />
                   <div>
@@ -510,34 +512,31 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#eadfd4] bg-[#fffaf6] p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#7f756b]">Thông tin thanh toán</p>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-xs font-semibold text-[#7f756b]">Loại hợp đồng</p>
-                      <p className="font-bold text-[#1e1b17]">{contractTypeLabel(selectedContract.contractType)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-[#7f756b]">Chu kỳ thu</p>
-                      <p className="font-bold text-[#1e1b17]">{paymentCycleLabel(selectedContract.paymentCycle)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-[#7f756b]">Phiếu cọc</p>
-                      <p className="font-bold text-[#1e1b17]">{selectedContract.depositId || 'Chưa xác định'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-[#7f756b]">Mã nội bộ</p>
-                      <p className="font-bold text-[#1e1b17]">{selectedContract.id}</p>
+                <div className="rounded-2xl border border-[#eadfd4] bg-[#fffaf6] p-4 flex-1 flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#7f756b]">Thông tin thanh toán</p>
+                    <div className="mt-4 grid grid-cols-2 gap-y-6 gap-x-3 text-sm">
+                      <div>
+                        <p className="text-xs font-semibold text-[#7f756b]">Loại hợp đồng</p>
+                        <p className="font-bold text-[#1e1b17]">{contractTypeLabel(selectedContract.contractType)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-[#7f756b]">Chu kỳ thu</p>
+                        <p className="font-bold text-[#1e1b17]">{paymentCycleLabel(selectedContract.paymentCycle)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-[#7f756b]">Phiếu cọc</p>
+                        <p className="font-bold text-[#1e1b17]">{selectedContract.depositId ? formatShortId(selectedContract.depositId, 'deposit') : 'Chưa xác định'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-[#7f756b]">Mã nội bộ</p>
+                        <p className="font-bold text-[#1e1b17]">{formatShortId(selectedContract.id, 'contract')}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setSelectedContract(null)}
-                  className="w-full rounded-xl bg-[#6f583c] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#5a4630] cursor-pointer"
-                >
-                  Đóng
-                </button>
+
               </div>
             </div>
           </div>
