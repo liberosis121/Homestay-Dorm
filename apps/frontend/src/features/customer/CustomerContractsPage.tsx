@@ -137,20 +137,43 @@ export default function CustomerContractsPage() {
     const element = document.getElementById('contract-pdf-content');
     if (!element) return;
 
+    // Create a temporary container on document.body to avoid scroll/overflow bugs
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '-9999px';
+    tempContainer.style.width = '700px'; // Mimic standard page width
+    tempContainer.style.background = 'white';
+    tempContainer.style.padding = '30px';
+    tempContainer.style.color = 'black';
+    tempContainer.style.fontFamily = 'sans-serif';
+    
+    // Clone content
+    const clone = element.cloneNode(true) as HTMLElement;
+    tempContainer.appendChild(clone);
+    document.body.appendChild(tempContainer);
+
     const opt = {
-      margin:       15,
+      margin:       10,
       filename:     `HopDong_${contract.contractCode}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
+      image:        { type: 'jpeg', quality: 0.95 },
+      html2canvas:  { scale: 1.5, useCORS: true, logging: false },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     try {
       // @ts-ignore
       const exporter = html2pdf.default || html2pdf;
-      exporter().set(opt).from(element).save();
+      exporter().set(opt).from(tempContainer).save().finally(() => {
+        if (document.body.contains(tempContainer)) {
+          document.body.removeChild(tempContainer);
+        }
+      });
     } catch (err) {
       console.error('html2pdf failed, falling back to print:', err);
+      if (document.body.contains(tempContainer)) {
+        document.body.removeChild(tempContainer);
+      }
       window.print();
     }
   };
