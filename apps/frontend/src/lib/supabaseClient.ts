@@ -208,6 +208,7 @@ export interface CheckinInvoice {
   rent_amount: number;
   deposit_amount?: number;
   deposit_ref: string;    // ref to DepositInvoice
+  contract_id?: string;   // ref to contract (nguồn hợp đồng active)
   services: { name: string; amount: number }[];
   total: number;
   status: 'pending' | 'paid' | 'overdue' | 'cancelled' | 'draft';

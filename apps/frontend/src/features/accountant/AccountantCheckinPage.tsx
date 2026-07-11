@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Search, Eye, Printer, Save, CheckCircle2
 } from 'lucide-react';
-import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
+import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room } from '../../lib/supabaseClient';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
@@ -33,30 +33,23 @@ const mapCheckinInvoices = (checkinInvoices: any[]): CheckinInvoice[] =>
     };
   });
 
-// Chuẩn hóa danh sách phiếu cọc đã thu tiền, sẵn sàng để lập hóa đơn nhận phòng.
-// Loại bỏ những phiếu đã có hóa đơn check-in rồi (checkedInDepositIds) để tránh lập trùng.
-const mapPendingDeposits = (depInvoices: any[], checkedInDepositIds: Set<string>): DepositInvoice[] =>
-  (depInvoices || [])
-    .filter((d: any) => d.status === 'paid')
-    .map((d: any) => {
-      const req = d.deposit_requests || {};
-      const depositRequestId = d.deposit_id || req.id || '';
-      return {
-        id: d.id,
-        deposit_request_id: depositRequestId,
-        customer_id: d.customer_id || req.customer_id,
-        customer_name: d.customer_name || 'Khách hàng',
-        room_id: d.room_id || req.room_id,
-        room_name: d.room_name || req.rooms?.name || 'Phòng',
-        amount: d.amount,
-        deadline: d.deadline || '',
-        payment_method: d.payment_method,
-        status: d.status,
-        created_at: d.created_at || '',
-        note: d.note
-      };
-    })
-    .filter((d) => !d.deposit_request_id || !checkedInDepositIds.has(d.deposit_request_id));
+// Chuẩn hóa danh sách HỢP ĐỒNG ACTIVE (do Sale đã lập) — nguồn để lập hóa đơn nhận phòng.
+// Đúng nghiệp vụ: chỉ hợp đồng đã ký mới được lập hóa đơn nhận phòng (KHÔNG dùng hóa đơn cọc nữa).
+// Loại bỏ hợp đồng đã có hóa đơn nhận phòng (checkedInContractIds) để tránh lập trùng.
+const mapCheckinContracts = (contracts: any[], checkedInContractIds: Set<string>): any[] =>
+  (contracts || [])
+    .filter((c: any) => !checkedInContractIds.has(c.id))
+    .map((c: any) => ({
+      id: c.id, // = contract.id thật
+      contract_code: c.contract_code || c.id,
+      customer_id: c.customer_id || '',
+      customer_name: c.customer_name || 'Khách hàng',
+      room_id: c.room_id || '',
+      room_name: c.room_name || 'Phòng',
+      rent_amount: Number(c.rent_price) || 0,
+      deposit_amount: Number(c.deposit_amount) || 0,
+      amount: Number(c.deposit_amount) || 0, // giữ tương thích field cũ trong JSX/nhánh mock
+    }));
 
 export default function AccountantCheckinPage() {
   const { user } = useAuthStore();
@@ -71,7 +64,7 @@ export default function AccountantCheckinPage() {
   const contractDropdownRef = useRef<HTMLDivElement>(null);
   
   // Contracts list referencing deposits
-  const [pendingDeposits, setPendingDeposits] = useState<DepositInvoice[]>([]);
+  const [pendingDeposits, setPendingDeposits] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -93,22 +86,21 @@ export default function AccountantCheckinPage() {
     const loadData = async () => {
       const email = user?.email || 'accountant@homestay.vn';
       try {
-        const [checkinInvoices, depInvoices] = await Promise.all([
+        const [checkinInvoices, activeContracts] = await Promise.all([
           accountantService.fetchCheckinInvoices(email),
-          accountantService.fetchDepositInvoices(email)
+          accountantService.fetchActiveContracts(email)
         ]);
 
         const mappedInvoices = mapCheckinInvoices(checkinInvoices);
-        const checkedInDepositIds = new Set(mappedInvoices.map((inv) => inv.deposit_ref).filter(Boolean));
-        const mappedDeposits = mapPendingDeposits(depInvoices, checkedInDepositIds);
+        const checkedInContractIds = new Set(mappedInvoices.map((inv) => inv.contract_id).filter((id): id is string => !!id));
+        const mappedContracts = mapCheckinContracts(activeContracts, checkedInContractIds);
 
         setInvoices(mappedInvoices);
-        setPendingDeposits(mappedDeposits);
+        setPendingDeposits(mappedContracts);
       } catch (err) {
-        console.warn('[AccountantCheckin] Failed to fetch backend data, falling back to mock:', err);
-        const db = getMockDB();
-        setInvoices(db.checkin_invoices || []);
-        setPendingDeposits(db.deposit_invoices?.filter((d: DepositInvoice) => d.status === 'paid') || []);
+        console.warn('[AccountantCheckin] Failed to fetch backend data:', err);
+        setInvoices([]);
+        setPendingDeposits([]);
       }
     };
     loadData();
@@ -127,9 +119,9 @@ export default function AccountantCheckinPage() {
 
   const selectedDeposit = pendingDeposits.find(d => d.id === selectedContractId);
 
-  // Auto-calculated fees
-  const rentAmount = selectedDeposit ? (selectedDeposit.amount) : 0; // Rent Month 1 equals deposit
-  const depositAmount = selectedDeposit ? selectedDeposit.amount : 0;
+  // Auto-calculated fees — tiền thuê tháng đầu lấy từ hợp đồng, tiền cọc từ phiếu cọc gốc.
+  const rentAmount = selectedDeposit ? Number(selectedDeposit.rent_amount) || 0 : 0;
+  const depositAmount = selectedDeposit ? Number(selectedDeposit.deposit_amount) || 0 : 0;
   const cardFee = cardFeeChecked ? 100000 : 0;
   const cleaningFee = cleaningFeeChecked ? 200000 : 0;
   const totalCost = rentAmount + depositAmount + cardFee + cleaningFee;
@@ -161,14 +153,14 @@ export default function AccountantCheckinPage() {
 
       // Refresh list
       const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
-      const depInvoices = await accountantService.fetchDepositInvoices(email);
+      const activeContracts = await accountantService.fetchActiveContracts(email);
 
       const mappedInvoices = mapCheckinInvoices(checkinInvoices);
-      const checkedInDepositIds = new Set(mappedInvoices.map((inv) => inv.deposit_ref).filter(Boolean));
-      const mappedDeposits = mapPendingDeposits(depInvoices, checkedInDepositIds);
+      const checkedInContractIds = new Set(mappedInvoices.map((inv) => inv.contract_id).filter((id): id is string => !!id));
+      const mappedContracts = mapCheckinContracts(activeContracts, checkedInContractIds);
 
       setInvoices(mappedInvoices);
-      setPendingDeposits(mappedDeposits);
+      setPendingDeposits(mappedContracts);
     } catch (err: any) {
       console.warn('[AccountantCheckin] Live API failed, falling back to mock DB:', err);
       const newInvoice: Omit<CheckinInvoice, 'id'> = {
@@ -333,7 +325,7 @@ export default function AccountantCheckinPage() {
                     <div className="truncate text-left">
                       {selectedDeposit ? (
                         <span className="truncate font-medium text-[#1b1c1c]">
-                          {formatShortId(selectedDeposit.id, 'deposit')} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
+                          {formatShortId(selectedDeposit.id, 'contract')} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
                         </span>
                       ) : (
                         <span className="text-[#8A7563]">— Chọn hợp đồng (Đã duyệt cọc) —</span>
@@ -390,10 +382,10 @@ export default function AccountantCheckinPage() {
                               >
                                 <div className="flex justify-between items-center w-full">
                                   <span className=" font-bold text-[#5C4632]">
-                                    {formatShortId(d.id, 'deposit')}
+                                    {formatShortId(d.id, 'contract')}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#E8EDE5] text-[#5F7D4E] uppercase">
-                                    Đã cọc
+                                    Đã ký HĐ
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-[#8A7563] truncate">

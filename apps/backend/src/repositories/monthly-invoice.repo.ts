@@ -201,6 +201,9 @@ export const monthlyInvoiceRepo = {
 
       return {
         id: c.id,
+        contract_code: c.contract_code || c.id,
+        deposit_id: c.deposit_id || '',
+        start_date: c.start_date || '',
         customer_id: customer?.cccd || c.id,
         customer_name: customer?.full_name || 'Khách thuê',
         customer_phone: customer?.phone || '',
@@ -209,6 +212,7 @@ export const monthlyInvoiceRepo = {
         branch_id: branch?.id || '',
         branch_name: branch?.name || '',
         rent_price: c.rent_price || 1500000,
+        deposit_amount: Number(depReq?.deposit_amount) || 0,
         period: room ? nextPeriodForRoom(room.id) : (() => {
           const now = new Date();
           return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
