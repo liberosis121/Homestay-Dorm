@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { registrationMemberRepo } from './registration-member.repo';
 
 export const contractRepo = {
   findByUserId: async (userId: string) => {
@@ -59,5 +60,22 @@ export const contractRepo = {
       throw error;
     }
     return data;
+  },
+
+  findByCustomerUserIdIncludingGroup: async (userId: string) => {
+    const memberships = await registrationMemberRepo.getRegistrationIdsByUser(userId);
+    const memberRegIds = memberships.map((m) => m.registration_id);
+
+    const [representativeContracts, memberContracts] = await Promise.all([
+      contractRepo.findByUserId(userId),
+      contractRepo.findByRegistrationIds(memberRegIds)
+    ]);
+
+    const contractsById = new Map<string, any>();
+    for (const contract of [...(representativeContracts || []), ...(memberContracts || [])]) {
+      contractsById.set(contract.id, contract);
+    }
+
+    return Array.from(contractsById.values());
   }
 };

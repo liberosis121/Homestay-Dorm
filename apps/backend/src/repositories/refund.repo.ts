@@ -195,10 +195,19 @@ export const refundRepo = {
     // 4. Loai bo cac phieu DA duoc lap hoan coc (da co hoa don type='refund' gan deposit_id).
     const { data: refunded } = await supabase
       .from('invoices')
-      .select('deposit_id')
+      .select('deposit_id, note')
       .eq('invoice_type', 'refund')
       .in('deposit_id', cancelledIds);
-    const refundedSet = new Set((refunded || []).map(r => r.deposit_id).filter(Boolean));
+    const refundedSet = new Set((refunded || [])
+      .filter((r: any) => {
+        try {
+          return JSON.parse(r.note || '{}')?.source !== 'group_residency_partial';
+        } catch {
+          return true;
+        }
+      })
+      .map(r => r.deposit_id)
+      .filter(Boolean));
 
     const deposits = cancelledDeposits.filter(d => !signedSet.has(d.id) && !refundedSet.has(d.id));
     if (deposits.length === 0) return [];

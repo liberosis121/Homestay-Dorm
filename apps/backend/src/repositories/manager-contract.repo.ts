@@ -154,7 +154,9 @@ export const managerContractRepo = {
       { data: rooms },
       { data: beds },
       { data: branches },
-      { data: staffList }
+      { data: staffList },
+      { data: depBeds },
+      { data: members }
     ] = await Promise.all([
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
@@ -162,8 +164,19 @@ export const managerContractRepo = {
       supabase.from('rooms').select('*'),
       supabase.from('beds').select('*'),
       supabase.from('branches').select('*'),
-      supabase.from('employees').select('*')
+      supabase.from('employees').select('*'),
+      supabase.from('deposit_beds').select('deposit_id, bed_id'),
+      supabase.from('rental_registration_members').select('registration_id, customer_user_id, is_representative')
     ]);
+
+    const groupBedIdsByDeposit: Record<string, string[]> = {};
+    for (const row of depBeds || []) {
+      (groupBedIdsByDeposit[(row as any).deposit_id] ||= []).push((row as any).bed_id);
+    }
+    const membersByReg: Record<string, Array<{ customer_user_id: string; is_representative: boolean }>> = {};
+    for (const row of members || []) {
+      (membersByReg[(row as any).registration_id] ||= []).push(row as any);
+    }
 
     // 3. Resolve relations
     let result = contracts.map(contract => {
@@ -175,6 +188,23 @@ export const managerContractRepo = {
       const branch = branches?.find(b => b.id === room.branch_id) || {};
       const manager = staffList?.find(s => s.id === branch.manager_id) || {};
       const saleStaff = staffList?.find(s => s.id === reg.staff_id) || {};
+      const groupBedIds = groupBedIdsByDeposit[dep.id] || [];
+      const groupBedNames = groupBedIds
+        .map((id) => (beds?.find((b) => b.id === id) as any)?.name)
+        .filter(Boolean);
+      const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
+      const bedName = dep.bed_id ? (bed.name || dep.bed_id || '') : groupBedNames.join(', ');
+      const tenants = (membersByReg[dep.registration_id] || [])
+        .map((m) => {
+          const c = (customers?.find((cu) => (cu as any).user_id === m.customer_user_id) || {}) as any;
+          return {
+            name: c.full_name || 'Khach thue',
+            cccd: c.cccd || '',
+            phone: c.phone || '',
+            role: m.is_representative ? 'representative' : 'member'
+          };
+        })
+        .sort((a, b) => (a.role === 'representative' ? -1 : 1) - (b.role === 'representative' ? -1 : 1));
 
       return {
         id: contract.id,
@@ -186,8 +216,8 @@ export const managerContractRepo = {
         customer_address: customer.address || '',
         room_id: dep.room_id || '',
         room_name: room.name || dep.room_id || 'Chưa xếp',
-        deposit_type: dep.bed_id ? 'bed' : 'room',
-        bed_name: bed.name || dep.bed_id || '',
+        deposit_type: depositType,
+        bed_name: bedName,
         branch_name: branch.name || 'Chi nhánh',
         branch_id: room.branch_id || '',
         rent_amount: Number(contract.rent_price) || Number(room.price) || 0,
@@ -209,7 +239,7 @@ export const managerContractRepo = {
         contract_type: contract.contract_type || 'long_term',
         room_type: room.room_type || 'dorm',
         floor_number: Number(room.floor) || 1,
-        tenants: []
+        tenants
       };
     });
 
@@ -237,7 +267,9 @@ export const managerContractRepo = {
       { data: rooms },
       { data: beds },
       { data: branches },
-      { data: staffList }
+      { data: staffList },
+      { data: depBeds },
+      { data: members }
     ] = await Promise.all([
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
@@ -245,7 +277,9 @@ export const managerContractRepo = {
       supabase.from('rooms').select('*'),
       supabase.from('beds').select('*'),
       supabase.from('branches').select('*'),
-      supabase.from('employees').select('*')
+      supabase.from('employees').select('*'),
+      supabase.from('deposit_beds').select('deposit_id, bed_id'),
+      supabase.from('rental_registration_members').select('registration_id, customer_user_id, is_representative')
     ]);
 
     const dep = deposits?.find(d => d.id === contract.deposit_id) || {};
@@ -256,6 +290,26 @@ export const managerContractRepo = {
     const branch = branches?.find(b => b.id === room.branch_id) || {};
     const manager = staffList?.find(s => s.id === branch.manager_id) || {};
     const saleStaff = staffList?.find(s => s.id === reg.staff_id) || {};
+    const groupBedIds = (depBeds || [])
+      .filter((row: any) => row.deposit_id === dep.id)
+      .map((row: any) => row.bed_id);
+    const groupBedNames = groupBedIds
+      .map((id: string) => (beds?.find((b) => b.id === id) as any)?.name)
+      .filter(Boolean);
+    const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
+    const bedName = dep.bed_id ? (bed.name || dep.bed_id || '') : groupBedNames.join(', ');
+    const tenants = (members || [])
+      .filter((m: any) => m.registration_id === dep.registration_id)
+      .map((m: any) => {
+        const c = (customers?.find((cu) => (cu as any).user_id === m.customer_user_id) || {}) as any;
+        return {
+          name: c.full_name || 'Khach thue',
+          cccd: c.cccd || '',
+          phone: c.phone || '',
+          role: m.is_representative ? 'representative' : 'member'
+        };
+      })
+      .sort((a, b) => (a.role === 'representative' ? -1 : 1) - (b.role === 'representative' ? -1 : 1));
 
     return {
       id: contract.id,
@@ -267,8 +321,8 @@ export const managerContractRepo = {
       customer_address: customer.address || '',
       room_id: dep.room_id || '',
       room_name: room.name || dep.room_id || 'Chưa xếp',
-      deposit_type: dep.bed_id ? 'bed' : 'room',
-      bed_name: bed.name || dep.bed_id || '',
+      deposit_type: depositType,
+      bed_name: bedName,
       branch_name: branch.name || 'Chi nhánh',
       rent_amount: Number(contract.rent_price) || Number(room.price) || 0,
       deposit_amount: Number(dep.deposit_amount) || 0,
@@ -289,7 +343,7 @@ export const managerContractRepo = {
       contract_type: contract.contract_type || 'long_term',
       room_type: room.room_type || 'dorm',
       floor_number: Number(room.floor) || 1,
-      tenants: []
+      tenants
     };
   },
 
