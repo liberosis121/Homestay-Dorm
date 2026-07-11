@@ -59,6 +59,8 @@ const mapMonthlyInvoices = (liveInvoices: any[]): MonthlyInvoice[] =>
     };
   });
 
+
+
 const STANDARD_INCIDENTALS = [
   { value: 'voi_sen', label: 'Đền bù làm hỏng vòi sen tắm', code: 'CPPS-8821', amount: 150000 },
   { value: 'the_tu', label: 'Đền bù làm mất thẻ từ/chìa khóa', code: 'CPPS-4102', amount: 100000 },
@@ -102,6 +104,7 @@ export default function AccountantMonthlyPage() {
   const [newIncidentalStatus, setNewIncidentalStatus] = useState('confirmed');
   const [newIncidentalDate, setNewIncidentalDate] = useState('');
   const [selectedIncidentalType, setSelectedIncidentalType] = useState('voi_sen');
+
 
   // Search query for contracts list in left panel
   const [contractSearchQuery, setContractSearchQuery] = useState('');
@@ -251,7 +254,7 @@ export default function AccountantMonthlyPage() {
 
   const handleAddIncidental = () => {
     setSelectedIncidentalType('voi_sen');
-    setNewIncidentalCode('CPPS-8821');
+    setNewIncidentalCode(`CPPS-8821-${Math.floor(1000 + Math.random() * 9000)}`);
     setNewIncidentalName('Đền bù làm hỏng vòi sen tắm');
     setNewIncidentalAmount(150000);
     setNewIncidentalStatus('confirmed');
@@ -268,7 +271,7 @@ export default function AccountantMonthlyPage() {
         setNewIncidentalName('');
         setNewIncidentalAmount(0);
       } else {
-        setNewIncidentalCode(standard.code);
+        setNewIncidentalCode(`${standard.code}-${Math.floor(1000 + Math.random() * 9000)}`);
         setNewIncidentalName(standard.label);
         setNewIncidentalAmount(standard.amount);
       }
@@ -1117,11 +1120,10 @@ export default function AccountantMonthlyPage() {
                 <input
                   type="text"
                   required
-                  disabled={selectedIncidentalType !== 'other'}
                   value={newIncidentalCode}
                   onChange={(e) => setNewIncidentalCode(e.target.value)}
                   placeholder="Ví dụ: CPPS-1021"
-                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]  disabled:opacity-60 disabled:bg-[#f3ede8]"
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]"
                 />
               </div>
 
@@ -1134,11 +1136,10 @@ export default function AccountantMonthlyPage() {
                   type="number"
                   required
                   min="0"
-                  disabled={selectedIncidentalType !== 'other'}
                   value={newIncidentalAmount || ''}
                   onChange={(e) => setNewIncidentalAmount(parseInt(e.target.value) || 0)}
                   placeholder="Nhập số tiền..."
-                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]  disabled:opacity-60 disabled:bg-[#f3ede8]"
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]"
                 />
               </div>
 
