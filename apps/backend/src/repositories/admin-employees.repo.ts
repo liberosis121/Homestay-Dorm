@@ -8,6 +8,7 @@ export interface DbEmployeeAdmin {
   phone: string;
   role: 'sale' | 'manager' | 'accountant' | 'admin';
   branch: string;
+  branch_id?: string;
   status: 'active' | 'locked';
   joinDate: string;
 }
@@ -60,6 +61,7 @@ export const adminEmployeesRepo = {
         phone: emp.phone || '',
         role: emp.role || 'sale',
         branch: branchName,
+        branch_id: emp.branch_id,
         status: isLocked ? 'locked' : 'active',
         joinDate: formatDate(emp.join_date)
       };
@@ -72,62 +74,83 @@ export const adminEmployeesRepo = {
     phone: string;
     role: string;
     branch: string;
+    password?: string;
   }): Promise<DbEmployeeAdmin> => {
-    const userId = crypto.randomUUID();
     const branchId = emp.branch;
+    const password = emp.password || '123456'; // default password nếu không truyền
 
-    // Insert profile record
-    const { error: pErr } = await supabase
-      .from('profiles')
-      .insert({
-        id: userId,
-        email: emp.email,
-        full_name: emp.full_name,
-        phone: emp.phone,
-        role: emp.role,
-        created_at: new Date().toISOString()
-      });
-
-    if (pErr) throw pErr;
-
-    // Insert employee record
-    const joinDateStr = new Date().toISOString().split('T')[0];
-    const { error: eErr } = await supabase
-      .from('employees')
-      .insert({
-        id: userId,
-        full_name: emp.full_name,
-        email: emp.email,
-        phone: emp.phone,
-        role: emp.role,
-        branch_id: branchId,
-        join_date: joinDateStr,
-        dob: '1995-01-01',
-        gender: 'Nam'
-      });
-
-    if (eErr) throw eErr;
-
-    // Fetch branch name to return
-    const { data: branchObj } = await supabase
-      .from('branches')
-      .select('name')
-      .eq('id', branchId)
-      .maybeSingle();
-    const branchName = branchObj?.name || 'Chi nhánh khác';
-
-    return {
-      id: userId,
-      full_name: emp.full_name,
+    // 1. Tạo Auth user qua Supabase Admin API
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: emp.email,
-      phone: emp.phone,
-      role: emp.role as any,
-      branch: branchName,
-      status: 'active',
-      joinDate: formatDate(joinDateStr)
-    };
-  },
+      password,
+      email_confirm: true,
+      user_metadata: { role: emp.role }
+    });
 
+    if (authError || !authData.user) {
+      throw new Error(authError?.message || 'Không thể tạo tài khoản xác thực');
+    }
+
+    const userId = authData.user.id;
+
+    try {
+      // 2. Insert profile record
+      const { error: pErr } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          email: emp.email,
+          full_name: emp.full_name,
+          phone: emp.phone,
+          role: emp.role,
+          created_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      if (pErr) throw pErr;
+
+      // 3. Insert employee record
+      const joinDateStr = new Date().toISOString().split('T')[0];
+      const { error: eErr } = await supabase
+        .from('employees')
+        .insert({
+          id: userId,
+          full_name: emp.full_name,
+          email: emp.email,
+          phone: emp.phone,
+          role: emp.role,
+          branch_id: branchId,
+          join_date: joinDateStr,
+          dob: '1995-01-01',
+          gender: 'Nam'
+        });
+
+      if (eErr) throw eErr;
+
+      // 4. Fetch branch name to return
+      const { data: branchObj } = await supabase
+        .from('branches')
+        .select('name')
+        .eq('id', branchId)
+        .maybeSingle();
+      const branchName = branchObj?.name || 'Chi nhánh khác';
+
+      return {
+        id: userId,
+        full_name: emp.full_name,
+        email: emp.email,
+        phone: emp.phone,
+        role: emp.role as any,
+        branch: branchName,
+        branch_id: branchId,
+        status: 'active',
+        joinDate: joinDateStr
+      };
+    } catch (dbError: any) {
+      // Rollback: Xóa Auth user nếu DB insert lỗi
+      await supabase.auth.admin.deleteUser(userId);
+      throw dbError;
+    }
+  },
   update: async (id: string, emp: {
     full_name?: string;
     email?: string;
@@ -179,7 +202,7 @@ export const adminEmployeesRepo = {
       branchName = branchObj?.name || 'Chi nhánh khác';
     }
 
-    return { id, ...emp, branch: branchName };
+    return { id, ...emp, branch: branchName, branch_id: emp.branch };
   },
 
   toggleLock: async (id: string): Promise<string> => {

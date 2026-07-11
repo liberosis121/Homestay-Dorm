@@ -23,7 +23,6 @@ export interface DepositRequest {
   room_name: string;
   room_image_url: string;
   branch_name: string;
-  viewing_schedule_id: string;
   deposit_amount: number;
   deposit_time: string;
   payment_deadline: string;
@@ -61,7 +60,6 @@ const mapDepositResponse = (d: any): DepositRequest => {
     room_name: d.rooms?.name || 'Phòng đang cập nhật',
     room_image_url,
     branch_name: d.rooms?.branches?.name || 'Chi nhánh đang cập nhật',
-    viewing_schedule_id: d.registration_id, // Gắn bằng registration_id để map khớp với đơn thuê/lịch xem phòng
     deposit_amount: Number(d.deposit_amount),
     deposit_time: d.deposit_time,
     payment_deadline: d.payment_deadline,

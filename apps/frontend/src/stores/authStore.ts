@@ -39,7 +39,19 @@ interface AuthState {
 
   // Actions — các hàm để thay đổi state
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, fullName: string, phone: string, password: string) => Promise<boolean>;
+  register: (
+    email: string, 
+    fullName: string, 
+    phone: string, 
+    password: string,
+    dob: string,
+    gender: string,
+    nationality: string,
+    cccd: string,
+    issue_date: string,
+    issue_place: string,
+    permanent_address: string
+  ) => Promise<boolean>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   setLogoutConfirmOpen: (open: boolean) => void;
@@ -94,10 +106,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ─── REGISTER ───────────────────────────────────────────────────────────────
-  register: async (email: string, fullName: string, phone: string, password: string) => {
+  register: async (
+    email: string,
+    fullName: string,
+    phone: string,
+    password: string,
+    dob: string,
+    gender: string,
+    nationality: string,
+    cccd: string,
+    issue_date: string,
+    issue_place: string,
+    permanent_address: string
+  ) => {
     set({ loading: true, error: null });
     try {
-      const payload: RegisterPayload = { email, full_name: fullName, phone, password };
+      const payload: RegisterPayload = {
+        email,
+        full_name: fullName,
+        phone,
+        password,
+        dob,
+        gender,
+        nationality,
+        cccd,
+        issue_date,
+        issue_place,
+        permanent_address,
+      };
       // Backend /auth/register chỉ TẠO tài khoản, KHÔNG trả về session.
       await registerApi(payload);
 

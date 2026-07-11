@@ -238,6 +238,7 @@ export const accountantService = {
     finalRefund: number;
     additionalCharge: number;
     note?: string;
+    deductions?: { reason: string; amount: number }[];
   }) => {
     const res = await fetch(`${API}/api/accountant/refunds`, {
       method: 'POST',

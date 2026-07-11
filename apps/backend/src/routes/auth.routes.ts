@@ -9,6 +9,7 @@ import { requireAuth } from '../middleware/auth.middleware';
 import { authService } from '../services/auth.service';
 import { profileService } from '../services/profile.service';
 import { sendSuccess, sendError } from '../utils/response.util';
+import { supabase } from '../utils/supabase';
 
 const router = Router();
 
@@ -23,14 +24,40 @@ const router = Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    // FE (authStore.register → registerApi) gửi body snake_case: { email, full_name, phone, password }.
-    // Nhận cả full_name lẫn fullName để tương thích ngược.
-    const { email, password, phone } = req.body;
+    // FE (authStore.register → registerApi) gửi body snake_case.
+    const { 
+      email, 
+      password, 
+      phone, 
+      dob, 
+      gender, 
+      nationality, 
+      cccd, 
+      cccd_issue_date, 
+      cccd_issue_place, 
+      address 
+    } = req.body;
+    
     const full_name = req.body.full_name ?? req.body.fullName;
+    const issue_date = cccd_issue_date ?? req.body.issue_date ?? req.body.cccdIssueDate;
+    const issue_place = cccd_issue_place ?? req.body.issue_place ?? req.body.cccdIssuePlace;
+    const addr = address ?? req.body.address ?? req.body.permanent_address;
 
     // 1. Kiểm tra tính hợp lệ thô của dữ liệu đầu vào (Validation)
-    if (!email || !password || !full_name || !phone) {
-      return sendError(res, null, 'Vui lòng cung cấp đầy đủ thông tin: email, password, full_name, phone.', 400);
+    if (
+      !email || 
+      !password || 
+      !full_name || 
+      !phone || 
+      !dob || 
+      !gender || 
+      !nationality || 
+      !cccd || 
+      !issue_date || 
+      !issue_place || 
+      !addr
+    ) {
+      return sendError(res, null, 'Vui lòng điền đầy đủ tất cả các trường thông tin đăng ký.', 400);
     }
 
     if (password.length < 6) {
@@ -38,7 +65,19 @@ router.post('/register', async (req, res) => {
     }
 
     // 2. Chuyển tiếp dữ liệu đến tầng Service để xử lý logic nghiệp vụ
-    const result = await authService.register(email, password, full_name, phone);
+    const result = await authService.register(
+      email, 
+      password, 
+      full_name, 
+      phone,
+      dob,
+      gender,
+      nationality,
+      cccd,
+      issue_date,
+      issue_place,
+      addr
+    );
 
     // 3. Trả về response thành công (HTTP Status 201 Created)
     return sendSuccess(res, result, 'Đăng ký tài khoản mới thành công!', 201);
@@ -105,6 +144,45 @@ router.get('/me', requireAuth, async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
+
+    // Sync metadata từ Google OAuth vào bảng profiles (chỉ chạy nếu có thay đổi)
+    // req.user.user_metadata chứa avatar_url, name từ Google nếu login bằng OAuth
+    const googleAvatarUrl = req.user.user_metadata?.avatar_url || req.user.user_metadata?.picture || '';
+    const googleFullName = req.user.user_metadata?.full_name || req.user.user_metadata?.name || '';
+
+    if (googleAvatarUrl || googleFullName) {
+      const updatePayload: Record<string, string> = {};
+      if (googleAvatarUrl) updatePayload.avatar_url = googleAvatarUrl;
+      if (googleFullName) updatePayload.full_name = googleFullName;
+
+      // Chỉ update nếu profile chưa có avatar hoặc tên chưa được đặt
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('avatar_url, full_name')
+        .eq('id', req.user.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        if (!existingProfile.avatar_url && googleAvatarUrl) {
+          updatePayload.avatar_url = googleAvatarUrl;
+        } else {
+          delete updatePayload.avatar_url;
+        }
+        if ((!existingProfile.full_name || existingProfile.full_name === 'Người dùng mới') && googleFullName) {
+          updatePayload.full_name = googleFullName;
+        } else {
+          delete updatePayload.full_name;
+        }
+
+        if (Object.keys(updatePayload).length > 0) {
+          await supabase
+            .from('profiles')
+            .update(updatePayload)
+            .eq('id', req.user.id);
+        }
+      }
+    }
+
     const profile = await profileService.getProfile(req.user.id);
 
     // Fallback: nếu chưa có bản ghi profile trong DB, trả tạm dữ liệu từ token
@@ -113,8 +191,8 @@ router.get('/me', requireAuth, async (req, res) => {
         id: req.user.id,
         email: req.user.email,
         role: req.user.user_metadata?.role || 'customer',
-        full_name: req.user.user_metadata?.full_name || 'User',
-        avatar_url: req.user.user_metadata?.avatar_url || ''
+        full_name: googleFullName || req.user.user_metadata?.full_name || 'User',
+        avatar_url: googleAvatarUrl || ''
       }, 'Xác thực tài khoản thành công (dữ liệu tạm)!');
     }
 
@@ -123,6 +201,7 @@ router.get('/me', requireAuth, async (req, res) => {
     return sendError(res, error, error.message || 'Lỗi khi lấy thông tin tài khoản.');
   }
 });
+
 
 /**
  * 🔗 PUT /api/auth/me

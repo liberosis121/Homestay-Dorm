@@ -16,6 +16,43 @@ import { Profile } from '../types';
 // QUERY BẢNG PROFILES (ham roi — dung cho auth.service)
 // ============================================================
 
+async function autoCreateProfile(userId: string): Promise<Profile | null> {
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(userId);
+    if (authError || !user) {
+      console.error('[ProfileRepo] Failed to fetch user from auth admin:', authError?.message);
+      return null;
+    }
+
+    const googleFullName = user.user_metadata?.full_name || user.user_metadata?.name || 'Người dùng mới';
+    const googleAvatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+
+    console.log(`[ProfileRepo] Auto-creating profile for userId=${userId}, email=${user.email}`);
+    const { data: newProfile, error: createError } = await supabase
+      .from('profiles')
+      .insert({
+        id: userId,
+        email: user.email,
+        role: 'customer',
+        full_name: googleFullName,
+        phone: user.phone || '',
+        avatar_url: googleAvatarUrl
+      })
+      .select()
+      .maybeSingle();
+
+    if (createError) {
+      console.error('[ProfileRepo] Failed to insert auto-created profile:', createError.message);
+      return null;
+    }
+
+    return newProfile as Profile;
+  } catch (err: any) {
+    console.error('[ProfileRepo] Exception in autoCreateProfile:', err.message);
+    return null;
+  }
+}
+
 /**
  * Lấy hồ sơ cơ bản từ bảng `profiles` theo userId (UUID của Supabase Auth).
  *
@@ -31,13 +68,14 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
     .from('profiles')
     .select('id, email, role, full_name, phone, avatar_url, created_at')
     .eq('id', userId)  // Lọc theo UUID → chỉ ra đúng 1 bản ghi
-    .single();         // Trả về object (không phải array), lỗi nếu không tìm thấy
+    .maybeSingle();    // Use maybeSingle to avoid single() throwing exceptions
 
-  // Nếu không tìm thấy (error.code === 'PGRST116'), trả về null thay vì throw
-  // PGRST116 là mã lỗi PostgREST khi .single() không tìm được bản ghi
   if (error) {
-    if (error.code === 'PGRST116') return null; // Not found → trả null
     throw new Error(`[ProfileRepo] Lỗi khi lấy profile userId=${userId}: ${error.message}`);
+  }
+
+  if (!data) {
+    return await autoCreateProfile(userId);
   }
 
   return data as Profile;
@@ -310,15 +348,22 @@ export async function hasContractHistory(userId: string): Promise<boolean> {
 
 export const profileRepo = {
   findById: async (id: string): Promise<ProfileDto | null> => {
-    // 1. Fetch parent profile details
-    const { data: profile, error: profileErr } = await supabase
+    let { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', id)
       .maybeSingle(); // maybeSingle doesn't throw if not found
 
-    if (profileErr || !profile) {
+    if (profileErr) {
       console.error('Error fetching parent profile:', profileErr);
+      return null;
+    }
+
+    if (!profile) {
+      profile = await autoCreateProfile(id);
+    }
+
+    if (!profile) {
       return null;
     }
 
@@ -334,6 +379,51 @@ export const profileRepo = {
       if (customerErr) {
         console.error('Error fetching khach_hang record:', customerErr);
       }
+
+      // Auto-tạo bản ghi customers cho tài khoản Google OAuth
+      // (các tài khoản này bỏ qua /api/auth/register nên chưa có row trong customers)
+      if (!customer) {
+        console.log(`[ProfileRepo] Customer record not found for userId=${id}. Auto-creating stub record (Google OAuth account).`);
+        const { data: newCustomer, error: insertErr } = await supabase
+          .from('customers')
+          .insert({
+            user_id: id,
+            full_name: profile.full_name || 'Người dùng mới',
+            phone: profile.phone || '',
+            email: profile.email || '',
+            // Tất cả trường khác mặc định để null như mong muốn của user
+            cccd: null,
+            nationality: null,
+            dob: null,
+            gender: null,
+            address: null,
+            cccd_issue_date: null,
+            cccd_issue_place: null
+          })
+          .select('*')
+          .single();
+
+        if (insertErr) {
+          console.error('[ProfileRepo] Failed to auto-create customer record:', insertErr.message);
+          // Không throw — vẫn trả về profile cơ bản, tránh crash trang
+          return {
+            ...profile,
+            renting_room_name: undefined,
+            has_contract_history: false,
+            type: 'customer'
+          };
+        } else {
+          console.log(`[ProfileRepo] Auto-created customer record: ${newCustomer?.user_id}`);
+          return {
+            ...profile,
+            ...newCustomer,
+            renting_room_name: undefined,
+            has_contract_history: false,
+            type: 'customer'
+          };
+        }
+      }
+
       if (customer) {
         const rentingRoomName = await getRentingRoomName(id);
         const hasHistory = await hasContractHistory(id);

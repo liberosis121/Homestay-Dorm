@@ -394,9 +394,10 @@ export default function InvoiceDetailDrawer({
                     <span className="font-sans text-[#1b1c1c]">Tiền hoàn cọc phòng:</span>
                     <span className="text-[#5F7D4E] font-bold">+{formattedAmount(invoiceData.refund_amount || invoiceData.deposit_refund)}</span>
                   </div>
-                  {invoiceData.deductions && invoiceData.deductions.map((ded: any, i: number) => (
+                  {(invoiceData.deductions || invoiceData.refund_reconciliations?.deductions) && 
+                    (invoiceData.deductions || invoiceData.refund_reconciliations?.deductions).map((ded: any, i: number) => (
                     <div key={i} className="flex justify-between py-2">
-                      <span className="font-sans text-[#1b1c1c]">{ded.name}:</span>
+                      <span className="font-sans text-[#1b1c1c]">{ded.name || ded.reason}:</span>
                       <span className="text-[#A94F4F] font-bold">-{formattedAmount(ded.amount)}</span>
                     </div>
                   ))}

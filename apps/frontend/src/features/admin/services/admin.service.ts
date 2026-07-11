@@ -51,6 +51,20 @@ export const toggleCustomerLockApi = async (id: string) => {
   return result.data;
 };
 
+export const createCustomerApi = async (customer: any) => {
+  const res = await fetch(`${API}/api/admin/customers`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(customer)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Lỗi khi tạo tài khoản khách hàng mới');
+  }
+  const result = await res.json();
+  return result.data;
+};
+
 // ─── EMPLOYEES API ───────────────────────────────────────────────────
 export const fetchAdminEmployees = async () => {
   const res = await fetch(`${API}/api/admin/employees`, {
@@ -67,7 +81,10 @@ export const createEmployeeApi = async (emp: any) => {
     headers: getHeaders(),
     body: JSON.stringify(emp)
   });
-  if (!res.ok) throw new Error('Lỗi khi thêm nhân viên mới');
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || 'Lỗi khi thêm nhân viên mới');
+  }
   const result = await res.json();
   return result.data;
 };
