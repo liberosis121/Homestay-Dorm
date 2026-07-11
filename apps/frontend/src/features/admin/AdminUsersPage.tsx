@@ -263,6 +263,8 @@ export default function AdminUsersPage() {
           prev ? { ...prev, accountStatus: nextStatus } : null
         );
       }
+      setSuccessMsg(nextStatus === 'locked' ? 'Đã khóa tài khoản khách hàng!' : 'Đã mở khóa tài khoản khách hàng!');
+      setTimeout(() => setSuccessMsg(''), 3500);
     } catch (err) {
       console.error("Lỗi khi thay đổi khóa:", err);
       alert("Không thể thay đổi trạng thái khóa tài khoản!");

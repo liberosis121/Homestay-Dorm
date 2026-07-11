@@ -237,6 +237,7 @@ export default function AdminRoomsPage() {
   const [editRoomType, setEditRoomType] = useState<string>('dorm');
   const [editStatus, setEditStatus] = useState<RoomStatus>('available');
   const [editErrors, setEditErrors] = useState<RoomFormErrors>({});
+  const [successMsg, setSuccessMsg] = useState('');
 
   // ─── Quản lý giường của phòng đang mở ───────────────────────────────
   const [beds, setBeds] = useState<AdminBed[]>([]);
@@ -330,12 +331,16 @@ export default function AdminRoomsPage() {
           price: bedDraft.price,
           status: bedDraft.status,
         });
+        setSuccessMsg("Đã thêm giường mới thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       } else if (editingBedId) {
         await updateBedApi(editingBedId, {
           name: bedDraft.name.trim(),
           price: bedDraft.price,
           status: bedDraft.status,
         });
+        setSuccessMsg("Đã cập nhật thông tin giường thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       }
       setEditingBedId(null);
       await loadBeds(selected.id);
@@ -447,6 +452,8 @@ export default function AdminRoomsPage() {
     };
     try {
       await createRoomApi(payload);
+      setSuccessMsg("Đã tạo phòng mới thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
       setShowModal(false);
       await loadRooms();
     } catch (err: any) {
@@ -475,6 +482,8 @@ export default function AdminRoomsPage() {
         status: editStatus,
         room_type: editRoomType,
       });
+      setSuccessMsg("Đã cập nhật thông tin phòng thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
       setSelected(null);
       await loadRooms();
     } catch (err: any) {
@@ -484,6 +493,14 @@ export default function AdminRoomsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

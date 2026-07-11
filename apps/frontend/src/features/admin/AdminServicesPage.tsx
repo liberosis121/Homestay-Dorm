@@ -145,6 +145,7 @@ export default function AdminServicesPage() {
   const [form, setForm] = useState<Partial<ServiceItem>>({});
   const [formErrors, setFormErrors] = useState<ServiceFormErrors>({});
   const [confirmStatusService, setConfirmStatusService] = useState<ServiceItem | null>(null);
+  const [successMsg, setSuccessMsg] = useState('');
 
   // DB service: {id,name,service_type,description,unit,price,billing_cycle,status}
   // isActive ← status === 'available'
@@ -227,8 +228,12 @@ export default function AdminServicesPage() {
     try {
       if (modalMode === 'add') {
         await createServiceApi(payload);
+        setSuccessMsg("Đã thêm dịch vụ mới thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       } else if (form.id) {
         await updateServiceApi(form.id, payload);
+        setSuccessMsg("Đã cập nhật thông tin dịch vụ thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       }
       setShowModal(false);
       await loadServices();
@@ -251,6 +256,14 @@ export default function AdminServicesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

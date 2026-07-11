@@ -202,6 +202,8 @@ export default function AdminEmployeesPage() {
           prev ? { ...prev, status: nextStatus as any } : null,
         );
       }
+      setSuccessMsg(nextStatus === 'locked' ? 'Đã khóa tài khoản nhân viên!' : 'Đã mở khóa tài khoản nhân viên!');
+      setTimeout(() => setSuccessMsg(''), 3500);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Lỗi khi thay đổi trạng thái khóa tài khoản!");
