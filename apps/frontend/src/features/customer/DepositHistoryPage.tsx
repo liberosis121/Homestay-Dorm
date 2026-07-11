@@ -224,6 +224,12 @@ export default function DepositHistoryPage() {
                 <span className="text-sm text-on-surface-variant">Số tiền cọc</span>
                 <span className="text-sm font-bold text-primary">{request.deposit_amount.toLocaleString('vi-VN')} VNĐ</span>
               </div>
+              {request.bed_names && request.bed_names.length > 0 && (
+                <div className="flex justify-between items-center py-2.5 border-b border-outline-variant/30">
+                  <span className="text-sm text-on-surface-variant">Giường nhóm ({request.bed_names.length})</span>
+                  <span className="text-sm font-bold text-on-surface text-right">{request.bed_names.join(', ')}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center py-2.5 border-b border-outline-variant/30">
                 <span className="text-sm text-on-surface-variant">Ngày dự kiến vào ở</span>
                 <span className="text-sm font-bold text-on-surface">{formatDate(request.expected_move_in_date)}</span>
@@ -234,16 +240,22 @@ export default function DepositHistoryPage() {
               </div>
             </div>
 
-            {/* Nút thanh toán nếu cần */}
+            {/* Nút thanh toán: chỉ người đại diện mới thanh toán được */}
             {statusInfo.showPayBtn && (
-              <button
-                type="button"
-                onClick={() => { onClose(); navigate('/customer/deposit', { state: { depositRequest: request } }); }}
-                className="w-full px-5 py-3 bg-primary text-on-primary rounded-full text-sm font-semibold hover:opacity-90 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <CreditCard className="w-4 h-4" />
-                Thanh toán cọc ngay
-              </button>
+              request.can_pay !== false ? (
+                <button
+                  type="button"
+                  onClick={() => { onClose(); navigate('/customer/deposit', { state: { depositRequest: request } }); }}
+                  className="w-full px-5 py-3 bg-primary text-on-primary rounded-full text-sm font-semibold hover:opacity-90 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Thanh toán cọc ngay
+                </button>
+              ) : (
+                <div className="w-full px-5 py-3 rounded-2xl bg-surface-container-low text-on-surface-variant text-sm text-center border border-outline-variant">
+                  Bạn là thành viên nhóm — chỉ <strong>người đại diện</strong> mới thanh toán được hóa đơn cọc này.
+                </div>
+              )
             )}
           </div>
         </div>
@@ -372,14 +384,20 @@ export default function DepositHistoryPage() {
                           Chi tiết
                         </button>
                         {statusInfo.showPayBtn && (
-                          <button
-                            type="button"
-                            onClick={() => navigate('/customer/deposit', { state: { depositRequest: request } })}
-                            className="px-5 py-2 bg-primary text-on-primary rounded-full text-xs font-semibold hover:opacity-90 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5"
-                          >
-                            <CreditCard className="w-3.5 h-3.5" />
-                            Thanh toán cọc
-                          </button>
+                          request.can_pay !== false ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate('/customer/deposit', { state: { depositRequest: request } })}
+                              className="px-5 py-2 bg-primary text-on-primary rounded-full text-xs font-semibold hover:opacity-90 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                              Thanh toán cọc
+                            </button>
+                          ) : (
+                            <span className="px-4 py-2 rounded-full text-xs font-semibold bg-surface-container-high text-on-surface-variant border border-outline-variant self-end">
+                              Chờ người đại diện thanh toán
+                            </span>
+                          )
                         )}
                       </div>
                     </div>

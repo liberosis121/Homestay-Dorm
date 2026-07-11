@@ -39,6 +39,7 @@ export interface DepositRecord {
   roomType: string;
   branch: string;
   roomMonthlyRent: number;
+  bedNames?: string[];        // Giường được thuê (cọc lẻ = 1, cọc nhóm = N)
   // Group info
   rentalType?: 'individual' | 'group';
   tenants?: TenantMember[];
@@ -79,23 +80,36 @@ const formatDate = (iso?: string) => {
 
 // Cọc đủ điều kiện (backend) → DepositRecord. Một số trường không có trong schema thật
 // (email, CCCD, địa chỉ, nhóm khách) → để rỗng, form sẽ hiển thị "—" thay vì dữ liệu giả.
-const toDepositRecord = (d: EligibleDeposit): DepositRecord => ({
-  id: d.id,
-  depositCode: d.id,
-  depositDate: formatDate(d.deposit_date),
-  depositAmount: d.amount,
-  customerId: d.customer_id,
-  customerName: d.customer_name,
-  customerPhone: d.customer_phone,
-  customerEmail: '',
-  customerCCCD: '',
-  customerAddress: '',
-  roomCode: d.room_name,
-  roomType: d.room_type || (d.deposit_type === 'bed' ? `Giường ${d.bed_name}`.trim() : 'Phòng'),
-  branch: (d.branch_name || '').replace('Chi nhánh ', ''),
-  roomMonthlyRent: d.room_monthly_rent,
-  rentalType: 'individual',
-});
+const toDepositRecord = (d: EligibleDeposit): DepositRecord => {
+  const isGroup = d.deposit_type === 'group' || (d.occupants_count || 0) > 1 || (d.tenants || []).length > 1;
+  const rep = (d.tenants || []).find((t) => t.role === 'representative') || (d.tenants || [])[0];
+  return {
+    id: d.id,
+    depositCode: d.id,
+    depositDate: formatDate(d.deposit_date),
+    depositAmount: d.amount,
+    customerId: d.customer_id,
+    customerName: d.customer_name,
+    customerPhone: d.customer_phone,
+    customerEmail: rep?.email || '',
+    customerCCCD: rep?.cccd || '',
+    customerAddress: '',
+    roomCode: d.room_name,
+    roomType: d.room_type || (d.deposit_type === 'bed' ? `Giường ${d.bed_name}`.trim() : 'Phòng'),
+    branch: (d.branch_name || '').replace('Chi nhánh ', ''),
+    roomMonthlyRent: d.room_monthly_rent,
+    bedNames: d.bed_names && d.bed_names.length > 0 ? d.bed_names : (d.bed_name ? [d.bed_name] : []),
+    rentalType: isGroup ? 'group' : 'individual',
+    tenants: (d.tenants || []).map((t) => ({
+      name: t.name,
+      cccd: t.cccd,
+      phone: t.phone,
+      email: t.email,
+      role: t.role,
+    })),
+    roomCapacity: d.room_capacity,
+  };
+};
 
 // Hợp đồng thật (GET /sale/contracts) → CreatedContract cho danh sách "Hợp đồng đã lập".
 // Lưu ý: sale-contract.repo trả dữ liệu LỒNG NHAU (deposit_requests → rooms/branches,

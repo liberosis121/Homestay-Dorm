@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { ViewingSchedule, getMyViewingSchedulesApi, cancelViewingScheduleApi, rescheduleViewingScheduleApi, confirmViewingScheduleApi } from './viewing.api';
-import { getMyDepositsApi, createDepositApi, DepositRequest } from './deposit.api';
+import { getMyDepositsApi, createDepositApi, createGroupDepositApi, DepositRequest } from './deposit.api';
+import { getMyLeaseRegistrationsApi } from './lease.api';
 import { getRoomDetailApi } from '../rooms/rooms.api';
 
 // Khóa liên kết phiếu cọc <-> lịch xem phòng: một phiếu cọc gắn với đúng buổi xem
@@ -665,26 +666,49 @@ export default function ViewingSchedulePage() {
     if (!user) return { ok: false, message: 'Bạn cần đăng nhập để gửi yêu cầu đặt cọc.' };
 
     try {
-      // 1. Lấy chi tiết phòng để xem giường nào trống
-      const roomDetails = await getRoomDetailApi(schedule.room_id);
-      const availableBed = roomDetails.beds?.find(b => b.status === 'available');
+      // 1. Lấy chi tiết phòng (giường trống) + đơn đăng ký (để biết số thành viên nhóm).
+      const [roomDetails, myRegs] = await Promise.all([
+        getRoomDetailApi(schedule.room_id),
+        getMyLeaseRegistrationsApi()
+      ]);
+      const reg = myRegs.find(r => r.id === schedule.registration_id);
+      const neededBeds = reg?.occupants_count && reg.occupants_count > 0 ? reg.occupants_count : 1;
 
-      if (!availableBed) {
-        return { ok: false, message: 'Hiện tại phòng này không còn giường nào trống ở trạng thái sẵn sàng để cọc.' };
+      const availableBeds = (roomDetails.beds || []).filter(b => b.status === 'available');
+      if (availableBeds.length < neededBeds) {
+        return {
+          ok: false,
+          message: neededBeds > 1
+            ? `Nhóm cần ${neededBeds} giường trống nhưng phòng hiện chỉ còn ${availableBeds.length}. Vui lòng liên hệ Sale.`
+            : 'Hiện tại phòng này không còn giường nào trống ở trạng thái sẵn sàng để cọc.'
+        };
       }
 
-      // 2. Gọi API tạo phiếu cọc thật trên hệ thống
-      await createDepositApi({
-        registration_id: schedule.registration_id,
-        bed_id: availableBed.id
-      });
+      // 2. Gọi API tạo phiếu cọc: nhóm (N giường / 1 phiếu) hoặc lẻ (1 giường).
+      if (neededBeds > 1) {
+        const bedIds = availableBeds.slice(0, neededBeds).map(b => b.id);
+        await createGroupDepositApi({
+          registration_id: schedule.registration_id,
+          bed_ids: bedIds
+        });
+      } else {
+        await createDepositApi({
+          registration_id: schedule.registration_id,
+          bed_id: availableBeds[0].id
+        });
+      }
 
       // 3. Tải lại danh sách cọc để đồng bộ UI
       const depositsList = await getMyDepositsApi();
       setDepositRequests(depositsList);
       setDepositedKeys(new Set(depositsList.map(depositKey)));
 
-      return { ok: true, message: 'Đã tạo yêu cầu đặt cọc giường thành công trên hệ thống!' };
+      return {
+        ok: true,
+        message: neededBeds > 1
+          ? `Đã tạo phiếu cọc nhóm giữ ${neededBeds} giường bằng 1 hóa đơn chung!`
+          : 'Đã tạo yêu cầu đặt cọc giường thành công trên hệ thống!'
+      };
     } catch (error: any) {
       const msg = error.response?.data?.message || 'Có lỗi xảy ra khi tạo yêu cầu đặt cọc. Vui lòng liên hệ Sale để được hỗ trợ.';
       return { ok: false, message: msg };

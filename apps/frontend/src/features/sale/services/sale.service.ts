@@ -59,6 +59,14 @@ export const assignLeaseRegistrationApi = async (id: string) => {
 
 // ─── Sale Contract APIs (tái dùng endpoint manager theo phương án B) ─────────────
 
+export interface EligibleDepositTenant {
+  name: string;
+  cccd: string;
+  phone: string;
+  email: string;
+  role: 'representative' | 'member';
+}
+
 export interface EligibleDeposit {
   id: string;
   customer_id: string;
@@ -68,8 +76,12 @@ export interface EligibleDeposit {
   deposit_date: string;
   room_id: string;
   room_name: string;
-  deposit_type: string;      // 'room' | 'bed'
+  deposit_type: string;      // 'bed' | 'group' | 'room'
   bed_name: string;
+  bed_names: string[];       // Danh sách giường (cọc lẻ = 1, cọc nhóm = N)
+  occupants_count: number;   // Số thành viên nhóm (1 nếu cá nhân)
+  room_capacity?: number;
+  tenants: EligibleDepositTenant[]; // Trưởng nhóm + thành viên (rỗng nếu cá nhân)
   // Bổ sung từ danh mục phòng thật
   room_type: string;
   branch_name: string;
@@ -109,6 +121,10 @@ export const fetchEligibleDepositsApi = async (): Promise<EligibleDeposit[]> => 
         room_name: d.room_name || room.name || d.room_id || '',
         deposit_type: d.deposit_type || 'room',
         bed_name: d.bed_name || '',
+        bed_names: Array.isArray(d.bed_names) ? d.bed_names : (d.bed_name ? [d.bed_name] : []),
+        occupants_count: Number(d.occupants_count) || 1,
+        room_capacity: d.room_capacity ?? room.capacity,
+        tenants: Array.isArray(d.tenants) ? d.tenants : [],
         room_type: room.room_type || '',
         branch_name: room.branches?.name || '',
         room_monthly_rent: Number(room.price) || 0,

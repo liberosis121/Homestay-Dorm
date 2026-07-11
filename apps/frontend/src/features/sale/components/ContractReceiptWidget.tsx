@@ -82,6 +82,12 @@ export default function ContractReceiptWidget({ deposit, formData }: Props) {
             <span className="text-[#9d8879]">Mã phòng</span>
             <span className="font-semibold text-[#1e1b17]">{deposit.roomCode}</span>
           </div>
+          {deposit.bedNames && deposit.bedNames.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <span className="text-[#9d8879] shrink-0">Giường ({deposit.bedNames.length})</span>
+              <span className="font-semibold text-[#1e1b17] text-right">{deposit.bedNames.join(', ')}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-[#9d8879]">Loại phòng</span>
             <span className="font-semibold text-[#1e1b17]">{deposit.roomType}</span>

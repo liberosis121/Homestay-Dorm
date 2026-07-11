@@ -102,7 +102,9 @@ export default function DepositRegistrationPage() {
         : depositRequest.room_name.includes('Twin') 
           ? 'Phòng Twin' 
           : 'Phòng KTX / Dorm',
-      bedNames: [depositRequest.bed_id ? `Giường ID: ${depositRequest.bed_id.substring(0, 6).toUpperCase()}` : 'Giường'],
+      bedNames: (depositRequest.bed_names && depositRequest.bed_names.length > 0)
+        ? depositRequest.bed_names
+        : (depositRequest.bed_id ? [`Giường ID: ${depositRequest.bed_id.substring(0, 6).toUpperCase()}`] : ['Giường']),
       branch: depositRequest.branch_name,
       checkInDate: depositRequest.expected_move_in_date,
       depositAmount: depositRequest.deposit_amount,
@@ -129,6 +131,10 @@ export default function DepositRegistrationPage() {
 
   const submitDeposit = async () => {
     if (!depositRequest || !user?.email) return;
+    if (depositRequest.can_pay === false) {
+      alert('Bạn là thành viên nhóm. Chỉ người đại diện mới thanh toán được hóa đơn cọc này.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const invoices = await fetchMyInvoices(user.email);
@@ -397,7 +403,7 @@ export default function DepositRegistrationPage() {
             <div className="pt-4 flex justify-end">
               <button
                 onClick={submitDeposit}
-                disabled={(!proofImage && status === 'pending') || isSubmitting || status === 'approved'}
+                disabled={(!proofImage && status === 'pending') || isSubmitting || status === 'approved' || depositRequest.can_pay === false}
                 className={`px-8 py-3.5 rounded-full font-label-md font-bold text-[15px] shadow-md transition-all ${
                   ((proofImage && status === 'pending') && !isSubmitting)
                     ? 'bg-primary text-white hover:bg-[#253228] hover:shadow-lg hover:-translate-y-0.5' 

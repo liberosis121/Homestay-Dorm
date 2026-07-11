@@ -156,6 +156,14 @@ export default function DepositPendingList({ deposits, onSelect, staffBranch, on
                     <td className="px-5 py-4">
                       <p className="font-semibold text-[#1e1b17] text-sm">{deposit.roomCode}</p>
                       <p className="text-[11px] text-[#9d8879]">{deposit.roomType}</p>
+                      {deposit.bedNames && deposit.bedNames.length > 0 && (
+                        <p className="text-[11px] text-[#2d6a4f] font-semibold mt-0.5">
+                          {deposit.rentalType === 'group'
+                            ? `Nhóm ${deposit.bedNames.length} giường: `
+                            : 'Giường: '}
+                          {deposit.bedNames.join(', ')}
+                        </p>
+                      )}
                     </td>
 
                     {/* Chi nhánh */}

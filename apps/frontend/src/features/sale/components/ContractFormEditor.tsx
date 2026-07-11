@@ -380,6 +380,24 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
                       {deposit.roomMonthlyRent.toLocaleString('vi-VN')} đ/tháng
                     </span>
                   </div>
+
+                  {/* Giường được thuê — hiển thị rõ cho cả thuê cá nhân (1 giường) lẫn nhóm (N giường) */}
+                  {deposit.bedNames && deposit.bedNames.length > 0 && (
+                    <div className="mt-3 rounded-xl border border-[#e2d8ca] bg-[#fffdf9] px-3 py-2.5">
+                      <p className="text-[11px] font-bold text-[#8c7355] uppercase tracking-wider mb-1.5">
+                        Giường được thuê ({deposit.bedNames.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {deposit.bedNames.map((b) => (
+                          <span key={b} className="inline-flex items-center gap-1 rounded-full border border-[#c8d9c0] bg-[#eef6ea] px-2.5 py-1 text-[11px] font-bold text-[#2d6a4f]">
+                            <Home className="h-3.5 w-3.5 shrink-0" />
+                            {b}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {roomAmenities.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {roomAmenities.map((amenity) => (
