@@ -3,6 +3,7 @@ import { Search, X, Info } from 'lucide-react';
 import { RefundRecord } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 type LiveRefundRecord = RefundRecord & {
   checkout_id?: string;
@@ -55,9 +56,10 @@ export default function AccountantRefundsPage() {
     const loadData = async () => {
       const email = user?.email || 'accountant@homestay.vn';
       try {
-        const [pendingCheckouts, liveReconciliations] = await Promise.all([
+        const [pendingCheckouts, liveReconciliations, cancellationRefunds] = await Promise.all([
           accountantService.fetchPendingCheckouts(email),
-          accountantService.fetchRefundReconciliations(email)
+          accountantService.fetchRefundReconciliations(email),
+          accountantService.fetchCancellationRefunds(email)
         ]);
 
         const mappedCheckouts = (pendingCheckouts || []).map((ch: any) => {
@@ -73,8 +75,8 @@ export default function AccountantRefundsPage() {
             room_name: contract.rooms?.name || 'Phòng',
             checkout_date: ch.request_date || '',
             deposit_original: Number(contract.deposit_amount || contract.rent_price || 0),
-            damage_deductions: [],
-            debt_deductions: 0,
+            damage_deductions: (ch.incidental_costs || []).map((ic: any) => ({ item: ic.name, amount: Number(ic.amount) || 0 })),
+            debt_deductions: Number(ch.debt_amount) || 0,
             status: ch.status === 'pending' ? 'pending' : 'calculated',
             created_at: ch.request_date || new Date().toISOString(),
             type: 'checkout' as const,
@@ -108,7 +110,28 @@ export default function AccountantRefundsPage() {
           };
         });
 
-        setRefunds([...mappedCheckouts, ...mappedReconciliations]);
+        // Ung vien hoan coc khi chua ky HD (hoan 80%) -> tab "cancellation"
+        const mappedCancellations = (cancellationRefunds || []).map((c: any) => ({
+          id: c.id,
+          checkout_id: '',
+          contract_id: '',
+          customer_id: '',
+          customer_name: c.customer_name || 'Khách hàng',
+          room_id: c.room_id || '',
+          room_name: c.room_name || 'Phòng',
+          checkout_date: c.request_date || '',
+          deposit_original: Number(c.deposit_amount) || 0,
+          damage_deductions: [],
+          debt_deductions: 0,
+          status: 'pending' as const,
+          created_at: c.request_date || new Date().toISOString(),
+          type: 'cancellation' as const,
+          cancellation_reason: c.cancellation_reason || 'user_cancelled',
+          refund_amount: 0,
+          total_deductions: 0
+        }));
+
+        setRefunds([...mappedCheckouts, ...mappedReconciliations, ...mappedCancellations]);
       } catch (err) {
         console.warn('[AccountantRefunds] Failed to fetch live data:', err);
         setRefunds([]);
@@ -419,16 +442,18 @@ export default function AccountantRefundsPage() {
                 {/* Residency / Refund Rate Selector (UC Step 6) */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-[#5a462d]">Tỷ lệ hoàn cọc cơ bản</label>
-                  <select
-                    value={residencyRate}
-                    onChange={(e) => { setResidencyRate(parseInt(e.target.value)); setIsCalculated(false); }}
-                    className="w-full bg-white border border-[#d1c4b9] rounded py-1.5 px-3 text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                  >
-                    <option value={100}>Hết hạn hợp đồng (Hoàn 100%)</option>
-                    <option value={70}>Trả trước hạn, ở trên 6 tháng (Hoàn 70%)</option>
-                    <option value={50}>Trả trước hạn, ở dưới 6 tháng (Hoàn 50%)</option>
-                    <option value={80}>Chưa ký hợp đồng / Hủy thuê (Hoàn 80%)</option>
-                  </select>
+                  <CustomSelect
+                    value={String(residencyRate)}
+                    onChange={(v) => { setResidencyRate(parseInt(v)); setIsCalculated(false); }}
+                    theme="accountant"
+                    triggerClassName="py-1.5 text-xs"
+                    options={[
+                      { value: '100', label: 'Hết hạn hợp đồng (Hoàn 100%)' },
+                      { value: '70', label: 'Trả trước hạn, ở trên 6 tháng (Hoàn 70%)' },
+                      { value: '50', label: 'Trả trước hạn, ở dưới 6 tháng (Hoàn 50%)' },
+                      { value: '80', label: 'Chưa ký hợp đồng / Hủy thuê (Hoàn 80%)' },
+                    ]}
+                  />
                 </div>
 
                 {/* Cancellation Info Badge */}

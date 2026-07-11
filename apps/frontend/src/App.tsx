@@ -430,7 +430,7 @@ function DashboardLayout() {
             {/* Branch display for Managers/Sales */}
             <div className="hidden sm:flex items-center gap-2 text-sm font-label-md text-[#4e453c] bg-[#faf2ec] px-4 py-2 rounded-24 border border-[#d1c4b9]">
               <Building className="w-4 h-4 text-[#6f583c]" />
-              <span>{user.role === 'customer' ? 'Khu vực thuê: TP.HCM' : 'Chi nhánh làm việc: Quận 1'}</span>
+              <span>{user.role === 'customer' ? 'Khu vực thuê: TP.HCM' : `Chi nhánh làm việc: ${user.branch_name || 'Tất cả'}`}</span>
             </div>
           </div>
           <div className="flex items-center gap-5">

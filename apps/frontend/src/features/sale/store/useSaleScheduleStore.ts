@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchSchedules, updateScheduleApi } from '../services/sale.service';
+import { fetchSchedules, updateScheduleApi, createScheduleApi, rescheduleScheduleApi } from '../services/sale.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ export interface TimelineEvent {
 
 export interface SaleSchedule {
   id: string;           // e.g. "LXM-001"
+  registrationId: string;
   customerId: string;
   customerName: string;
   roomId: string;
@@ -41,6 +42,7 @@ export interface SaleSchedule {
 export interface CreateSchedulePayload {
   customerName: string;
   customerId?: string;
+  registrationId?: string;   // id đơn đăng ký thuê (bắt buộc để tạo lịch thật)
   roomId: string;
   roomName: string;
   branchId: string;
@@ -83,10 +85,10 @@ interface SaleScheduleStore {
 
   // Actions
   loadSchedules: () => Promise<void>;
-  createSchedule: (payload: CreateSchedulePayload, createdBy: string) => void;
+  createSchedule: (payload: CreateSchedulePayload, createdBy: string) => Promise<void>;
   rescheduleAppointment: (payload: ReschedulePayload) => Promise<void>;
-  cancelSchedule: (id: string) => void;
-  completeSchedule: (id: string) => void;
+  cancelSchedule: (id: string) => Promise<void>;
+  completeSchedule: (id: string) => Promise<void>;
   setSelectedSchedule: (id: string | null) => void;
   setFilter: (key: keyof FilterState, value: string | null) => void;
   resetFilters: () => void;
@@ -190,11 +192,6 @@ const buildTimeline = (
   return timeline;
 };
 
-const makeId = () => {
-  const num = Math.floor(8000 + Math.random() * 1999);
-  return `BK-${num}`;
-};
-
 // ─── Map dữ liệu API (viewing_schedules enriched) → SaleSchedule của UI ──────────
 // Lưu ý lệch schema: DB không có cột `status`/`end_time`; `result` là text tự do.
 //  - status suy giản: scheduled_time ở quá khứ → 'completed', tương lai → 'confirmed'.
@@ -209,10 +206,18 @@ const mapApiSchedule = (s: any): SaleSchedule => {
   const startTime = `${pad2(base.getHours())}:${pad2(base.getMinutes())}`;
   const end = new Date(base.getTime() + 3600000);
   const endTime = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
-  const status: ScheduleStatus = base.getTime() < Date.now() ? 'completed' : 'confirmed';
+  const status: ScheduleStatus =
+    s.result === 'completed'
+      ? 'completed'
+      : s.result === 'cancelled'
+        ? 'cancelled'
+        : s.result === 'confirmed'
+          ? 'confirmed'
+          : 'pending';
 
   const reg = s.rental_registrations || {};
   const kh = reg.customers || {};
+  const khProfile = kh.profiles || {};
   const room = s.rooms || {};
   const branch = room.branches || {};
   const createdBy = s.employees?.full_name || 'Nhân viên Sale';
@@ -220,8 +225,9 @@ const mapApiSchedule = (s: any): SaleSchedule => {
 
   return {
     id: s.id,
+    registrationId: s.registration_id || reg.id || '',
     customerId: reg.cccd || '',
-    customerName: kh.full_name || 'Khách hàng',
+    customerName: khProfile.full_name || 'Khách hàng',
     roomId: s.room_id || room.id || '',
     roomName: room.name || s.room_id || '',
     branchId: room.branch_id || branch.id || '',
@@ -305,105 +311,53 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     }
   },
 
-  // Tạo lịch hiện vẫn ở chế độ demo (local) — DB cần registration_id + room_id thật,
-  // modal tạo lịch đang dùng dữ liệu mock → chờ rework để gọi POST /sale/schedules.
-  createSchedule: (payload, createdBy) => {
-    const newSchedule: SaleSchedule = {
-      id: makeId(),
-      customerId: payload.customerId || `c-new-${Date.now()}`,
-      customerName: payload.customerName,
-      roomId: payload.roomId,
-      roomName: payload.roomName,
-      branchId: payload.branchId,
-      branchName: payload.branchName,
-      viewDate: payload.viewDate,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
-      status: 'pending',
-      createdBy,
-      notes: payload.notes,
-      createdAt: new Date().toISOString(),
-      timeline: buildTimeline('pending', new Date().toISOString(), createdBy, payload.viewDate, payload.startTime),
-    };
-    set((state) => ({ schedules: [newSchedule, ...state.schedules] }));
+  // Tạo lịch xem phòng THẬT: gọi POST /api/viewing-schedules rồi tải lại danh sách từ server.
+  // Backend cần registration_id + room_id + scheduled_time (ISO).
+  createSchedule: async (payload) => {
+    if (!payload.registrationId || !payload.roomId) {
+      throw new Error('Thiếu phiếu đăng ký hoặc phòng để tạo lịch hẹn.');
+    }
+    const iso = new Date(`${payload.viewDate}T${payload.startTime}:00`).toISOString();
+    await createScheduleApi({
+      registration_id: payload.registrationId,
+      room_id: payload.roomId,
+      scheduled_time: iso,
+      note: payload.notes,
+    });
+    await get().loadSchedules();
   },
 
-  // Dời lịch: ghi thật scheduled_time + note (lý do) lên backend, rồi cập nhật local.
+  // Dời lịch: ghi thật scheduled_time lên backend rồi tải lại từ server.
   rescheduleAppointment: async (payload) => {
     const iso = new Date(`${payload.newDate}T${payload.newStartTime}:00`).toISOString();
     try {
-      await updateScheduleApi(payload.id, {
-        scheduled_time: iso,
+      await rescheduleScheduleApi(payload.id, {
+        newScheduledTime: iso,
         note: `Dời lịch: ${payload.reason}`,
       });
     } catch (err: any) {
       alert(err?.message || 'Lỗi khi dời lịch trên hệ thống');
       return;
     }
-    set((state) => ({
-      schedules: state.schedules.map((s) => {
-        if (s.id !== payload.id) return s;
-        const updatedTimeline = [
-          ...s.timeline,
-          {
-            id: `tl-reschedule-${Date.now()}`,
-            label: 'Dời lịch',
-            description: `Lý do: ${payload.reason}`,
-            timestamp: new Date().toLocaleString('vi-VN'),
-            eventStatus: 'active' as const,
-          },
-        ];
-        return {
-          ...s,
-          viewDate: payload.newDate,
-          startTime: payload.newStartTime,
-          endTime: payload.newEndTime,
-          status: 'rescheduled' as ScheduleStatus,
-          rescheduleReason: payload.reason,
-          timeline: updatedTimeline,
-        };
-      }),
-    }));
+    await get().loadSchedules();
   },
 
-  // Hủy hiện ở chế độ demo (local). DB không có cột status để lưu trạng thái hủy.
-  cancelSchedule: (id) => {
-    set((state) => ({
-      schedules: state.schedules.map((s) => {
-        if (s.id !== id) return s;
-        const updatedTimeline = [
-          ...s.timeline,
-          {
-            id: `tl-cancel-${Date.now()}`,
-            label: 'Đã hủy',
-            description: 'Lịch hẹn bị hủy bởi nhân viên sale',
-            timestamp: new Date().toLocaleString('vi-VN'),
-            eventStatus: 'active' as const,
-          },
-        ];
-        return { ...s, status: 'cancelled' as ScheduleStatus, timeline: updatedTimeline };
-      }),
-    }));
+  // Hủy lịch: lưu vào viewing_schedules.result = 'cancelled'.
+  cancelSchedule: async (id) => {
+    await updateScheduleApi(id, {
+      result: 'cancelled',
+      note: 'Nhân viên sale hủy lịch hẹn',
+    });
+    await get().loadSchedules();
   },
 
-  // Hoàn thành hiện ở chế độ demo (local). DB không có cột status để lưu.
-  completeSchedule: (id) => {
-    set((state) => ({
-      schedules: state.schedules.map((s) => {
-        if (s.id !== id) return s;
-        const updatedTimeline = [
-          ...s.timeline,
-          {
-            id: `tl-complete-${Date.now()}`,
-            label: 'Hoàn thành',
-            description: 'Lịch xem phòng kết thúc thành công',
-            timestamp: new Date().toLocaleString('vi-VN'),
-            eventStatus: 'done' as const,
-          },
-        ];
-        return { ...s, status: 'completed' as ScheduleStatus, timeline: updatedTimeline };
-      }),
-    }));
+  // Hoàn thành lịch: lưu vào viewing_schedules.result = 'completed'.
+  completeSchedule: async (id) => {
+    await updateScheduleApi(id, {
+      result: 'completed',
+      note: 'Nhân viên sale ghi nhận hoàn thành lịch xem phòng',
+    });
+    await get().loadSchedules();
   },
 
   setSelectedSchedule: (id) => set({ selectedScheduleId: id }),

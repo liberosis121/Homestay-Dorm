@@ -22,24 +22,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-/**
- * 🔗 PUT /api/staff/customers/:id/note
- * 📝 Cập nhật ghi chú quan trọng cho hồ sơ khách hàng.
- */
-router.put('/:id/note', async (req, res) => {
-  try {
-    const customerId = req.params.id;
-    const { note } = req.body;
-
-    if (note === undefined) {
-      return sendError(res, null, 'Ghi chú (note) là bắt buộc.', 400);
-    }
-
-    const data = await customerLookupService.updateNote(customerId, note);
-    return sendSuccess(res, data, 'Cập nhật ghi chú hồ sơ thành công!');
-  } catch (err: any) {
-    return sendError(res, err, err.message || 'Lỗi khi cập nhật ghi chú.');
-  }
-});
-
 export default router;

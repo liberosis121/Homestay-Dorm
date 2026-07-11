@@ -155,8 +155,8 @@ export const GroupRegistrationPage: React.FC = () => {
     try {
       const preferredArea = roomDetail.branches?.name || 'Chi nhánh mặc định';
       const preferredRoomType = roomDetail.room_type || 'Dorm';
-      const preferredPrice = `${(roomDetail.price || 0).toLocaleString('vi-VN')} VNĐ/tháng`;
-      
+      const preferredPrice = Number(roomDetail.price) || 0; // cột preferred_price là numeric (VND)
+
       await createLeaseRegistrationApi({
         occupants_count: draftData.members.length,
         preferred_area: preferredArea,

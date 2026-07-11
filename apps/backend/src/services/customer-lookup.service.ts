@@ -47,6 +47,9 @@ export const customerLookupService = {
               branches (
                 name
               )
+            ),
+            employees (
+              full_name
             )
           `)
           .in('registration_id', registrationIds)
@@ -135,21 +138,21 @@ export const customerLookupService = {
       // Dinh dang danh sach de hien thi tren tab hoat dong
       const formattedRegistrations = regList.map(r => ({
         id: r.id,
-        roomType: r.preferred_room_type || 'Dorm',
+        roomType: r.preferred_room_type || '',
         date: r.created_at ? new Date(r.created_at).toLocaleDateString('vi-VN') : '',
         status: r.status === 'completed' ? 'completed' : r.status === 'cancelled' ? 'cancelled' : 'pending'
       }));
 
-      const formattedViewings = viewList.map(v => ({
-        roomName: v.rooms?.name || 'Phòng mẫu',
-        branch: v.rooms?.branches?.name || 'Chi nhánh',
+      const accurateFormattedViewings = viewList.map(v => ({
+        roomName: v.rooms?.name || '',
+        branch: v.rooms?.branches?.name || '',
         date: v.scheduled_time ? new Date(v.scheduled_time).toLocaleDateString('vi-VN') : '',
-        staffName: 'Nhân viên Sale',
+        staffName: v.employees?.full_name || '—',
         status: v.result === 'completed' ? 'viewed' : v.result === 'cancelled' ? 'cancelled' : 'confirmed'
       }));
 
       const formattedDeposits = depList.map(d => ({
-        content: `Cọc giữ chỗ phòng ${d.rooms?.name || ''}`,
+        content: `Cọc giữ chỗ ${d.rooms?.name || ''}`,
         date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '',
         amount: d.deposit_amount ? `${d.deposit_amount.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ',
         status: d.status === 'paid' ? 'approved' : d.status === 'cancelled' ? 'refunded' : 'pending'
@@ -173,9 +176,9 @@ export const customerLookupService = {
           signDate: ct.created_date ? new Date(ct.created_date).toLocaleDateString('vi-VN') : '',
           status: contractStatus,
           rawStatus: ct.status || 'pending',
-          roomName: room.name || dep?.room_id || 'Chưa xác định',
-          roomType: room.room_type || 'Chưa xác định',
-          branchName: room.branches?.name || 'Chưa xác định',
+          roomName: room.name || dep?.room_id || '',
+          roomType: room.room_type || '',
+          branchName: room.branches?.name || '',
           rentPrice: Number(ct.rent_price || 0),
           depositAmount: Number(dep?.deposit_amount || 0),
           depositId: ct.deposit_id || '',
@@ -190,40 +193,30 @@ export const customerLookupService = {
       return {
         id: c.id || c.cccd,
         code: c.id || c.cccd,
-        fullName: c.full_name || p.full_name || 'Khách hàng',
-        full_name: c.full_name || p.full_name || 'Khách hàng',
+        fullName: c.full_name || p.full_name || '',
+        full_name: c.full_name || p.full_name || '',
         email: c.email || p.email || '',
         phone: c.phone || p.phone || '',
         avatar: p.avatar_url || '',
         status: conList.some(ct => ct.status === 'active') ? 'active' : (conList.length > 0 ? 'inactive' : 'new'),
         tier: conList.some(ct => ct.status === 'active') ? 'Loyal' : 'New',
-        joinDate: c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '01/01/2026',
+        joinDate: c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '',
         created_at: c.created_at,
         personalInfo: {
           cccd: c.cccd || '',
           phone: c.phone || p.phone || '',
           email: c.email || p.email || '',
           birthDate: c.dob ? new Date(c.dob).toLocaleDateString('vi-VN') : '',
-          nationality: c.nationality || 'Việt Nam',
-          job: 'Tự do',
+          nationality: c.nationality || '',
+          job: '',
           address: c.address || ''
         },
         registrations: formattedRegistrations,
-        viewings: formattedViewings,
+        viewings: accurateFormattedViewings,
         deposits: formattedDeposits,
         contracts: formattedContracts,
-        recentActivities,
-        importantNote: 'Không có ghi chú đặc biệt'
+        recentActivities
       };
     });
-  },
-
-  /**
-   * Cap nhat ghi chu cho khach hang.
-   */
-  updateNote: async (customerId: string, note: string) => {
-    // Do bang khach_hang khong co cot note thuc te trong DB, ta tra ve mo phong thanh cong de tranh loi runtime
-    console.log(`[CustomerLookupService] Cap nhat ghi chu cho khach hang (CCCD=${customerId}): ${note}`);
-    return { cccd: customerId, note };
   }
 };

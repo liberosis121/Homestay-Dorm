@@ -61,7 +61,12 @@ router.get('/contracts/:id', async (req, res) => {
 
 router.post('/contracts', async (req, res) => {
   try {
-    const data = await managerContractService.createContract(req.body);
+    // Lấy staff_id từ người đăng nhập (profiles.id === employees.id) nếu client không gửi,
+    // thay cho id mock 'e001' cũ vốn không tồn tại trong bảng employees.
+    const data = await managerContractService.createContract({
+      ...req.body,
+      staff_id: req.body.staff_id || req.user?.id,
+    });
     sendSuccess(res, data, 'Created contract successfully');
   } catch (err) {
     sendError(res, err);

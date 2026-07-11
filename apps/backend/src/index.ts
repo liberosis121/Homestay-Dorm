@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import apiRouter from './routes';
+import { customerDepositService } from './services/customer-deposit.service';
 
 dotenv.config();
 
@@ -32,4 +33,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(PORT, () => {
   console.log(`[Server]: Run successfully on port ${PORT}`);
+
+  // Chạy quét các phiếu cọc quá hạn tự động
+  setInterval(() => {
+    customerDepositService.autoCancelExpiredDeposits()
+      .catch(err => console.error('[DepositAutoCancel Error]:', err));
+  }, 5 * 60 * 1000); // 5 phút một lần
+
+  // Chạy quét ngay lập tức khi khởi động server
+  customerDepositService.autoCancelExpiredDeposits()
+    .catch(err => console.error('[Startup DepositAutoCancel Error]:', err));
 });

@@ -9,6 +9,7 @@ export interface IncidentalCostDto {
   status: string;
   recorded_date: string;
   recorded_by: string;
+  invoice_id?: string | null;
 }
 
 export const incidentalCostRepo = {
@@ -56,5 +57,13 @@ export const incidentalCostRepo = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  remove: async (id: string) => {
+    const { error } = await supabase
+      .from('incidental_costs')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   }
 };
