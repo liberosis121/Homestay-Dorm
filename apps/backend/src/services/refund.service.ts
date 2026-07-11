@@ -65,11 +65,17 @@ export const refundService = {
     // 3. Idempotency: chua tung lap hoan coc cho phieu nay
     const { data: existingRefund } = await supabase
       .from('invoices')
-      .select('id')
+      .select('id, note')
       .eq('deposit_id', data.depositRequestId)
-      .eq('invoice_type', 'refund')
-      .limit(1);
-    if (existingRefund && existingRefund.length > 0) {
+      .eq('invoice_type', 'refund');
+    const hasBlockingRefund = (existingRefund || []).some((inv: any) => {
+      try {
+        return JSON.parse(inv.note || '{}')?.source !== 'group_residency_partial';
+      } catch {
+        return true;
+      }
+    });
+    if (hasBlockingRefund) {
       const dup: any = new Error(`Phieu dat coc ${data.depositRequestId} da duoc lap hoan coc.`);
       dup.status = 409;
       throw dup;
@@ -88,7 +94,14 @@ export const refundService = {
         deposit_id: data.depositRequestId,
         contract_id: null,
         reconciliation_id: null,
-        staff_id: data.staffId
+        staff_id: data.staffId,
+        note: JSON.stringify({
+          source: 'pre_contract_cancellation',
+          original_deposit: data.originalDeposit,
+          refund_rate: data.refundRate,
+          total_deductions: data.totalDeductions,
+          note: data.note || ''
+        })
       })
       .select()
       .single();

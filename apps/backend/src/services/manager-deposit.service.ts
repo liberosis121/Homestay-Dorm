@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { calculateCurrentDepositMonthlyRent } from '../utils/group-refund';
 
 export const managerDepositService = {
   getDeposits: async (filters?: { status?: string; search?: string }, managerId?: string) => {
@@ -92,6 +93,13 @@ export const managerDepositService = {
           ? ((bed as any).name ? [(bed as any).name] : [])
           : groupBedNames;
         const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
+        const currentBedPrices = dep.bed_id
+          ? [Number((bed as any).price) || 0]
+          : groupBedIds.map((id) => Number((beds?.find((b) => b.id === id) as any)?.price) || 0);
+        const monthlyRent = calculateCurrentDepositMonthlyRent({
+          bedPrices: currentBedPrices,
+          roomPrice: Number((room as any).price) || 0
+        });
 
         // Thanh vien nhom (tu rental_registration_members → customers da fetch).
         const regMembers = membersByReg[dep.registration_id] || [];
@@ -132,6 +140,7 @@ export const managerDepositService = {
           tenants,
           residency_approved: residencyApproved,
           amount: Number(dep.deposit_amount) || 0,
+          monthly_rent: monthlyRent,
           deposit_date: dep.deposit_time || dep.created_at,
           bill_image_url: (invoice as any).evidence_url || '',
           bank_name: (invoice as any).payment_method === 'transfer' ? 'Chuyển khoản' : ((invoice as any).payment_method || 'Tiền mặt'),

@@ -1,6 +1,7 @@
 import { residencyInfoRepo, ResidencyInfoDto } from '../repositories/residency-info.repo';
 import { registrationMemberRepo } from '../repositories/registration-member.repo';
 import { getCustomerByCccd } from '../repositories/profile.repo';
+import { calculateRemovedGroupDepositRefund } from '../utils/group-refund';
 import { supabase } from '../utils/supabase';
 
 /**
@@ -304,7 +305,7 @@ export const residencyService = {
   finalizeGroupResidency: async (depositId: string) => {
     const { data: dep } = await supabase
       .from('deposit_requests')
-      .select('id, registration_id, bed_id')
+      .select('id, registration_id, bed_id, deposit_amount, occupants_count, staff_id')
       .eq('id', depositId)
       .maybeSingle();
     if (!dep) throw new Error('Không tìm thấy phiếu cọc.');
@@ -329,27 +330,101 @@ export const residencyService = {
     if (rejectedUserIds.length === 0) return { outcome: 'all_approved' };
     if (rejectedUserIds.length === userIds.length) return { outcome: 'all_rejected' };
 
-    // 1. Loai thanh vien rot khoi nhom.
-    await supabase.from('rental_registration_members')
-      .delete().eq('registration_id', dep.registration_id).in('customer_user_id', rejectedUserIds);
-
-    // 2. Nha bot so giuong = so nguoi rot (chi ap dung coc nhom co deposit_beds).
     const { data: depBeds } = await supabase
       .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
     const bedIds = (depBeds || []).map((b: any) => b.bed_id);
     const toRelease = bedIds.slice(0, rejectedUserIds.length);
-    if (toRelease.length > 0) {
-      await supabase.from('deposit_beds').delete().eq('deposit_id', depositId).in('bed_id', toRelease);
-      await supabase.from('beds').update({ status: 'available' }).in('id', toRelease);
+
+    // Tinh phan coc chenh TH3 truoc khi xoa dong noi deposit_beds.
+    const { data: releaseBeds } = toRelease.length > 0
+      ? await supabase.from('beds').select('id, price').in('id', toRelease)
+      : { data: [] as any[] };
+    const removedBedPrices = toRelease.map((bedId: string) => {
+      const bed = (releaseBeds || []).find((b: any) => b.id === bedId);
+      return Number(bed?.price) || 0;
+    });
+    const remainingCount = userIds.length - rejectedUserIds.length;
+    const refundAmount = calculateRemovedGroupDepositRefund({
+      removedBedPrices,
+      originalDeposit: Number(dep.deposit_amount) || 0,
+      originalOccupants: Number(dep.occupants_count) || userIds.length,
+      removedCount: rejectedUserIds.length
+    });
+
+    const { data: existingRefunds } = await supabase
+      .from('invoices')
+      .select('id, note')
+      .eq('deposit_id', depositId)
+      .eq('invoice_type', 'refund');
+    const existingPartialRefund = (existingRefunds || []).find((inv: any) => {
+      try {
+        return JSON.parse(inv.note || '{}')?.source === 'group_residency_partial';
+      } catch {
+        return false;
+      }
+    });
+
+    let createdRefundInvoiceId: string | null = null;
+    if (refundAmount > 0 && !existingPartialRefund) {
+      const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
+      const { error: refundError } = await supabase
+        .from('invoices')
+        .insert({
+          id: invoiceId,
+          amount: refundAmount,
+          status: 'pending',
+          invoice_type: 'refund',
+          payment_method: 'transfer',
+          deposit_id: depositId,
+          contract_id: null,
+          reconciliation_id: null,
+          staff_id: dep.staff_id || null,
+          note: JSON.stringify({
+            source: 'group_residency_partial',
+            removed_count: rejectedUserIds.length,
+            remaining_count: remainingCount,
+            released_bed_ids: toRelease,
+            reason: 'Hoan chenhlech coc do loai thanh vien khong dat luu tru'
+          })
+        });
+      if (refundError) {
+        throw new Error(`[ResidencyService] Loi khi tao phieu hoan coc TH3: ${refundError.message}`);
+      }
+      createdRefundInvoiceId = invoiceId;
     }
 
-    // 3. Cap nhat so nguoi con lai tren phieu coc (giu nguyen deposit_amount da thanh toan —
-    //    phan chenh do loai nguoi se do Ke toan xu ly hoan sau, ngoai pham vi demo nay).
-    const remainingCount = userIds.length - rejectedUserIds.length;
-    await supabase.from('deposit_requests')
-      .update({ occupants_count: remainingCount }).eq('id', depositId);
+    try {
+      const { error: memberDeleteError } = await supabase.from('rental_registration_members')
+        .delete().eq('registration_id', dep.registration_id).in('customer_user_id', rejectedUserIds);
+      if (memberDeleteError) throw memberDeleteError;
 
-    return { outcome: 'partial', removed: rejectedUserIds.length, remaining: remainingCount };
+      if (toRelease.length > 0) {
+        const { error: depositBedDeleteError } = await supabase
+          .from('deposit_beds').delete().eq('deposit_id', depositId).in('bed_id', toRelease);
+        if (depositBedDeleteError) throw depositBedDeleteError;
+
+        const { error: bedUpdateError } = await supabase
+          .from('beds').update({ status: 'available' }).in('id', toRelease);
+        if (bedUpdateError) throw bedUpdateError;
+      }
+
+      const { error: depositUpdateError } = await supabase.from('deposit_requests')
+        .update({ occupants_count: remainingCount }).eq('id', depositId);
+      if (depositUpdateError) throw depositUpdateError;
+
+      return {
+        outcome: 'partial',
+        removed: rejectedUserIds.length,
+        remaining: remainingCount,
+        refund_amount: refundAmount,
+        refund_invoice_id: existingPartialRefund?.id || createdRefundInvoiceId
+      };
+    } catch (err) {
+      if (createdRefundInvoiceId) {
+        await supabase.from('invoices').delete().eq('id', createdRefundInvoiceId);
+      }
+      throw err;
+    }
   },
 
   createResidencyCheck: async (info: ResidencyInfoDto) => {
