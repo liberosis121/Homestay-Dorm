@@ -170,7 +170,7 @@ export default function ManagerHandoversPage() {
           category: asset.category,
           serial_number: asset.serial_number,
           current_location: asset.location,
-          location_type: asset.location && asset.location.toLowerCase().includes('phòng') ? 'room' : 'warehouse',
+          location_type: asset.status === 'in_stock' ? 'warehouse' : 'room',
           status: asset.status,
           purchase_date: asset.purchase_date,
           purchase_price: Number(asset.value) || 0,
