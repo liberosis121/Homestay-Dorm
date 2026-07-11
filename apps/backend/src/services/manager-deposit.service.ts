@@ -125,6 +125,44 @@ export const managerDepositService = {
         .update({ status: 'rejected' })
         .eq('deposit_id', id)
         .eq('invoice_type', 'deposit');
+
+      // Release reserved bed/room resources
+      const { data: dep } = await supabase
+        .from('deposit_requests')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (dep) {
+        if (dep.bed_id) {
+          // Release bed
+          await supabase
+            .from('beds')
+            .update({ status: 'available' })
+            .eq('id', dep.bed_id);
+          
+          // Re-evaluate room status: if room has any available beds, set room status to 'available'
+          if (dep.room_id) {
+            const { data: roomBeds } = await supabase
+              .from('beds')
+              .select('status')
+              .eq('room_id', dep.room_id);
+            const hasAvailableBed = (roomBeds || []).some(b => b.status === 'available');
+            if (hasAvailableBed) {
+              await supabase
+                .from('rooms')
+                .update({ status: 'available' })
+                .eq('id', dep.room_id);
+            }
+          }
+        } else if (dep.room_id) {
+          // Release room
+          await supabase
+            .from('rooms')
+            .update({ status: 'available' })
+            .eq('id', dep.room_id);
+        }
+      }
     }
 
     return updatedDeposit;

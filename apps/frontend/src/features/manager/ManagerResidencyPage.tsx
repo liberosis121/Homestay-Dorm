@@ -298,8 +298,9 @@ export default function ManagerResidencyPage() {
     if (!selectedGroup) return;
     try {
       const headers = await getAuthHeaders();
-      // 1. Update all members to approved status
+      // 1. Update all non-rejected members to approved status
       await Promise.all(selectedGroup.members.map(async (m) => {
+        if (m.status === 'rejected') return;
         return fetch(`${API_BASE}/residency/${m.id}/status`, {
           method: 'PATCH',
           headers,
