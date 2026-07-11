@@ -107,7 +107,7 @@ export default function RoomDetailPage() {
     setIsFullRoomSelected(isFullRoom);
   };
 
-  const handleBookingAction = (_type: 'interest') => {
+  const handleBookingAction = (type: 'interest' | 'group') => {
     if (!user) {
       navigate('/login');
       return;
@@ -117,6 +117,26 @@ export default function RoomDetailPage() {
       setNotification({
         type: 'warning',
         message: `Hiện bạn đang thuê ${user.renting_room_name}, lưu ý trả phòng theo hợp đồng trước khi thuê phòng mới.`
+      });
+      return;
+    }
+
+    // Đăng ký thuê theo nhóm: điều hướng sang luồng riêng, truyền số giường trống THỰC TẾ
+    // (tính từ danh sách beds) để trang nhóm chặn thêm thành viên vượt quá.
+    if (type === 'group') {
+      const availableBedsCount = beds.filter((b) => b.status === 'available').length;
+      const selectedBedsNames = beds
+        .filter((b) => selectedBeds.includes(b.id))
+        .map((b) => b.name);
+      navigate('/customer/register-group', {
+        state: {
+          roomId: room?.id,
+          roomName: room?.name,
+          capacity: room?.capacity,
+          availableBeds: availableBedsCount,
+          selectedBedsNames,
+          genderType: room?.gender_type,
+        },
       });
       return;
     }

@@ -1,4 +1,4 @@
-import { ClipboardList, Sparkles, AlertCircle } from 'lucide-react';
+import { ClipboardList, Sparkles, AlertCircle, Users } from 'lucide-react';
 
 interface Bed {
   id: string;
@@ -13,7 +13,7 @@ interface Props {
   selectedBeds: string[];
   beds: Bed[];
   isFullRoomSelected: boolean;
-  onAction: (type: 'interest') => void;
+  onAction: (type: 'interest' | 'group') => void;
   roomStatus: string;
 }
 
@@ -169,6 +169,19 @@ export default function BookingPanel({
         >
           <ClipboardList className="w-4 h-4" />
           Tôi quan tâm phòng này
+        </button>
+
+        <button
+          onClick={() => onAction('group')}
+          disabled={roomStatus === 'maintenance' || availableBeds === 0}
+          className={`w-full py-4 rounded-full font-label-md text-label-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] border-2 ${
+            roomStatus !== 'maintenance' && availableBeds > 0
+              ? 'border-primary text-primary hover:bg-primary/5 cursor-pointer'
+              : 'border-outline-variant text-on-surface-variant opacity-60 cursor-not-allowed'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Đăng ký thuê theo nhóm
         </button>
 
         <p className="text-xs text-on-surface-variant leading-relaxed text-center px-2">

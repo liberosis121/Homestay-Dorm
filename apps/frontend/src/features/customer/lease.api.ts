@@ -62,12 +62,12 @@ export const createLeaseRegistrationApi = async (
 export interface GroupMemberPayload {
   fullName: string;
   cccd: string;
-  email: string;
-  phone?: string;
+  phone: string;
 }
 
 export interface CreateGroupLeasePayload {
   members: GroupMemberPayload[];
+  room_id: string;               // Phòng đăng ký — backend đối chiếu số giường trống thực tế
   preferred_area: string;
   preferred_room_type: string;
   preferred_price: number;

@@ -15,10 +15,15 @@ export interface CreateDepositPayload {
   bed_id: string;           // ID giường muốn đặt cọc
 }
 
+export interface CreateGroupDepositPayload {
+  registration_id: string;  // ID đơn đăng ký thuê nhóm
+  bed_ids: string[];        // Danh sách giường (N giường = số thành viên) giữ chung 1 phiếu
+}
+
 export interface DepositRequest {
   id: string;
   registration_id: string;
-  bed_id: string;
+  bed_id: string | null;    // null nếu là cọc nhóm (danh sách giường ở bed_names)
   room_id: string;
   room_name: string;
   room_image_url: string;
@@ -29,6 +34,10 @@ export interface DepositRequest {
   expected_move_in_date: string;
   status: 'pending_sale_confirmation' | 'pending_payment' | 'paid' | 'rejected' | 'cancelled' | 'invoice_created';
   created_at: string;
+  // Nhóm: tên các giường của phiếu; cờ đại diện + quyền thanh toán.
+  bed_names?: string[];
+  is_representative?: boolean;
+  can_pay?: boolean;
 }
 
 /**
@@ -69,6 +78,10 @@ const mapDepositResponse = (d: any): DepositRequest => {
     expected_move_in_date,
     status,
     created_at: d.created_at,
+    bed_names: Array.isArray(d.bed_names) ? d.bed_names : undefined,
+    is_representative: d.is_representative,
+    // Mặc định true cho dữ liệu cũ/cọc lẻ (không có cờ) để không chặn nhầm.
+    can_pay: d.can_pay !== undefined ? d.can_pay : true,
   };
 };
 
@@ -79,6 +92,18 @@ const mapDepositResponse = (d: any): DepositRequest => {
 export const createDepositApi = async (payload: CreateDepositPayload): Promise<DepositRequest> => {
   const response = await apiClient.post<{ success: boolean; data: any }>(
     '/deposit-requests',
+    payload
+  );
+  return mapDepositResponse(response.data.data);
+};
+
+/**
+ * Người đại diện nhóm gửi yêu cầu đặt cọc giữ chỗ NHIỀU giường bằng 1 phiếu.
+ * Gọi: POST /api/deposit-requests/group
+ */
+export const createGroupDepositApi = async (payload: CreateGroupDepositPayload): Promise<DepositRequest> => {
+  const response = await apiClient.post<{ success: boolean; data: any }>(
+    '/deposit-requests/group',
     payload
   );
   return mapDepositResponse(response.data.data);
