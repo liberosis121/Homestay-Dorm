@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Send, Sparkles, UserRound } from 'lucide-react';
+import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Send, Sparkles, UserRound, XCircle } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import { useAuthStore } from '../../stores/authStore';
-import { createLeaseRegistrationApi } from './lease.api';
+import { cancelLeaseRegistrationApi, createLeaseRegistrationApi, getMyLeaseRegistrationsApi, type LeaseRegistration } from './lease.api';
 import { getBranchesApi } from '../rooms/rooms.api';
 import { fetchProfile } from './services/profile.service';
 
@@ -57,6 +57,19 @@ const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px
 const selectTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
 const datePickerTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 px-5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
 
+const BLOCKING_REGISTRATION_STATUSES = new Set(['pending_schedule', 'scheduled', 'deposited']);
+const REGISTRATION_STATUS_LABELS: Record<string, string> = {
+  pending_schedule: 'Chờ Sale xếp lịch',
+  scheduled: 'Đã có lịch xem',
+  deposited: 'Đã đặt cọc',
+};
+
+const findBlockingRegistration = (registrations: LeaseRegistration[]) => {
+  return registrations
+    .filter((registration) => BLOCKING_REGISTRATION_STATUSES.has(registration.status))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
+};
+
 export const RegisterLeasePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -68,6 +81,10 @@ export const RegisterLeasePage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [branches, setBranches] = useState<any[]>([]);
   const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
+  const [registrations, setRegistrations] = useState<LeaseRegistration[]>([]);
+  const [isCheckingRegistrations, setIsCheckingRegistrations] = useState(false);
+  const [isCancellingRegistration, setIsCancellingRegistration] = useState(false);
+  const [registrationActionMessage, setRegistrationActionMessage] = useState('');
 
   const [form, setForm] = useState({
     fullName: user?.full_name || '',
@@ -137,6 +154,17 @@ export const RegisterLeasePage: React.FC = () => {
     getBranchesApi()
       .then((data) => setBranches(data))
       .catch((err) => console.error('Lỗi khi tải chi nhánh:', err));
+    setIsCheckingRegistrations(true);
+    getMyLeaseRegistrationsApi()
+      .then((data) => setRegistrations(data))
+      .catch((err) => {
+        console.error('Lỗi khi tải phiếu đăng ký thuê:', err);
+        setErrors(prev => ({
+          ...prev,
+          submit: 'Không thể kiểm tra phiếu thuê hiện có. Vui lòng thử lại sau.',
+        }));
+      })
+      .finally(() => setIsCheckingRegistrations(false));
   }, [user, navigate, location]);
 
   const branchOptions = useMemo(() => {
@@ -154,6 +182,30 @@ export const RegisterLeasePage: React.FC = () => {
       price: interested.preferredBudget ? `${interested.preferredBudget.toLocaleString('vi-VN')}đ/tháng` : 'Giá đang cập nhật',
     };
   }, [interested, branchOptions]);
+
+  const blockingRegistration = useMemo(() => findBlockingRegistration(registrations), [registrations]);
+  const canCancelBlockingRegistration = blockingRegistration?.status === 'pending_schedule';
+
+  const handleCancelBlockingRegistration = async () => {
+    if (!blockingRegistration || !canCancelBlockingRegistration) return;
+
+    setIsCancellingRegistration(true);
+    setRegistrationActionMessage('');
+    try {
+      const updated = await cancelLeaseRegistrationApi(blockingRegistration.id);
+      setRegistrations(prev => prev.map(item => item.id === updated.id ? updated : item));
+      setErrors(prev => {
+        const { submit, ...rest } = prev;
+        return rest;
+      });
+      setRegistrationActionMessage('Đã hủy phiếu cũ. Bạn có thể gửi phiếu yêu cầu thuê mới.');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Không thể hủy phiếu cũ. Vui lòng thử lại hoặc liên hệ Sale.';
+      setErrors(prev => ({ ...prev, submit: msg }));
+    } finally {
+      setIsCancellingRegistration(false);
+    }
+  };
 
   const setField = (key: keyof typeof form, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -183,6 +235,15 @@ export const RegisterLeasePage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user || !validate()) return;
+
+    if (blockingRegistration) {
+      setErrors({
+        submit: canCancelBlockingRegistration
+          ? 'Bạn cần hủy phiếu cũ hoặc đặt lại lịch với Sale trước khi tạo phiếu mới.'
+          : 'Bạn đang có phiếu thuê đang xử lý. Vui lòng kiểm tra lịch xem phòng hoặc liên hệ Sale để được hỗ trợ.',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -326,6 +387,53 @@ export const RegisterLeasePage: React.FC = () => {
             </div>
           )}
 
+          {registrationActionMessage && (
+            <div className="mb-6 flex items-start gap-3 rounded-24 border border-primary/25 bg-primary/10 px-5 py-4 text-sm text-primary">
+              <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <span className="leading-6">{registrationActionMessage}</span>
+            </div>
+          )}
+
+          {blockingRegistration && (
+            <div className="mb-6 rounded-24 border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-[#5f4a1f]">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 shrink-0 mt-0.5 text-amber-700" />
+                  <div>
+                    <p className="font-bold text-[#4c3b18]">Bạn đang có phiếu yêu cầu thuê đang xử lý</p>
+                    <p className="mt-1 leading-6">
+                      Phiếu {blockingRegistration.id} đang ở trạng thái{' '}
+                      <span className="font-semibold">{REGISTRATION_STATUS_LABELS[blockingRegistration.status] || blockingRegistration.status}</span>.
+                      Nếu bạn vẫn còn nhu cầu với phiếu cũ, Sale có thể xếp lại lịch trên phiếu này.
+                      Nếu muốn gửi thông tin mới, hãy hủy phiếu cũ trước.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/customer/viewing-schedules')}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d7ded3] bg-white px-4 py-2.5 text-sm font-semibold text-[#4a6549] shadow-sm transition hover:bg-primary/5 cursor-pointer"
+                  >
+                    <CalendarClock className="w-4 h-4" />
+                    Đặt lại lịch với Sale
+                  </button>
+                  {canCancelBlockingRegistration && (
+                    <button
+                      type="button"
+                      onClick={handleCancelBlockingRegistration}
+                      disabled={isCancellingRegistration}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-error px-4 py-2.5 text-sm font-semibold text-on-error shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      {isCancellingRegistration ? 'Đang hủy phiếu...' : 'Hủy phiếu cũ để tạo phiếu mới'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormSection icon={<UserRound className="w-5 h-5" />} title="Thông tin liên hệ">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -457,8 +565,14 @@ export const RegisterLeasePage: React.FC = () => {
               <p className="text-xs text-on-surface-variant leading-relaxed max-w-xl">
                 Phiếu này sẽ được gửi đến nhân viên Sale để kiểm tra phòng/giường phù hợp trước khi lập lịch xem phòng.
               </p>
-              <button type="submit" disabled={isSubmitting} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-95 hover:-translate-y-[1px] hover:shadow-md active:translate-y-[1px] active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
-                {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu đăng ký'}
+              <button type="submit" disabled={isSubmitting || isCheckingRegistrations || !!blockingRegistration} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-95 hover:-translate-y-[1px] hover:shadow-md active:translate-y-[1px] active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
+                {isCheckingRegistrations
+                  ? 'Đang kiểm tra phiếu cũ...'
+                  : blockingRegistration
+                    ? 'Cần xử lý phiếu cũ trước'
+                    : isSubmitting
+                      ? 'Đang gửi...'
+                      : 'Gửi phiếu đăng ký'}
                 <Send className="w-4 h-4" />
               </button>
             </div>
