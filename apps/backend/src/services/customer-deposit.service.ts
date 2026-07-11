@@ -8,7 +8,7 @@ import { leaseRepo } from '../repositories/lease.repo';
 import { getCustomerByUserId, getStaffByUserId } from '../repositories/profile.repo';
 import { roomRepo } from '../repositories/room.repo';
 import { generateNextId } from '../utils/id-generator';
-import { REGISTRATION_STATUS, ID_PREFIX, DEPOSIT_STATUS, BED_STATUS, ROOM_STATUS, DEPOSIT_DEADLINE_DAYS } from '../types/constants';
+import { REGISTRATION_STATUS, ID_PREFIX, DEPOSIT_STATUS, BED_STATUS, ROOM_STATUS, DEPOSIT_PAYMENT_DEADLINE_HOURS } from '../types/constants';
 import { supabase } from '../utils/supabase';
 
 export const customerDepositService = {
@@ -90,7 +90,7 @@ export const customerDepositService = {
     const depositAmount = bed.price * 2 * occupantsCount;
 
     const paymentDeadline = new Date();
-    paymentDeadline.setHours(paymentDeadline.getHours() + 24);
+    paymentDeadline.setHours(paymentDeadline.getHours() + DEPOSIT_PAYMENT_DEADLINE_HOURS);
 
     // 6. Tu dong sinh ID duy nhat cho phieu dat coc (PDC-XXX)
     const nextId = await generateNextId(ID_PREFIX.DEPOSIT_REQUEST, 'deposit_requests');
@@ -221,7 +221,7 @@ export const customerDepositService = {
           staff_id
         )
       `)
-      .eq('status', DEPOSIT_STATUS.PENDING)
+      .eq('status', DEPOSIT_STATUS.INVOICE_CREATED)
       .lt('payment_deadline', nowStr);
 
     if (error) {

@@ -1,6 +1,8 @@
 import { contractRepo } from '../repositories/contract.repo';
 import { invoiceRepo, DbInvoice } from '../repositories/invoice.repo';
 import { supabase } from '../utils/supabase';
+import { customerDepositService } from './customer-deposit.service';
+import { DEPOSIT_STATUS } from '../types/constants';
 
 // Utility helpers
 function getMonthYearFromPeriod(periodStr: string | null): { month: number; year: number } {
@@ -218,6 +220,36 @@ export const invoiceService = {
 
     if (fErr) {
       console.error('[payInvoice] Error fetching invoice info:', fErr.message);
+    }
+
+    if (inv && inv.invoice_type === 'deposit' && inv.deposit_id) {
+      const { data: deposit, error: depErr } = await supabase
+        .from('deposit_requests')
+        .select('id, status, payment_deadline')
+        .eq('id', inv.deposit_id)
+        .maybeSingle();
+
+      if (depErr) {
+        throw new Error(`[payInvoice] Khong the kiem tra yeu cau dat coc: ${depErr.message}`);
+      }
+      if (!deposit) {
+        throw new Error('Yeu cau dat coc cua hoa don nay khong ton tai.');
+      }
+      if (deposit.status === DEPOSIT_STATUS.CANCELLED) {
+        throw new Error('Yeu cau dat coc nay da bi huy, khong the thanh toan.');
+      }
+      if (deposit.status === DEPOSIT_STATUS.PAID) {
+        throw new Error('Yeu cau dat coc nay da duoc thanh toan truoc do.');
+      }
+      if (deposit.status !== DEPOSIT_STATUS.INVOICE_CREATED) {
+        throw new Error('Yeu cau dat coc chua o trang thai cho thanh toan.');
+      }
+
+      const deadlineTime = deposit.payment_deadline ? new Date(deposit.payment_deadline).getTime() : NaN;
+      if (Number.isFinite(deadlineTime) && deadlineTime < Date.now()) {
+        await customerDepositService.autoCancelExpiredDeposits();
+        throw new Error('Yeu cau dat coc da qua han thanh toan 24 gio va da bi huy.');
+      }
     }
 
     // 2. Update invoice status to paid
