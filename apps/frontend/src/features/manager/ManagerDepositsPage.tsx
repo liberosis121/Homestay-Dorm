@@ -33,6 +33,7 @@ const STATUS_LABELS: Record<ManagerDeposit['status'], { label: string; bg: strin
 };
 
 const DEPOSIT_TYPE_CONFIG = {
+  group: { label: 'NhÃ³m giÆ°á»ng', icon: 'groups', bg: '#FAF2E8', text: '#5C4632' },
   room: { label: 'Cả phòng', icon: 'meeting_room', bg: '#FAF2E8', text: '#5C4632' },
   bed:  { label: 'Giường lẻ', icon: 'bed',          bg: '#EAF0E6', text: '#5F7D4E' },
 };
@@ -40,7 +41,7 @@ const DEPOSIT_TYPE_CONFIG = {
 const DEPOSIT_TYPE_FALLBACK = DEPOSIT_TYPE_CONFIG.room;
 
 const getTypeCfg = (dt?: string) =>
-  DEPOSIT_TYPE_CONFIG[dt as 'room' | 'bed'] ?? DEPOSIT_TYPE_FALLBACK;
+  DEPOSIT_TYPE_CONFIG[dt as keyof typeof DEPOSIT_TYPE_CONFIG] ?? DEPOSIT_TYPE_FALLBACK;
 
 export default function ManagerDepositsPage() {
   const [deposits, setDeposits]         = useState<ManagerDeposit[]>([]);

@@ -17,6 +17,7 @@ const STATUS_CFG: Record<ManagerContract['status'], { label: string; bg: string;
 };
 
 const DEPOSIT_TYPE_CONFIG = {
+  group: { label: 'NhÃ³m giÆ°á»ng', icon: 'groups', bg: T.primaryLight, text: T.primary },
   room: { label: 'Cả phòng', icon: 'meeting_room', bg: T.blueBg, text: T.blue },
   bed: { label: 'Giường lẻ', icon: 'bed', bg: T.sageBg, text: T.sage },
 };

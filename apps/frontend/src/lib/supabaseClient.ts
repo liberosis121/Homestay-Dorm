@@ -290,8 +290,11 @@ export interface ManagerDeposit {
   customer_phone: string;
   room_id: string;
   room_name: string;
-  deposit_type: 'room' | 'bed';  // Đặt cọc cả phòng hoặc giường lẻ
-  bed_name?: string;             // Tên giường (chỉ có khi deposit_type = 'bed')
+  deposit_type: 'room' | 'bed' | 'group';  // Đặt cọc cả phòng, giường lẻ hoặc nhóm giường
+  bed_name?: string;
+  bed_names?: string[];
+  occupants_count?: number;
+  monthly_rent?: number;
   amount: number;
   deposit_date: string;
   bill_image_url: string;
@@ -382,7 +385,7 @@ export interface ManagerContract {
   customer_address: string;
   room_id: string;
   room_name: string;
-  deposit_type: 'room' | 'bed';
+  deposit_type: 'room' | 'bed' | 'group';
   bed_name?: string;
   branch_name: string;
   rent_amount: number;

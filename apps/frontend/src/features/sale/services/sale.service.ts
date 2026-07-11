@@ -86,6 +86,7 @@ export interface EligibleDeposit {
   room_type: string;
   branch_name: string;
   room_monthly_rent: number;
+  monthly_rent?: number;
 }
 
 // Danh sách cọc đã thanh toán (paid) & CHƯA có hợp đồng → đủ điều kiện lập HĐ.
@@ -128,7 +129,7 @@ export const fetchEligibleDepositsApi = async (): Promise<EligibleDeposit[]> => 
         tenants: Array.isArray(d.tenants) ? d.tenants : [],
         room_type: room.room_type || '',
         branch_name: room.branches?.name || '',
-        room_monthly_rent: Number(room.price) || 0,
+        room_monthly_rent: Number(d.monthly_rent) || Number(room.price) || 0,
       };
     });
 };
