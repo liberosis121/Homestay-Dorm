@@ -76,7 +76,12 @@ export default function AccountantRefundsPage() {
             room_name: contract.rooms?.name || 'Phòng',
             checkout_date: ch.request_date || '',
             deposit_original: Number(contract.deposit_amount || contract.rent_price || 0),
-            damage_deductions: (ch.incidental_costs || []).map((ic: any) => ({ item: ic.name, amount: Number(ic.amount) || 0 })),
+            damage_deductions: (ch.incidental_costs || []).map((ic: any) => ({
+              item: ic.name,
+              amount: Number(ic.amount) || 0,
+              condition: ic.condition,
+              note: ic.note
+            })),
             debt_deductions: Number(ch.debt_amount) || 0,
             cleaning_fee: Number(ch.cleaning_fee) || 0,
             violation_penalty: Number(ch.violation_penalty) || 0,
@@ -92,6 +97,25 @@ export default function AccountantRefundsPage() {
           const checkout = rec.checkouts || {};
           const contract = checkout.contracts || {};
           const customer_name = contract.profiles?.full_name || 'Khách hàng';
+
+          const damage_deductions = (rec.deductions || [])
+            .filter((d: any) => d.reason !== 'Điện nước' && d.reason !== 'Phí vệ sinh' && d.reason !== 'Phạt vi phạm' && d.reason !== 'Khấu trừ')
+            .map((d: any) => ({
+              item: d.reason,
+              amount: Number(d.amount) || 0,
+              condition: 'Hỏng/Mất',
+              note: d.note || ''
+            }));
+
+          const debt_deductions = (rec.deductions || [])
+            .find((d: any) => d.reason === 'Điện nước' || d.reason?.toLowerCase().includes('điện nước'))?.amount || 0;
+
+          const cleaning_fee = (rec.deductions || [])
+            .find((d: any) => d.reason === 'Phí vệ sinh' || d.reason?.toLowerCase().includes('vệ sinh'))?.amount || 0;
+
+          const violation_penalty = (rec.deductions || [])
+            .find((d: any) => d.reason === 'Phạt vi phạm' || d.reason?.toLowerCase().includes('phạt'))?.amount || 0;
+
           return {
             id: rec.id,
             checkout_id: rec.checkout_id,
@@ -103,8 +127,10 @@ export default function AccountantRefundsPage() {
             room_name: contract.rooms?.name || 'Phòng',
             checkout_date: checkout.request_date || rec.reconciliation_date || '',
             deposit_original: Number(rec.original_deposit || contract.deposit_amount || contract.rent_price || 0),
-            damage_deductions: [],
-            debt_deductions: 0,
+            damage_deductions,
+            debt_deductions,
+            cleaning_fee,
+            violation_penalty,
             status: rec.status === 'paid' ? 'paid' : 'confirmed',
             created_at: rec.reconciliation_date || new Date().toISOString(),
             type: 'checkout' as const,
@@ -672,12 +698,14 @@ export default function AccountantRefundsPage() {
                         <span className="font-bold text-sm text-[#1b1c1c]">{item.item}</span>
                         <span className=" text-sm text-[#ba1a1a] font-semibold">{item.amount.toLocaleString('vi-VN')} đ</span>
                       </div>
-                      <p className="text-xs text-[#5e5f5d]">Biên bản kiểm tra phòng kỹ thuật lập lúc bàn giao trả phòng.</p>
-                      
-                      {/* Photo preview placeholder */}
-                      <div className="mt-2.5 bg-[#e4e2e1] border border-[#d1c4b9] rounded h-28 flex items-center justify-center text-xs text-[#5e5f5d] select-none font-bold uppercase tracking-wider">
-                        [Hình ảnh minh chứng hao mòn/hư hại]
-                      </div>
+                      <p className="text-xs text-[#5e5f5d] mb-1">
+                        <strong>Tình trạng lúc trả:</strong> {item.condition || 'Hỏng/Mất'}
+                      </p>
+                      {item.note && (
+                        <p className="text-xs text-[#8c6d50] bg-[#FAF2EC] p-2 rounded border border-[#e8dfd8] mt-1.5">
+                          <strong>Ghi chú hư hại:</strong> {item.note}
+                        </p>
+                      )}
                     </div>
                   ))
                 ) : (

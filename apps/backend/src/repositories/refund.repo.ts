@@ -136,7 +136,9 @@ export const refundRepo = {
       const damage_deductions = parsedNote?.damages ? parsedNote.damages.map((d: any, idx: number) => ({
         id: `damage-${idx}`,
         name: d.assetName,
-        amount: Number(d.compensation) || 0
+        amount: Number(d.compensation) || 0,
+        condition: d.condition || 'Hỏng/Mất',
+        note: d.note || ''
       })) : [];
 
       const utility_debt = parsedNote ? Number(parsedNote.utility_debt) : debtAmount;

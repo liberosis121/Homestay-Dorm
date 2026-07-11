@@ -250,7 +250,7 @@ export interface RefundRecord {
   room_name: string;
   checkout_date: string;
   deposit_original: number;
-  damage_deductions: { item: string; amount: number }[];
+  damage_deductions: { item: string; amount: number; condition?: string; note?: string }[];
   debt_deductions: number;
   total_deductions: number;
   refund_amount: number;
@@ -344,6 +344,7 @@ export interface AssetHandover {
   status: 'pending' | 'signed' | 'partial';
   created_at: string;
   note?: string;
+  type?: 'checkin' | 'checkout';
 }
 
 export interface ManagedAsset {
