@@ -238,6 +238,7 @@ export default function AdminRoomsPage() {
   const [editStatus, setEditStatus] = useState<RoomStatus>('available');
   const [editErrors, setEditErrors] = useState<RoomFormErrors>({});
   const [successMsg, setSuccessMsg] = useState('');
+  const [isErrorToast] = useState(false);
 
   // ─── Quản lý giường của phòng đang mở ───────────────────────────────
   const [beds, setBeds] = useState<AdminBed[]>([]);
@@ -495,8 +496,10 @@ export default function AdminRoomsPage() {
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
       {successMsg && (
         <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
-          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+          <div className={`flex items-center gap-2 text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold ${isErrorToast ? 'bg-[#ba1a1a]' : 'bg-[#5f745d]'}`}>
+            <span className="material-symbols-outlined text-[18px]">
+              {isErrorToast ? 'error' : 'check_circle'}
+            </span>
             {successMsg}
           </div>
         </div>

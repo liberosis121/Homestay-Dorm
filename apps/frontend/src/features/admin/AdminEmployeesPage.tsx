@@ -73,6 +73,7 @@ export default function AdminEmployeesPage() {
   const [confirmLockEmployee, setConfirmLockEmployee] = useState<Employee | null>(null);
   const [isConfirmHover, setIsConfirmHover] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [isErrorToast, setIsErrorToast] = useState(false);
   const [addEmpPassword, setAddEmpPassword] = useState("");
   const [showAddEmpPassword, setShowAddEmpPassword] = useState(false);
 
@@ -188,6 +189,16 @@ export default function AdminEmployeesPage() {
 
   const confirmToggleLock = async () => {
     if (!confirmLockEmployee) return;
+
+    // Nếu muốn khóa và nhân viên đang là quản lý (manager) hoặc quản lý chi nhánh -> Chặn và báo lỗi
+    if (confirmLockEmployee.status !== 'locked' && (confirmLockEmployee.role === 'manager' || confirmLockEmployee.branch !== 'Chi nhánh khác')) {
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể khóa tài khoản do nhân viên đang chịu trách nhiệm quản lý cơ sở hoặc tài sản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
+      setConfirmLockEmployee(null);
+      return;
+    }
+
     try {
       const nextStatus = await toggleEmployeeLockApi(confirmLockEmployee.id);
       setEmployees((prev) =>
@@ -202,11 +213,14 @@ export default function AdminEmployeesPage() {
           prev ? { ...prev, status: nextStatus as any } : null,
         );
       }
+      setIsErrorToast(false);
       setSuccessMsg(nextStatus === 'locked' ? 'Đã khóa tài khoản nhân viên!' : 'Đã mở khóa tài khoản nhân viên!');
       setTimeout(() => setSuccessMsg(''), 3500);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Lỗi khi thay đổi trạng thái khóa tài khoản!");
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể thay đổi trạng thái khóa tài khoản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
     } finally {
       setConfirmLockEmployee(null);
     }
@@ -275,8 +289,10 @@ export default function AdminEmployeesPage() {
     >
       {successMsg && (
         <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
-          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+          <div className={`flex items-center gap-2 text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold ${isErrorToast ? 'bg-[#ba1a1a]' : 'bg-[#5f745d]'}`}>
+            <span className="material-symbols-outlined text-[18px]">
+              {isErrorToast ? 'error' : 'check_circle'}
+            </span>
             {successMsg}
           </div>
         </div>
