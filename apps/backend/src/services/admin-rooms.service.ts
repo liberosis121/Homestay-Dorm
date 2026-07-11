@@ -12,7 +12,6 @@ export const adminRoomsService = {
     max_occupants: number;
     floor: number;
     room_type: string;
-    area?: string;
     amenities?: string[];
     price: number;
     status?: string;
@@ -32,7 +31,6 @@ export const adminRoomsService = {
     max_occupants?: number;
     floor?: number;
     room_type?: string;
-    area?: string;
     amenities?: string[];
     price?: number;
     status?: string;
