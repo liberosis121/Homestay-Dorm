@@ -6,7 +6,8 @@ import { forgotPasswordApi } from './auth.api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'normal' | 'invalid' | 'not_found' | 'sending'>('normal');
+  const [status, setStatus] = useState<'normal' | 'invalid' | 'not_found' | 'sending' | 'error'>('normal');
+  const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
   const validateEmail = (email: string) => {
@@ -21,16 +22,18 @@ export default function ForgotPasswordPage() {
     }
 
     setStatus('sending');
+    setErrorMessage('');
 
     try {
       await forgotPasswordApi(email);
       navigate('/verify-otp', { state: { email, message: `Mã OTP đã được gửi tới ${email}. Vui lòng kiểm tra hòm thư!` } });
     } catch (err: any) {
       const msg: string = err?.response?.data?.message || err?.message || '';
-      if (msg.toLowerCase().includes('chưa được đăng ký') || msg.toLowerCase().includes('not found')) {
+      if (msg.includes('chưa được đăng ký') || msg.includes('chưa đăng ký')) {
         setStatus('not_found');
       } else {
-        setStatus('not_found'); // fallback
+        setStatus('error');
+        setErrorMessage(msg || 'Lỗi hệ thống khi khôi phục mật khẩu.');
       }
     }
   };
@@ -57,6 +60,13 @@ export default function ForgotPasswordPage() {
               <div className="mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-start gap-3 animate-fade-in">
                 <span className="material-symbols-outlined text-error">error</span>
                 <p className="font-body-md text-error text-sm">Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại.</p>
+              </div>
+            )}
+
+            {status === 'error' && (
+              <div className="mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-start gap-3 animate-fade-in">
+                <span className="material-symbols-outlined text-error">error</span>
+                <p className="font-body-md text-error text-sm">{errorMessage}</p>
               </div>
             )}
 
