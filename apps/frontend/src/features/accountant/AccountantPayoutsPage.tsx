@@ -408,7 +408,6 @@ export default function AccountantPayoutsPage() {
                 <th className="p-4">Mã đối soát</th>
                 <th className="p-4">Khách hàng</th>
                 <th className="p-4 text-right">Số tiền hoàn</th>
-                <th className="p-4">Tài khoản nhận</th>
                 <th className="p-4">Trạng thái</th>
                 <th className="p-4 text-center">Thao tác</th>
               </tr>
@@ -426,7 +425,6 @@ export default function AccountantPayoutsPage() {
                     <div className="text-xs text-[#5e5f5d]">{p.payment_method === 'cash' ? 'Nhận tiền mặt' : 'Chuyển khoản ngân hàng'}</div>
                   </td>
                   <td className="p-4 text-right  font-medium text-[#ba1a1a]">{p.amount.toLocaleString('vi-VN')} ₫</td>
-                  <td className="p-4  text-xs text-[#4e453d]">{p.payment_method === 'cash' ? 'N/A (Tiền mặt)' : `${p.bank_account} (${p.bank_name})`}</td>
                   <td className="p-4">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       p.status === 'completed' ? 'bg-[#e4e2e1] text-[#4e453d]' : 'bg-[#d0def1] text-[#3d4a59]'
