@@ -32,13 +32,18 @@ export default function ManagerAssetsPage() {
   const [selected, setSelected] = useState<ManagedAsset | null>(null);
   const [filterCat, setFilterCat] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [transferTarget, setTransferTarget] = useState('');
   const [toast, setToast] = useState<string | null>(null);
+
+  // States for location selectors
+  const [branches, setBranches] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [bedsForRoom, setBedsForRoom] = useState<any[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [selectedBedId, setSelectedBedId] = useState('');
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
-    // Auth that cua kyen: uu tien gui access_token Supabase ma authStore luu sau khi login.
     const accessToken = localStorage.getItem('access_token');
     if (accessToken) {
       return {
@@ -128,9 +133,93 @@ export default function ManagerAssetsPage() {
     }
   };
 
+  const loadInitialData = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const [resBranches, resRooms] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/branches`),
+        fetch(`${API_BASE}/rooms`, { headers })
+      ]);
+      const [dataBranches, dataRooms] = await Promise.all([
+        resBranches.json(),
+        resRooms.json()
+      ]);
+      if (dataBranches.success) {
+        setBranches(dataBranches.data || []);
+      }
+      if (dataRooms.success) {
+        setRooms(dataRooms.data || []);
+      }
+    } catch (err) {
+      console.error('Error loading initial transfer data:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAssets();
+    loadInitialData();
   }, []);
+
+  // Fetch beds when selected room changes
+  useEffect(() => {
+    if (selectedRoomId) {
+      (async () => {
+        try {
+          const headers = await getAuthHeaders();
+          const res = await fetch(`${API_BASE}/rooms/${selectedRoomId}/beds`, { headers });
+          const result = await res.json();
+          if (result.success) {
+            setBedsForRoom(result.data || []);
+          }
+        } catch (err) {
+          console.error('Error fetching beds:', err);
+          setBedsForRoom([]);
+        }
+      })();
+    } else {
+      setBedsForRoom([]);
+      setSelectedBedId('');
+    }
+  }, [selectedRoomId]);
+
+  const formatBranchCode = (name: string) => {
+    if (!name) return '';
+    return name
+      .replace(/Cơ sở\s+/i, '')
+      .replace(/Quận\s+/i, 'Q')
+      .replace(/\s+/g, '');
+  };
+
+  const formatRoomCode = (name: string) => {
+    if (!name) return '';
+    return name
+      .replace(/Phòng\s+/i, 'P')
+      .replace(/\s+/g, '');
+  };
+
+  const formatBedCode = (name: string) => {
+    if (!name) return '';
+    return name
+      .replace(/Giường\s+/i, 'G')
+      .replace(/\s+/g, '');
+  };
+
+  const computeLocationString = (rId: string, bedId: string) => {
+    const myBranchId = rooms[0]?.branch_id;
+    const branchObj = branches.find(b => b.id === myBranchId);
+    const roomObj = rooms.find(r => r.id === rId);
+    const bedObj = bedsForRoom.find(bd => bd.id === bedId);
+    
+    if (!branchObj) return '';
+    const bCode = formatBranchCode(branchObj.name);
+    
+    if (!roomObj) return `CN_${bCode}`;
+    
+    const rCode = formatRoomCode(roomObj.name);
+    const bdCode = bedObj ? `-${formatBedCode(bedObj.name)}` : '';
+    
+    return `CN_${bCode}-${rCode}${bdCode}`;
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -138,23 +227,29 @@ export default function ManagerAssetsPage() {
   };
 
   const doTransfer = async () => {
-    if (!selected || !transferTarget.trim()) return;
+    if (!selected) return;
+
+    const myBranchId = rooms[0]?.branch_id;
+    if (!myBranchId) {
+      alert('Không tìm thấy thông tin chi nhánh của bạn!');
+      return;
+    }
+
+    const computedLocation = computeLocationString(selectedRoomId, selectedBedId);
+    if (!computedLocation) {
+      alert('Lỗi khi tính toán vị trí điều phối!');
+      return;
+    }
+
     try {
       const headers = await getAuthHeaders();
-      
-      // Determine status based on destination location
-      let nextStatus = 'in_use';
-      if (transferTarget.toLowerCase().includes('kho')) {
-        nextStatus = 'in_stock';
-      } else if (transferTarget.toLowerCase().includes('bảo trì') || transferTarget.toLowerCase().includes('xưởng')) {
-        nextStatus = 'maintenance';
-      }
+      const nextStatus = selectedRoomId ? 'in_use' : 'in_stock';
 
       const res = await fetch(`${API_BASE}/assets/${selected.serial_number}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({
-          location: transferTarget,
+          location: computedLocation,
           status: nextStatus
         })
       });
@@ -163,15 +258,15 @@ export default function ManagerAssetsPage() {
       if (result.success) {
         await fetchAssets();
         
-        // Update selected asset display state
         setSelected(prev => prev ? {
           ...prev,
-          current_location: transferTarget,
+          current_location: computedLocation,
           status: nextStatus as any
         } : null);
 
-        setTransferTarget('');
-        showToast(`✓ Đã điều phối thành công ${selected.name} → ${transferTarget}`);
+        setSelectedRoomId('');
+        setSelectedBedId('');
+        showToast(`✓ Đã điều phối thành công ${selected.name} → ${computedLocation}`);
       }
     } catch (err) {
       console.error('Error transferring asset:', err);
@@ -188,24 +283,24 @@ export default function ManagerAssetsPage() {
       {/* Toast */}
       {toast && (
         <div style={{
-          position: 'fixed', top: 96, right: 24, zIndex: 100,
-          background: T.sageBg,
-          color: T.sage,
-          border: '1.5px solid #A8C3A5',
-          padding: '14px 20px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: '0 8px 30px rgba(111,88,60,0.12)',
-          animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          position: 'fixed', bottom: 20, right: 20, zIndex: 100,
+          background: '#5f745d',
+          color: '#ffffff',
+          padding: '12px 18px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+          animation: 'fadeInUp 0.3s ease forwards',
+          fontFamily: "'Lexend', sans-serif"
         }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>{toast}</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{toast}</span>
         </div>
       )}
 
       {/* Styled slide animation */}
       <style>{`
-        @keyframes slideInRight {
-          from { transform: translateX(110%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
+        @keyframes fadeInUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
 
@@ -215,8 +310,8 @@ export default function ManagerAssetsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch" style={{ height: 'calc(100vh - 190px)', minHeight: 0 }}>
-        {/* LEFT: Asset list (70% width -> col-span-8) */}
-        <div className="lg:col-span-8 flex flex-col space-y-4 min-h-0">
+        {/* LEFT: Asset list (58% width -> col-span-7) */}
+        <div className="lg:col-span-7 flex flex-col space-y-4 min-h-0">
           {/* Filters Bar */}
           <div style={{
             background: T.surface, border: `1px solid ${T.border}`,
@@ -330,8 +425,8 @@ export default function ManagerAssetsPage() {
           </div>
         </div>
 
-        {/* RIGHT: Selected asset info & Transfer form (30% width -> col-span-4) */}
-        <div className="lg:col-span-4 flex flex-col min-h-0 h-full">
+        {/* RIGHT: Selected asset info & Transfer form (42% width -> col-span-5) */}
+        <div className="lg:col-span-5 flex flex-col min-h-0 h-full">
           {selected ? (
             <div style={{
               background: T.surface, border: `1px solid ${T.border}`,
@@ -341,83 +436,122 @@ export default function ManagerAssetsPage() {
               <div style={{ padding: 24, overflowY: 'auto', flex: 1 }} className="space-y-6">
                 {/* Header Section */}
                 <div>
-                  <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text, letterSpacing: -0.5 }}>{selected.name}</h2>
-                  <p style={{ fontSize: 11.5, color: T.textFaint, fontFamily: "'Lexend', sans-serif", marginTop: 2 }}>Mã: {formatShortId(selected.id, 'checkout')}</p>
+                  <h2 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 21, fontWeight: 800, color: T.text, letterSpacing: -0.5 }}>{selected.name}</h2>
+                  <p style={{ fontSize: 13, color: T.textFaint, fontFamily: "'Lexend', sans-serif", marginTop: 2 }}>Mã: {formatShortId(selected.id, 'checkout')}</p>
                 </div>
 
                 {/* Sơ đồ điều phối (Dọc) */}
-                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 16 }} className="space-y-2">
-                  <p style={{ fontSize: 10, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Sơ đồ điều phối</p>
+                <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }} className="space-y-2.5">
+                  <p style={{ fontSize: 12, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Sơ đồ điều phối</p>
                   
                   {/* TỪ (HIỆN TẠI) */}
                   <div style={{ background: '#FAF9F6', border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 14px' }}>
-                    <span style={{ fontSize: 9, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5 }}>TỪ (HIỆN TẠI)</span>
-                    <span style={{ fontSize: 13, color: T.text, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.current_location}</span>
+                    <span style={{ fontSize: 10.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5 }}>TỪ (HIỆN TẠI)</span>
+                    <span style={{ fontSize: 15, color: T.text, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.current_location}</span>
                   </div>
                   
                   {/* Arrow downward */}
-                  <div className="flex justify-center my-1">
-                    <span className="material-symbols-outlined text-[#8A7563]" style={{ fontSize: 20 }}>arrow_downward</span>
+                  <div className="flex justify-center my-1.5">
+                    <span className="material-symbols-outlined text-[#8A7563]" style={{ fontSize: 22 }}>arrow_downward</span>
                   </div>
 
                   {/* ĐẾN (VỊ TRÍ MỚI) */}
-                  <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 14px' }}>
-                    <label style={{ fontSize: 9, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5, marginBottom: 6 }}>ĐẾN (VỊ TRÍ MỚI) *</label>
-                    <input 
-                      type="text"
-                      value={transferTarget}
-                      onChange={e => setTransferTarget(e.target.value)}
-                      placeholder="Nhập vị trí điều phối tới..."
-                      style={{
-                        width: '100%', height: 40, border: `1.5px solid ${T.border}`, borderRadius: 8,
-                        padding: '0 12px', fontSize: 13, color: T.text, background: '#FFFFFF',
-                        outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
-                      }}
-                      className="focus:border-[#5C4632] focus:ring-2 focus:ring-[#5C4632]/10"
-                    />
+                  <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '16px' }} className="space-y-4">
+                    <span style={{ fontSize: 10.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5 }}>ĐẾN (VỊ TRÍ MỚI)</span>
+                    
+                    {/* Chi nhánh (Readonly / Auto-resolved) */}
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, display: 'block', marginBottom: 4 }}>Chi nhánh</label>
+                      <input 
+                        type="text"
+                        value={branches.find(b => b.id === rooms[0]?.branch_id)?.name || 'Đang tải...'}
+                        disabled
+                        style={{
+                          width: '100%', height: 42, border: `1px solid ${T.border}`, borderRadius: 8,
+                          padding: '0 12px', fontSize: 14, color: T.textFaint, background: '#F5F5F5',
+                          boxSizing: 'border-box', cursor: 'not-allowed'
+                        }}
+                      />
+                    </div>
+
+                    {/* Phòng (Không bắt buộc - bỏ trống nghĩa là cất vào kho chi nhánh) */}
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, display: 'block', marginBottom: 4 }}>Phòng <span style={{ fontSize: 10, textTransform: 'none', fontWeight: 500, color: T.textFaint }}>(bỏ trống = cất vào kho)</span></label>
+                      <CustomSelect
+                        value={selectedRoomId}
+                        onChange={val => {
+                          setSelectedRoomId(val);
+                          setSelectedBedId('');
+                        }}
+                        options={[
+                          {value: "", label: "Cất vào kho chi nhánh" },
+                          ...rooms.map(r => ({ value: r.id, label: r.name }))
+                        ]}
+                        theme="sale"
+                        triggerClassName="!h-10 !py-1.5 text-sm bg-[#fff8f3] border-[#d1c4b9]"
+                      />
+                    </div>
+
+                    {/* Giường (Không bắt buộc) */}
+                    {selectedRoomId && (
+                      <div className="animate-fade-in-up">
+                        <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, display: 'block', marginBottom: 4 }}>Giường (Không bắt buộc)</label>
+                        <CustomSelect
+                          value={selectedBedId}
+                          onChange={val => setSelectedBedId(val)}
+                          options={[
+                            { value: "", label: "Dùng chung cho cả phòng" },
+                            ...bedsForRoom.map(bd => ({ value: bd.id, label: bd.name }))
+                          ]}
+                          theme="sale"
+                          triggerClassName="!h-10 !py-1.5 text-sm bg-[#fff8f3] border-[#d1c4b9]"
+                        />
+                      </div>
+                    )}
+
+                    {/* Xem trước vị trí mới */}
+                    <div style={{ padding: '10px 12px', background: T.primaryLight, borderRadius: 8, fontSize: 13, color: T.primary, fontWeight: 700 }}>
+                      Vị trí mới: {computeLocationString(selectedRoomId, selectedBedId) || 'Chưa xác định'}
+                    </div>
                   </div>
                 </div>
 
                 {/* Submit Action */}
                 <div>
-                  <button onClick={doTransfer} disabled={!transferTarget.trim()}
+                  <button onClick={doTransfer}
                     style={{
                       width: '100%',
-                      height: 44,
-                      background: transferTarget.trim() ? T.primary : '#D6CED8',
+                      height: 48,
+                      background: T.primary,
                       color: '#fff', border: 'none', borderRadius: 8,
-                      fontSize: 13, fontWeight: 700,
-                      cursor: transferTarget.trim() ? 'pointer' : 'not-allowed',
+                      fontSize: 14, fontWeight: 700,
+                      cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      boxShadow: transferTarget.trim() ? '0 4px 12px rgba(92,70,50,0.15)' : 'none',
+                      boxShadow: '0 4px 12px rgba(92,70,50,0.15)',
                       transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
-                    className={transferTarget.trim() ? "hover:-translate-y-0.5 active:scale-[0.97] hover:shadow-md" : ""}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>swap_horiz</span>
+                    className="hover:-translate-y-0.5 active:scale-[0.97] hover:shadow-md">
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>swap_horiz</span>
                     Xác nhận điều phối
                   </button>
                 </div>
 
                 {/* Cụm thông tin chi tiết */}
                 <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16 }} className="space-y-3">
-                  <p style={{ fontSize: 10, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8 }}>Thông tin tài sản</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div style={{ background: T.bg, padding: '8px 10px', borderRadius: 12, border: `1px solid ${T.border}` }}>
-                      <span style={{ fontSize: 8.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Trạng thái</span>
+                  <p style={{ fontSize: 12, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8 }}>Thông tin tài sản</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div style={{ background: T.bg, padding: '10px 12px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 11, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Trạng thái</span>
                       <span style={{
-                        fontSize: 10, color: STATUS_META[selected.status].text, fontWeight: 800,
-                        background: STATUS_META[selected.status].bg, padding: '2px 4px', borderRadius: 9999,
+                        fontSize: 12, color: STATUS_META[selected.status].text, fontWeight: 800,
+                        background: STATUS_META[selected.status].bg, padding: '3px 8px', borderRadius: 9999,
                         border: `1px solid ${STATUS_META[selected.status].text}1A`, display: 'inline-block', marginTop: 4,
                         whiteSpace: 'nowrap'
                       }}>{STATUS_META[selected.status].label}</span>
                     </div>
-                    <div style={{ background: T.bg, padding: '8px 10px', borderRadius: 12, border: `1px solid ${T.border}` }}>
-                      <span style={{ fontSize: 8.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Ngày mua</span>
-                      <span style={{ fontSize: 11, color: T.text, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.purchase_date}</span>
-                    </div>
-                    <div style={{ background: T.bg, padding: '8px 10px', borderRadius: 12, border: `1px solid ${T.border}` }}>
-                      <span style={{ fontSize: 8.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Giá trị</span>
-                      <span style={{ fontSize: 11, color: T.primary, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.purchase_price.toLocaleString('vi-VN')}đ</span>
+                    <div style={{ background: T.bg, padding: '10px 12px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 11, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Giá trị</span>
+                      <span style={{ fontSize: 13.5, color: T.primary, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.purchase_price.toLocaleString('vi-VN')}đ</span>
                     </div>
                   </div>
                 </div>
@@ -425,7 +559,7 @@ export default function ManagerAssetsPage() {
                 {/* Transfer history timeline inside card */}
                 {selected.transfer_history && selected.transfer_history.length > 0 && (
                   <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16 }}>
-                    <p style={{ fontSize: 10, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 14, letterSpacing: 0.8 }}>Lịch sử điều chuyển</p>
+                    <p style={{ fontSize: 12, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', marginBottom: 14, letterSpacing: 0.8 }}>Lịch sử điều chuyển</p>
                     <div className="relative pl-6 border-l-2 border-[#FAF2E8] space-y-4">
                       {[...selected.transfer_history].reverse().map((h, i) => (
                         <div key={i} className="relative">
@@ -437,9 +571,9 @@ export default function ManagerAssetsPage() {
                             boxShadow: i === 0 ? '0 0 0 3px rgba(92,70,50,0.2)' : 'none'
                           }} />
                           <div>
-                            <p style={{ fontSize: 12.5, fontWeight: 700, color: T.text }}>{h.from} → {h.to}</p>
-                            <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1, fontWeight: 500 }}>{h.reason}</p>
-                            <div className="flex justify-between items-center text-[10.5px] text-textFaint" style={{ marginTop: 2 }}>
+                            <p style={{ fontSize: 13.5, fontWeight: 700, color: T.text }}>{h.from} → {h.to}</p>
+                            <p style={{ fontSize: 12.5, color: T.textMuted, marginTop: 1, fontWeight: 500 }}>{h.reason}</p>
+                            <div className="flex justify-between items-center text-[11.5px] text-textFaint" style={{ marginTop: 2 }}>
                               <span>Phụ trách: <strong style={{ color: T.textMuted }}>{h.by}</strong></span>
                               <span style={{ fontFamily: "'Lexend', sans-serif" }}>{h.date}</span>
                             </div>
@@ -460,8 +594,8 @@ export default function ManagerAssetsPage() {
               boxShadow: '0 4px 12px rgba(111,88,60,0.01)'
             }}>
               <span className="material-symbols-outlined" style={{ fontSize: 48, color: T.textFaint, marginBottom: 16 }}>touch_app</span>
-              <h3 style={{ color: T.text, fontSize: 15, fontWeight: 800 }}>Chưa chọn tài sản</h3>
-              <p style={{ color: T.textMuted, fontSize: 12.5, marginTop: 8, maxWidth: 280, lineHeight: 1.6 }}>
+              <h3 style={{ color: T.text, fontSize: 17, fontWeight: 800 }}>Chưa chọn tài sản</h3>
+              <p style={{ color: T.textMuted, fontSize: 13.5, marginTop: 8, maxWidth: 280, lineHeight: 1.6 }}>
                 Vui lòng nhấp vào một dòng tài sản ở danh sách bên trái để thực hiện điều chuyển hoặc xem lịch sử dịch chuyển.
               </p>
             </div>
