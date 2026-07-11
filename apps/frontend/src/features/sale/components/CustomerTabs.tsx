@@ -22,7 +22,6 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
   const [tempEmail, setTempEmail] = useState('');
   const [tempBirthDate, setTempBirthDate] = useState('');
   const [tempNationality, setTempNationality] = useState('');
-  const [tempJob, setTempJob] = useState('');
   const [tempAddress, setTempAddress] = useState('');
   const [error, setError] = useState('');
 
@@ -91,7 +90,6 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
         email: tempEmail,
         birthDate: tempBirthDate,
         nationality: tempNationality,
-        job: tempJob,
         address: tempAddress
       }
     };
@@ -258,15 +256,7 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
                     className="w-full px-3 py-2 text-sm rounded-xl border border-[#d1c4b9] bg-[#fff8f3]/25 focus:border-[#6f583c] focus:ring-1 focus:ring-[#6f583c] transition-all outline-none text-[#1e1b17] font-semibold"
                   />
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Nghề nghiệp</p>
-                  <input
-                    type="text"
-                    value={tempJob}
-                    onChange={(e) => setTempJob(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-[#d1c4b9] bg-[#fff8f3]/25 focus:border-[#6f583c] focus:ring-1 focus:ring-[#6f583c] transition-all outline-none text-[#1e1b17] font-semibold"
-                  />
-                </div>
+
                 <div className="md:col-span-2 lg:col-span-3">
                   <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Địa chỉ thường trú</p>
                   <input
@@ -318,10 +308,7 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
                   <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Quốc tịch</p>
                   <p className="font-semibold text-[#1e1b17] truncate" title={customer.personalInfo.nationality}>{customer.personalInfo.nationality}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Nghề nghiệp</p>
-                  <p className="font-semibold text-[#1e1b17] truncate" title={customer.personalInfo.job}>{customer.personalInfo.job}</p>
-                </div>
+
                 <div className="md:col-span-2 lg:col-span-3">
                   <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-widest mb-1.5">Địa chỉ thường trú</p>
                   <p className="font-semibold text-[#1e1b17] leading-relaxed break-words" title={customer.personalInfo.address}>{customer.personalInfo.address}</p>
