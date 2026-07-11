@@ -152,7 +152,7 @@ export const customerLookupService = {
       }));
 
       const formattedDeposits = depList.map(d => ({
-        content: `Cọc giữ chỗ phòng ${d.rooms?.name || ''}`,
+        content: `Cọc giữ chỗ ${d.rooms?.name || ''}`,
         date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '',
         amount: d.deposit_amount ? `${d.deposit_amount.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ',
         status: d.status === 'paid' ? 'approved' : d.status === 'cancelled' ? 'refunded' : 'pending'
