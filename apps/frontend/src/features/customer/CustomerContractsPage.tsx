@@ -153,6 +153,58 @@ export default function CustomerContractsPage() {
     tempContainer.appendChild(clone);
     document.body.appendChild(tempContainer);
 
+    // 1. Temporarily disable all global stylesheets to prevent html2canvas oklab parser crash
+    const disabledSheets: HTMLStyleElement[] = [];
+    const styleElements = document.querySelectorAll('style, link[rel="stylesheet"]');
+    styleElements.forEach((el: any) => {
+      if (!el.disabled) {
+        el.disabled = true;
+        disabledSheets.push(el);
+      }
+    });
+
+    // 2. Inject a clean, simple custom stylesheet for the PDF layout (using standard hex/rgb colors)
+    const pdfStyle = document.createElement('style');
+    pdfStyle.innerHTML = `
+      #contract-pdf-content {
+        font-family: sans-serif;
+        color: #1b1c1c;
+        line-height: 1.6;
+        font-size: 14px;
+        padding: 20px;
+        max-width: 650px;
+        margin: 0 auto;
+      }
+      .text-center { text-align: center; }
+      .text-right { text-align: right; }
+      .font-extrabold { font-weight: 800; }
+      .font-bold { font-weight: 700; }
+      .text-primary { color: #3d4e3a; }
+      .text-xs { font-size: 12px; }
+      .text-on-surface-variant { color: #5e5f5d; }
+      .italic { font-style: italic; }
+      .my-5 { margin-top: 20px; margin-bottom: 20px; }
+      .mt-4 { margin-top: 16px; }
+      .mt-5 { margin-top: 20px; }
+      .mt-8 { margin-top: 32px; }
+      .pl-3 { padding-left: 12px; }
+      .h-px { height: 1px; background-color: #d1c4b9; }
+      .bg-primary { background-color: #3d4e3a; }
+      .rounded-full { border-radius: 9999px; }
+      .w-1.5 { width: 6px; }
+      .h-3 { height: 12px; }
+      .flex { display: flex; }
+      .items-center { align-items: center; }
+      .gap-1.5 { gap: 6px; }
+      .max-w-prose { max-width: 650px; }
+      .mx-auto { margin-left: auto; margin-right: auto; }
+      .text-on-surface { color: #1b1c1c; }
+      .text-on-surface\\/90 { color: rgba(27, 28, 28, 0.9); }
+      .bg-outline-variant\\/50 { background-color: rgba(209, 196, 185, 0.5); }
+      .mt-0\\.5 { margin-top: 2px; }
+    `;
+    document.head.appendChild(pdfStyle);
+
     try {
       // Use html2canvas directly
       const canvas = await html2canvas(tempContainer, {
@@ -189,6 +241,14 @@ export default function CustomerContractsPage() {
       alert(`Lỗi xuất PDF: ${err?.message || err}`);
       window.print();
     } finally {
+      // Re-enable all global stylesheets
+      disabledSheets.forEach((el) => {
+        el.disabled = false;
+      });
+      // Remove temporary PDF style
+      if (document.head.contains(pdfStyle)) {
+        document.head.removeChild(pdfStyle);
+      }
       if (document.body.contains(tempContainer)) {
         document.body.removeChild(tempContainer);
       }
