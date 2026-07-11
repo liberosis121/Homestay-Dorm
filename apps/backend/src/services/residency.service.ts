@@ -52,7 +52,9 @@ export const residencyService = {
         violation_note: res.reject_reason || '',
         status: res.check_result || 'pending',
         confirmed: isApproved,
-        deposit_ref: contract.deposit_id || ''
+        deposit_ref: contract.deposit_id || '',
+        permanent_address: res.permanent_address || '',
+        purpose: res.purpose || ''
       };
     });
   },

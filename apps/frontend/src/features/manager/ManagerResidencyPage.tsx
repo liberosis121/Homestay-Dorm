@@ -784,6 +784,8 @@ export default function ManagerResidencyPage() {
                       { label: 'Ngày sinh', val: `${selectedMember.dob} (${getAgeFromDob(selectedMember.dob)} tuổi)` },
                       { label: 'Loại giấy tờ', val: selectedMember.id_type === 'cccd' ? 'CCCD/CMND' : selectedMember.id_type === 'passport' ? 'Hộ chiếu' : 'Khác' },
                       { label: 'Số giấy tờ', val: selectedMember.id_number },
+                      { label: 'Địa chỉ thường trú', val: selectedMember.permanent_address || 'Chưa cập nhật' },
+                      { label: 'Mục đích cư trú', val: selectedMember.purpose || 'Chưa cập nhật' },
                       { label: 'Quốc tịch', val: selectedMember.nationality === 'foreign' ? '🌐 Nước ngoài (cần TT tạm trú)' : '🇻🇳 Việt Nam' },
                       { label: 'Phòng đăng ký', val: selectedMember.room_name },
                     ].map((row, i) => (

@@ -326,7 +326,9 @@ export interface ResidencyCheck {
   violation_note?: string;
   status: 'pending' | 'approved' | 'rejected';
   confirmed?: boolean;
-  created_at: string;
+  created_at?: string;
+  permanent_address?: string;
+  purpose?: string;
 }
 
 export interface AssetHandover {
