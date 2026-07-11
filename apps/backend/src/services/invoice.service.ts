@@ -68,10 +68,7 @@ export const invoiceService = {
       }
     }
 
-    // 4. Seed test invoices for HD-001 if they don't exist
-    if (contractIds.includes('HD-001')) {
-      await invoiceService.ensureSeededInvoices();
-    }
+
 
     // 5. Fetch raw invoices
     const rawInvoices = await invoiceRepo.findByContractsAndDeposits(contractIds, depositIds, reconciliationIds);
@@ -268,48 +265,5 @@ export const invoiceService = {
     }
 
     return { success: true, paidAt: paymentTime };
-  },
-
-  // Seed method to insert test monthly and service invoices for contract HD-001 (customer1@gmail.com)
-  ensureSeededInvoices: async () => {
-    // Check if HDTT-M01 already exists
-    const { data: existingMonthly } = await supabase
-      .from('invoices')
-      .select('id')
-      .eq('id', 'HDTT-M01')
-      .maybeSingle();
-
-    if (!existingMonthly) {
-      console.log('[Invoice Seed]: Seeding HDTT-M01 & HDTT-S01 for HD-001...');
-      
-      // We will calculate a nice amount:
-      // Rent: 1,800,000
-      // Electricity: 180 kWh * 3500 = 630,000
-      // Water: 25 m3 * 15000 = 375,000
-      // Services (Wifi): 50,000
-      // Total: 2,855,000
-      const monthlyAmount = 1800000 + 630000 + 375000 + 50000;
-
-      // Insert monthly invoice
-      await supabase.from('invoices').insert({
-        id: 'HDTT-M01',
-        amount: monthlyAmount,
-        status: 'pending',
-        invoice_type: 'monthly',
-        contract_id: 'HD-001',
-        water_record_id: 1, // links to room P-101 billing period 05/2026
-        staff_id: 'e003e003-e003-e003-e003-e003e003e003'
-      });
-
-      // Insert service invoice
-      await supabase.from('invoices').insert({
-        id: 'HDTT-S01',
-        amount: 100000,
-        status: 'pending',
-        invoice_type: 'service',
-        contract_id: 'HD-001',
-        staff_id: 'e003e003-e003-e003-e003-e003e003e003'
-      });
-    }
   }
 };
