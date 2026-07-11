@@ -125,32 +125,51 @@ export const refundRepo = {
 
   /**
    * Lay danh sach ung vien HOAN COC KHI CHUA KY HOP DONG (hoan 80%):
-   * deposit_requests co hoa don coc da 'paid' (da nhan tien) NHUNG khong co contract nao (chua ky HD).
+   * Phieu dat coc DA TUNG duoc thanh toan (invoice deposit co payment_time — da nhan tien),
+   * SAU DO bi HUY/TU CHOI (deposit_requests.status = 'rejected'/'cancelled', vi du Manager tu choi
+   * o buoc kiem tra luu tru — luc do invoice bi lat sang 'rejected'), va KHONG co hop dong nao.
    * Dung cho tab "Huy thue / chua ky HD" ben Frontend.
    */
   getCancellationRefunds: async () => {
-    // 1. Cac phieu coc co hoa don da thanh toan
-    const { data: paidDepInvoices } = await supabase
+    // 1. Cac phieu coc DA TUNG nhan tien (payment_time khac null), du hien invoice o trang thai nao.
+    const { data: everPaidInvoices } = await supabase
       .from('invoices')
       .select('deposit_id')
       .eq('invoice_type', 'deposit')
-      .eq('status', 'paid')
+      .not('payment_time', 'is', null)
       .not('deposit_id', 'is', null);
 
-    const paidDepositIds = Array.from(new Set((paidDepInvoices || []).map(i => i.deposit_id).filter(Boolean)));
-    if (paidDepositIds.length === 0) return [];
+    const everPaidDepositIds = Array.from(new Set((everPaidInvoices || []).map(i => i.deposit_id).filter(Boolean)));
+    if (everPaidDepositIds.length === 0) return [];
 
-    // 2. Loai bo cac phieu da co contract (da ky HD)
+    // 2. Trong so do, chi lay phieu DA BI HUY/TU CHOI (khach huy hoac khong du dieu kien luu tru).
+    const { data: cancelledDeposits } = await supabase
+      .from('deposit_requests')
+      .select('*')
+      .in('id', everPaidDepositIds)
+      .in('status', ['rejected', 'cancelled']);
+    if (!cancelledDeposits || cancelledDeposits.length === 0) return [];
+    const cancelledIds = cancelledDeposits.map(d => d.id);
+
+    // 3. Loai bo cac phieu da co contract (da ky HD) — khong thuoc dien hoan 80%.
     const { data: signed } = await supabase
       .from('contracts')
       .select('deposit_id')
-      .in('deposit_id', paidDepositIds);
+      .in('deposit_id', cancelledIds);
     const signedSet = new Set((signed || []).map(c => c.deposit_id));
-    const candidateIds = paidDepositIds.filter(id => !signedSet.has(id));
-    if (candidateIds.length === 0) return [];
 
-    // 3. Lay chi tiet phieu coc + phong + khach hang
-    const { data: deposits } = await supabase.from('deposit_requests').select('*').in('id', candidateIds);
+    // 4. Loai bo cac phieu DA duoc lap hoan coc (da co hoa don type='refund' gan deposit_id).
+    const { data: refunded } = await supabase
+      .from('invoices')
+      .select('deposit_id')
+      .eq('invoice_type', 'refund')
+      .in('deposit_id', cancelledIds);
+    const refundedSet = new Set((refunded || []).map(r => r.deposit_id).filter(Boolean));
+
+    const deposits = cancelledDeposits.filter(d => !signedSet.has(d.id) && !refundedSet.has(d.id));
+    if (deposits.length === 0) return [];
+
+    // 5. Lay chi tiet phong + khach hang
     const roomIds = (deposits || []).map(d => d.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
       ? await supabase.from('rooms').select('id, name').in('id', roomIds)

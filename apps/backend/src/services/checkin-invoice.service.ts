@@ -25,31 +25,41 @@ export const checkinInvoiceService = {
 
     let contractId = data.contractId;
 
-    // Check if the passed contractId is actually a deposit ID (e.g. starting with PDC- or HDTT-)
-    if (contractId.startsWith('PDC-') || contractId.startsWith('DEP-') || contractId.startsWith('HDTT-')) {
-      let depositRequestId = contractId;
-      if (contractId.startsWith('HDTT-')) {
-        const { data: depInvoice } = await supabase
-          .from('invoices')
-          .select('deposit_id')
-          .eq('id', contractId)
-          .maybeSingle();
-        if (depInvoice && depInvoice.deposit_id) {
-          depositRequestId = depInvoice.deposit_id;
-        }
+    // 1. Kiểm tra xem contractId có phải là ID hợp đồng trực tiếp hợp lệ không
+    const { data: contractByDirectId } = await supabase
+      .from('contracts')
+      .select('id')
+      .eq('id', contractId)
+      .maybeSingle();
+
+    if (contractByDirectId) {
+      contractId = contractByDirectId.id;
+    } else {
+      // 2. Nếu không phải ID hợp đồng, kiểm tra xem nó có phải là ID của hóa đơn đặt cọc không (trong bảng invoices)
+      const { data: depInvoice } = await supabase
+        .from('invoices')
+        .select('deposit_id')
+        .eq('id', contractId)
+        .maybeSingle();
+
+      let depositRequestId = depInvoice ? depInvoice.deposit_id : contractId;
+
+      // Hỗ trợ cả prefix cũ nếu có
+      if (contractId.startsWith('HDTT-') && depInvoice && depInvoice.deposit_id) {
+        depositRequestId = depInvoice.deposit_id;
       }
 
-      const { data: contract } = await supabase
+      const { data: contractByDeposit } = await supabase
         .from('contracts')
         .select('id')
         .eq('deposit_id', depositRequestId)
         .maybeSingle();
 
-      if (contract) {
-        contractId = contract.id;
+      if (contractByDeposit) {
+        contractId = contractByDeposit.id;
       } else {
-        // Tu dong tao contract neu chua co de tien hanh nhan phong
-        const { data: newContract, error: contractErr } = await supabase
+        // 3. Tự động tạo hợp đồng nếu chưa có để tiến hành nhận phòng
+        const { data: newContract } = await supabase
           .from('contracts')
           .insert({
             id: `HD-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -58,7 +68,7 @@ export const checkinInvoiceService = {
             status: 'active',
             start_date: new Date().toISOString().split('T')[0],
             end_date: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 6 thang
-            rent_price: data.amount / 2 // Gia su rent price bang nua tong checkin invoice
+            rent_price: data.amount / 2
           })
           .select()
           .single();

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 import * as profileRepo from '../repositories/profile.repo';
 import { USER_ROLE } from '../types/constants';
+import { sendOtpEmail } from '../utils/email.helper';
 
 // Helper de tao client auth rieng cho tung request, tranh o nhiem session len client singleton dung chung
 const getAuthClient = () => createClient(
@@ -24,7 +25,19 @@ export const authService = {
    * @param fullName - Họ và tên khách hàng
    * @param phone - Số điện thoại liên hệ
    */
-  register: async (email: string, password: string, fullName: string, phone: string) => {
+  register: async (
+    email: string,
+    password: string,
+    fullName: string,
+    phone: string,
+    dob?: string,
+    gender?: string,
+    nationality?: string,
+    cccd?: string,
+    cccdIssueDate?: string,
+    cccdIssuePlace?: string,
+    address?: string
+  ) => {
     // 1. Gọi Supabase Auth đăng ký tài khoản mới qua client tam thoi
     const authClient = getAuthClient();
     const { data, error: signUpError } = await authClient.auth.signUp({
@@ -54,7 +67,6 @@ export const authService = {
       if (profileError) throw profileError;
 
       // 3. Tao ban ghi khach hang lien ket voi profile
-      // cccd dung prefix 'TEMP-' de service layer nhan biet va yeu cau cap nhat CCCD that truoc khi dang ky thue
       const { error: customerError } = await supabase
         .from('customers')
         .insert({
@@ -62,8 +74,13 @@ export const authService = {
           full_name: fullName,
           phone: phone,
           email: email,
-          cccd: `TEMP-${Date.now()}`, // TEMP- prefix: service layer se check va yeu cau cap nhat CCCD that
-          nationality: 'Việt Nam',
+          cccd: cccd || null,
+          dob: dob || null,
+          gender: gender || null,
+          nationality: nationality || null,
+          cccd_issue_date: cccdIssueDate || null,
+          cccd_issue_place: cccdIssuePlace || null,
+          address: address || null,
         });
 
       if (customerError) throw customerError;
@@ -197,8 +214,8 @@ export const authService = {
             full_name: profile.full_name || 'Khách hàng mới',
             phone: profile.phone || '',
             email: profile.email,
-            cccd: `TEMP-${Date.now()}`, // Mã CCCD tạm thời để khách hàng cập nhật sau
-            nationality: 'Việt Nam',
+            cccd: null, // Không cần tạo CCCD ảo nữa vì CCCD đã nullable
+            nationality: null,
           })
           .select()
           .maybeSingle();
@@ -262,6 +279,8 @@ export const authService = {
         customerUpdates.gender = restDetails.gender === 'male' ? 'Nam' : (restDetails.gender === 'female' ? 'Nữ' : 'Khác');
       }
       if (restDetails.nationality !== undefined) customerUpdates.nationality = restDetails.nationality;
+      if (restDetails.issue_date !== undefined) customerUpdates.cccd_issue_date = restDetails.issue_date || null;
+      if (restDetails.issue_place !== undefined) customerUpdates.cccd_issue_place = restDetails.issue_place || null;
       if (restDetails.permanent_address !== undefined || restDetails.address !== undefined) {
         customerUpdates.address = restDetails.permanent_address || restDetails.address;
       }
@@ -298,20 +317,111 @@ export const authService = {
   },
 
   /**
-   * Yêu cầu khôi phục mật khẩu qua email.
+   * Yêu cầu khôi phục mật khẩu qua OTP email.
+   *
+   * Quy trình:
+   *  1. Kiểm tra email tồn tại trong profiles.
+   *  2. Tạo OTP ngẫu nhiên 6 chữ số.
+   *  3. Lưu vào bảng `otps` (ghi đè nếu đã có), hết hạn sau 5 phút.
+   *  4. Gửi email chứa OTP tới người dùng.
    *
    * @param email - Email cần khôi phục mật khẩu
    */
   forgotPassword: async (email: string) => {
-    // Dung client tam thoi de tranh o nhiem session len singleton dung chung
-    const authClient = getAuthClient();
-    const { error } = await authClient.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password`,
+    // 1. Kiểm tra email có trong hệ thống
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (!profile) {
+      // Không tiết lộ thông tin email có tồn tại hay không (security best practice)
+      // Nhưng vẫn throw lỗi để FE có thể hiển thị thông báo cho phù hợp mô hình demo
+      throw new Error('Email này chưa được đăng ký trong hệ thống.');
+    }
+
+    // 2. Tạo mã OTP ngẫu nhiên 6 chữ số
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 3. Hết hạn sau 5 phút
+    const expiredAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+    // 4. Upsert vào bảng otps (ghi đè nếu email đã tồn tại)
+    const { error: otpError } = await supabase
+      .from('otps')
+      .upsert({ email, otp_code: otpCode, expired_at: expiredAt }, { onConflict: 'email' });
+
+    if (otpError) {
+      throw new Error(`Lưu OTP thất bại: ${otpError.message}`);
+    }
+
+    // 5. Gửi email
+    await sendOtpEmail(email, otpCode);
+
+    return { success: true };
+  },
+
+  /**
+   * Xác thực OTP và đặt lại mật khẩu mới.
+   *
+   * @param email - Email cần đặt lại mật khẩu
+   * @param otp - Mã OTP người dùng nhập
+   * @param newPassword - Mật khẩu mới
+   */
+  resetPasswordWithOtp: async (email: string, otp: string, newPassword: string) => {
+    if (!email || !otp || !newPassword) {
+      throw new Error('Thiếu thông tin: email, mã OTP hoặc mật khẩu mới.');
+    }
+    if (newPassword.length < 8) {
+      throw new Error('Mật khẩu mới phải có ít nhất 8 ký tự.');
+    }
+
+    // 1. Lấy OTP từ DB
+    const { data: otpRecord, error: fetchError } = await supabase
+      .from('otps')
+      .select('otp_code, expired_at')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (fetchError || !otpRecord) {
+      throw new Error('Không tìm thấy mã OTP cho email này. Vui lòng yêu cầu gửi lại.');
+    }
+
+    // 2. Kiểm tra mã OTP khớp
+    if (otpRecord.otp_code !== otp) {
+      throw new Error('Mã OTP không chính xác. Vui lòng kiểm tra lại.');
+    }
+
+    // 3. Kiểm tra thời gian hết hạn
+    if (new Date() > new Date(otpRecord.expired_at)) {
+      // Xóa OTP đã hết hạn
+      await supabase.from('otps').delete().eq('email', email);
+      throw new Error('Mã OTP đã hết hạn. Vui lòng yêu cầu gửi mã mới.');
+    }
+
+    // 4. Lấy user ID theo email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (!profile) {
+      throw new Error('Không tìm thấy tài khoản với email này.');
+    }
+
+    // 5. Cập nhật mật khẩu mới qua Admin API
+    const { error: updateError } = await supabase.auth.admin.updateUserById(profile.id, {
+      password: newPassword,
     });
 
-    if (error) {
-      throw new Error(`Yêu cầu khôi phục mật khẩu thất bại: ${error.message}`);
+    if (updateError) {
+      throw new Error(`Cập nhật mật khẩu thất bại: ${updateError.message}`);
     }
+
+    // 6. Xóa OTP đã dùng (tránh tái sử dụng)
+    await supabase.from('otps').delete().eq('email', email);
 
     return { success: true };
   },

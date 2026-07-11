@@ -7,7 +7,7 @@ export interface Room {
   max_occupants: number;
   floor: number;
   room_type: string;
-  area: string;
+  area?: string;
   amenities: string[];
   price: number;
   status: string;

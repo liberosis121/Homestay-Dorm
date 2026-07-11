@@ -47,6 +47,7 @@ export default function AdminBranchesPage() {
   const [confirmStatusBranch, setConfirmStatusBranch] = useState<Branch | null>(
     null,
   );
+  const [successMsg, setSuccessMsg] = useState("");
 
   // Tải danh sách chi nhánh thật + tính số phòng theo branch_id từ /admin/rooms.
   // Lưu ý: DB branches chỉ có {id,name,address,phone,email,status,manager_id};
@@ -157,8 +158,12 @@ export default function AdminBranchesPage() {
     try {
       if (modalMode === "add") {
         await createBranchApi(payload);
+        setSuccessMsg("Đã tạo chi nhánh mới thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       } else if (form.id) {
         await updateBranchApi(form.id, payload);
+        setSuccessMsg("Đã cập nhật thông tin chi nhánh thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       }
       setShowModal(false);
       await loadBranches();
@@ -189,6 +194,14 @@ export default function AdminBranchesPage() {
       className="space-y-6 animate-fade-in-up"
       style={{ fontFamily: "Lexend, sans-serif" }}
     >
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

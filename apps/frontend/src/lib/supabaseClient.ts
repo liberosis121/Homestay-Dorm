@@ -233,6 +233,12 @@ export interface MonthlyInvoice {
   due_date: string;
   status: 'pending' | 'paid' | 'overdue';
   created_at: string;
+  incidentals?: {
+    id: string;
+    name: string;
+    amount: number;
+    recorded_date?: string;
+  }[];
 }
 
 export interface RefundRecord {
@@ -266,6 +272,7 @@ export interface PayoutRecord {
   status: 'pending' | 'processing' | 'completed';
   paid_at?: string;
   created_at: string;
+  is_liquidated?: boolean;
 }
 
 // ─── Manager Phase Interfaces ────────────────────────────────────────────────

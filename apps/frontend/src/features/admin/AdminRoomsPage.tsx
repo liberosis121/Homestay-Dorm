@@ -130,7 +130,6 @@ interface RoomCatalog {
   floor: number;
   capacity: number;
   roomType: string;
-  area: string;
   price: number;
   status: RoomStatus;
   amenities: string[];
@@ -236,9 +235,10 @@ export default function AdminRoomsPage() {
   const [editCapacity, setEditCapacity] = useState<number>(4);
   const [editPrice, setEditPrice] = useState<number>(1500000);
   const [editRoomType, setEditRoomType] = useState<string>('dorm');
-  const [editArea, setEditArea] = useState<string>('');
   const [editStatus, setEditStatus] = useState<RoomStatus>('available');
   const [editErrors, setEditErrors] = useState<RoomFormErrors>({});
+  const [successMsg, setSuccessMsg] = useState('');
+  const [isErrorToast] = useState(false);
 
   // ─── Quản lý giường của phòng đang mở ───────────────────────────────
   const [beds, setBeds] = useState<AdminBed[]>([]);
@@ -277,7 +277,6 @@ export default function AdminRoomsPage() {
       setEditCapacity(selected.capacity);
       setEditPrice(selected.price);
       setEditRoomType(selected.roomType);
-      setEditArea(selected.area);
       setEditStatus(selected.status);
       setEditErrors({});
       // Reset & nạp lại giường mỗi khi mở phòng khác.
@@ -333,12 +332,16 @@ export default function AdminRoomsPage() {
           price: bedDraft.price,
           status: bedDraft.status,
         });
+        setSuccessMsg("Đã thêm giường mới thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       } else if (editingBedId) {
         await updateBedApi(editingBedId, {
           name: bedDraft.name.trim(),
           price: bedDraft.price,
           status: bedDraft.status,
         });
+        setSuccessMsg("Đã cập nhật thông tin giường thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       }
       setEditingBedId(null);
       await loadBeds(selected.id);
@@ -375,7 +378,6 @@ export default function AdminRoomsPage() {
         floor: r.floor ?? 1,
         capacity: r.max_occupants ?? 0,
         roomType: r.room_type ?? '',
-        area: r.area ?? '',
         price: r.price ?? 0,
         status: normalizeRoomStatus(r.status),
         amenities: Array.isArray(r.amenities) ? r.amenities : [],
@@ -422,7 +424,7 @@ export default function AdminRoomsPage() {
   const pageEnd = Math.min(safeCurrentPage * PAGE_SIZE, filtered.length);
 
   const openAdd = () => {
-    setForm({ name: '', branch: '', floor: 1, capacity: 4, roomType: 'dorm', area: '', price: 1500000, status: 'available', amenities: [] });
+    setForm({ name: '', branch: '', floor: 1, capacity: 4, roomType: 'dorm', price: 1500000, status: 'available', amenities: [] });
     setFormErrors({});
     setShowModal(true);
   };
@@ -445,13 +447,14 @@ export default function AdminRoomsPage() {
       max_occupants: form.capacity ?? 0,
       floor: form.floor ?? 1,
       room_type: form.roomType || 'dorm',
-      area: form.area ?? '',
       price: form.price ?? 0,
       status: form.status ?? 'available',
       amenities: form.amenities ?? [],
     };
     try {
       await createRoomApi(payload);
+      setSuccessMsg("Đã tạo phòng mới thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
       setShowModal(false);
       await loadRooms();
     } catch (err: any) {
@@ -479,8 +482,9 @@ export default function AdminRoomsPage() {
         price: editPrice,
         status: editStatus,
         room_type: editRoomType,
-        area: editArea,
       });
+      setSuccessMsg("Đã cập nhật thông tin phòng thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
       setSelected(null);
       await loadRooms();
     } catch (err: any) {
@@ -490,6 +494,16 @@ export default function AdminRoomsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className={`flex items-center gap-2 text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold ${isErrorToast ? 'bg-[#ba1a1a]' : 'bg-[#5f745d]'}`}>
+            <span className="material-symbols-outlined text-[18px]">
+              {isErrorToast ? 'error' : 'check_circle'}
+            </span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -724,7 +738,6 @@ export default function AdminRoomsPage() {
                   { label: 'Tầng', val: `Tầng ${selected.floor}` },
                   { label: 'Chi nhánh', val: selected.branch },
                   { label: 'Loại phòng', val: roomTypeLabel(selected.roomType) },
-                  { label: 'Khu vực', val: selected.area || '—' },
                 ].map(({ label, val }) => (
                   <div key={label}>
                     <p className="text-xs font-semibold uppercase" style={{ color: A.textMuted }}>{label}</p>
@@ -805,16 +818,7 @@ export default function AdminRoomsPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Khu vực</label>
-                  <input
-                    type="text"
-                    value={editArea}
-                    onChange={e => setEditArea(e.target.value)}
-                    placeholder="VD: Khu A"
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                  />
-                </div>
+
 
                 <div>
                   <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
@@ -920,7 +924,6 @@ export default function AdminRoomsPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-semibold truncate" style={{ color: A.textPrimary }}>{bed.name}</p>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: A.sidebar, color: A.textMuted }}>{formatShortId(bed.id)}</span>
                             </div>
                             <p className="text-xs" style={{ color: A.primary }}>{bed.price.toLocaleString('vi-VN')}đ/tháng</p>
                           </div>
@@ -1044,13 +1047,7 @@ export default function AdminRoomsPage() {
                   triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Khu vực</label>
-                <input type="text" value={form.area || ''} onChange={e => setForm(prev => ({ ...prev, area: e.target.value }))}
-                  placeholder="VD: Khu A"
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-                />
-              </div>
+
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Đơn giá (đ/tháng)</label>
                 <input

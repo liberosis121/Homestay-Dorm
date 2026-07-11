@@ -59,6 +59,7 @@ export default function AdminAssetsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [successMsg, setSuccessMsg] = useState('');
   const ITEMS_PER_PAGE = 5;
 
   const loadAssets = async () => {
@@ -169,6 +170,8 @@ export default function AdminAssetsPage() {
           serialNumber: created.serial_number
         };
         setAssets(prev => [na, ...prev]);
+        setSuccessMsg("Đã thêm tài sản mới thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       } else {
         if (!form.serialNumber) return;
         const updated = await updateAssetApi(form.serialNumber, {
@@ -182,6 +185,8 @@ export default function AdminAssetsPage() {
           value: updated.value,
           status: updated.status as AssetStatus
         } : a));
+        setSuccessMsg("Đã cập nhật thông tin tài sản thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
       }
       setShowModal(false);
     } catch (err: any) {
@@ -227,6 +232,14 @@ export default function AdminAssetsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

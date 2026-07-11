@@ -23,6 +23,13 @@ export interface RegisterPayload {
   password: string;
   full_name: string;
   phone: string;
+  dob: string;
+  gender: string;
+  nationality: string;
+  cccd: string;
+  issue_date: string;
+  issue_place: string;
+  permanent_address: string;
 }
 
 export interface AuthResponse {
@@ -131,6 +138,19 @@ export const updateProfileApi = async (data: Record<string, any>): Promise<Profi
  */
 export const forgotPasswordApi = async (email: string): Promise<{ success: boolean; message: string }> => {
   const response = await apiClient.post('/auth/forgot-password', { email });
+  return response.data;
+};
+
+/**
+ * Xác thực OTP và đặt lại mật khẩu mới.
+ * Gọi: POST /api/auth/reset-password-otp
+ */
+export const resetPasswordWithOtpApi = async (payload: {
+  email: string;
+  otp: string;
+  newPassword: string;
+}): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.post('/auth/reset-password-otp', payload);
   return response.data;
 };
 

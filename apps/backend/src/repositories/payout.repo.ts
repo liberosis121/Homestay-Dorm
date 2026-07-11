@@ -39,7 +39,10 @@ export const payoutRepo = {
       : { data: [] as any[] };
 
     // 5. Resolve rooms and branches
-    const depositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
+    // Gom deposit_id tu contract LAN tu chinh hoa don (truong hop hoan coc chua ky HD gan thang deposit_id).
+    const contractDepositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
+    const invoiceDepositIds = invoices.map(i => i.deposit_id).filter(Boolean);
+    const depositIds = Array.from(new Set([...contractDepositIds, ...invoiceDepositIds]));
     const { data: depositReqs } = depositIds.length > 0
       ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
       : { data: [] as any[] };
@@ -143,10 +146,24 @@ export const payoutRepo = {
         };
       }
 
+      // Fallback cho hoan coc CHUA KY HD: resolve khach hang/phong truc tiep tu inv.deposit_id.
+      let depositCustomerName: string | null = null;
+      let depositRoomName: string | null = null;
+      if (inv.deposit_id) {
+        const depReq = (depositReqs || []).find(dr => dr.id === inv.deposit_id);
+        if (depReq) {
+          const room = (rooms || []).find(r => r.id === depReq.room_id);
+          const reg = (regs || []).find(rg => rg.id === depReq.registration_id);
+          const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
+          depositCustomerName = customer?.full_name || null;
+          depositRoomName = room?.name || null;
+        }
+      }
+
       return {
         ...inv,
-        customer_name: mappedRec?.checkouts?.contracts?.customer_name || mappedDirectContract?.customer_name || 'Khách hàng',
-        room_name: mappedRec?.checkouts?.contracts?.rooms?.name || mappedDirectContract?.rooms?.name || 'Phòng',
+        customer_name: mappedRec?.checkouts?.contracts?.customer_name || mappedDirectContract?.customer_name || depositCustomerName || 'Khách hàng',
+        room_name: mappedRec?.checkouts?.contracts?.rooms?.name || mappedDirectContract?.rooms?.name || depositRoomName || 'Phòng',
         refund_reconciliations: mappedRec
       };
     });
@@ -183,6 +200,36 @@ export const payoutRepo = {
         status: 'paid',
         payout_status: 'completed'
       };
+    }
+
+    // Truong hop HOAN COC CHUA KY HD: hoa don gan thang deposit_id, khong co reconciliation/checkout/contract.
+    // Chi can danh dau da chi + giai phong giuong da giu cho (neu con).
+    if (!invoice.reconciliation_id && invoice.deposit_id) {
+      const { data: depositReq } = await supabase
+        .from('deposit_requests')
+        .select('bed_id')
+        .eq('id', invoice.deposit_id)
+        .maybeSingle();
+
+      const { data: paidInv, error: payErr } = await supabase
+        .from('invoices')
+        .update({
+          status: 'paid',
+          payment_method: paymentMethod || (accountDetails === 'Tien mat' ? 'cash' : 'transfer'),
+          payment_time: new Date().toISOString()
+        })
+        .eq('id', invoiceId)
+        .select()
+        .single();
+      if (payErr) {
+        throw new Error(`[PayoutRepo] Loi khi cap nhat hoa don hoan coc (chua ky HD): ${payErr.message}`);
+      }
+
+      if (depositReq?.bed_id) {
+        await supabase.from('beds').update({ status: 'available' }).eq('id', depositReq.bed_id);
+      }
+
+      return { ...paidInv, payout_status: 'completed' };
     }
 
     if (!invoice.reconciliation_id) {

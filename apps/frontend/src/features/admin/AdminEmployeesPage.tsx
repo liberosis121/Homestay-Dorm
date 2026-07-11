@@ -72,6 +72,23 @@ export default function AdminEmployeesPage() {
   });
   const [confirmLockEmployee, setConfirmLockEmployee] = useState<Employee | null>(null);
   const [isConfirmHover, setIsConfirmHover] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [isErrorToast, setIsErrorToast] = useState(false);
+  const [addEmpPassword, setAddEmpPassword] = useState("");
+  const [showAddEmpPassword, setShowAddEmpPassword] = useState(false);
+
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+    setNewEmp({
+      full_name: "",
+      email: "",
+      phone: "",
+      role: "sale" as Role,
+      branch: branches[0]?.id || "",
+    });
+    setAddEmpPassword("");
+    setShowAddEmpPassword(false);
+  };
 
   const loadEmployees = async () => {
     setIsLoading(true);
@@ -172,6 +189,16 @@ export default function AdminEmployeesPage() {
 
   const confirmToggleLock = async () => {
     if (!confirmLockEmployee) return;
+
+    // Nếu muốn khóa và nhân viên đang là quản lý (manager) hoặc quản lý chi nhánh -> Chặn và báo lỗi
+    if (confirmLockEmployee.status !== 'locked' && (confirmLockEmployee.role === 'manager' || confirmLockEmployee.branch !== 'Chi nhánh khác')) {
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể khóa tài khoản do nhân viên đang chịu trách nhiệm quản lý cơ sở hoặc tài sản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
+      setConfirmLockEmployee(null);
+      return;
+    }
+
     try {
       const nextStatus = await toggleEmployeeLockApi(confirmLockEmployee.id);
       setEmployees((prev) =>
@@ -186,9 +213,14 @@ export default function AdminEmployeesPage() {
           prev ? { ...prev, status: nextStatus as any } : null,
         );
       }
+      setIsErrorToast(false);
+      setSuccessMsg(nextStatus === 'locked' ? 'Đã khóa tài khoản nhân viên!' : 'Đã mở khóa tài khoản nhân viên!');
+      setTimeout(() => setSuccessMsg(''), 3500);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Lỗi khi thay đổi trạng thái khóa tài khoản!");
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể thay đổi trạng thái khóa tài khoản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
     } finally {
       setConfirmLockEmployee(null);
     }
@@ -200,16 +232,11 @@ export default function AdminEmployeesPage() {
       return;
     }
     try {
-      const created = await createEmployeeApi(newEmp);
+      const created = await createEmployeeApi({ ...newEmp, password: addEmpPassword || '123456' });
       setEmployees((prev) => [...prev, created]);
-      setShowAddModal(false);
-      setNewEmp({
-        full_name: "",
-        email: "",
-        phone: "",
-        role: "sale",
-        branch: branches[0]?.id || "",
-      });
+      setSuccessMsg("Đã thêm nhân viên mới thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
+      handleCloseAddModal();
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Lỗi khi thêm nhân viên mới");
@@ -233,7 +260,8 @@ export default function AdminEmployeesPage() {
       setSelected((prev) =>
         prev ? { ...prev, role: updated.role as Role, branch: updated.branch } : null,
       );
-      alert("Cập nhật thông tin nhân viên thành công!");
+      setSuccessMsg("Đã cập nhật thông tin nhân viên thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Lỗi khi cập nhật thông tin nhân viên");
@@ -259,6 +287,16 @@ export default function AdminEmployeesPage() {
       className="space-y-6 animate-fade-in-up"
       style={{ fontFamily: "Lexend, sans-serif" }}
     >
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className={`flex items-center gap-2 text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold ${isErrorToast ? 'bg-[#ba1a1a]' : 'bg-[#5f745d]'}`}>
+            <span className="material-symbols-outlined text-[18px]">
+              {isErrorToast ? 'error' : 'check_circle'}
+            </span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -794,7 +832,7 @@ export default function AdminEmployeesPage() {
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: `${A.primary}66` }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAddModal(false);
+            if (e.target === e.currentTarget) handleCloseAddModal();
           }}
         >
           <div
@@ -805,7 +843,7 @@ export default function AdminEmployeesPage() {
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
                 Thêm nhân viên mới
               </h2>
-              <button onClick={() => setShowAddModal(false)}>
+              <button onClick={handleCloseAddModal}>
                 <span
                   className="material-symbols-outlined"
                   style={{ color: A.textMuted }}
@@ -850,11 +888,25 @@ export default function AdminEmployeesPage() {
               >
                 Mật khẩu
               </label>
-              <input
-                type="password"
-                placeholder="Nhập mật khẩu..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
-              />
+              <div className="relative">
+                <input
+                  type={showAddEmpPassword ? "text" : "password"}
+                  placeholder="Nhập mật khẩu..."
+                  value={addEmpPassword}
+                  onChange={(e) => setAddEmpPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAddEmpPassword(!showAddEmpPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer flex items-center"
+                  aria-label={showAddEmpPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showAddEmpPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
