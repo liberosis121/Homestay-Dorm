@@ -184,8 +184,9 @@ export default function CustomerContractsPage() {
       }
 
       pdf.save(`HopDong_${contract.contractCode}.pdf`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('PDF export failed:', err);
+      alert(`Lỗi xuất PDF: ${err?.message || err}`);
       window.print();
     } finally {
       if (document.body.contains(tempContainer)) {
