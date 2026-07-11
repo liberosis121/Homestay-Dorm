@@ -308,4 +308,26 @@ router.patch('/beds/:id/status', async (req, res) => {
   }
 });
 
+// ==========================================
+// 8. CHECKOUTS FOR MANAGER
+// ==========================================
+router.get('/checkouts/pending', async (req, res) => {
+  try {
+    const data = await managerContractService.getPendingCheckouts(req.user?.id);
+    sendSuccess(res, data, 'Fetched pending checkouts successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post('/checkouts/:id/inspect', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await managerContractService.inspectCheckout(id, req.body, req.user?.id);
+    sendSuccess(res, data, 'Inspected checkout successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 export default router;

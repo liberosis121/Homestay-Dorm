@@ -9,6 +9,8 @@ type LiveRefundRecord = RefundRecord & {
   checkout_id?: string;
   contract_id?: string;
   reconciliation_id?: string;
+  cleaning_fee?: number;
+  violation_penalty?: number;
 };
 
 const uniqueReconciliationsByCheckout = (records: any[]) => {
@@ -76,6 +78,8 @@ export default function AccountantRefundsPage() {
             deposit_original: Number(contract.deposit_amount || contract.rent_price || 0),
             damage_deductions: (ch.incidental_costs || []).map((ic: any) => ({ item: ic.name, amount: Number(ic.amount) || 0 })),
             debt_deductions: Number(ch.debt_amount) || 0,
+            cleaning_fee: Number(ch.cleaning_fee) || 0,
+            violation_penalty: Number(ch.violation_penalty) || 0,
             status: ch.status === 'pending' ? 'pending' : 'calculated',
             created_at: ch.request_date || new Date().toISOString(),
             type: 'checkout' as const,
@@ -171,8 +175,8 @@ export default function AccountantRefundsPage() {
         const damageTotal = activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0;
         setDamageDeduction(formatNumberInput(damageTotal));
         setElecWaterDeduction(formatNumberInput(activeRefund.debt_deductions || 0));
-        setCleaningDeduction(formatNumberInput(200000)); // default cleaning fee
-        setViolationDeduction('0');
+        setCleaningDeduction(formatNumberInput(activeRefund.cleaning_fee !== undefined ? activeRefund.cleaning_fee : 200000));
+        setViolationDeduction(formatNumberInput(activeRefund.violation_penalty || 0));
       }
     }
   }, [selectedRefundId, activeRefund]);
@@ -474,8 +478,8 @@ export default function AccountantRefundsPage() {
                         <input
                           type="text"
                           value={violationDeduction}
-                          onChange={(e) => { setViolationDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
-                          className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          disabled
+                          className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                       </div>
@@ -492,8 +496,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={elecWaterDeduction}
-                            onChange={(e) => { setElecWaterDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -517,8 +521,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={damageDeduction}
-                            onChange={(e) => { setDamageDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -533,8 +537,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={cleaningDeduction}
-                            onChange={(e) => { setCleaningDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -549,8 +553,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={violationDeduction}
-                            onChange={(e) => { setViolationDeduction(formatNumberInput(e.target.value)); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a]  text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>

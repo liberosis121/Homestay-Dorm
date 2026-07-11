@@ -36,6 +36,13 @@ export const refundRepo = {
           .in('contract_id', contractIds).in('status', ['pending', 'unpaid'])
       : { data: [] as any[] };
 
+    // Fetch refund invoices containing the manager's check-out deductions notes
+    const { data: refundInvoices } = contractIds.length > 0
+      ? await supabase.from('invoices').select('*')
+          .eq('invoice_type', 'refund')
+          .in('contract_id', contractIds)
+      : { data: [] as any[] };
+
     // 3. Resolve deposit_requests to get room details
     const depositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
     const { data: depositReqs } = depositIds.length > 0
@@ -114,11 +121,36 @@ export const refundRepo = {
         .filter(inv => inv.contract_id === checkout.contract_id)
         .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
 
+      // Read and parse refund invoice details
+      const rInv = (refundInvoices || []).find(inv => inv.contract_id === checkout.contract_id);
+      let parsedNote: any = null;
+      if (rInv && rInv.note) {
+        try {
+          parsedNote = JSON.parse(rInv.note);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // If manager has entered damages list, map it
+      const damage_deductions = parsedNote?.damages ? parsedNote.damages.map((d: any, idx: number) => ({
+        id: `damage-${idx}`,
+        name: d.assetName,
+        amount: Number(d.compensation) || 0
+      })) : [];
+
+      const utility_debt = parsedNote ? Number(parsedNote.utility_debt) : debtAmount;
+      const cleaning_fee = parsedNote ? Number(parsedNote.cleaning_fee) : 0;
+      const violation_penalty = parsedNote ? Number(parsedNote.violation_penalty) : 0;
+
       return {
         ...checkout,
         contracts: mappedContract,
-        incidental_costs: contractIncidentals,
-        debt_amount: debtAmount
+        incidental_costs: damage_deductions.length > 0 ? damage_deductions : contractIncidentals,
+        debt_amount: utility_debt,
+        cleaning_fee: cleaning_fee,
+        violation_penalty: violation_penalty,
+        manager_note: parsedNote?.manager_note || ''
       };
     });
   },

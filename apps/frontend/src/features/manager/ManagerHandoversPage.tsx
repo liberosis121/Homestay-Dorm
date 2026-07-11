@@ -1,6 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
-import { AssetHandover, ManagerContract, ManagedAsset } from '../../lib/supabaseClient';
+import { AssetHandover, ManagedAsset } from '../../lib/supabaseClient';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -18,31 +18,24 @@ const STATUS_LABELS: Record<AssetHandover['status'], { label: string; bg: string
 
 export default function ManagerHandoversPage() {
   const [records, setRecords] = useState<AssetHandover[]>([]);
-  const [contracts, setContracts] = useState<ManagerContract[]>([]);
   const [managedAssets, setManagedAssets] = useState<ManagedAsset[]>([]);
   const [selected, setSelected] = useState<AssetHandover | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
-  // Tab state: 'handovers' (existing view) vs 'contracts' (new handover flow)
-  const [activeTab, setActiveTab] = useState<'handovers' | 'contracts'>('handovers');
+  // Tab state: 'handovers' vs 'checkouts'
+  const [activeTab, setActiveTab] = useState<'handovers' | 'checkouts'>('handovers');
 
-  // New Handover Drawer state
-  const [selectedContract, setSelectedContract] = useState<ManagerContract | null>(null);
-  const [handoverDrawerOpen, setHandoverDrawerOpen] = useState(false);
-  const [handoverNotes, setHandoverNotes] = useState('');
-  
-  // ERD Aligned: List of selected assets for the new handover
-  const [selectedAssets, setSelectedAssets] = useState<{
-    assetId: string;
-    name: string;
-    serialNumber: string;
-    quantity: number;
-    condition: string;
-  }[]>([]);
-  const [searchAssetQuery, setSearchAssetQuery] = useState('');
-  const [assetSelectOpen, setAssetSelectOpen] = useState(false);
+  // Checkout Inspection states
+  const [pendingCheckouts, setPendingCheckouts] = useState<any[]>([]);
+  const [selectedCheckout, setSelectedCheckout] = useState<any | null>(null);
+  const [checkoutDrawerOpen, setCheckoutDrawerOpen] = useState(false);
+  const [compensations, setCompensations] = useState<Record<string, number>>({});
+  const [utilityDebt, setUtilityDebt] = useState<number>(0);
+  const [cleaningFee, setCleaningFee] = useState<number>(200000);
+  const [violationPenalty, setViolationPenalty] = useState<number>(0);
+  const [checkoutNotes, setCheckoutNotes] = useState('');
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
@@ -108,59 +101,28 @@ export default function ManagerHandoversPage() {
     return { 'Content-Type': 'application/json' };
   };
 
-  const getCurrentUserId = (): string | null => {
-    try {
-      // Priority 1: Supabase access_token stored by authStore — decode JWT sub
-      const accessToken = localStorage.getItem('access_token');
-      if (accessToken) {
-        const payload = JSON.parse(atob(accessToken.split('.')[1]));
-        if (payload?.sub) return payload.sub;
-      }
-      // Priority 2: Supabase native session (sb-*-auth-token)
-      const tokenKey = Object.keys(localStorage).find(
-        key => key.startsWith('sb-') && key.endsWith('-auth-token')
-      );
-      if (tokenKey) {
-        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
-        if (sessionData?.user?.id) return sessionData.user.id;
-      }
-      // Priority 3: Mock session fallback
-      const mockUserStr = localStorage.getItem('homestay_session_user');
-      if (mockUserStr) {
-        const mockUser = JSON.parse(mockUserStr);
-        if (mockUser?.id) return mockUser.id;
-        const email = (mockUser?.email || '').toLowerCase();
-        if (email.includes('manager')) return 'e002e002-e002-e002-e002-e002e002e002';
-        if (email.includes('sale')) return 'e001e001-e001-e001-e001-e001e001e001';
-        if (email.includes('accountant') || email.includes('ketoan')) return 'e003e003-e003-e003-e003-e003e003e003';
-        if (email.includes('admin')) return 'e004e004-e004-e004-e004-e004e004e004';
-      }
-    } catch (err) {
-      console.error('Error resolving current user id:', err);
-    }
-    return null;
-  };
+
 
   const loadData = async () => {
     try {
       const headers = await getAuthHeaders();
-      const [resHandovers, resContracts, resAssets] = await Promise.all([
+      const [resHandovers, resCheckouts, resAssets] = await Promise.all([
         fetch(`${API_BASE}/handovers`, { headers }),
-        fetch(`${API_BASE}/contracts`, { headers }),
+        fetch(`${API_BASE}/checkouts/pending`, { headers }),
         fetch(`${API_BASE}/assets`, { headers })
       ]);
 
-      const [dataHandovers, dataContracts, dataAssets] = await Promise.all([
+      const [dataHandovers, dataCheckouts, dataAssets] = await Promise.all([
         resHandovers.json(),
-        resContracts.json(),
+        resCheckouts.json(),
         resAssets.json()
       ]);
 
       if (dataHandovers.success) {
         setRecords(dataHandovers.data || []);
       }
-      if (dataContracts.success) {
-        setContracts(dataContracts.data || []);
+      if (dataCheckouts.success) {
+        setPendingCheckouts(dataCheckouts.data || []);
       }
       if (dataAssets.success) {
         // Map backend assets table columns to ManagedAsset interface format
@@ -230,115 +192,67 @@ export default function ManagerHandoversPage() {
     }
   };
 
-  // Open drawer to start a new handover
-  const startHandover = (contract: ManagerContract) => {
-    setSelectedContract(contract);
-    setHandoverNotes('');
-    setSelectedAssets([]); // Starts empty, selected by manager manually
-    setSearchAssetQuery('');
-    setAssetSelectOpen(false);
-    setHandoverDrawerOpen(true);
+  // Open drawer to inspect checkout
+  const startCheckoutInspection = (checkout: any) => {
+    setSelectedCheckout(checkout);
+    setCheckoutNotes('');
+    setUtilityDebt(0);
+    setCleaningFee(200000);
+    setViolationPenalty(0);
+    
+    // Auto-populate room assets compensations with default 0
+    setCompensations({});
+    setCheckoutDrawerOpen(true);
   };
 
-  const addAssetToHandover = (asset: ManagedAsset) => {
-    setSelectedAssets(prev => [
-      ...prev,
-      {
-        assetId: asset.id,
-        name: asset.name,
-        serialNumber: asset.serial_number || 'N/A',
-        quantity: 1,
-        condition: 'Tốt'
-      }
-    ]);
-  };
+  const submitCheckoutInspection = async () => {
+    if (!selectedCheckout) return;
 
-  const removeAssetFromHandover = (assetId: string) => {
-    setSelectedAssets(prev => prev.filter(a => a.assetId !== assetId));
-  };
+    // Filter room assets
+    const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
+    const branchCode = selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
+    const expectedLocation = `CN_${branchCode}-${roomCode}`;
+    const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
 
-  // Submit successful handover flow
-  const submitHandover = async () => {
-    if (!selectedContract) return;
-    if (selectedAssets.length === 0) {
-      showToast('Vui lòng chọn ít nhất một tài sản để bàn giao!', 'error');
-      return;
-    }
+    const damages = roomAssets.map(asset => {
+      const comp = compensations[asset.id] || 0;
+      return {
+        assetName: asset.name,
+        serialNumber: asset.serial_number || asset.id,
+        compensation: comp
+      };
+    });
 
     try {
       const headers = await getAuthHeaders();
-      const now = new Date();
-      const nextId = `BBBG-${100 + records.length + 1}`;
-
-      const handoverData = {
-        id: nextId,
-        contract_id: selectedContract.id,
-        handover_time: now.toISOString(),
-        customer_confirmed: false, // Starts as unsigned, to be signed by customer
-        staff_confirmed: true,    // Signed by manager performing it
-        note: handoverNotes || '',
-        staff_id: getCurrentUserId() // dynamically resolved from logged-in user session
-      };
-
-      const detailsList = selectedAssets.map(asset => ({
-        serial_number: asset.serialNumber,
-        quantity: asset.quantity,
-        condition: asset.condition,
-        note: ''
-      }));
-
-      const res = await fetch(`${API_BASE}/handovers`, {
+      const res = await fetch(`${API_BASE}/checkouts/${selectedCheckout.id}/inspect`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          ...handoverData,
-          detailsList
+          damages,
+          utility_debt: utilityDebt,
+          cleaning_fee: cleaningFee,
+          violation_penalty: violationPenalty,
+          note: checkoutNotes
         })
       });
 
       const result = await res.json();
       if (result.success) {
         await loadData();
-        setHandoverDrawerOpen(false);
-        showToast('Bàn giao tài sản thành công! Thiết bị đã được xuất kho và chuyển đến phòng.', 'success');
+        setCheckoutDrawerOpen(false);
+        showToast('Ghi nhận biên bản trả phòng và đền bù tài sản thành công!', 'success');
       } else {
-        showToast(result.message || 'Bàn giao thất bại', 'error');
+        showToast(result.message || 'Ghi nhận thất bại', 'error');
       }
     } catch (err) {
-      console.error('Error submitting handover:', err);
+      console.error('Error submitting checkout inspection:', err);
       showToast('Lỗi kết nối máy chủ', 'error');
     }
   };
 
-
-
   // Filtered handovers records
   const filtered = filterStatus === 'all' ? records : records.filter(r => r.status === filterStatus);
-
-  // Active contracts that DO NOT have an asset handover record yet
-  const eligibleContracts = contracts.filter((c) => {
-    if (c.status !== 'active') return false;
-    const hasHandover = records.some((h) => h.customer_name === c.customer_name && h.room_name === c.room_name);
-    return !hasHandover;
-  });
-
-  // Assets in stock that are not yet selected for handover
-  const availableAssets = managedAssets.filter((asset) => {
-    const isInStock = asset.status === 'in_stock' || asset.location_type === 'warehouse';
-    const isAlreadySelected = selectedAssets.some(sa => sa.assetId === asset.id);
-    
-    if (!isInStock || isAlreadySelected) return false;
-    
-    if (searchAssetQuery.trim()) {
-      const q = searchAssetQuery.toLowerCase();
-      return (
-        asset.name.toLowerCase().includes(q) ||
-        asset.id.toLowerCase().includes(q) ||
-        (asset.serial_number || '').toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
 
   return (
     <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="space-y-6 animate-fade-in-up">
@@ -370,13 +284,13 @@ export default function ManagerHandoversPage() {
 
       {/* Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Bàn giao tài sản phòng</h1>
+        <h1 style={{ fontFamily: "'Lexend', sans-serif", color: T.primary, fontSize: 24, fontWeight: 700 }}>Trả phòng & Đền bù tài sản</h1>
         
         {/* Tab switcher */}
         <div style={{ display: 'flex', background: '#FAF2EC', borderRadius: 20, padding: 4, border: `1.5px solid ${T.border}` }}>
           {[
             { key: 'handovers', label: 'Biên bản đã lập', icon: 'assignment' },
-            { key: 'contracts', label: 'Hợp đồng chờ bàn giao', icon: 'handshake' }
+            { key: 'checkouts', label: 'Hợp đồng cần trả phòng', icon: 'logout' }
           ].map(tab => {
             const isActive = activeTab === tab.key;
             return (
@@ -444,12 +358,12 @@ export default function ManagerHandoversPage() {
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <div style={{ background: T.primaryLight, borderRadius: 10, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.primary }}>handshake</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.primary }}>logout</span>
               </div>
-              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hợp đồng chờ bàn giao</span>
+              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hợp đồng cần trả phòng</span>
             </div>
             <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: T.primary, marginTop: 4 }}>
-              {eligibleContracts.length}
+              {pendingCheckouts.length}
             </div>
           </div>
           <div className="hidden md:block" />
@@ -553,12 +467,12 @@ export default function ManagerHandoversPage() {
             <>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '15%' }} />
                   <col style={{ width: '18%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '17%' }} />
                   <col style={{ width: '20%' }} />
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '15%' }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: T.bg }}>
@@ -566,8 +480,8 @@ export default function ManagerHandoversPage() {
                       padding: '14px 16px 14px 24px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                    }}>Mã hợp đồng</th>
-                    {['Khách hàng', 'Phòng / Giường', 'Ngày bắt đầu', 'Tài chính'].map(h => (
+                    }}>Mã yêu cầu</th>
+                    {['Hợp đồng', 'Khách hàng', 'Phòng', 'Ngày yêu cầu', 'Trạng thái'].map(h => (
                       <th key={h} style={{
                         padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                         color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -582,42 +496,48 @@ export default function ManagerHandoversPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {eligibleContracts.map(c => (
-                    <tr key={c.id} style={{ borderBottom: `1px solid ${T.border}` }} className="hover:bg-[#FAF2E8] transition-colors duration-150">
-                      <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif" }}>{formatShortId(c.contract_code, 'contract')}</td>
+                  {pendingCheckouts.map(ch => (
+                    <tr key={ch.id} style={{ borderBottom: `1px solid ${T.border}` }} className="hover:bg-[#FAF2E8] transition-colors duration-150">
+                      <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif" }}>{formatShortId(ch.id, 'checkout')}</td>
+                      <td style={{ padding: '13px 16px', fontSize: 12, fontWeight: 700, color: T.text }}>{formatShortId(ch.contract_code, 'contract')}</td>
                       <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{c.customer_name}</p>
-                        <p style={{ fontSize: 11, color: T.textMuted }}>{c.customer_phone}</p>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{ch.customer_name}</p>
+                        <p style={{ fontSize: 11, color: T.textMuted }}>{ch.customer_phone}</p>
                       </td>
                       <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{c.room_name}</p>
-                        {c.bed_name && (
-                          <p style={{ fontSize: 11, color: T.sage, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>bed</span> {c.bed_name}
-                          </p>
-                        )}
+                        <p style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ch.room_name}</p>
                       </td>
-                      <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, fontWeight: 600 }}>{c.start_date.split('-').reverse().join('/')}</td>
+                      <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, fontWeight: 600 }}>{ch.request_date.split('-').reverse().join('/')}</td>
                       <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontSize: 12, color: T.textMuted }}>Thuê: <strong style={{ color: T.text, fontFamily: "'Lexend', sans-serif" }}>{c.rent_amount.toLocaleString('vi-VN')}đ</strong></p>
-                        <p style={{ fontSize: 12, color: T.textMuted }}>Cọc: <strong style={{ color: T.primary, fontFamily: "'Lexend', sans-serif" }}>{c.deposit_amount.toLocaleString('vi-VN')}đ</strong></p>
+                        <span style={{
+                          background: ch.status === 'pending' ? T.amberBg : T.sageBg,
+                          color: ch.status === 'pending' ? T.amber : T.sage,
+                          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
+                          border: `1px solid ${ch.status === 'pending' ? T.amber : T.sage}1A`,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {ch.status === 'pending' ? 'Chờ kiểm kê' : 'Đã kiểm kê'}
+                        </span>
                       </td>
                       <td style={{ padding: '13px 24px 13px 16px', textAlign: 'right' }}>
-                        <button onClick={() => startHandover(c)} style={{
-                          background: T.sage, border: 'none',
+                        <button onClick={() => startCheckoutInspection(ch)} style={{
+                          background: ch.status === 'pending' ? T.primary : T.sage,
+                          border: 'none',
                           borderRadius: 12, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
                           transition: 'all 0.15s ease-in-out'
                         }}
-                        className="hover:opacity-90 active:scale-[0.95] shadow-sm">Bàn giao</button>
+                        className="hover:opacity-90 active:scale-[0.95] shadow-sm">
+                          {ch.status === 'pending' ? 'Kiểm kê' : 'Xem lại'}
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {eligibleContracts.length === 0 && (
+              {pendingCheckouts.length === 0 && (
                 <div style={{ padding: 56, textAlign: 'center', color: T.textFaint }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 44, display: 'block', marginBottom: 10 }}>handshake</span>
-                  <p style={{ fontSize: 13, fontWeight: 600 }}>Không có hợp đồng nào chờ bàn giao.</p>
+                  <span className="material-symbols-outlined" style={{ fontSize: 44, display: 'block', marginBottom: 10 }}>logout</span>
+                  <p style={{ fontSize: 13, fontWeight: 600 }}>Không có hợp đồng nào cần trả phòng.</p>
                 </div>
               )}
             </>
@@ -726,254 +646,227 @@ export default function ManagerHandoversPage() {
         </div>
       )}
 
-      {/* ================= DRAWER: PERFORM NEW HANDOVER FLOW (ERD-ALIGNED) ================= */}
-      {handoverDrawerOpen && selectedContract && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setHandoverDrawerOpen(false)}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.45)', backdropFilter: 'blur(8px)' }} />
-          <div style={{
-            position: 'absolute', right: 0, top: 0, bottom: 0, width: 620, maxWidth: '96vw',
-            background: T.surface, borderLeft: 'none', display: 'flex', flexDirection: 'column',
-            boxShadow: '-8px 0 40px rgba(111,88,60,0.18)', borderTopLeftRadius: 28, borderBottomLeftRadius: 28,
-            overflow: 'hidden', animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-          }}
-            onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Thực hiện bàn giao tài sản</h3>
-                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>
-                    Hợp đồng: {formatShortId(selectedContract.contract_code, 'contract')} — KH: {selectedContract.customer_name}
-                  </p>
+      {/* ================= DRAWER: INSPECT CHECKOUT & DAMAGE COMPENSATION ================= */}
+      {checkoutDrawerOpen && selectedCheckout && (() => {
+        // Resolve room assets
+        const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
+        const branchCode = selectedCheckout.branch_name.includes('Qu9') || selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Qu10') || selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
+        const expectedLocation = `CN_${branchCode}-${roomCode}`;
+        const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setCheckoutDrawerOpen(false)}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(30,27,23,0.45)', backdropFilter: 'blur(8px)' }} />
+            <div style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: 620, maxWidth: '96vw',
+              background: T.surface, borderLeft: 'none', display: 'flex', flexDirection: 'column',
+              boxShadow: '-8px 0 40px rgba(111,88,60,0.18)', borderTopLeftRadius: 28, borderBottomLeftRadius: 28,
+              overflow: 'hidden', animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            }}
+              onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Kiểm kê & Ghi nhận Trả phòng</h3>
+                    <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>
+                      Yêu cầu: {formatShortId(selectedCheckout.id, 'checkout')} — KH: {selectedCheckout.customer_name}
+                    </p>
+                  </div>
+                  <button onClick={() => setCheckoutDrawerOpen(false)}
+                    style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
+                  </button>
                 </div>
-                <button onClick={() => setHandoverDrawerOpen(false)}
-                  style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                  className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
+              </div>
+
+              {/* Content Body */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
+                
+                {/* Room / Customer Info */}
+                <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 16 }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Thông tin trả phòng</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Phòng:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedCheckout.room_name}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Chi nhánh:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedCheckout.branch_name}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Mã Hợp đồng:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{formatShortId(selectedCheckout.contract_code, 'contract')}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>Tiền đặt cọc:</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>{selectedCheckout.deposit_amount.toLocaleString('vi-VN')}đ</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main Deduction Inputs: utility, cleaning, violation */}
+                <div style={{ border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 16, background: T.surface }} className="space-y-4">
+                  <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                    Các khoản khấu trừ tài chính
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: T.text, marginBottom: 6 }}>Trừ điện nước / nợ cũ</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={0}
+                          value={utilityDebt}
+                          onChange={e => setUtilityDebt(Number(e.target.value) || 0)}
+                          style={{
+                            width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                            padding: '6px 10px', fontSize: 13, color: T.text, background: T.bg, outline: 'none'
+                          }}
+                        />
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: T.textMuted }}>đ</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: T.text, marginBottom: 6 }}>Phí vệ sinh trả phòng</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={0}
+                          value={cleaningFee}
+                          onChange={e => setCleaningFee(Number(e.target.value) || 0)}
+                          style={{
+                            width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                            padding: '6px 10px', fontSize: 13, color: T.text, background: T.bg, outline: 'none'
+                          }}
+                        />
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: T.textMuted }}>đ</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: T.text, marginBottom: 6 }}>Khoản phạt hủy hợp đồng / vi phạm</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        value={violationPenalty}
+                        onChange={e => setViolationPenalty(Number(e.target.value) || 0)}
+                        style={{
+                          width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                          padding: '6px 10px', fontSize: 13, color: T.text, background: T.bg, outline: 'none'
+                        }}
+                      />
+                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: T.textMuted }}>đ</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Assets Inspection List */}
+                <div className="space-y-3">
+                  <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Kiểm kê & đền bù tài sản phòng ({roomAssets.length} tài sản)
+                  </p>
+                  
+                  {roomAssets.length === 0 ? (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: T.textMuted, border: `1.5px dashed ${T.border}`, borderRadius: 14 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: 0.6, marginBottom: 8 }}>inventory_2</span>
+                      <p style={{ fontSize: 12.5, fontWeight: 700, color: T.textMuted }}>Không tìm thấy tài sản nào đang được sử dụng ở phòng này.</p>
+                      <p style={{ fontSize: 11, color: T.textFaint, marginTop: 4 }}>Các tài sản sẽ tự động được tải từ hệ thống kho định vị.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {roomAssets.map((asset) => {
+                        const maxVal = asset.purchase_price;
+                        const currentCompVal = compensations[asset.id] || 0;
+                        return (
+                          <div key={asset.id} style={{
+                            padding: '14px 16px', borderRadius: 16,
+                            background: T.surface, border: `1.5px solid ${T.border}`,
+                            boxShadow: '0 2px 8px rgba(111,88,60,0.02)'
+                          }}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <h5 style={{ fontSize: 13.5, fontWeight: 800, color: T.text }}>{asset.name}</h5>
+                                <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: "'Lexend', sans-serif" }}>Seri: {asset.serial_number || asset.id}</p>
+                                <p style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>Giá gốc: <strong style={{ color: T.textMuted }}>{maxVal.toLocaleString('vi-VN')}đ</strong></p>
+                              </div>
+                              <div style={{ width: 160 }}>
+                                <label style={{ display: 'block', fontSize: 10, color: T.textFaint, textTransform: 'uppercase', fontWeight: 800, marginBottom: 4, textAlign: 'right' }}>Tiền đền bù</label>
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={maxVal}
+                                    value={currentCompVal}
+                                    onChange={e => {
+                                      let val = parseInt(e.target.value) || 0;
+                                      if (val < 0) val = 0;
+                                      if (val > maxVal) val = maxVal;
+                                      setCompensations(prev => ({ ...prev, [asset.id]: val }));
+                                    }}
+                                    style={{
+                                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
+                                      padding: '6px 20px 6px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none',
+                                      textAlign: 'right'
+                                    }}
+                                  />
+                                  <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: T.textFaint }}>đ</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* General notes */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Ghi chú của quản lý
+                  </label>
+                  <textarea
+                    placeholder="Nhập ghi chú hư hại hoặc lý do khấu trừ nếu có..."
+                    value={checkoutNotes}
+                    onChange={e => setCheckoutNotes(e.target.value)}
+                    rows={3}
+                    style={{
+                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
+                      padding: '10px 14px', fontSize: 13, color: T.text, background: T.surface, outline: 'none',
+                      transition: 'all 0.15s', resize: 'vertical'
+                    }}
+                    className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
+                  />
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 12 }}>
+                <button onClick={() => setCheckoutDrawerOpen(false)} style={{
+                  background: T.surface, color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: '12px 20px',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
+                }}
+                className="hover:bg-primaryLight active:scale-[0.98]">
+                  Hủy bỏ
+                </button>
+                <button onClick={submitCheckoutInspection} style={{
+                  flex: 1, background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 20px',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  transition: 'all 0.15s'
+                }}
+                className="hover:opacity-90 active:scale-[0.98] shadow-sm">
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check</span> Xác nhận & Ghi nhận Trả phòng
                 </button>
               </div>
             </div>
-
-            {/* Content Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
-              
-              {/* Contract Information */}
-              <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 16, padding: 16 }}>
-                <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Thông tin thuê phòng</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
-                  <div>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Phòng/Giường:</span>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
-                      {selectedContract.room_name} {selectedContract.bed_name ? `(${selectedContract.bed_name})` : ''}
-                    </p>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>SĐT khách hàng:</span>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedContract.customer_phone}</p>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Ngày bắt đầu:</span>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedContract.start_date.split('-').reverse().join('/')}</p>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 12, color: T.textMuted }}>Loại thuê:</span>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedContract.deposit_type === 'bed' ? 'Giường lẻ' : 'Cả phòng'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Selected Assets List */}
-              <div className="space-y-3">
-                <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Danh sách tài sản bàn giao đã chọn ({selectedAssets.length} mục)
-                </p>
-                
-                {selectedAssets.length === 0 ? (
-                  <div style={{ padding: '24px 16px', textAlign: 'center', color: T.textMuted, border: `1.5px dashed ${T.red}55`, background: T.redBg + '33', borderRadius: 14 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 32, color: T.red, opacity: 0.6, marginBottom: 8 }}>inventory_2</span>
-                    <p style={{ fontSize: 12.5, fontWeight: 700, color: T.textMuted }}>Chưa chọn thiết bị/tài sản nào từ Kho để bàn giao!</p>
-                    <p style={{ fontSize: 11, color: T.textFaint, marginTop: 4 }}>Vui lòng thêm tài sản từ mục "Tìm tài sản trong Kho" bên dưới.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedAssets.map((item, i) => (
-                      <div key={item.assetId} style={{
-                        padding: '14px 16px', borderRadius: 16,
-                        background: T.surface, border: `1.5px solid ${T.border}`,
-                        boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
-                        position: 'relative'
-                      }}>
-                        {/* Remove button */}
-                        <button type="button" onClick={() => removeAssetFromHandover(item.assetId)}
-                          style={{ position: 'absolute', right: 12, top: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                          className="text-red-500 hover:opacity-85 active:scale-90">
-                          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
-                        </button>
-
-                        <div style={{ paddingRight: 24 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: T.primary, background: T.primaryLight, padding: '2px 8px', borderRadius: 12, fontFamily: "'Lexend', sans-serif" }}>
-                            {item.assetId}
-                          </span>
-                          <h5 style={{ fontSize: 13.5, fontWeight: 800, color: T.text, marginTop: 6 }}>{item.name}</h5>
-                          <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: "'Lexend', sans-serif" }}>Số seri: {item.serialNumber}</p>
-                        </div>
-
-                        {/* Inputs for Handover details: Quantity and Condition */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginTop: 12, borderTop: `1px solid ${T.border}`, paddingTop: 10 }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: 10, color: T.textFaint, textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Số lượng</label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={item.quantity}
-                              onChange={e => {
-                                const val = parseInt(e.target.value) || 1;
-                                setSelectedAssets(prev => prev.map((it, idx) => idx === i ? { ...it, quantity: val } : it));
-                              }}
-                              style={{
-                                width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
-                                padding: '6px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none'
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: 10, color: T.textFaint, textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Tình trạng</label>
-                            <input
-                              type="text"
-                              value={item.condition}
-                              onChange={e => {
-                                const val = e.target.value;
-                                setSelectedAssets(prev => prev.map((it, idx) => idx === i ? { ...it, condition: val } : it));
-                              }}
-                              placeholder="Ví dụ: Mới 99%, hoạt động tốt..."
-                              style={{
-                                width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
-                                padding: '6px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none'
-                              }}
-                            />
-                          </div>
-                        </div>
-                        
-
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Add Asset Selection UI */}
-              <div style={{ borderTop: `1.5px dashed ${T.border}`, paddingTop: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <label style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    Tìm tài sản trong Kho
-                  </label>
-                  <button type="button" onClick={() => setAssetSelectOpen(!assetSelectOpen)}
-                    style={{ marginLeft: 'auto', background: T.primaryLight, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: '4px 12px', fontSize: 11.5, fontWeight: 700, color: T.primary, cursor: 'pointer' }}>
-                    {assetSelectOpen ? 'Thu gọn' : 'Mở danh mục kho'}
-                  </button>
-                </div>
-
-                {assetSelectOpen && (
-                  <div style={{ background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 18, padding: 14 }}>
-                    {/* Search input */}
-                    <div style={{ position: 'relative', marginBottom: 12 }}>
-                      <span className="material-symbols-outlined" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: T.textFaint }}>search</span>
-                      <input
-                        type="text"
-                        placeholder="Tìm theo tên thiết bị, mã AST, hoặc số seri..."
-                        value={searchAssetQuery}
-                        onChange={e => setSearchAssetQuery(e.target.value)}
-                        style={{
-                          width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 10,
-                          padding: '8px 12px 8px 34px', fontSize: 12.5, color: T.text,
-                          background: T.surface, outline: 'none'
-                        }}
-                      />
-                    </div>
-
-                    {/* Inventory Assets List */}
-                    <div style={{ maxHeight: 200, overflowY: 'auto' }} className="space-y-1.5 pr-1">
-                      {availableAssets.length === 0 ? (
-                        <div style={{ padding: '16px 0', textAlign: 'center', color: T.textFaint, fontSize: 11.5 }}>
-                          Không tìm thấy tài sản nào còn trống trong Kho.
-                        </div>
-                      ) : (
-                        availableAssets.map(asset => (
-                          <div key={asset.id} style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            background: T.surface, padding: '8px 12px', borderRadius: 10,
-                            border: `1px solid ${T.border}`
-                          }}>
-                            <div className="flex-1 min-w-0 pr-2">
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: T.primary, fontWeight: 800, fontFamily: "'Lexend', sans-serif" }}>{formatShortId(asset.id, 'checkout')}</span>
-                                <span style={{ fontSize: 10, background: T.sageBg, color: T.sage, fontWeight: 800, padding: '1px 5px', borderRadius: 4 }}>
-                                  {asset.category}
-                                </span>
-                              </div>
-                              <h6 style={{ fontSize: 12.5, fontWeight: 700, color: T.text, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name}</h6>
-                              {asset.serial_number && (
-                                <p style={{ fontSize: 11, color: T.textMuted, fontFamily: "'Lexend', sans-serif", marginTop: 1 }}>Seri: {asset.serial_number}</p>
-                              )}
-                            </div>
-                            <button type="button" onClick={() => addAssetToHandover(asset)}
-                              style={{
-                                background: T.primary, color: '#fff', border: 'none',
-                                borderRadius: 8, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                                transition: 'all 0.15s'
-                              }}
-                              className="hover:opacity-90 active:scale-95 shadow-sm">
-                              + Chọn
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* General notes */}
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                  Ghi chú biên bản bàn giao
-                </label>
-                <textarea
-                  placeholder="Nhập ghi chú chung cho đợt bàn giao tài sản phòng này..."
-                  value={handoverNotes}
-                  onChange={e => setHandoverNotes(e.target.value)}
-                  rows={3}
-                  style={{
-                    width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
-                    padding: '10px 14px', fontSize: 13, color: T.text, background: T.surface, outline: 'none',
-                    transition: 'all 0.15s', resize: 'vertical'
-                  }}
-                  className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
-                />
-              </div>
-            </div>
-
-            {/* Footer Actions */}
-            <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 12 }}>
-              <button onClick={() => setHandoverDrawerOpen(false)} style={{
-                background: T.surface, color: T.text, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: '12px 20px',
-                fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
-              }}
-              className="hover:bg-primaryLight active:scale-[0.98]">
-                Hủy bỏ
-              </button>
-              <button onClick={submitHandover} style={{
-                flex: 1, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 20px',
-                fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                transition: 'all 0.15s'
-              }}
-              className="hover:opacity-90 active:scale-[0.98] shadow-sm">
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check</span> Xác nhận bàn giao
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
