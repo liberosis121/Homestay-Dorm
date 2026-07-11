@@ -1,4 +1,5 @@
 import { depositInvoiceRepo } from '../repositories/deposit-invoice.repo';
+import { DEPOSIT_PAYMENT_DEADLINE_HOURS } from '../types/constants';
 
 export const depositInvoiceService = {
   /**
@@ -34,13 +35,7 @@ export const depositInvoiceService = {
 
     // Tinh toan thoi han (deadline) cho hoa don
     const deadlineDate = new Date();
-    if (data.deadlineType === '24h') {
-      deadlineDate.setDate(deadlineDate.getDate() + 1);
-    } else if (data.deadlineType === '48h') {
-      deadlineDate.setDate(deadlineDate.getDate() + 2);
-    } else {
-      deadlineDate.setDate(deadlineDate.getDate() + 3); // 72h
-    }
+    deadlineDate.setHours(deadlineDate.getHours() + DEPOSIT_PAYMENT_DEADLINE_HOURS);
 
     const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
     const invoiceData = {
@@ -59,6 +54,6 @@ export const depositInvoiceService = {
       note: data.note || null
     };
 
-    return await depositInvoiceRepo.createDepositInvoice(invoiceData, data.requestId);
+    return await depositInvoiceRepo.createDepositInvoice(invoiceData, data.requestId, deadlineDate.toISOString());
   }
 };
