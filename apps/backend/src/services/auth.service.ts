@@ -24,7 +24,19 @@ export const authService = {
    * @param fullName - Họ và tên khách hàng
    * @param phone - Số điện thoại liên hệ
    */
-  register: async (email: string, password: string, fullName: string, phone: string) => {
+  register: async (
+    email: string,
+    password: string,
+    fullName: string,
+    phone: string,
+    dob?: string,
+    gender?: string,
+    nationality?: string,
+    cccd?: string,
+    cccdIssueDate?: string,
+    cccdIssuePlace?: string,
+    address?: string
+  ) => {
     // 1. Gọi Supabase Auth đăng ký tài khoản mới qua client tam thoi
     const authClient = getAuthClient();
     const { data, error: signUpError } = await authClient.auth.signUp({
@@ -54,7 +66,6 @@ export const authService = {
       if (profileError) throw profileError;
 
       // 3. Tao ban ghi khach hang lien ket voi profile
-      // cccd dung prefix 'TEMP-' de service layer nhan biet va yeu cau cap nhat CCCD that truoc khi dang ky thue
       const { error: customerError } = await supabase
         .from('customers')
         .insert({
@@ -62,8 +73,13 @@ export const authService = {
           full_name: fullName,
           phone: phone,
           email: email,
-          cccd: `TEMP-${Date.now()}`, // TEMP- prefix: service layer se check va yeu cau cap nhat CCCD that
-          nationality: 'Việt Nam',
+          cccd: cccd || null,
+          dob: dob || null,
+          gender: gender || null,
+          nationality: nationality || null,
+          cccd_issue_date: cccdIssueDate || null,
+          cccd_issue_place: cccdIssuePlace || null,
+          address: address || null,
         });
 
       if (customerError) throw customerError;
@@ -197,8 +213,8 @@ export const authService = {
             full_name: profile.full_name || 'Khách hàng mới',
             phone: profile.phone || '',
             email: profile.email,
-            cccd: `TEMP-${Date.now()}`, // Mã CCCD tạm thời để khách hàng cập nhật sau
-            nationality: 'Việt Nam',
+            cccd: null, // Không cần tạo CCCD ảo nữa vì CCCD đã nullable
+            nationality: null,
           })
           .select()
           .maybeSingle();
@@ -262,6 +278,8 @@ export const authService = {
         customerUpdates.gender = restDetails.gender === 'male' ? 'Nam' : (restDetails.gender === 'female' ? 'Nữ' : 'Khác');
       }
       if (restDetails.nationality !== undefined) customerUpdates.nationality = restDetails.nationality;
+      if (restDetails.issue_date !== undefined) customerUpdates.cccd_issue_date = restDetails.issue_date || null;
+      if (restDetails.issue_place !== undefined) customerUpdates.cccd_issue_place = restDetails.issue_place || null;
       if (restDetails.permanent_address !== undefined || restDetails.address !== undefined) {
         customerUpdates.address = restDetails.permanent_address || restDetails.address;
       }

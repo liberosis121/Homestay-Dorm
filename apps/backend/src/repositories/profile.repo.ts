@@ -334,6 +334,45 @@ export const profileRepo = {
       if (customerErr) {
         console.error('Error fetching khach_hang record:', customerErr);
       }
+
+      // Auto-tạo bản ghi customers cho tài khoản Google OAuth
+      // (các tài khoản này bỏ qua /api/auth/register nên chưa có row trong customers)
+      if (!customer) {
+        console.log(`[ProfileRepo] Customer record not found for userId=${id}. Auto-creating stub record (Google OAuth account).`);
+        const { data: newCustomer, error: insertErr } = await supabase
+          .from('customers')
+          .insert({
+            user_id: id,
+            full_name: profile.full_name || 'Người dùng mới',
+            phone: profile.phone || null,
+            email: profile.email,
+            // Tất cả trường khác mặc định để null như mong muốn của user
+            cccd: null,
+            nationality: null,
+            dob: null,
+            gender: null,
+            address: null,
+            cccd_issue_date: null,
+            cccd_issue_place: null
+          })
+          .select('*')
+          .single();
+
+        if (insertErr) {
+          console.error('[ProfileRepo] Failed to auto-create customer record:', insertErr.message);
+          // Không throw — vẫn trả về profile cơ bản, tránh crash trang
+        } else {
+          console.log(`[ProfileRepo] Auto-created customer record: ${newCustomer?.user_id}`);
+          return {
+            ...profile,
+            ...newCustomer,
+            renting_room_name: undefined,
+            has_contract_history: false,
+            type: 'customer'
+          };
+        }
+      }
+
       if (customer) {
         const rentingRoomName = await getRentingRoomName(id);
         const hasHistory = await hasContractHistory(id);

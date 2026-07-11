@@ -26,12 +26,30 @@ export const leaseService = {
     // 1. Lay thong tin chi tiet khach hang tu userId
     const customer = await getCustomerByUserId(userId);
     if (!customer) {
-      throw new Error('Khong tim thay thong tin khach hang. Vui long cap nhat ho so.');
+      throw new Error('Không tìm thấy thông tin khách hàng. Vui lòng cập nhật hồ sơ.');
     }
 
-    // Yeu cau bat buoc phai co CCCD hop le moi duoc dang ky thue
-    if (!customer.cccd || customer.cccd.startsWith('TEMP-')) {
-      throw new Error('Ban phai cap nhat so CCCD hop le trong ho so ca nhan truoc khi dang ky thue.');
+    // Yêu cầu bắt buộc điền đầy đủ các thông tin cá nhân pháp lý trước khi đăng ký thuê phòng
+    const requiredFields = [
+      { key: 'phone', label: 'Số điện thoại' },
+      { key: 'cccd', label: 'Số CCCD/Passport' },
+      { key: 'dob', label: 'Ngày sinh' },
+      { key: 'gender', label: 'Giới tính' },
+      { key: 'nationality', label: 'Quốc tịch' },
+      { key: 'address', label: 'Địa chỉ thường trú' },
+      { key: 'cccd_issue_date', label: 'Ngày cấp CCCD' },
+      { key: 'cccd_issue_place', label: 'Nơi cấp CCCD' }
+    ];
+
+    const missingFields = requiredFields
+      .filter(field => {
+        const val = customer[field.key];
+        return !val || (typeof val === 'string' && (val.trim() === '' || val.startsWith('TEMP-')));
+      })
+      .map(field => field.label);
+
+    if (missingFields.length > 0) {
+      throw new Error(`Để đăng ký thuê phòng, vui lòng cập nhật đầy đủ các thông tin sau trong hồ sơ cá nhân: ${missingFields.join(', ')}.`);
     }
 
     // 2. Kiem tra xem khach hang da co don nao dang cho xu ly hay chua de tranh spam
