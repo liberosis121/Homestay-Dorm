@@ -8,7 +8,7 @@ export interface Room {
   floor: number;
   room_type: string;
   area: string;
-  amenities: string; // text
+  amenities: string[];
   price: number;
   status: string;
 }
@@ -17,17 +17,27 @@ export const roomStatusService = {
   getRooms: async (branchId?: string, managerId?: string): Promise<Room[]> => {
     let query = supabase.from('rooms').select('*');
     
-    if (branchId) {
+    if (branchId && branchId !== 'undefined' && branchId !== 'null' && branchId !== 'all' && branchId !== '') {
       query = query.eq('branch_id', branchId);
     } else if (managerId) {
-      const { data: branch } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('manager_id', managerId)
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('branch_id')
+        .eq('id', managerId)
         .maybeSingle();
 
-      if (branch) {
-        query = query.eq('branch_id', branch.id);
+      if (employee && employee.branch_id) {
+        query = query.eq('branch_id', employee.branch_id);
+      } else {
+        const { data: branch } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('manager_id', managerId)
+          .maybeSingle();
+
+        if (branch) {
+          query = query.eq('branch_id', branch.id);
+        }
       }
     }
     
