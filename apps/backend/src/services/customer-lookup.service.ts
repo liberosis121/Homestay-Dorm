@@ -47,6 +47,9 @@ export const customerLookupService = {
               branches (
                 name
               )
+            ),
+            employees (
+              full_name
             )
           `)
           .in('registration_id', registrationIds)
@@ -144,7 +147,7 @@ export const customerLookupService = {
         roomName: v.rooms?.name || '',
         branch: v.rooms?.branches?.name || '',
         date: v.scheduled_time ? new Date(v.scheduled_time).toLocaleDateString('vi-VN') : '',
-        staffName: '',
+        staffName: v.employees?.full_name || '—',
         status: v.result === 'completed' ? 'viewed' : v.result === 'cancelled' ? 'cancelled' : 'confirmed'
       }));
 

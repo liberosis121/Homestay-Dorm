@@ -109,7 +109,7 @@ const normalizeCustomer = (raw: any): Customer => {
           roomName: textOrDash(viewing.roomName),
           branch: textOrDash(viewing.branch),
           date: textOrDash(viewing.date),
-          staffName: EMPTY_FIELD,
+          staffName: textOrDash(viewing.staffName),
         }))
       : [],
     deposits: Array.isArray(raw.deposits) ? raw.deposits : [],

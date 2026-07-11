@@ -373,7 +373,7 @@ export default function CustomerTabs({ customer, onUpdateCustomer }: CustomerTab
                     <div className="min-w-0">
                       <p className="font-bold text-[#1e1b17] truncate" title={view.roomName}>{view.roomName}</p>
                       <p className="text-xs text-[#7f756b] font-medium mt-1 truncate">
-                        Chi nhánh: <span className="font-semibold text-[#4e453c]">{view.branch}</span> • NV hướng dẫn: <span className="font-semibold text-[#4e453c]">{view.staffName}</span>
+                        Chi nhánh: <span className="font-semibold text-[#4e453c]">{view.branch}</span> <span className="mx-2 text-[#d1c4b9]">|</span> NV hướng dẫn: <span className="font-semibold text-[#4e453c]">{view.staffName}</span>
                       </p>
                     </div>
                   </div>
