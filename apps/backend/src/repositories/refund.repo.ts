@@ -295,6 +295,18 @@ export const refundRepo = {
     return reconciliation;
   },
 
+  createDeductions: async (deductions: any[]) => {
+    const { data, error } = await supabase
+      .from('deductions')
+      .insert(deductions)
+      .select();
+
+    if (error) {
+      throw new Error(`[RefundRepo] Loi khi luu chi tiet khau tru: ${error.message}`);
+    }
+    return data;
+  },
+
   updateCheckoutStatus: async (checkoutId: string, status: string) => {
     const { error: checkoutError } = await supabase
       .from('checkouts')

@@ -1,5 +1,6 @@
 import { refundRepo } from '../repositories/refund.repo';
 import { supabase } from '../utils/supabase';
+import crypto from 'crypto';
 
 export const refundService = {
   /**
@@ -37,6 +38,7 @@ export const refundService = {
     additionalCharge: number;
     note?: string;
     staffId: string;
+    deductions?: { reason: string; amount: number; note?: string }[];
   }) => {
     if (!data.checkoutId || !data.contractId || data.originalDeposit === undefined) {
       throw new Error('Cac truong bat buoc: checkoutId, contractId, originalDeposit');
@@ -88,6 +90,18 @@ export const refundService = {
     };
 
     const reconciliation = await refundRepo.createRefundReconciliation(reconciliationData);
+
+    // Luu chi tiet khau tru vao bang deductions
+    if (data.deductions && data.deductions.length > 0) {
+      const deductionsData = data.deductions.map((d: any) => ({
+        id: crypto.randomUUID(),
+        reconciliation_id: reconciliation.id,
+        reason: d.reason,
+        amount: d.amount,
+        note: d.note || ''
+      }));
+      await refundRepo.createDeductions(deductionsData);
+    }
 
     // Tu dong tao luon mot hoa don hoan coc (invoices) o trang thai pending neu so tien hoan duong (> 0)
     if (data.finalRefund > 0) {
