@@ -255,6 +255,12 @@ export interface RefundRecord {
   refund_amount: number;
   status: 'pending' | 'calculated' | 'confirmed' | 'paid';
   created_at: string;
+  deductions?: {
+    id: string;
+    reason: string;
+    amount: number;
+    note?: string;
+  }[];
   type?: 'checkout' | 'cancellation';
   cancellation_reason?: 'failed_residency' | 'user_cancelled' | 'other';
 }

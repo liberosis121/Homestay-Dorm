@@ -119,7 +119,8 @@ export default function AccountantPayoutsPage() {
             created_at: rec.reconciliation_date || new Date().toISOString(),
             type: 'checkout' as const,
             refund_amount: Number(rec.final_refund || 0),
-            total_deductions: Number(rec.total_deductions || 0)
+            total_deductions: Number(rec.total_deductions || 0),
+            deductions: rec.deductions || []
           };
         });
 
@@ -208,7 +209,8 @@ export default function AccountantPayoutsPage() {
           created_at: rec.reconciliation_date || new Date().toISOString(),
           type: 'checkout' as const,
           refund_amount: Number(rec.final_refund || 0),
-          total_deductions: Number(rec.total_deductions || 0)
+          total_deductions: Number(rec.total_deductions || 0),
+          deductions: rec.deductions || []
         };
       });
 
@@ -512,17 +514,28 @@ export default function AccountantPayoutsPage() {
                     </div>
                   ) : (
                     <>
-                      {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
-                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                          <span>Khấu trừ hư hại tài sản:</span>
-                          <span className=" font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
-                        </div>
-                      )}
-                      {matchedRefund && matchedRefund.debt_deductions > 0 && (
-                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                          <span>Khấu trừ điện nước / nợ cũ:</span>
-                          <span className=" font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
-                        </div>
+                      {matchedRefund && matchedRefund.deductions && matchedRefund.deductions.length > 0 ? (
+                        matchedRefund.deductions.map((ded: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                            <span>Khấu trừ {ded.reason.toLowerCase()}:</span>
+                            <span className=" font-medium">-{ded.amount.toLocaleString('vi-VN')} ₫</span>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
+                            <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                              <span>Khấu trừ hư hại tài sản:</span>
+                              <span className=" font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
+                            </div>
+                          )}
+                          {matchedRefund && matchedRefund.debt_deductions > 0 && (
+                            <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                              <span>Khấu trừ điện nước / nợ cũ:</span>
+                              <span className=" font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
