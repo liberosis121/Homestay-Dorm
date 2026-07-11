@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 import {
   ArrowLeft, FileText, Printer, Download, CreditCard,
   Building2, ShieldCheck, AlertCircle,
@@ -130,6 +132,22 @@ export default function CustomerContractsPage() {
   }
 
   const contract = contractsList.find((c) => c.id === selectedContractId) || contractsList[0];
+
+  const handleDownloadPdf = () => {
+    const element = document.getElementById('contract-pdf-content');
+    if (!element) return;
+
+    const opt = {
+      margin:       15,
+      filename:     `HopDong_${contract.contractCode}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // @ts-ignore
+    html2pdf().set(opt).from(element).save();
+  };
 
   const getStatusBadge = (status: 'active' | 'expired' | 'terminated') => {
     switch (status) {
@@ -343,7 +361,7 @@ export default function CustomerContractsPage() {
             </div>
             
             <div className="bg-surface border border-outline-variant/60 rounded-2xl p-5 h-87.5 overflow-y-auto custom-scrollbar font-body-md text-on-surface leading-relaxed text-sm space-y-4">
-              <div className="max-w-prose mx-auto">
+              <div className="max-w-prose mx-auto" id="contract-pdf-content">
                 <h4 className="font-extrabold text-center text-on-surface tracking-wide">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4>
                 <p className="text-center font-bold text-xs text-on-surface-variant mt-0.5">Độc lập - Tự do - Hạnh phúc</p>
                 
@@ -447,7 +465,7 @@ export default function CustomerContractsPage() {
             
             <div className="flex flex-col gap-2.5">
               <button
-                onClick={() => window.print()}
+                onClick={handleDownloadPdf}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-primary text-primary font-bold text-xs rounded-xl hover:bg-primary/5 transition active:scale-95 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
