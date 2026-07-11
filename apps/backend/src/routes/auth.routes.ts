@@ -126,7 +126,7 @@ router.post('/forgot-password', async (req, res) => {
     const result = await authService.forgotPassword(email);
     return sendSuccess(res, result, 'Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra hòm thư.');
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Lỗi khi yêu cầu đặt lại mật khẩu.');
+    return sendError(res, error, error.message || 'Lỗi khi yêu cầu đặt lại mật khẩu.', 400);
   }
 });
 
@@ -146,7 +146,7 @@ router.post('/reset-password-otp', async (req, res) => {
     const result = await authService.resetPasswordWithOtp(email, otp, newPassword);
     return sendSuccess(res, result, 'Mật khẩu đã được cập nhật thành công!');
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Lỗi khi đặt lại mật khẩu.');
+    return sendError(res, error, error.message || 'Lỗi khi đặt lại mật khẩu.', 400);
   }
 });
 
