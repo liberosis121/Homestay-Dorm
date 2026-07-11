@@ -20,24 +20,14 @@ export default function ResetPasswordPage() {
   
   const [status, setStatus] = useState<'normal' | 'weak' | 'mismatch' | 'saving' | 'success'>('normal');
 
-  // Password strength calculation
-  const calculateStrength = (pass: string) => {
-    let strength = 0;
-    if (pass.length > 5) strength += 1;
-    if (pass.length > 7) strength += 1;
-    if (/[A-Z]/.test(pass)) strength += 1;
-    if (/[0-9]/.test(pass)) strength += 1;
-    if (/[^A-Za-z0-9]/.test(pass)) strength += 1;
-    return strength;
-  };
-
-  const strength = calculateStrength(password);
+  // Kiểm tra mật khẩu tối thiểu 6 ký tự số
+  const isPasswordValid = (pass: string) => /^\d{6,}$/.test(pass);
   
   // Update status based on input changes
   useEffect(() => {
     if (status === 'success' || status === 'saving') return;
     
-    if (password && strength < 3) {
+    if (password && !isPasswordValid(password)) {
       setStatus('weak');
     } else if (confirmPassword && password !== confirmPassword) {
       setStatus('mismatch');
@@ -48,12 +38,12 @@ export default function ResetPasswordPage() {
     if (password || confirmPassword) {
       if (successMessage) setSuccessMessage('');
     }
-  }, [password, confirmPassword, strength, status, successMessage]);
+  }, [password, confirmPassword, status, successMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!password || strength < 3) {
+    if (!password || !isPasswordValid(password)) {
       setStatus('weak');
       return;
     }
@@ -62,8 +52,6 @@ export default function ResetPasswordPage() {
       setStatus('mismatch');
       return;
     }
-
-    setStatus('saving');
 
     try {
       await resetPasswordWithOtpApi({ email, otp, newPassword: password });
@@ -74,16 +62,6 @@ export default function ResetPasswordPage() {
       setStatus('normal');
     }
   };
-
-  // Get strength indicator details
-  const getStrengthDetails = () => {
-    if (password.length === 0) return { label: '', color: 'bg-surface-variant' };
-    if (strength < 2) return { label: 'Yếu', color: 'bg-error' };
-    if (strength < 4) return { label: 'Trung bình', color: 'bg-amber-500' };
-    return { label: 'Mạnh', color: 'bg-emerald-500' };
-  };
-
-  const strengthDetails = getStrengthDetails();
 
   return (
     <AuthBackground backTo="#/verify-otp">
@@ -99,7 +77,7 @@ export default function ResetPasswordPage() {
           <div className={`transition-all duration-500 transform ${status === 'success' ? '-translate-x-full absolute opacity-0' : 'translate-x-0 opacity-100 relative'}`}>
             <h2 className="font-headline-lg text-2xl font-bold text-on-surface mb-2">Tạo mật khẩu mới</h2>
             <p className="font-body-md text-on-surface-variant mb-8">
-              Mật khẩu mới của bạn phải khác với các mật khẩu trước đây và đủ độ an toàn.
+              Mật khẩu mới của bạn phải tối thiểu 6 ký tự số.
             </p>
 
             {successMessage && status === 'normal' && (
@@ -132,27 +110,10 @@ export default function ResetPasswordPage() {
                   </button>
                 </div>
                 
-                {/* Password Strength Indicator */}
-                {password.length > 0 && (
-                  <div className="mt-3 ml-2 animate-fade-in">
-                    <div className="flex gap-1.5 mb-1.5">
-                      {[1, 2, 3, 4, 5].map((level) => (
-                        <div 
-                          key={level} 
-                          className={`h-1.5 w-full rounded-full transition-all duration-300 ${level <= strength ? strengthDetails.color : 'bg-surface-variant/40'}`}
-                        ></div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className={`font-bold ${
-                        strength < 2 ? 'text-error' : 
-                        strength < 4 ? 'text-amber-500' : 'text-emerald-500'
-                      }`}>
-                        Độ mạnh: {strengthDetails.label}
-                      </span>
-                      {status === 'weak' && <span className="text-error font-body-sm">Cần mật khẩu mạnh hơn</span>}
-                    </div>
-                  </div>
+                {status === 'weak' && password.length > 0 && (
+                  <p className="text-error text-xs font-body-md ml-2 mt-1 animate-fade-in">
+                    Mật khẩu phải chứa ít nhất 6 ký tự số (0-9).
+                  </p>
                 )}
               </div>
 
