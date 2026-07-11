@@ -48,11 +48,11 @@ const mapDepositResponse = (d: any): DepositRequest => {
   if (d.status === 'paid') status = 'paid';
   else if (d.status === 'rejected') status = 'rejected';
   else if (d.status === 'cancelled') status = 'cancelled';
+  else if (d.status === 'pending') status = 'pending_payment';
 
-  // Lấy ngày dự kiến dọn vào ở từ deadline thanh toán hoặc mặc định sau 7 ngày
-  const expected_move_in_date = d.payment_deadline 
-    ? d.payment_deadline.split('T')[0] 
-    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Ngày dự kiến vào ở là dữ liệu nghiệp vụ của phiếu đăng ký thuê,
+  // không phải hạn thanh toán cọc.
+  const expected_move_in_date = d.rental_registrations?.expected_move_in_date || '';
 
   // Ưu tiên ảnh thật từ DB (rooms.image_url), fallback theo room_type nếu không có
   let room_image_url: string = d.rooms?.image_url || '';

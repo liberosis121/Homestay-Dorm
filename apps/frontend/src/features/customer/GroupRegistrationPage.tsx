@@ -28,7 +28,20 @@ const groupSchema = z.object({
 const rentalInfoSchema = z.object({
   leaseTerm: z.string().min(1, 'Vui lòng chọn thời hạn thuê'),
   moveInDate: z.string().min(1, 'Vui lòng chọn ngày chuyển vào'),
+  preferredViewingDate: z.string().min(1, 'Vui lòng chọn ngày có thể xem phòng'),
+  preferredViewingTime: z.string().min(1, 'Vui lòng chọn khung giờ rảnh'),
+  viewingTimeNote: z.string().optional(),
 });
+
+const viewingTimeOptions = [
+  { value: '08:00-10:00', label: '08:00 - 10:00' },
+  { value: '10:00-12:00', label: '10:00 - 12:00' },
+  { value: '13:30-15:30', label: '13:30 - 15:30' },
+  { value: '15:30-17:30', label: '15:30 - 17:30' },
+  { value: 'flexible', label: 'Linh hoạt theo Sale' },
+];
+
+const today = new Date().toISOString().split('T')[0];
 
 export const GroupRegistrationPage: React.FC = () => {
   const navigate = useNavigate();
@@ -143,6 +156,9 @@ export const GroupRegistrationPage: React.FC = () => {
     defaultValues: {
       leaseTerm: draftData.leaseTerm || '6',
       moveInDate: draftData.moveInDate || '',
+      preferredViewingDate: draftData.preferredViewingDate || '',
+      preferredViewingTime: draftData.preferredViewingTime || 'flexible',
+      viewingTimeNote: draftData.viewingTimeNote || '',
     }
   });
 
@@ -187,6 +203,12 @@ export const GroupRegistrationPage: React.FC = () => {
       const preferredArea = roomDetail.branches?.name || 'Chi nhánh mặc định';
       const preferredRoomType = roomDetail.room_type || 'Dorm';
       const preferredPrice = Number(roomDetail.price) || 0; // cột preferred_price là numeric (VND)
+      const viewingTimeLabel = viewingTimeOptions.find(t => t.value === draftData.preferredViewingTime)?.label || draftData.preferredViewingTime || 'Linh hoạt theo Sale';
+      const roomInterestNote = [
+        `Phòng quan tâm: ${roomDetail.name}`,
+        `Đăng ký nhóm ${draftData.members.length} người`,
+        selectedBeds.length > 0 ? `Giường quan tâm: ${selectedBeds.join(', ')}` : '',
+      ].filter(Boolean).join(' | ');
 
       await createGroupLeaseRegistrationApi({
         members: draftData.members.map((m) => ({
@@ -198,7 +220,7 @@ export const GroupRegistrationPage: React.FC = () => {
         preferred_area: preferredArea,
         preferred_room_type: preferredRoomType,
         preferred_price: preferredPrice,
-        viewing_preference: 'Chưa quyết định',
+        viewing_preference: `${draftData.preferredViewingDate} (${viewingTimeLabel})`,
         expected_move_in_date: draftData.moveInDate || '',
         rental_duration: `${draftData.leaseTerm || '6'} tháng`,
         // Danh sách thành viên được lưu chuẩn ở bảng n-n; other_criteria chỉ giữ meta phòng/giường.
@@ -206,7 +228,9 @@ export const GroupRegistrationPage: React.FC = () => {
           isGroup: true,
           roomId: roomDetail.id,
           roomName: roomDetail.name,
-          beds: selectedBeds
+          beds: selectedBeds,
+          displayNote: roomInterestNote,
+          viewingTimeNote: draftData.viewingTimeNote || ''
         })
       });
 
@@ -431,6 +455,39 @@ export const GroupRegistrationPage: React.FC = () => {
                     })()}
                   />
                 </div>
+
+                <div>
+                  <CustomDatePicker
+                    label="Ngày có thể đến xem phòng"
+                    value={watchRental('preferredViewingDate') || ''}
+                    onChange={(val) => setRentalValue('preferredViewingDate', val, { shouldValidate: true })}
+                    placeholder="Chọn ngày xem"
+                    error={errorsRental.preferredViewingDate?.message as string}
+                    required
+                    min={today}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Khung giờ rảnh</label>
+                  <CustomSelect
+                    value={watchRental('preferredViewingTime')}
+                    onChange={(val) => setRentalValue('preferredViewingTime', val, { shouldValidate: true })}
+                    options={viewingTimeOptions}
+                    triggerClassName="w-full border-gray-200 focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] py-3 text-base font-normal text-gray-900"
+                  />
+                  {errorsRental.preferredViewingTime && <p className="text-red-500 text-sm mt-1">{errorsRental.preferredViewingTime.message as string}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú thời gian</label>
+                  <input
+                    value={watchRental('viewingTimeNote') || ''}
+                    onChange={(e) => setRentalValue('viewingTimeNote', e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm"
+                    placeholder="Ví dụ: nhóm chỉ rảnh sau 16:00 hoặc cuối tuần"
+                  />
+                </div>
               </div>
 
               <div className="mt-8 flex justify-between">
@@ -481,6 +538,10 @@ export const GroupRegistrationPage: React.FC = () => {
                     <div className="font-medium">{draftData.leaseTerm} Tháng</div>
                     <div className="text-gray-500">Ngày chuyển vào:</div>
                     <div className="font-medium">{draftData.moveInDate}</div>
+                    <div className="text-gray-500">Ngày xem phòng:</div>
+                    <div className="font-medium">{draftData.preferredViewingDate}</div>
+                    <div className="text-gray-500">Khung giờ rảnh:</div>
+                    <div className="font-medium">{viewingTimeOptions.find(t => t.value === draftData.preferredViewingTime)?.label || draftData.preferredViewingTime}</div>
                   </div>
                 </div>
               </div>

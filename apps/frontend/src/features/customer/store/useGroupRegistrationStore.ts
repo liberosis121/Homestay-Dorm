@@ -12,6 +12,9 @@ export interface GroupDraftData {
   members: GroupMember[];
   leaseTerm?: string;
   moveInDate?: string;
+  preferredViewingDate?: string;
+  preferredViewingTime?: string;
+  viewingTimeNote?: string;
 }
 
 interface GroupRegistrationStore {

@@ -108,11 +108,72 @@ const formatDate = (value?: string) => {
   return day && month && year ? `${day}/${month}/${year}` : value;
 };
 
+interface RegistrationCriteriaMeta {
+  isGroup?: boolean;
+  roomId?: string;
+  roomName?: string;
+  beds?: string[];
+  displayNote?: string;
+  viewingTimeNote?: string;
+}
+
+const parseCriteriaMeta = (value?: string): RegistrationCriteriaMeta | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const formatCriteriaNote = (value?: string, occupants = 1) => {
+  const meta = parseCriteriaMeta(value);
+  if (!meta?.isGroup) return value || '';
+  if (meta.displayNote) return meta.displayNote;
+
+  return [
+    meta.roomName ? `Phòng quan tâm: ${meta.roomName}` : '',
+    `Đăng ký nhóm ${occupants} người`,
+    Array.isArray(meta.beds) && meta.beds.length > 0 ? `Giường quan tâm: ${meta.beds.join(', ')}` : '',
+  ].filter(Boolean).join(' | ');
+};
+
+const parseViewingPreference = (value?: string) => {
+  const raw = (value || '').trim();
+  if (!raw || raw === 'Chưa quyết định') {
+    return { date: '', timeRange: '', note: '' };
+  }
+
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:\s*\((.+)\))?$/);
+  if (!match) {
+    return { date: '', timeRange: '', note: raw };
+  }
+
+  const label = (match[2] || '').trim();
+  const rangeMatch = label.match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+
+  return {
+    date: match[1],
+    timeRange: rangeMatch ? `${rangeMatch[1]}-${rangeMatch[2]}` : '',
+    note: label ? raw : match[1],
+  };
+};
+
 // Map đơn đăng ký THẬT (rental_registrations + join customers) sang cấu trúc UI của modal.
 // Schema thật gọn hơn cấu trúc mock cũ nên một số trường (branch_id, amenities, giới tính,
 // ngày/giờ xem cụ thể) không có → degrade an toàn về rỗng/suy giản.
 const mapRegistration = (r: any): RentalRegistration => {
   const occupants = Number(r.occupants_count) || 1;
+  const viewingPreference = parseViewingPreference(r.viewing_preference);
+  const criteriaMeta = parseCriteriaMeta(r.other_criteria || '');
+  const criteriaNote = formatCriteriaNote(r.other_criteria || '', occupants);
+  const viewingNote = [
+    viewingPreference.note,
+    criteriaMeta?.viewingTimeNote,
+  ].filter(Boolean).join(' | ');
   return {
     id: r.id,
     customer_id: r.customers?.user_id || r.customers?.id || undefined,
@@ -127,11 +188,11 @@ const mapRegistration = (r: any): RentalRegistration => {
     preferred_branch_name: r.preferred_area || '',
     budget_range: r.preferred_price || '',
     move_in_date: r.expected_move_in_date || '',
-    preferred_viewing_date: '',
-    preferred_viewing_time: '',
-    viewing_time_note: r.viewing_preference || '',
+    preferred_viewing_date: viewingPreference.date,
+    preferred_viewing_time: viewingPreference.timeRange,
+    viewing_time_note: viewingNote,
     preferred_amenities: [],
-    note: r.other_criteria || '',
+    note: criteriaNote,
     status: r.status,
   };
 };
@@ -278,7 +339,7 @@ export default function CreateFromRegistrationModal({
       viewDate: registration.preferred_viewing_date || '',
       startTime: start,
       endTime: end,
-      notes: registration.viewing_time_note || registration.note || '',
+      notes: registration.viewing_time_note || '',
     });
   };
 

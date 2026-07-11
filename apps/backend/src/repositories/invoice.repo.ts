@@ -104,5 +104,20 @@ export const invoiceRepo = {
     if (error) {
       throw error;
     }
+  },
+
+  submitPaymentEvidence: async (invoiceId: string, evidenceUrl: string, paymentMethod: string): Promise<void> => {
+    const { error } = await supabase
+      .from('invoices')
+      .update({
+        evidence_url: evidenceUrl,
+        payment_method: paymentMethod,
+        status: 'pending',
+      })
+      .eq('id', invoiceId);
+
+    if (error) {
+      throw error;
+    }
   }
 };

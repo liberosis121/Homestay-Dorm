@@ -41,20 +41,27 @@ export const invoiceService = {
       throw new Error('User ID is required');
     }
 
-    // 1. Get user contracts
+    // 1. Get user contracts and active deposit requests visible to this customer.
+    // Deposit invoices exist before contracts are created, so they must not depend on contractIds.
     const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
-    if (!contracts || contracts.length === 0) {
+    const customerDeposits = await customerDepositService.getCustomerDeposits(userId).catch(() => []);
+    if ((!contracts || contracts.length === 0) && customerDeposits.length === 0) {
       return [];
     }
 
-    const contractIds = contracts.map((c: any) => c.id);
-    const depositIds = contracts.map((c: any) => c.deposit_id).filter(Boolean);
+    const contractIds = (contracts || []).map((c: any) => c.id);
+    const depositIds = Array.from(new Set([
+      ...(contracts || []).map((c: any) => c.deposit_id).filter(Boolean),
+      ...customerDeposits.map((d: any) => d.id).filter(Boolean),
+    ]));
 
     // 2. Query checkouts associated with contracts
-    const { data: checkouts } = await supabase
-      .from('checkouts')
-      .select('id')
-      .in('contract_id', contractIds);
+    const { data: checkouts } = contractIds.length > 0
+      ? await supabase
+        .from('checkouts')
+        .select('id')
+        .in('contract_id', contractIds)
+      : { data: [] as any[] };
     const checkoutIds = checkouts ? checkouts.map((ch: any) => ch.id) : [];
 
     // 3. Query refund reconciliations associated with checkouts
@@ -75,10 +82,12 @@ export const invoiceService = {
     const rawInvoices = await invoiceRepo.findByContractsAndDeposits(contractIds, depositIds, reconciliationIds);
 
     // 6. Fetch service registrations to calculate services
-    const { data: serviceRegs } = await supabase
-      .from('service_registrations')
-      .select('*, services(*)')
-      .in('contract_id', contractIds);
+    const { data: serviceRegs } = contractIds.length > 0
+      ? await supabase
+        .from('service_registrations')
+        .select('*, services(*)')
+        .in('contract_id', contractIds)
+      : { data: [] as any[] };
 
     // 7. Map database records to frontend Invoice structures
     return rawInvoices.map((inv: DbInvoice) => {
@@ -178,6 +187,7 @@ export const invoiceService = {
 
       return {
         id: inv.id,
+        deposit_id: inv.deposit_id || undefined,
         billingPeriod,
         month,
         year,
@@ -201,6 +211,74 @@ export const invoiceService = {
         paidAt: inv.payment_time || undefined
       };
     });
+  },
+
+  submitDepositPaymentEvidence: async (userId: string, invoiceId: string, paymentMethod: string, evidenceUrl: string) => {
+    if (!invoiceId) {
+      throw new Error('Invoice ID is required');
+    }
+    if (!evidenceUrl) {
+      throw new Error('Vui long tai len minh chung thanh toan.');
+    }
+
+    const { data: inv, error: fErr } = await supabase
+      .from('invoices')
+      .select('invoice_type, deposit_id, status')
+      .eq('id', invoiceId)
+      .maybeSingle();
+
+    if (fErr) {
+      throw new Error(`[submitDepositPaymentEvidence] Khong the kiem tra hoa don: ${fErr.message}`);
+    }
+    if (!inv) {
+      throw new Error('Hoa don khong ton tai.');
+    }
+    if (inv.invoice_type !== 'deposit' || !inv.deposit_id) {
+      throw new Error('Chi ho tro gui minh chung cho hoa don dat coc.');
+    }
+    if ((inv as any).status === 'paid') {
+      return { success: true, alreadyPaid: true };
+    }
+
+    const { data: deposit, error: depErr } = await supabase
+      .from('deposit_requests')
+      .select('id, status, payment_deadline, rental_registrations(cccd)')
+      .eq('id', inv.deposit_id)
+      .maybeSingle();
+
+    if (depErr) {
+      throw new Error(`[submitDepositPaymentEvidence] Khong the kiem tra yeu cau dat coc: ${depErr.message}`);
+    }
+    if (!deposit) {
+      throw new Error('Yeu cau dat coc cua hoa don nay khong ton tai.');
+    }
+
+    const payer = await getCustomerByUserId(userId);
+    const regCccd = (deposit as any).rental_registrations?.cccd;
+    if (!payer || !regCccd || payer.cccd !== regCccd) {
+      throw new Error('Chi nguoi dai dien moi duoc gui minh chung thanh toan coc nay.');
+    }
+
+    if (deposit.status === DEPOSIT_STATUS.CANCELLED) {
+      throw new Error('Yeu cau dat coc nay da bi huy, khong the thanh toan.');
+    }
+    if (deposit.status === DEPOSIT_STATUS.PAID) {
+      return { success: true, alreadyPaid: true };
+    }
+
+    const deadlineTime = deposit.payment_deadline ? new Date(deposit.payment_deadline).getTime() : NaN;
+    if (Number.isFinite(deadlineTime) && deadlineTime < Date.now()) {
+      await customerDepositService.autoCancelExpiredDeposits();
+      throw new Error('Yeu cau dat coc da qua han thanh toan 24 gio va da bi huy.');
+    }
+
+    await invoiceRepo.submitPaymentEvidence(invoiceId, evidenceUrl, paymentMethod);
+    await supabase
+      .from('deposit_requests')
+      .update({ status: DEPOSIT_STATUS.PENDING })
+      .eq('id', inv.deposit_id);
+
+    return { success: true, submitted: true };
   },
 
   payInvoice: async (userId: string, invoiceId: string, paymentMethod: string, actorRole = 'customer') => {

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Copy, UploadCloud, Clock, QrCode, CreditCard, Wallet, FileText, Check, ArrowLeft, X } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { getMyDepositsApi, DepositRequest } from './deposit.api';
-import { fetchMyInvoices, payInvoiceApi } from './services/invoice.service';
+import { fetchMyInvoices, submitDepositPaymentApi } from './services/invoice.service';
 import { fetchProfile } from './services/profile.service';
 
 export type DepositStatus = 'pending' | 'submitted' | 'approved' | 'rejected' | 'expired';
@@ -87,6 +87,7 @@ export default function DepositRegistrationPage() {
     if (localStatus) return localStatus;
     if (!depositRequest) return 'pending';
     if (depositRequest.status === 'paid') return 'approved';
+    if (depositRequest.status === 'pending_payment') return 'submitted';
     if (depositRequest.status === 'rejected') return 'rejected';
     if (depositRequest.status === 'cancelled') return 'expired';
     return 'pending';
@@ -139,17 +140,21 @@ export default function DepositRegistrationPage() {
     try {
       const invoices = await fetchMyInvoices(user.email);
       const invoice = invoices.find((inv: any) => 
-        inv.deposit_id === depositRequest.id || 
-        inv.id === `HDTT-DEP-${depositRequest.id}`
+        inv.deposit_id === depositRequest.id
       );
       
-      const invoiceId = invoice?.id || `HDTT-DEP-${depositRequest.id}`;
+      if (!invoice?.id) {
+        alert('Không tìm thấy hóa đơn đặt cọc tương ứng. Vui lòng tải lại trang hoặc liên hệ Kế toán để kiểm tra hóa đơn.');
+        return;
+      }
+
+      const invoiceId = invoice.id;
       const methodLabel = paymentMethod === 'card' ? 'Thẻ tín dụng' : paymentMethod === 'wallet' ? 'Ví điện tử' : 'Chuyển khoản ngân hàng';
 
-      await payInvoiceApi(user.email, invoiceId, methodLabel);
+      await submitDepositPaymentApi(user.email, invoiceId, methodLabel, proofImage || 'customer-confirmed-transfer');
 
-      setLocalStatus('approved');
-      alert('Thanh toán đặt cọc thành công! Hệ thống đã ghi nhận cọc giữ chỗ của bạn.');
+      setLocalStatus('submitted');
+      alert('Đã gửi minh chứng thanh toán cọc. Kế toán sẽ kiểm tra và xác nhận thu tiền.');
       
       setTimeout(() => {
         navigate('/customer/deposit-history');

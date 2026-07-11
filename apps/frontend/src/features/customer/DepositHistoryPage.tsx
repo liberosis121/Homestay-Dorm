@@ -24,6 +24,15 @@ const getDynamicStatus = (request: CustomerDepositRequest, matchingMgrDep?: Mana
       showPayBtn: false,
     };
   }
+  if (request.status === 'pending_payment') {
+    return {
+      label: 'Đã nộp minh chứng',
+      cls: 'bg-primary-fixed/30 text-timber-accent border-timber-accent/20',
+      icon: Clock,
+      desc: 'Minh chứng thanh toán cọc đang chờ Kế toán kiểm tra và xác nhận thu tiền.',
+      showPayBtn: false,
+    };
+  }
   if (request.status === 'pending_sale_confirmation') {
     return {
       label: 'Chờ Sale xác nhận',

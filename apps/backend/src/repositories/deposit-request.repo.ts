@@ -32,7 +32,8 @@ export const depositRequestRepo = {
         *,
         rental_registrations!inner (
           id,
-          cccd
+          cccd,
+          expected_move_in_date
         ),
         rooms (
           id,
@@ -71,7 +72,8 @@ export const depositRequestRepo = {
         *,
         rental_registrations!inner (
           id,
-          cccd
+          cccd,
+          expected_move_in_date
         ),
         rooms (
           id,
@@ -140,6 +142,7 @@ export const depositRequestRepo = {
         rental_registrations!inner (
           id,
           cccd,
+          expected_move_in_date,
           customers!cccd!inner (
             profiles!inner (
               full_name,

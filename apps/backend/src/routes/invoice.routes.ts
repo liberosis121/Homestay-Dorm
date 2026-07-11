@@ -21,6 +21,26 @@ router.get('/my-invoices', requireAuth, async (req, res) => {
 });
 
 // Route for customer to pay an invoice
+router.post('/:invoiceId/submit-payment', requireAuth, requireRole(USER_ROLE.CUSTOMER), async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    const { paymentMethod, evidenceUrl } = req.body;
+
+    if (!paymentMethod) {
+      return res.status(400).json({ success: false, message: 'Phương thức thanh toán là bắt buộc' });
+    }
+    if (!evidenceUrl) {
+      return res.status(400).json({ success: false, message: 'Minh chứng thanh toán là bắt buộc' });
+    }
+
+    const data = await invoiceService.submitDepositPaymentEvidence(req.user!.id, invoiceId, paymentMethod, evidenceUrl);
+    sendSuccess(res, data, 'Gửi minh chứng thanh toán cọc thành công!');
+  } catch (err) {
+    sendError(res, err, 'Lỗi khi gửi minh chứng thanh toán cọc');
+  }
+});
+
+// Route for accountant/customer legacy payment confirmation
 router.post('/:invoiceId/pay', requireAuth, requireRole(USER_ROLE.CUSTOMER, USER_ROLE.ACCOUNTANT), async (req, res) => {
   try {
     const { invoiceId } = req.params;

@@ -17,10 +17,18 @@ export const depositInvoiceRepo = {
 
     if (!requests || requests.length === 0) return [];
 
+    const requestIds = requests.map(r => r.id).filter(Boolean);
+    const { data: existingInvoices } = requestIds.length > 0
+      ? await supabase.from('invoices').select('deposit_id').eq('invoice_type', 'deposit').in('deposit_id', requestIds)
+      : { data: [] as any[] };
+    const invoicedDepositIds = new Set((existingInvoices || []).map((inv: any) => inv.deposit_id));
+    const requestsWithoutInvoice = requests.filter(r => !invoicedDepositIds.has(r.id));
+    if (requestsWithoutInvoice.length === 0) return [];
+
     // Giai quyet quan he in-memory de bao dam khong bi loi schema relationship cache
-    const roomIds = requests.map(r => r.room_id).filter(Boolean);
-    const bedIds = requests.map(r => r.bed_id).filter(Boolean);
-    const regIds = requests.map(r => r.registration_id).filter(Boolean);
+    const roomIds = requestsWithoutInvoice.map(r => r.room_id).filter(Boolean);
+    const bedIds = requestsWithoutInvoice.map(r => r.bed_id).filter(Boolean);
+    const regIds = requestsWithoutInvoice.map(r => r.registration_id).filter(Boolean);
 
     // Fetch song song các bang lien quan
     const [roomsRes, bedsRes, regsRes] = await Promise.all([
@@ -46,7 +54,7 @@ export const depositInvoiceRepo = {
       : { data: [] as any[] };
 
     // Map ket qua ve format mong muon
-    return requests.map(r => {
+    return requestsWithoutInvoice.map(r => {
       const room = rooms.find(rm => rm.id === r.room_id);
       const branch = room ? (branches || []).find(b => b.id === room.branch_id) : null;
       const bed = beds.find(bd => bd.id === r.bed_id);

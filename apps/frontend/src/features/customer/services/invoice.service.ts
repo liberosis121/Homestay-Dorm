@@ -11,3 +11,13 @@ export const payInvoiceApi = async (_email: string, invoiceId: string, paymentMe
   const res = await apiClient.post(`/invoices/${invoiceId}/pay`, { paymentMethod });
   return (res.data as any).data;
 };
+
+export const submitDepositPaymentApi = async (
+  _email: string,
+  invoiceId: string,
+  paymentMethod: string,
+  evidenceUrl: string,
+) => {
+  const res = await apiClient.post(`/invoices/${invoiceId}/submit-payment`, { paymentMethod, evidenceUrl });
+  return (res.data as any).data;
+};
