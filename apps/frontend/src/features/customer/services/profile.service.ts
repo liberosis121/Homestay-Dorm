@@ -17,3 +17,22 @@ export const updateProfileApi = async (profileData: Record<string, any>): Promis
   const response = await apiClient.put('/auth/profile', profileData);
   return response.data.data;
 };
+
+export const fetchMyResidencyInfo = async (): Promise<any[]> => {
+  const response = await apiClient.get('/auth/residency');
+  return response.data.data;
+};
+
+export const fetchPendingResidencyDeposit = async (): Promise<any | null> => {
+  const response = await apiClient.get('/auth/residency/pending-deposit');
+  return response.data.data;
+};
+
+export const submitResidencyInfo = async (payload: {
+  start_date: string;
+  permanent_address: string;
+  purpose: string;
+}): Promise<any> => {
+  const response = await apiClient.post('/auth/residency', payload);
+  return response.data.data;
+};

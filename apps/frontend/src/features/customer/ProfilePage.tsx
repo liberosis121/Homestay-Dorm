@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
-import { 
-  User, Shield, Camera, ChevronRight, Lock, 
+import {
+  User, Shield, Camera, ChevronRight, Lock,
   Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
-  X, Eye, EyeOff, Check, Zap, ClipboardList
+  X, Eye, EyeOff, Check, Zap, ClipboardList, MapPin
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import FormLabel from '../../components/ui/FormLabel';
-import { fetchProfile, updateProfileApi } from './services/profile.service';
+import { fetchProfile, updateProfileApi, fetchMyResidencyInfo, fetchPendingResidencyDeposit, submitResidencyInfo } from './services/profile.service';
 import { changePasswordApi } from '../auth/auth.api';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'residency' | 'settings'>('profile');
   
   const isRenting = !!user?.renting_room_name;
   const isOldCustomer = !isRenting && !!user?.has_contract_history;
@@ -343,6 +343,79 @@ export default function ProfilePage() {
     }
   };
 
+  // ── Residency Info State (Thông tin cư trú) ───────────────────────────────
+  const [residencyList, setResidencyList] = useState<any[]>([]);
+  const [residencyLoading, setResidencyLoading] = useState(false);
+  const [residencyError, setResidencyError] = useState<string | null>(null);
+  const [residencyLoaded, setResidencyLoaded] = useState(false);
+  // Phiếu cọc đã thanh toán đang chờ khai báo cư trú (bước 9). null = không có.
+  const [pendingResidencyDeposit, setPendingResidencyDeposit] = useState<any | null>(null);
+  const [residencyForm, setResidencyForm] = useState({ start_date: '', permanent_address: '', purpose: '' });
+  const [residencySubmitting, setResidencySubmitting] = useState(false);
+  const [residencyFormError, setResidencyFormError] = useState<string | null>(null);
+  const [residencySubmitSuccess, setResidencySubmitSuccess] = useState(false);
+
+  const loadResidencyTab = useCallback(async () => {
+    setResidencyLoading(true);
+    setResidencyError(null);
+    try {
+      const [list, pending] = await Promise.all([
+        fetchMyResidencyInfo(),
+        fetchPendingResidencyDeposit(),
+      ]);
+      setResidencyList(list || []);
+      setPendingResidencyDeposit(pending || null);
+      setResidencyLoaded(true);
+    } catch (err: any) {
+      console.error(err);
+      setResidencyError(err.message || 'Lỗi khi tải thông tin cư trú');
+    } finally {
+      setResidencyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'residency' || residencyLoaded || !user?.id) return;
+    loadResidencyTab();
+  }, [activeTab, residencyLoaded, user?.id, loadResidencyTab]);
+
+  // Prefill địa chỉ thường trú từ hồ sơ cá nhân khi mở form khai báo.
+  useEffect(() => {
+    if (pendingResidencyDeposit && !residencyForm.permanent_address && formData.permanent_address) {
+      setResidencyForm((prev) => ({ ...prev, permanent_address: formData.permanent_address }));
+    }
+  }, [pendingResidencyDeposit, formData.permanent_address]);
+
+  const handleSubmitResidency = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResidencyFormError(null);
+    if (!residencyForm.start_date || !residencyForm.permanent_address.trim() || !residencyForm.purpose.trim()) {
+      setResidencyFormError('Vui lòng nhập đầy đủ ngày bắt đầu lưu trú, địa chỉ thường trú và mục đích lưu trú.');
+      return;
+    }
+    setResidencySubmitting(true);
+    try {
+      await submitResidencyInfo(residencyForm);
+      setResidencySubmitSuccess(true);
+      setResidencyForm({ start_date: '', permanent_address: '', purpose: '' });
+      // Tải lại: phiếu cọc sẽ biến mất khỏi diện chờ, bản khai xuất hiện trong lịch sử.
+      setResidencyLoaded(false);
+      await loadResidencyTab();
+      setTimeout(() => setResidencySubmitSuccess(false), 4000);
+    } catch (err: any) {
+      console.error(err);
+      setResidencyFormError(err.response?.data?.message || err.message || 'Lỗi khi khai báo thông tin cư trú.');
+    } finally {
+      setResidencySubmitting(false);
+    }
+  };
+
+  const residencyStatusLabel = (result: string) => {
+    if (result === 'approved') return { text: 'Đạt điều kiện', className: 'bg-[#eff3ef] text-[#4a6549] border-[#a8c3a5]' };
+    if (result === 'rejected') return { text: 'Không đạt', className: 'bg-error-container/40 text-error border-error/30' };
+    return { text: 'Đang chờ duyệt', className: 'bg-surface-container-low text-on-surface-variant border-surface-variant' };
+  };
+
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
@@ -374,8 +447,15 @@ export default function ProfilePage() {
                   <User className="w-5 h-5" /> Hồ sơ cá nhân
                 </button>
 
-                <button 
-                  onClick={() => setActiveTab('settings')} 
+                <button
+                  onClick={() => setActiveTab('residency')}
+                  className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-24 transition-all font-label-md cursor-pointer text-left ${activeTab === 'residency' ? 'bg-primary-container text-on-primary-container font-bold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+                >
+                  <MapPin className="w-5 h-5" /> Thông tin cư trú
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('settings')}
                   className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-24 transition-all font-label-md cursor-pointer text-left ${activeTab === 'settings' ? 'bg-primary-container text-on-primary-container font-bold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
                 >
                   <Shield className="w-5 h-5" /> Bảo mật &amp; Cài đặt
@@ -444,11 +524,13 @@ export default function ProfilePage() {
           <div className="flex-1 space-y-6">
             <div className="mb-8">
               <h1 className="font-headline-lg text-3xl text-primary font-bold">
-                {activeTab === 'profile' ? 'Thông tin cá nhân' : 'Bảo mật & Cài đặt'}
+                {activeTab === 'profile' ? 'Thông tin cá nhân' : activeTab === 'residency' ? 'Thông tin cư trú' : 'Bảo mật & Cài đặt'}
               </h1>
               <p className="font-body-md text-on-surface-variant mt-2">
-                {activeTab === 'profile' 
+                {activeTab === 'profile'
                   ? 'Quản lý thông tin tài khoản và cấu hình lưu trú của bạn.'
+                  : activeTab === 'residency'
+                  ? 'Lịch sử khai báo thông tin cư trú theo từng hợp đồng thuê.'
                   : 'Quản lý cài đặt thông báo, ngôn ngữ và các tùy chọn bảo mật tài khoản.'}
               </p>
             </div>
@@ -685,6 +767,147 @@ export default function ProfilePage() {
                 </div>
               </div>
             )
+            )}
+
+            {/* ── RESIDENCY INFO TAB ────────────────────────────────────── */}
+            {activeTab === 'residency' && (
+              residencyLoading ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                  <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin cư trú...</p>
+                </div>
+              ) : residencyError ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 bg-error-container/30 rounded-full flex items-center justify-center text-error border border-error/20">
+                    <X className="w-6 h-6" />
+                  </div>
+                  <p className="text-error font-bold text-base">Không thể tải thông tin cư trú</p>
+                  <p className="text-on-surface-variant text-sm text-center max-w-md">{residencyError}</p>
+                </div>
+              ) : (
+                <div className="space-y-5 animate-fade-in">
+
+                  {/* Form khai báo cư trú — chỉ hiện khi có phiếu cọc đã thanh toán đang chờ khai báo (bước 9) */}
+                  {pendingResidencyDeposit && (
+                    <form onSubmit={handleSubmitResidency} className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border-2 border-[#a8c3a5] shadow-sm">
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="p-3 bg-[#4a6549] text-white rounded-24 shadow-inner shrink-0">
+                          <MapPin className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-headline-md text-base text-[#4a6549] font-bold">Khai báo thông tin cư trú</h3>
+                          <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
+                            Bạn đã thanh toán cọc cho <strong>{pendingResidencyDeposit.room_name}</strong>. Vui lòng khai báo thông tin cư trú để quản lý kiểm tra điều kiện lưu trú trước khi lập hợp đồng.
+                          </p>
+                        </div>
+                      </div>
+
+                      {residencySubmitSuccess && (
+                        <div className="mb-5 flex items-center gap-2 bg-[#eff3ef] border border-[#a8c3a5] text-[#4a6549] rounded-24 px-4 py-3 text-sm font-semibold">
+                          <Check className="w-4 h-4" /> Khai báo thành công! Vui lòng chờ quản lý duyệt.
+                        </div>
+                      )}
+                      {residencyFormError && (
+                        <div className="mb-5 flex items-center gap-2 bg-error-container/30 border border-error/30 text-error rounded-24 px-4 py-3 text-sm font-semibold">
+                          <X className="w-4 h-4" /> {residencyFormError}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                        <div>
+                          <FormLabel label="Ngày bắt đầu lưu trú" required />
+                          <CustomDatePicker
+                            value={residencyForm.start_date}
+                            onChange={(val: string) => setResidencyForm((prev) => ({ ...prev, start_date: val }))}
+                          />
+                        </div>
+                        <div>
+                          <FormLabel label="Mục đích lưu trú" required />
+                          <CustomSelect
+                            value={residencyForm.purpose}
+                            onChange={(val: string) => setResidencyForm((prev) => ({ ...prev, purpose: val }))}
+                            options={[
+                              { value: 'Đi học / Đi làm', label: 'Đi học / Đi làm' },
+                              { value: 'Công tác', label: 'Công tác' },
+                              { value: 'Du lịch', label: 'Du lịch' },
+                              { value: 'Khác', label: 'Khác' },
+                            ]}
+                            placeholder="Chọn mục đích lưu trú"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <FormLabel label="Địa chỉ thường trú" required />
+                          <input
+                            type="text"
+                            value={residencyForm.permanent_address}
+                            onChange={(e) => setResidencyForm((prev) => ({ ...prev, permanent_address: e.target.value }))}
+                            placeholder="Nhập địa chỉ thường trú theo CCCD"
+                            className="w-full px-4 py-3 rounded-24 border border-surface-variant bg-surface-container-low text-on-surface text-sm focus:outline-none focus:border-primary transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end mt-6">
+                        <button
+                          type="submit"
+                          disabled={residencySubmitting}
+                          className="px-6 py-3 bg-[#4a6549] hover:bg-[#3a503a] disabled:opacity-60 text-white rounded-full font-label-md transition-all text-sm shadow-md"
+                        >
+                          {residencySubmitting ? 'Đang gửi...' : 'Gửi khai báo cư trú'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* Lịch sử khai báo */}
+                  {residencyList.length === 0 && !pendingResidencyDeposit ? (
+                    <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                      <MapPin className="w-12 h-12 text-on-surface-variant/40" />
+                      <p className="text-on-surface-variant font-semibold text-sm text-center">
+                        Bạn chưa khai báo thông tin cư trú cho hợp đồng nào.
+                      </p>
+                    </div>
+                  ) : (
+                    residencyList.map((r) => {
+                      const badge = residencyStatusLabel(r.check_result);
+                      return (
+                        <div key={r.id} className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                            <h3 className="font-headline-md text-base text-on-surface font-bold flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-on-surface-variant" />
+                              {r.contract_code ? `Hợp đồng ${r.contract_code}` : 'Khai báo (chưa lập hợp đồng)'}
+                              {r.room_name && <span className="text-on-surface-variant font-normal">— {r.room_name}</span>}
+                            </h3>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badge.className}`}>
+                              {badge.text}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                            <div>
+                              <p className="text-on-surface-variant mb-1">Ngày bắt đầu lưu trú</p>
+                              <p className="font-semibold text-on-surface">{r.start_date || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-on-surface-variant mb-1">Mục đích lưu trú</p>
+                              <p className="font-semibold text-on-surface">{r.purpose || '—'}</p>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <p className="text-on-surface-variant mb-1">Địa chỉ thường trú</p>
+                              <p className="font-semibold text-on-surface">{r.permanent_address || '—'}</p>
+                            </div>
+                            {r.check_result === 'rejected' && r.reject_reason && (
+                              <div className="sm:col-span-2 bg-error-container/20 border border-error/20 rounded-24 p-4">
+                                <p className="text-error text-xs font-bold mb-1">Lý do không đạt</p>
+                                <p className="text-error text-sm">{r.reject_reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )
             )}
 
             {/* ── SETTINGS TAB ──────────────────────────────────────────── */}
