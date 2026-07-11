@@ -1,6 +1,5 @@
 /**
- * Service layer de xu ly nghiep vu lich xem phong.
- * Phu thuoc: repositories/viewing.repo.ts, repositories/lease.repo.ts, repositories/profile.repo.ts, repositories/room.repo.ts, utils/id-generator.ts
+ * Service layer for viewing schedule business rules.
  */
 
 import { viewingRepo } from '../repositories/viewing.repo';
@@ -9,225 +8,324 @@ import { getStaffByUserId, getCustomerByUserId } from '../repositories/profile.r
 import { roomRepo } from '../repositories/room.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX, VIEWING_STATUS, ROOM_STATUS } from '../types/constants';
+import { appendViewingLog, getPendingConfirmationActor } from '../utils/viewing-log';
+
+const fmtVN = (iso: string) => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const isEnded = (result: string | null | undefined) =>
+  result === VIEWING_STATUS.COMPLETED || result === VIEWING_STATUS.CANCELLED;
 
 export const viewingService = {
-  /**
-   * Sale tao lich hen xem phong cho khach hang thong qua don dang ky thue.
-   * Cap nhat tu dong trang thai don thue sang 'scheduled'.
-   */
   createSchedule: async (staffUserId: string, data: {
     registration_id: string;
     room_id: string;
-    scheduled_time: string; // ISO String
+    scheduled_time: string;
   }) => {
-    // 1. Lay thong tin ma nhan vien tu profiles UUID cua nhan vien dang nhap
     const staff = await getStaffByUserId(staffUserId);
     if (!staff) {
-      throw new Error('Khong xac dinh duoc nhan vien phu trach len lich.');
+      throw new Error('Không xác định được nhân viên phụ trách lên lịch.');
     }
 
-    // 2. Kiem tra don dang ky thue co ton tai khong
     const registration = await leaseRepo.getRegistrationById(data.registration_id);
     if (!registration) {
-      throw new Error('Don dang ky thue khong ton tai.');
+      throw new Error('Đơn đăng ký thuê không tồn tại.');
     }
 
-    // Don dang ky phai o trang thai cho xep lich hoac da len lich de xep lai
     if (
       registration.status !== REGISTRATION_STATUS.PENDING_SCHEDULE &&
       registration.status !== REGISTRATION_STATUS.SCHEDULED
     ) {
-      throw new Error('Don dang ky thue hien tai khong o trang thai can len lich xem phong.');
+      throw new Error('Đơn đăng ký thuê hiện tại không ở trạng thái cần lên lịch xem phòng.');
     }
 
-    // 3. Kiem tra thoi gian hen co trong tuong lai khong
     const scheduledDate = new Date(data.scheduled_time);
-    if (scheduledDate <= new Date()) {
-      throw new Error('Thoi gian hen xem phong phai o tuong lai.');
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+      throw new Error('Thời gian hẹn xem phòng phải ở tương lai.');
     }
 
-    // 4. Kiem tra tinh trang phong co dang bao tri khong
     const room = await roomRepo.getRoomById(data.room_id);
     if (!room) {
-      throw new Error('Phong xem khong ton tai.');
+      throw new Error('Phòng xem không tồn tại.');
     }
     if (room.status === ROOM_STATUS.MAINTENANCE) {
-      throw new Error('Phong dang trong qua trinh bao tri, khong the xep lich xem.');
+      throw new Error('Phòng đang trong quá trình bảo trì, không thể xếp lịch xem.');
     }
 
-    // 5. Tu dong sinh ID lich xem phong (Vi du: LXM-001)
+    const staffName = staff.profiles?.full_name || 'Nhân viên Sale';
     const nextId = await generateNextId(ID_PREFIX.VIEWING_SCHEDULE, 'viewing_schedules');
-
-    // 6. Luu lich xem phong vao database
-    const newSchedule = {
+    const savedSchedule = await viewingRepo.createSchedule({
       id: nextId,
       registration_id: data.registration_id,
       room_id: data.room_id,
       scheduled_time: data.scheduled_time,
-      result: null, // Chua co ket qua luc moi tao
-      note: null,
+      result: null,
+      note: appendViewingLog(null, 'created', staffName, `Cuộc hẹn được tạo bởi ${staffName}`, {
+        actor: 'staff',
+        awaiting: 'customer',
+      }),
       staff_id: staff.id,
-      created_at: new Date().toISOString()
-    };
+      created_at: new Date().toISOString(),
+    });
 
-    const savedSchedule = await viewingRepo.createSchedule(newSchedule);
-
-    // 7. Cap nhat trang thai don dang ky thue sang 'scheduled'
     await leaseRepo.updateRegistrationStatus(data.registration_id, REGISTRATION_STATUS.SCHEDULED, staff.id);
-
     return savedSchedule;
   },
 
-  /**
-   * Nhan vien Sale cap nhat ket qua sau buoi xem phong.
-   */
   updateResult: async (staffUserId: string, scheduleId: string, result: string, note: string) => {
-    // 1. Kiem tra nhan vien hop le
     const staff = await getStaffByUserId(staffUserId);
     if (!staff) {
-      throw new Error('Khong xac dinh duoc nhan vien phu trach.');
+      throw new Error('Không xác định được nhân viên phụ trách.');
     }
 
-    // 2. Kiem tra lich xem co ton tai khong
     const schedule = await viewingRepo.getScheduleById(scheduleId);
     if (!schedule) {
-      throw new Error('Lich xem phong không tồn tại.');
+      throw new Error('Lịch xem phòng không tồn tại.');
     }
 
-    // 3. Xac minh quyen phu trach: Sale phai la nguoi duoc phan cong cho lich nay
     if (schedule.staff_id !== staff.id) {
-      throw new Error('Ban khong phai nhan vien duoc phan cong phu trach lich hen nay.');
+      throw new Error('Bạn không phải nhân viên được phân công phụ trách lịch hẹn này.');
     }
 
-    // 4. Chi duoc cap nhat ket qua khi lich van dang o trang thai scheduled
-    // Neu da hoan thanh hoac huy, khong cho phep ghi de ket qua cu
-    if (schedule.result !== null && schedule.result !== undefined && schedule.result !== '') {
-      throw new Error('Ket qua cua buoi xem phong nay da duoc ghi nhan truoc do, khong the thay doi.');
+    if (isEnded(schedule.result)) {
+      throw new Error('Lịch xem phòng này đã kết thúc, không thể thay đổi kết quả.');
     }
 
-    // 5. Validate gia tri result phai la gia tri hop le
     const validResults = [VIEWING_STATUS.COMPLETED, VIEWING_STATUS.CANCELLED];
     if (!validResults.includes(result as any)) {
-      throw new Error(`Gia tri ket qua khong hop le. Chi chap nhan: ${validResults.join(', ')}.`);
+      throw new Error(`Giá trị kết quả không hợp lệ. Chỉ chấp nhận: ${validResults.join(', ')}.`);
     }
 
-    // 6. Cap nhat ket qua
-    return await viewingRepo.updateScheduleResult(scheduleId, result, note);
+    if (result === VIEWING_STATUS.COMPLETED && schedule.result !== 'confirmed') {
+      const awaiting = getPendingConfirmationActor(schedule.note);
+      throw new Error(awaiting === 'staff'
+        ? 'Lịch hẹn đang chờ nhân viên Sale xác nhận trước khi hoàn thành.'
+        : 'Lịch hẹn đang chờ khách hàng xác nhận trước khi hoàn thành.');
+    }
+
+    const staffName = staff.profiles?.full_name || 'Nhân viên Sale';
+    const desc = result === VIEWING_STATUS.COMPLETED
+      ? (note || 'Nhân viên Sale ghi nhận hoàn thành buổi xem phòng')
+      : (note || 'Nhân viên Sale hủy lịch hẹn');
+    const newNote = appendViewingLog(schedule.note, result as any, staffName, desc, { actor: 'staff' });
+    return await viewingRepo.updateScheduleFields(scheduleId, { result, note: newNote });
   },
 
-  /**
-   * Nhan vien Sale doi thoi gian lich hen ma minh phu trach.
-   */
   rescheduleByStaff: async (staffUserId: string, scheduleId: string, newScheduledTime: string, note?: string) => {
     const staff = await getStaffByUserId(staffUserId);
     if (!staff) {
-      throw new Error('Khong xac dinh duoc nhan vien phu trach.');
+      throw new Error('Không xác định được nhân viên phụ trách.');
     }
 
     const schedule = await viewingRepo.getScheduleById(scheduleId);
     if (!schedule) {
-      throw new Error('Lich xem phong khong ton tai.');
+      throw new Error('Lịch xem phòng không tồn tại.');
     }
 
     if (schedule.staff_id !== staff.id) {
-      throw new Error('Ban khong phai nhan vien duoc phan cong phu trach lich hen nay.');
+      throw new Error('Bạn không phải nhân viên được phân công phụ trách lịch hẹn này.');
     }
 
-    if (schedule.result !== null && schedule.result !== undefined && schedule.result !== '') {
-      throw new Error('Lich xem phong nay da co ket qua, khong the doi lich.');
+    if (isEnded(schedule.result)) {
+      throw new Error('Lịch xem phòng này đã kết thúc, không thể dời lịch.');
     }
 
     const scheduledDate = new Date(newScheduledTime);
     if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
-      throw new Error('Thoi gian hen xem phong phai o tuong lai.');
+      throw new Error('Thời gian hẹn xem phòng phải ở tương lai.');
     }
 
-    const updated = await viewingRepo.updateScheduleTime(scheduleId, newScheduledTime);
-    if (note && note.trim()) {
-      return await viewingRepo.updateScheduleNote(scheduleId, note.trim());
-    }
-    return updated;
+    const staffName = staff.profiles?.full_name || 'Nhân viên Sale';
+    const reason = note && note.trim() ? ` (${note.trim()})` : '';
+    const newNote = appendViewingLog(
+      schedule.note,
+      'rescheduled',
+      staffName,
+      `Nhân viên Sale dời lịch sang ${fmtVN(newScheduledTime)}${reason}`,
+      { actor: 'staff', awaiting: 'customer' },
+    );
+
+    return await viewingRepo.updateScheduleFields(scheduleId, {
+      scheduled_time: newScheduledTime,
+      result: null,
+      note: newNote,
+    });
   },
 
-  /**
-   * Lay lich xem phong cua khach hang dang dang nhap.
-   */
   getCustomerSchedules: async (userId: string) => {
     const customer = await getCustomerByUserId(userId);
     if (!customer) {
-      throw new Error('Khong tim thay thong tin khach hang.');
+      throw new Error('Không tìm thấy thông tin khách hàng.');
     }
     return await viewingRepo.getSchedulesByCustomer(customer.cccd);
   },
 
-  /**
-   * Nhan vien Sale xem lich hen phu trach cua minh.
-   */
   getStaffSchedules: async (staffUserId: string) => {
     const staff = await getStaffByUserId(staffUserId);
     if (!staff) {
-      throw new Error('Khong xac dinh duoc nhan vien phu trach.');
+      throw new Error('Không xác định được nhân viên phụ trách.');
     }
     return await viewingRepo.getSchedulesByStaff(staff.id);
   },
 
-  /**
-   * Lay tat ca lich hen xem phong.
-   */
   getAllSchedules: async () => {
     return await viewingRepo.getAllSchedules();
   },
 
-  /**
-   * Khách hàng tự hủy lịch hẹn xem phòng.
-   */
   cancelSchedule: async (userId: string, scheduleId: string) => {
     const customer = await getCustomerByUserId(userId);
     if (!customer) {
-      throw new Error('Khong tim thay thong tin khach hang.');
+      throw new Error('Không tìm thấy thông tin khách hàng.');
     }
 
     const schedule = await viewingRepo.getScheduleById(scheduleId);
     if (!schedule) {
-      throw new Error('Lich hen xem phong khong ton tai.');
+      throw new Error('Lịch hẹn xem phòng không tồn tại.');
     }
 
     if (schedule.rental_registrations.cccd !== customer.cccd) {
-      throw new Error('Ban khong co quyen huy lich hen nay.');
+      throw new Error('Bạn không có quyền hủy lịch hẹn này.');
     }
 
-    // Cập nhật kết quả lịch hẹn thành 'cancelled'
-    const updated = await viewingRepo.updateScheduleResult(scheduleId, VIEWING_STATUS.CANCELLED, 'Khách hàng tự hủy lịch hẹn');
+    if (isEnded(schedule.result)) {
+      throw new Error('Lịch xem phòng này đã kết thúc, không thể hủy.');
+    }
 
-    // Đồng thời cập nhật trạng thái đơn đăng ký thuê về 'pending_schedule' để xếp lịch lại
+    const customerName = customer.full_name || 'Khách hàng';
+    const newNote = appendViewingLog(
+      schedule.note,
+      'cancelled',
+      customerName,
+      'Khách hàng tự hủy lịch hẹn',
+      { actor: 'customer' },
+    );
+    const updated = await viewingRepo.updateScheduleFields(scheduleId, {
+      result: VIEWING_STATUS.CANCELLED,
+      note: newNote,
+    });
+
     await leaseRepo.updateRegistrationStatus(schedule.registration_id, REGISTRATION_STATUS.PENDING_SCHEDULE, null);
-
     return updated;
   },
 
-  /**
-   * Khách hàng đổi thời gian lịch hẹn xem phòng.
-   */
-  rescheduleSchedule: async (userId: string, scheduleId: string, newScheduledTime: string) => {
+  confirmSchedule: async (userId: string, scheduleId: string) => {
     const customer = await getCustomerByUserId(userId);
     if (!customer) {
-      throw new Error('Khong tim thay thong tin khach hang.');
+      throw new Error('Không tìm thấy thông tin khách hàng.');
     }
 
     const schedule = await viewingRepo.getScheduleById(scheduleId);
     if (!schedule) {
-      throw new Error('Lich hen xem phong khong ton tai.');
+      throw new Error('Lịch hẹn xem phòng không tồn tại.');
     }
 
     if (schedule.rental_registrations.cccd !== customer.cccd) {
-      throw new Error('Ban khong co quyen doi lich hen nay.');
+      throw new Error('Bạn không có quyền xác nhận lịch hẹn này.');
+    }
+
+    if (isEnded(schedule.result)) {
+      throw new Error('Lịch xem phòng này đã kết thúc, không thể xác nhận.');
+    }
+    if (schedule.result === 'confirmed') {
+      throw new Error('Bạn đã xác nhận lịch hẹn này trước đó.');
+    }
+    if (getPendingConfirmationActor(schedule.note) !== 'customer') {
+      throw new Error('Lịch hẹn này đang chờ nhân viên Sale xác nhận.');
+    }
+
+    const customerName = customer.full_name || 'Khách hàng';
+    const newNote = appendViewingLog(
+      schedule.note,
+      'confirmed',
+      customerName,
+      'Khách hàng xác nhận lịch hẹn',
+      { actor: 'customer' },
+    );
+    return await viewingRepo.updateScheduleFields(scheduleId, { result: 'confirmed', note: newNote });
+  },
+
+  confirmByStaff: async (staffUserId: string, scheduleId: string) => {
+    const staff = await getStaffByUserId(staffUserId);
+    if (!staff) {
+      throw new Error('Không xác định được nhân viên phụ trách.');
+    }
+
+    const schedule = await viewingRepo.getScheduleById(scheduleId);
+    if (!schedule) {
+      throw new Error('Lịch hẹn xem phòng không tồn tại.');
+    }
+
+    if (schedule.staff_id !== staff.id) {
+      throw new Error('Bạn không phải nhân viên được phân công phụ trách lịch hẹn này.');
+    }
+
+    if (isEnded(schedule.result)) {
+      throw new Error('Lịch xem phòng này đã kết thúc, không thể xác nhận.');
+    }
+    if (schedule.result === 'confirmed') {
+      throw new Error('Lịch hẹn này đã được xác nhận trước đó.');
+    }
+    if (getPendingConfirmationActor(schedule.note) !== 'staff') {
+      throw new Error('Lịch hẹn này đang chờ khách hàng xác nhận.');
+    }
+
+    const staffName = staff.profiles?.full_name || 'Nhân viên Sale';
+    const newNote = appendViewingLog(
+      schedule.note,
+      'confirmed',
+      staffName,
+      'Nhân viên Sale xác nhận lịch dời do khách hàng đề xuất',
+      { actor: 'staff' },
+    );
+    return await viewingRepo.updateScheduleFields(scheduleId, { result: 'confirmed', note: newNote });
+  },
+
+  rescheduleSchedule: async (userId: string, scheduleId: string, newScheduledTime: string) => {
+    const customer = await getCustomerByUserId(userId);
+    if (!customer) {
+      throw new Error('Không tìm thấy thông tin khách hàng.');
+    }
+
+    const schedule = await viewingRepo.getScheduleById(scheduleId);
+    if (!schedule) {
+      throw new Error('Lịch hẹn xem phòng không tồn tại.');
+    }
+
+    if (schedule.rental_registrations.cccd !== customer.cccd) {
+      throw new Error('Bạn không có quyền dời lịch hẹn này.');
+    }
+
+    if (isEnded(schedule.result)) {
+      throw new Error('Lịch xem phòng này đã kết thúc, không thể dời lịch.');
     }
 
     const scheduledDate = new Date(newScheduledTime);
-    if (scheduledDate <= new Date()) {
-      throw new Error('Thoi gian hen xem phong phai o tuong lai.');
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+      throw new Error('Thời gian hẹn xem phòng phải ở tương lai.');
     }
 
-    return await viewingRepo.updateScheduleTime(scheduleId, newScheduledTime);
-  }
+    const customerName = customer.full_name || 'Khách hàng';
+    const newNote = appendViewingLog(
+      schedule.note,
+      'rescheduled',
+      customerName,
+      `Khách hàng dời lịch sang ${fmtVN(newScheduledTime)}`,
+      { actor: 'customer', awaiting: 'staff' },
+    );
+    return await viewingRepo.updateScheduleFields(scheduleId, {
+      scheduled_time: newScheduledTime,
+      result: null,
+      note: newNote,
+    });
+  },
 };

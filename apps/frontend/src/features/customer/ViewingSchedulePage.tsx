@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { ViewingSchedule, getMyViewingSchedulesApi, cancelViewingScheduleApi, rescheduleViewingScheduleApi } from './viewing.api';
+import { ViewingSchedule, getMyViewingSchedulesApi, cancelViewingScheduleApi, rescheduleViewingScheduleApi, confirmViewingScheduleApi } from './viewing.api';
 import { getMyDepositsApi, createDepositApi, DepositRequest } from './deposit.api';
 import { getRoomDetailApi } from '../rooms/rooms.api';
 
@@ -29,14 +29,22 @@ const formatDateVN = (dateStr: string) => {
 };
 
 // ─── StatusBadge ──────────────────────────────────────────────────────────────
-const StatusBadge = ({ status }: { status: ViewingSchedule['status'] }) => {
+const StatusBadge = ({
+  status,
+  pendingConfirmationActor,
+}: {
+  status: ViewingSchedule['status'];
+  pendingConfirmationActor?: ViewingSchedule['pendingConfirmationActor'];
+}) => {
   const map = {
     confirmed: { label: 'ĐÃ XÁC NHẬN', cls: 'bg-[#e8f5e9] text-[#2e7d32]' },
-    pending:   { label: 'CHỜ DUYỆT',   cls: 'bg-[#fff8e1] text-[#f57f17]' },
+    pending:   { label: 'CHỜ XÁC NHẬN', cls: 'bg-[#fff8e1] text-[#f57f17]' },
     completed: { label: 'HOÀN THÀNH',  cls: 'bg-surface-container text-on-surface-variant' },
     cancelled: { label: 'ĐÃ HỦY',     cls: 'bg-error-container text-error' },
   };
-  const s = map[status];
+  const s = status === 'pending' && pendingConfirmationActor === 'staff'
+    ? { label: 'CHỜ SALE XÁC NHẬN', cls: 'bg-[#fff8e1] text-[#f57f17]' }
+    : map[status];
   return (
     <span className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase ${s.cls}`}>
       {s.label}
@@ -243,12 +251,14 @@ const AppointmentCard = ({
   depositRequest,
   onCancel,
   onReschedule,
+  onConfirm,
   onCreateDepositRequest,
 }: {
   schedule: ViewingSchedule;
   depositRequest?: DepositRequest;
   onCancel: (id: string) => void;
   onReschedule: (id: string) => void;
+  onConfirm: (id: string) => void;
   onCreateDepositRequest: (schedule: ViewingSchedule) => Promise<{ ok: boolean; message: string }> | { ok: boolean; message: string };
 }) => {
   const { cancellingId, setCancellingId, reschedulingId, setReschedulingId, rescheduleDate, rescheduleTime, setRescheduleDate, setRescheduleTime } = useViewingScheduleStore();
@@ -308,7 +318,7 @@ const AppointmentCard = ({
                 <h3 className="font-bold text-primary text-lg leading-tight">{schedule.room_name}</h3>
                 <p className="text-xs text-on-surface-variant mt-0.5">ID: {schedule.id.toUpperCase()}</p>
               </div>
-              <StatusBadge status={schedule.status} />
+              <StatusBadge status={schedule.status} pendingConfirmationActor={schedule.pendingConfirmationActor} />
             </div>
           </div>
         </div>
@@ -399,6 +409,14 @@ const AppointmentCard = ({
         {/* Action buttons — only for upcoming */}
         {isUpcoming && (
           <div className="flex gap-2 flex-wrap">
+            {schedule.status === 'pending' && schedule.pendingConfirmationActor !== 'staff' && (
+              <button
+                onClick={() => onConfirm(schedule.id)}
+                className="flex-1 min-w-[130px] flex items-center justify-center gap-1.5 py-2.5 bg-primary text-on-primary rounded-full text-sm font-semibold hover:opacity-90 transition-all active:scale-[0.98]"
+              >
+                <CheckCircle className="w-4 h-4" /> Xác nhận lịch
+              </button>
+            )}
             <button
               onClick={() => { setReschedulingId(schedule.id); setCancellingId(null); setRescheduleDate(''); setRescheduleTime(''); }}
               className="flex-1 min-w-[110px] flex items-center justify-center gap-1.5 py-2.5 border border-primary text-primary rounded-full text-sm font-semibold hover:bg-primary/5 transition-colors cursor-pointer"
@@ -594,10 +612,21 @@ export default function ViewingSchedulePage() {
     );
   }, [allSchedules, activeTab, searchQuery, depositedKeys]);
 
+  // Tải lại toàn bộ lịch từ server sau mỗi thao tác (bảo đảm có đủ join phòng/chi nhánh
+  // và trạng thái nhất quán, thay vì vá 1 item bằng response thô thiếu join).
+  const reloadSchedules = async () => {
+    try {
+      const list = await getMyViewingSchedulesApi();
+      setAllSchedules(list);
+    } catch (err) {
+      console.error('Lỗi khi tải lại lịch xem phòng:', err);
+    }
+  };
+
   const handleCancel = async (id: string) => {
     try {
-      const updated = await cancelViewingScheduleApi(id);
-      setAllSchedules(prev => prev.map(s => s.id === id ? updated : s));
+      await cancelViewingScheduleApi(id);
+      await reloadSchedules();
     } catch (err: any) {
       console.error(err);
       alert(err.response?.data?.message || err.message || 'Lỗi khi hủy lịch xem phòng.');
@@ -605,14 +634,26 @@ export default function ViewingSchedulePage() {
     setCancellingId(null);
   };
 
+  const handleConfirm = async (id: string) => {
+    try {
+      await confirmViewingScheduleApi(id);
+      await reloadSchedules();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi xác nhận lịch xem phòng.');
+    }
+  };
+
   const handleReschedule = async (id: string) => {
     try {
       const dateStr = rescheduleDate; // vd: 2026-06-25
       const timeStr = rescheduleTime; // vd: 09:30
-      const isoTime = `${dateStr}T${timeStr}:00.000Z`; // convert to ISO String
-      
-      const updated = await rescheduleViewingScheduleApi(id, isoTime);
-      setAllSchedules(prev => prev.map(s => s.id === id ? updated : s));
+      // Diễn giải giờ khách chọn là GIỜ ĐỊA PHƯƠNG (không thêm 'Z' UTC), đồng nhất với
+      // cách phía Sale tạo/dời lịch. Nếu ép 'Z' thì 08:00 sẽ bị hiển thị thành 15:00 (UTC+7).
+      const isoTime = new Date(`${dateStr}T${timeStr}:00`).toISOString();
+
+      await rescheduleViewingScheduleApi(id, isoTime);
+      await reloadSchedules();
     } catch (err: any) {
       console.error(err);
       alert(err.response?.data?.message || err.message || 'Lỗi khi đổi lịch xem phòng.');
@@ -754,6 +795,7 @@ export default function ViewingSchedulePage() {
                      depositRequest={depositRequests.find(r => r.registration_id === s.registration_id && r.room_id === s.room_id)}
                      onCancel={handleCancel}
                      onReschedule={handleReschedule}
+                     onConfirm={handleConfirm}
                      onCreateDepositRequest={handleCreateDepositRequest}
                   />
                 ))}

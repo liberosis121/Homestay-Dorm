@@ -141,3 +141,8 @@ export const createSaleContractApi = async (payload: {
   });
   return (res.data as any).data || res.data;
 };
+
+export const confirmScheduleByStaffApi = async (id: string) => {
+  const res = await apiClient.put(`/viewing-schedules/${id}/staff-confirm`);
+  return (res.data as any).data || res.data;
+};

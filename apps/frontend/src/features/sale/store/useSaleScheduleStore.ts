@@ -1,15 +1,19 @@
 import { create } from 'zustand';
-import { fetchSchedules, updateScheduleApi, createScheduleApi, rescheduleScheduleApi } from '../services/sale.service';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import {
+  fetchSchedules,
+  updateScheduleApi,
+  createScheduleApi,
+  rescheduleScheduleApi,
+  confirmScheduleByStaffApi,
+} from '../services/sale.service';
 
 export type ScheduleStatus =
-  | 'pending'       // Đang chờ xác nhận
-  | 'confirmed'     // Đã xác nhận
-  | 'in_progress'   // Đang diễn ra
-  | 'completed'     // Hoàn thành
-  | 'cancelled'     // Đã hủy
-  | 'rescheduled';  // Đã dời lịch
+  | 'pending'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+  | 'rescheduled';
 
 export interface TimelineEvent {
   id: string;
@@ -20,7 +24,7 @@ export interface TimelineEvent {
 }
 
 export interface SaleSchedule {
-  id: string;           // e.g. "LXM-001"
+  id: string;
   registrationId: string;
   customerId: string;
   customerName: string;
@@ -28,21 +32,22 @@ export interface SaleSchedule {
   roomName: string;
   branchId: string;
   branchName: string;
-  viewDate: string;     // ISO date string: "2026-06-15"
-  startTime: string;    // "HH:mm"
-  endTime: string;      // "HH:mm"
+  viewDate: string;
+  startTime: string;
+  endTime: string;
   status: ScheduleStatus;
-  createdBy: string;    // tên nhân viên tạo lịch
+  pendingConfirmationActor?: 'customer' | 'staff';
+  createdBy: string;
   timeline: TimelineEvent[];
   notes?: string;
   rescheduleReason?: string;
-  createdAt: string;    // ISO datetime
+  createdAt: string;
 }
 
 export interface CreateSchedulePayload {
   customerName: string;
   customerId?: string;
-  registrationId?: string;   // id đơn đăng ký thuê (bắt buộc để tạo lịch thật)
+  registrationId?: string;
   roomId: string;
   roomName: string;
   branchId: string;
@@ -62,8 +67,8 @@ export interface ReschedulePayload {
 }
 
 interface FilterState {
-  selectedDate: string | null;      // "YYYY-MM-DD"
-  selectedBranch: string;           // '' = all
+  selectedDate: string | null;
+  selectedBranch: string;
   selectedStatus: ScheduleStatus | '';
   searchQuery: string;
 }
@@ -78,14 +83,13 @@ interface SaleScheduleStore {
   isRescheduleModalOpen: boolean;
   reschedulingId: string | null;
 
-  // Getters
   getFilteredSchedules: () => SaleSchedule[];
   getScheduleById: (id: string) => SaleSchedule | undefined;
   getUpcoming24h: () => SaleSchedule[];
 
-  // Actions
   loadSchedules: () => Promise<void>;
   createSchedule: (payload: CreateSchedulePayload, createdBy: string) => Promise<void>;
+  confirmSchedule: (id: string) => Promise<void>;
   rescheduleAppointment: (payload: ReschedulePayload) => Promise<void>;
   cancelSchedule: (id: string) => Promise<void>;
   completeSchedule: (id: string) => Promise<void>;
@@ -98,110 +102,128 @@ interface SaleScheduleStore {
   closeRescheduleModal: () => void;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const EVENT_LABELS: Record<string, string> = {
+  created: 'Lên lịch',
+  confirmed: 'Đã xác nhận',
+  rescheduled: 'Dời lịch',
+  cancelled: 'Đã hủy',
+  completed: 'Hoàn thành',
+  note: 'Ghi chú',
+};
 
-const buildTimeline = (
-  status: ScheduleStatus,
-  createdAt: string,
-  createdBy: string,
-  viewDate: string,
-  startTime: string
-): TimelineEvent[] => {
-  const baseTime = new Date(createdAt);
-  const fmt = (d: Date) =>
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const fmtLog = (iso: string) => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return (
     d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
     ', ' +
-    d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+  );
+};
 
-  const timeline: TimelineEvent[] = [
-    {
-      id: 'tl-created',
-      label: 'Lên lịch',
-      description: `Cuộc hẹn được tạo bởi ${createdBy}`,
-      timestamp: fmt(baseTime),
-      eventStatus: 'done',
-    },
-  ];
+const parseEvents = (note: string | null | undefined) => {
+  const events: { t?: string; type?: string; by?: string; desc?: string; actor?: string; awaiting?: string }[] = [];
 
-  if (['confirmed', 'in_progress', 'completed', 'rescheduled'].includes(status)) {
+  (note || '').split('\n').forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    try {
+      const event = JSON.parse(trimmed);
+      if (event && event.type) {
+        events.push(event);
+        return;
+      }
+    } catch {
+      /* legacy plain text */
+    }
+    events.push({ type: 'note', desc: trimmed });
+  });
+
+  return events;
+};
+
+const getPendingConfirmationActor = (note: string | null | undefined): 'customer' | 'staff' => {
+  const events = parseEvents(note);
+
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i];
+    if (event.awaiting === 'staff' || event.awaiting === 'customer') return event.awaiting;
+    if (event.type === 'rescheduled') {
+      if (event.actor === 'customer') return 'staff';
+      if (event.actor === 'staff') return 'customer';
+      const text = `${event.by || ''} ${event.desc || ''}`.toLowerCase();
+      if (text.includes('khach') || text.includes('khÃ¡ch')) return 'staff';
+      if (text.includes('sale') || text.includes('nhan vien') || text.includes('nhÃ¢n viÃªn')) return 'customer';
+    }
+    if (event.type === 'created') return 'customer';
+  }
+
+  return 'customer';
+};
+
+const normalizeTimelineDescription = (desc: string) => {
+  if (desc.startsWith('Cuoc hen duoc tao boi ')) {
+    return desc.replace('Cuoc hen duoc tao boi ', 'Cuộc hẹn được tạo bởi ');
+  }
+  if (desc.startsWith('Nhan vien Sale doi lich sang ')) {
+    return desc.replace('Nhan vien Sale doi lich sang ', 'Nhân viên Sale dời lịch sang ');
+  }
+  if (desc.startsWith('Khach hang doi lich sang ')) {
+    return desc.replace('Khach hang doi lich sang ', 'Khách hàng dời lịch sang ');
+  }
+
+  const exact: Record<string, string> = {
+    'Khach hang xac nhan lich hen': 'Khách hàng xác nhận lịch hẹn',
+    'Khach hang tu huy lich hen': 'Khách hàng tự hủy lịch hẹn',
+    'Nhan vien Sale xac nhan lich doi do khach hang de xuat': 'Nhân viên Sale xác nhận lịch dời do khách hàng đề xuất',
+    'Nhan vien Sale ghi nhan hoan thanh lich xem phong': 'Nhân viên Sale ghi nhận hoàn thành lịch xem phòng',
+    'Nhan vien Sale ghi nhan hoan thanh buoi xem phong': 'Nhân viên Sale ghi nhận hoàn thành buổi xem phòng',
+    'Nhan vien Sale huy lich hen': 'Nhân viên Sale hủy lịch hẹn',
+  };
+  return exact[desc] || desc;
+};
+
+const buildTimeline = (
+  note: string | null | undefined,
+  createdAt: string,
+  createdBy: string,
+  status: ScheduleStatus,
+  pendingConfirmationActor?: 'customer' | 'staff',
+): TimelineEvent[] => {
+  const events = parseEvents(note);
+
+  if (!events.some((event) => event.type === 'created')) {
+    events.unshift({ t: createdAt, type: 'created', by: createdBy, desc: `Cuộc hẹn được tạo bởi ${createdBy}` });
+  }
+
+  const timeline: TimelineEvent[] = events.map((event, index) => ({
+    id: `tl-${index}-${event.type || 'note'}`,
+    label: EVENT_LABELS[event.type || 'note'] || 'Cập nhật',
+    description: normalizeTimelineDescription(event.desc || ''),
+    timestamp: event.t ? fmtLog(event.t) : '',
+    eventStatus: 'done',
+  }));
+
+  if (status === 'pending') {
     timeline.push({
-      id: 'tl-confirmed',
-      label: 'Đã xác nhận',
-      description: 'Khách hàng đã xác nhận lịch hẹn qua SMS',
-      timestamp: fmt(new Date(baseTime.getTime() + 3600000)),
-      eventStatus: 'done',
-    });
-  } else {
-    timeline.push({
-      id: 'tl-confirmed',
+      id: 'tl-await-confirm',
       label: 'Xác nhận',
-      description: 'Chờ xác nhận từ khách hàng',
+      description: pendingConfirmationActor === 'staff'
+        ? 'Chờ nhân viên Sale xác nhận lịch dời'
+        : 'Chờ khách hàng xác nhận lịch hẹn',
       timestamp: '',
-      eventStatus: status === 'cancelled' ? 'pending' : 'pending',
-    });
-  }
-
-  if (['in_progress', 'completed'].includes(status)) {
-    timeline.push({
-      id: 'tl-checkin',
-      label: 'Khách đến',
-      description: `Khách hàng đã đến lúc ${startTime}`,
-      timestamp: `${viewDate.split('-').reverse().join('/')}, ${startTime}`,
-      eventStatus: 'done',
-    });
-  } else if (status === 'completed') {
-    timeline.push({
-      id: 'tl-checkin',
-      label: 'Khách đến',
-      description: `Khách hàng đã đến lúc ${startTime}`,
-      timestamp: `${viewDate.split('-').reverse().join('/')}, ${startTime}`,
-      eventStatus: 'done',
-    });
-  }
-
-  if (status === 'completed') {
-    timeline.push({
-      id: 'tl-done',
-      label: 'Hoàn thành',
-      description: 'Lịch xem phòng kết thúc thành công',
-      timestamp: `${viewDate.split('-').reverse().join('/')}, ${startTime}`,
-      eventStatus: 'done',
-    });
-  }
-
-  if (status === 'cancelled') {
-    timeline.push({
-      id: 'tl-cancelled',
-      label: 'Đã hủy',
-      description: 'Lịch hẹn bị hủy',
-      timestamp: fmt(new Date(baseTime.getTime() + 7200000)),
-      eventStatus: 'active',
-    });
-  }
-
-  if (status === 'rescheduled') {
-    timeline.push({
-      id: 'tl-rescheduled',
-      label: 'Dời lịch',
-      description: 'Lịch hẹn đã được dời sang ngày khác',
-      timestamp: fmt(new Date(baseTime.getTime() + 5400000)),
-      eventStatus: 'active',
+      eventStatus: 'pending',
     });
   }
 
   return timeline;
 };
 
-// ─── Map dữ liệu API (viewing_schedules enriched) → SaleSchedule của UI ──────────
-// Lưu ý lệch schema: DB không có cột `status`/`end_time`; `result` là text tự do.
-//  - status suy giản: scheduled_time ở quá khứ → 'completed', tương lai → 'confirmed'.
-//  - endTime = startTime + 1h (DB không lưu giờ kết thúc).
-const pad2 = (n: number) => String(n).padStart(2, '0');
-
 const mapApiSchedule = (s: any): SaleSchedule => {
   const d = new Date(s.scheduled_time);
-  const valid = !isNaN(d.getTime());
-  const base = valid ? d : new Date();
+  const base = !isNaN(d.getTime()) ? d : new Date();
   const viewDate = `${base.getFullYear()}-${pad2(base.getMonth() + 1)}-${pad2(base.getDate())}`;
   const startTime = `${pad2(base.getHours())}:${pad2(base.getMinutes())}`;
   const end = new Date(base.getTime() + 3600000);
@@ -214,6 +236,7 @@ const mapApiSchedule = (s: any): SaleSchedule => {
         : s.result === 'confirmed'
           ? 'confirmed'
           : 'pending';
+  const pendingConfirmationActor = status === 'pending' ? getPendingConfirmationActor(s.note) : undefined;
 
   const reg = s.rental_registrations || {};
   const kh = reg.customers || {};
@@ -236,14 +259,13 @@ const mapApiSchedule = (s: any): SaleSchedule => {
     startTime,
     endTime,
     status,
+    pendingConfirmationActor,
     createdBy,
-    notes: s.note || undefined,
+    notes: undefined,
     createdAt,
-    timeline: buildTimeline(status, createdAt, createdBy, viewDate, startTime),
+    timeline: buildTimeline(s.note, createdAt, createdBy, status, pendingConfirmationActor),
   };
 };
-
-// ─── Store Implementation ─────────────────────────────────────────────────────
 
 export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
   schedules: [],
@@ -262,7 +284,6 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
 
   getFilteredSchedules: () => {
     const { schedules, filters } = get();
-
     return schedules.filter((s) => {
       if (filters.selectedDate && s.viewDate !== filters.selectedDate) return false;
       if (filters.selectedBranch && s.branchId !== filters.selectedBranch) return false;
@@ -273,8 +294,9 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
           !s.customerName.toLowerCase().includes(q) &&
           !s.id.toLowerCase().includes(q) &&
           !s.roomName.toLowerCase().includes(q)
-        )
+        ) {
           return false;
+        }
       }
       return true;
     });
@@ -304,15 +326,12 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     try {
       set({ isLoading: true, loadError: null });
       const data = await fetchSchedules();
-      const mapped = (data || []).map(mapApiSchedule);
-      set({ schedules: mapped, isLoading: false });
+      set({ schedules: (data || []).map(mapApiSchedule), isLoading: false });
     } catch (err: any) {
       set({ loadError: err?.message || 'Lỗi khi tải lịch xem phòng', isLoading: false });
     }
   },
 
-  // Tạo lịch xem phòng THẬT: gọi POST /api/viewing-schedules rồi tải lại danh sách từ server.
-  // Backend cần registration_id + room_id + scheduled_time (ISO).
   createSchedule: async (payload) => {
     if (!payload.registrationId || !payload.roomId) {
       throw new Error('Thiếu phiếu đăng ký hoặc phòng để tạo lịch hẹn.');
@@ -327,7 +346,11 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     await get().loadSchedules();
   },
 
-  // Dời lịch: ghi thật scheduled_time lên backend rồi tải lại từ server.
+  confirmSchedule: async (id) => {
+    await confirmScheduleByStaffApi(id);
+    await get().loadSchedules();
+  },
+
   rescheduleAppointment: async (payload) => {
     const iso = new Date(`${payload.newDate}T${payload.newStartTime}:00`).toISOString();
     try {
@@ -342,20 +365,18 @@ export const useSaleScheduleStore = create<SaleScheduleStore>((set, get) => ({
     await get().loadSchedules();
   },
 
-  // Hủy lịch: lưu vào viewing_schedules.result = 'cancelled'.
   cancelSchedule: async (id) => {
     await updateScheduleApi(id, {
       result: 'cancelled',
-      note: 'Nhân viên sale hủy lịch hẹn',
+      note: 'Nhân viên Sale hủy lịch hẹn',
     });
     await get().loadSchedules();
   },
 
-  // Hoàn thành lịch: lưu vào viewing_schedules.result = 'completed'.
   completeSchedule: async (id) => {
     await updateScheduleApi(id, {
       result: 'completed',
-      note: 'Nhân viên sale ghi nhận hoàn thành lịch xem phòng',
+      note: 'Nhân viên Sale ghi nhận hoàn thành lịch xem phòng',
     });
     await get().loadSchedules();
   },

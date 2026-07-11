@@ -25,6 +25,84 @@ export const refundService = {
   },
 
   /**
+   * Duyet hoan coc khi CHUA KY HOP DONG (hoan 80%): tao hoa don hoan coc gan thang vao
+   * deposit_request (khong co checkout/contract), roi danh dau phieu coc da hoan.
+   * Hoa don nay se xuat hien o phan he Chi tien de thuc hien chi tra.
+   */
+  createCancellationRefund: async (data: {
+    depositRequestId: string;
+    originalDeposit: number;
+    refundRate: number;
+    totalDeductions: number;
+    finalRefund: number;
+    staffId: string;
+    note?: string;
+  }) => {
+    if (!data.depositRequestId) {
+      throw new Error('Cac truong bat buoc: depositRequestId');
+    }
+
+    // 1. Kiem tra phieu coc ton tai
+    const { data: deposit, error: depErr } = await supabase
+      .from('deposit_requests')
+      .select('id, status')
+      .eq('id', data.depositRequestId)
+      .maybeSingle();
+    if (depErr || !deposit) {
+      throw new Error(`[RefundService] Khong tim thay phieu dat coc ${data.depositRequestId}.`);
+    }
+
+    // 2. Phai la phieu CHUA co hop dong (dung dien hoan 80%)
+    const { data: existingContract } = await supabase
+      .from('contracts')
+      .select('id')
+      .eq('deposit_id', data.depositRequestId)
+      .maybeSingle();
+    if (existingContract) {
+      throw new Error('[RefundService] Phieu dat coc nay da co hop dong, khong thuoc dien hoan coc chua ky HD.');
+    }
+
+    // 3. Idempotency: chua tung lap hoan coc cho phieu nay
+    const { data: existingRefund } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('deposit_id', data.depositRequestId)
+      .eq('invoice_type', 'refund')
+      .limit(1);
+    if (existingRefund && existingRefund.length > 0) {
+      const dup: any = new Error(`Phieu dat coc ${data.depositRequestId} da duoc lap hoan coc.`);
+      dup.status = 409;
+      throw dup;
+    }
+
+    // 4. Tao hoa don hoan coc (gan deposit_id, khong co contract/reconciliation)
+    const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
+    const { data: invoice, error: invErr } = await supabase
+      .from('invoices')
+      .insert({
+        id: invoiceId,
+        amount: data.finalRefund,
+        status: 'pending',
+        invoice_type: 'refund',
+        payment_method: 'transfer',
+        deposit_id: data.depositRequestId,
+        contract_id: null,
+        reconciliation_id: null,
+        staff_id: data.staffId
+      })
+      .select()
+      .single();
+    if (invErr) {
+      throw new Error(`[RefundService] Loi khi tao hoa don hoan coc: ${invErr.message}`);
+    }
+
+    // 5. Danh dau phieu dat coc da hoan de khong hien lai o danh sach ung vien
+    await supabase.from('deposit_requests').update({ status: 'refunded' }).eq('id', data.depositRequestId);
+
+    return invoice;
+  },
+
+  /**
    * Lap ban doi soat hoan coc va cap nhat trang thai don tra phong.
    */
   createReconciliation: async (data: {
