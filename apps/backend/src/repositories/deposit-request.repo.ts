@@ -44,7 +44,7 @@ export const depositRequestRepo = {
             name
           )
         ),
-        beds (
+        beds!bed_id (
           id,
           name
         )
@@ -83,7 +83,7 @@ export const depositRequestRepo = {
             name
           )
         ),
-        beds (
+        beds!bed_id (
           id,
           name
         )
@@ -117,7 +117,7 @@ export const depositRequestRepo = {
           )
         ),
         rooms (*),
-        beds (*)
+        beds!bed_id (*)
       `)
       .eq('id', id)
       .single();
@@ -151,7 +151,7 @@ export const depositRequestRepo = {
           id,
           name
         ),
-        beds (
+        beds!bed_id (
           id,
           name
         )
