@@ -1,9 +1,9 @@
-import { contractRepo } from '../repositories/contract.repo';
 import { invoiceRepo, DbInvoice } from '../repositories/invoice.repo';
 import { supabase } from '../utils/supabase';
 import { customerDepositService } from './customer-deposit.service';
 import { getCustomerByUserId } from '../repositories/profile.repo';
 import { DEPOSIT_STATUS } from '../types/constants';
+import { contractRepo } from '../repositories/contract.repo';
 
 // Utility helpers
 function getMonthYearFromPeriod(periodStr: string | null): { month: number; year: number } {
@@ -42,7 +42,7 @@ export const invoiceService = {
     }
 
     // 1. Get user contracts
-    const contracts = await contractRepo.findByUserId(userId);
+    const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
     if (!contracts || contracts.length === 0) {
       return [];
     }

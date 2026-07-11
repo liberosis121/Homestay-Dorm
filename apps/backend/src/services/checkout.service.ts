@@ -4,7 +4,7 @@ import { contractRepo } from '../repositories/contract.repo';
 export const checkoutService = {
   getMyCheckoutRequests: async (userId: string) => {
     // 1. Fetch user's contracts to verify ownership
-    const contracts = await contractRepo.findByUserId(userId);
+    const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
     const contractIds = contracts.map(c => c.id);
 
     if (contractIds.length === 0) {
@@ -104,7 +104,7 @@ export const checkoutService = {
     }
   ) => {
     // 1. Fetch user's contracts
-    const contracts = await contractRepo.findByUserId(userId);
+    const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
     
     // Find contract by ID or contractCode
     const contract = contracts.find(c => c.id === reqData.contractId || c.contract_code === reqData.contractId);
@@ -129,7 +129,7 @@ export const checkoutService = {
 
   cancelCheckoutRequest: async (userId: string, requestId: string) => {
     // 1. Fetch user's contracts
-    const contracts = await contractRepo.findByUserId(userId);
+    const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
     const contractIds = contracts.map(c => c.id);
 
     // 2. Verify checkout belongs to one of these contracts

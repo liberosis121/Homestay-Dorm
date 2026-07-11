@@ -1,5 +1,4 @@
 import { contractRepo } from '../repositories/contract.repo';
-import { registrationMemberRepo } from '../repositories/registration-member.repo';
 import { supabase } from '../utils/supabase';
 import { CONTRACT_TEMPLATES } from '../config/contract-templates';
 
@@ -69,20 +68,7 @@ export const contractService = {
       throw new Error('User ID is required');
     }
 
-    // Lay hop dong voi tu cach NGUOI DAI DIEN + voi tu cach THANH VIEN nhom.
-    const memberships = await registrationMemberRepo.getRegistrationIdsByUser(userId);
-    const memberRegIds = memberships.map((m) => m.registration_id);
-    const [repContracts, memberContracts] = await Promise.all([
-      contractRepo.findByUserId(userId),
-      contractRepo.findByRegistrationIds(memberRegIds)
-    ]);
-
-    // Gop unique theo id hop dong.
-    const contractsById = new Map<string, any>();
-    for (const c of [...(repContracts || []), ...(memberContracts || [])]) {
-      contractsById.set(c.id, c);
-    }
-    const rawContracts = Array.from(contractsById.values()) as unknown as DbContract[];
+    const rawContracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId) as unknown as DbContract[];
 
     // Bo sung ten cac giuong cho HOP DONG NHOM (deposit.bed_id null) tu bang noi deposit_beds.
     const groupDepositIds = rawContracts

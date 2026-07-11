@@ -47,7 +47,7 @@ export const serviceRegistrationService = {
     }
 
     // 2. Fetch contracts
-    const contracts = await contractRepo.findByUserId(userId);
+    const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
     if (!contracts || contracts.length === 0) {
       return { services: mappedServices, subscriptions: [], consumptionRecords: [] };
     }
@@ -95,7 +95,7 @@ export const serviceRegistrationService = {
   registerService: async (userId: string, serviceId: string) => {
     if (!userId) throw new Error('User ID is required');
 
-    const contracts = await contractRepo.findByUserId(userId);
+    const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
     const activeContract = contracts.find((c: any) => c.status === 'active');
     if (!activeContract) {
       throw new Error('Không tìm thấy hợp đồng đang hiệu lực để đăng ký dịch vụ');
@@ -139,7 +139,7 @@ export const serviceRegistrationService = {
   cancelService: async (userId: string, serviceId: string) => {
     if (!userId) throw new Error('User ID is required');
 
-    const contracts = await contractRepo.findByUserId(userId);
+    const contracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId);
     const activeContract = contracts.find((c: any) => c.status === 'active');
     if (!activeContract) {
       throw new Error('Không tìm thấy hợp đồng đang hiệu lực để hủy đăng ký');
