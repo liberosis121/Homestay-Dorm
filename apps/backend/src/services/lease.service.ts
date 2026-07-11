@@ -4,9 +4,47 @@
  */
 
 import { leaseRepo } from '../repositories/lease.repo';
-import { getCustomerByUserId, getStaffByUserId } from '../repositories/profile.repo';
+import { registrationMemberRepo } from '../repositories/registration-member.repo';
+import { getCustomerByUserId, getStaffByUserId, getCustomerByCccd } from '../repositories/profile.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX } from '../types/constants';
+
+/**
+ * Cac truong ho so phap ly bat buoc phai co truoc khi khach hang duoc thue phong.
+ * Dung chung cho ca dang ky ca nhan va dang ky nhom (kiem tra tung thanh vien).
+ */
+const REQUIRED_PROFILE_FIELDS: Array<{ key: string; label: string }> = [
+  { key: 'phone', label: 'Số điện thoại' },
+  { key: 'cccd', label: 'Số CCCD/Passport' },
+  { key: 'dob', label: 'Ngày sinh' },
+  { key: 'gender', label: 'Giới tính' },
+  { key: 'nationality', label: 'Quốc tịch' },
+  { key: 'address', label: 'Địa chỉ thường trú' },
+  { key: 'cccd_issue_date', label: 'Ngày cấp CCCD' },
+  { key: 'cccd_issue_place', label: 'Nơi cấp CCCD' }
+];
+
+/** Tra ve danh sach nhan (label) cac truong ho so con thieu cua mot ban ghi khach hang. */
+function getMissingProfileFields(customer: Record<string, any>): string[] {
+  return REQUIRED_PROFILE_FIELDS
+    .filter(field => {
+      const val = customer[field.key];
+      return !val || (typeof val === 'string' && (val.trim() === '' || val.startsWith('TEMP-')));
+    })
+    .map(field => field.label);
+}
+
+/** Chuan hoa chuoi de so sanh mem (trim, lowercase, gop khoang trang). */
+function normalizeText(value: string | null | undefined): string {
+  return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/** Cac trang thai coi la "dang xu ly" — chan tao/them vao don moi de tranh trung. */
+const BLOCKING_STATUSES: string[] = [
+  REGISTRATION_STATUS.PENDING_SCHEDULE,
+  REGISTRATION_STATUS.SCHEDULED,
+  REGISTRATION_STATUS.DEPOSITED
+];
 
 export const leaseService = {
   /**
@@ -30,23 +68,7 @@ export const leaseService = {
     }
 
     // Yêu cầu bắt buộc điền đầy đủ các thông tin cá nhân pháp lý trước khi đăng ký thuê phòng
-    const requiredFields = [
-      { key: 'phone', label: 'Số điện thoại' },
-      { key: 'cccd', label: 'Số CCCD/Passport' },
-      { key: 'dob', label: 'Ngày sinh' },
-      { key: 'gender', label: 'Giới tính' },
-      { key: 'nationality', label: 'Quốc tịch' },
-      { key: 'address', label: 'Địa chỉ thường trú' },
-      { key: 'cccd_issue_date', label: 'Ngày cấp CCCD' },
-      { key: 'cccd_issue_place', label: 'Nơi cấp CCCD' }
-    ];
-
-    const missingFields = requiredFields
-      .filter(field => {
-        const val = customer[field.key];
-        return !val || (typeof val === 'string' && (val.trim() === '' || val.startsWith('TEMP-')));
-      })
-      .map(field => field.label);
+    const missingFields = getMissingProfileFields(customer);
 
     if (missingFields.length > 0) {
       throw new Error(`Để đăng ký thuê phòng, vui lòng cập nhật đầy đủ các thông tin sau trong hồ sơ cá nhân: ${missingFields.join(', ')}.`);
@@ -93,6 +115,170 @@ export const leaseService = {
     };
 
     return await leaseRepo.createRegistration(newRecord);
+  },
+
+  /**
+   * Tao don dang ky thue theo NHOM.
+   *
+   * Rang buoc nghiep vu:
+   *  1. Nguoi dang nhap (dai dien) phai co ho so day du va CCCD hop le.
+   *  2. Dai dien phai nam trong danh sach thanh vien voi dung CCCD cua minh (la thanh vien dau tien).
+   *  3. Khong duoc trung CCCD giua cac thanh vien.
+   *  4. MOI thanh vien phai:
+   *     - da co tai khoan khach hang (CCCD ton tai trong bang customers),
+   *     - da cap nhat ho so day du,
+   *     - ho ten + email nhap phai KHOP voi ho so tai khoan (tra theo CCCD).
+   *  5. Khong thanh vien nao dang vuong mot don dang ky khac con hieu luc (ca voi tu cach
+   *     dai dien lan thanh vien nhom).
+   */
+  createGroupRegistration: async (userId: string, data: {
+    members: Array<{
+      fullName: string;
+      cccd: string;
+      email: string;
+      phone?: string;
+    }>;
+    preferred_area: string;
+    preferred_room_type: string;
+    preferred_price: number;
+    viewing_preference: string;
+    expected_move_in_date: string;
+    rental_duration: string;
+    other_criteria?: string;
+  }) => {
+    // 1. Xac dinh nguoi dai dien = tai khoan dang nhap
+    const representative = await getCustomerByUserId(userId);
+    if (!representative) {
+      throw new Error('Không tìm thấy thông tin khách hàng. Vui lòng cập nhật hồ sơ.');
+    }
+    if (!representative.cccd || String(representative.cccd).startsWith('TEMP-')) {
+      throw new Error('Bạn cần cập nhật CCCD trong hồ sơ cá nhân trước khi đăng ký thuê theo nhóm.');
+    }
+
+    const members = (data.members || []).map(m => ({
+      ...m,
+      cccd: (m.cccd || '').trim()
+    }));
+
+    if (members.length < 1) {
+      throw new Error('Nhóm phải có ít nhất 1 thành viên.');
+    }
+
+    // 2. Chan trung CCCD giua cac thanh vien
+    const cccdList = members.map(m => m.cccd);
+    if (new Set(cccdList).size !== cccdList.length) {
+      throw new Error('Có CCCD bị trùng lặp giữa các thành viên. Vui lòng kiểm tra lại.');
+    }
+
+    // 3. Dai dien phai co mat trong danh sach voi dung CCCD cua minh
+    const repCccd = String(representative.cccd).trim();
+    if (!members.some(m => m.cccd === repCccd)) {
+      throw new Error('Người đại diện (tài khoản đang đăng nhập) phải nằm trong danh sách thành viên với đúng CCCD của bạn.');
+    }
+
+    // 4. Validate tung thanh vien: co tai khoan + ho so day du + ten/email khop.
+    //    Gom lai `validatedAccounts` de tai dung o cac buoc sau (tranh query lai).
+    const validatedAccounts: Array<Record<string, any>> = [];
+    for (const m of members) {
+      if (!m.cccd) {
+        throw new Error('Có thành viên chưa nhập CCCD.');
+      }
+      const account = await getCustomerByCccd(m.cccd);
+      if (!account) {
+        throw new Error(
+          `Thành viên có CCCD ${m.cccd} chưa có tài khoản trong hệ thống. ` +
+          `Mỗi thành viên phải tự tạo tài khoản và cập nhật hồ sơ cá nhân trước khi được thêm vào nhóm.`
+        );
+      }
+
+      const missing = getMissingProfileFields(account);
+      if (missing.length > 0) {
+        throw new Error(
+          `Hồ sơ của thành viên "${account.full_name || m.cccd}" chưa đầy đủ (thiếu: ${missing.join(', ')}). ` +
+          `Thành viên cần cập nhật hồ sơ cá nhân trước khi được thêm vào nhóm.`
+        );
+      }
+
+      if (normalizeText(account.full_name) !== normalizeText(m.fullName)) {
+        throw new Error(
+          `Họ tên nhập cho CCCD ${m.cccd} ("${m.fullName}") không khớp với hồ sơ tài khoản ("${account.full_name}").`
+        );
+      }
+
+      if (!m.email || m.email.trim() === '') {
+        throw new Error(`Vui lòng nhập email cho thành viên có CCCD ${m.cccd}.`);
+      }
+      if (normalizeText(account.email) !== normalizeText(m.email)) {
+        throw new Error(
+          `Email nhập cho CCCD ${m.cccd} ("${m.email}") không khớp với email tài khoản.`
+        );
+      }
+
+      validatedAccounts.push(account);
+    }
+
+    // 5. Chan thanh vien dang vuong don khac (voi tu cach dai dien)
+    for (const account of validatedAccounts) {
+      const existing = await leaseRepo.getRegistrationsByCustomer(account.cccd);
+      const blocking = (existing || []).find((r: any) => BLOCKING_STATUSES.includes(r.status));
+      if (blocking) {
+        throw new Error(
+          `Thành viên có CCCD ${account.cccd} đang có một đơn đăng ký thuê được xử lý (mã ${blocking.id}). ` +
+          `Không thể thêm vào nhóm mới cho tới khi đơn đó hoàn tất hoặc bị hủy.`
+        );
+      }
+    }
+
+    // ... va voi tu cach thanh vien cua mot nhom khac con hieu luc
+    const userIds = validatedAccounts.map(a => a.user_id);
+    const memberships = await registrationMemberRepo.getMembershipsByUserIds(userIds);
+    const activeMembership = memberships.find((mm: any) =>
+      BLOCKING_STATUSES.includes(mm.rental_registrations?.status)
+    );
+    if (activeMembership) {
+      throw new Error(
+        `Một thành viên đang thuộc một nhóm đăng ký khác đang xử lý ` +
+        `(mã ${activeMembership.registration_id}).`
+      );
+    }
+
+    // 6. Tao phieu dang ky (cccd = nguoi dai dien) + chen danh sach thanh vien
+    const nextId = await generateNextId(ID_PREFIX.RENTAL_REGISTRATION, 'rental_registrations');
+    const newRecord = {
+      id: nextId,
+      cccd: repCccd,
+      occupants_count: members.length,
+      preferred_area: data.preferred_area,
+      preferred_room_type: data.preferred_room_type,
+      preferred_price: data.preferred_price,
+      viewing_preference: data.viewing_preference,
+      expected_move_in_date: data.expected_move_in_date,
+      rental_duration: data.rental_duration,
+      other_criteria: data.other_criteria || null,
+      status: REGISTRATION_STATUS.PENDING_SCHEDULE,
+      staff_id: null
+    };
+
+    const created = await leaseRepo.createRegistration(newRecord);
+
+    // Chen thanh vien: chi luu 2 khoa ngoai + co dai dien (thong tin khac suy ra tu customers)
+    const memberRows = validatedAccounts.map(account => ({
+      registration_id: nextId,
+      customer_user_id: account.user_id,
+      is_representative: String(account.cccd).trim() === repCccd
+    }));
+
+    let insertedMembers;
+    try {
+      insertedMembers = await registrationMemberRepo.createMembers(memberRows);
+    } catch (err) {
+      // Rollback thu cong: xoa phieu vua tao neu chen thanh vien that bai
+      // (khong co transaction qua PostgREST). Phieu se bi CASCADE xoa thanh vien neu co.
+      await leaseRepo.updateRegistrationStatus(nextId, REGISTRATION_STATUS.CANCELLED).catch(() => {});
+      throw err;
+    }
+
+    return { ...created, members: insertedMembers };
   },
 
   /**

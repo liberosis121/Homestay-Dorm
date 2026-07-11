@@ -57,6 +57,42 @@ export const createLeaseRegistrationApi = async (
 };
 
 /**
+ * Một thành viên trong nhóm thuê (dữ liệu client gửi lên để backend đối chiếu hồ sơ).
+ */
+export interface GroupMemberPayload {
+  fullName: string;
+  cccd: string;
+  email: string;
+  phone?: string;
+}
+
+export interface CreateGroupLeasePayload {
+  members: GroupMemberPayload[];
+  preferred_area: string;
+  preferred_room_type: string;
+  preferred_price: number;
+  viewing_preference: string;
+  expected_move_in_date: string;
+  rental_duration: string;
+  other_criteria?: string;
+}
+
+/**
+ * Khách hàng nộp đơn đăng ký thuê theo NHÓM.
+ * Gọi: POST /api/lease-registrations/group
+ * Backend kiểm tra: mỗi thành viên phải có tài khoản + hồ sơ đầy đủ và họ tên/email khớp hồ sơ.
+ */
+export const createGroupLeaseRegistrationApi = async (
+  payload: CreateGroupLeasePayload
+): Promise<LeaseRegistration> => {
+  const response = await apiClient.post<{ success: boolean; data: LeaseRegistration }>(
+    '/lease-registrations/group',
+    payload
+  );
+  return response.data.data;
+};
+
+/**
  * Khách hàng xem lịch sử các đơn đăng ký thuê của mình.
  * Gọi: GET /api/lease-registrations/my
  */

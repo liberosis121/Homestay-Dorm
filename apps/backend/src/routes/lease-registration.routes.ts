@@ -55,6 +55,57 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 /**
+ * 🔗 POST /api/lease-registrations/group
+ * 📝 Khach hang nop don dang ky thue theo NHOM (nhieu thanh vien).
+ *    Moi thanh vien phai co tai khoan + ho so day du va ho ten/email khop ho so.
+ */
+router.post('/group', requireAuth, async (req, res) => {
+  try {
+    const {
+      members,
+      preferred_area,
+      preferred_room_type,
+      preferred_price,
+      viewing_preference,
+      expected_move_in_date,
+      rental_duration,
+      other_criteria
+    } = req.body;
+
+    if (!Array.isArray(members) || members.length < 1) {
+      return sendError(res, null, 'Danh sách thành viên nhóm không hợp lệ.', 400);
+    }
+
+    const priceNum = Number(preferred_price);
+    if (!preferred_area || !preferred_room_type ||
+        preferred_price === undefined || preferred_price === null || preferred_price === '' || Number.isNaN(priceNum) ||
+        !viewing_preference || !expected_move_in_date || !rental_duration) {
+      return sendError(res, null, 'Vui lòng điền đầy đủ các trường bắt buộc.', 400);
+    }
+
+    const result = await leaseService.createGroupRegistration(req.user!.id, {
+      members: members.map((m: any) => ({
+        fullName: m.fullName,
+        cccd: m.cccd,
+        email: m.email,
+        phone: m.phone
+      })),
+      preferred_area,
+      preferred_room_type,
+      preferred_price: priceNum,
+      viewing_preference,
+      expected_move_in_date,
+      rental_duration,
+      other_criteria
+    });
+
+    return sendSuccess(res, result, 'Gửi đơn đăng ký thuê theo nhóm thành công!', 201);
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Lỗi khi tạo đơn đăng ký thuê nhóm.');
+  }
+});
+
+/**
  * 🔗 GET /api/lease-registrations/my
  * 📝 Khach hang xem lich su cac don dang ky thue cua minh.
  */

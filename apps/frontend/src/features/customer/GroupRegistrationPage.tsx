@@ -9,12 +9,13 @@ import { CheckCircle, ChevronLeft, ChevronRight, Info, Plus, Trash2, Users } fro
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import { getRoomDetailApi } from '../rooms/rooms.api';
-import { createLeaseRegistrationApi } from './lease.api';
+import { createGroupLeaseRegistrationApi } from './lease.api';
 import { fetchProfile } from './services/profile.service';
 
 const memberSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
   phone: z.string().min(10, 'Số điện thoại không hợp lệ'),
+  email: z.string().email('Email không hợp lệ'),
   cccd: z.string().min(12, 'CCCD phải có 12 số').max(12, 'CCCD phải có 12 số'),
   issueDate: z.string().min(1, 'Vui lòng chọn ngày cấp'),
   issuePlace: z.string().min(1, 'Vui lòng nhập nơi cấp'),
@@ -48,6 +49,7 @@ export const GroupRegistrationPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roomDetail, setRoomDetail] = useState<any>(null);
   const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
 
   useEffect(() => {
     if (!user) {
@@ -63,6 +65,7 @@ export const GroupRegistrationPage: React.FC = () => {
     // Kiểm tra tính đầy đủ của hồ sơ
     fetchProfile()
       .then((data) => {
+        setProfileData(data);
         const phone = data.phone || '';
         const details = data.details || {};
         const cccd = details.cccd || '';
@@ -112,9 +115,10 @@ export const GroupRegistrationPage: React.FC = () => {
     resolver: zodResolver(groupSchema),
     defaultValues: {
       members: (draftData.members && draftData.members.length > 0) ? draftData.members as any : [
-        { 
-          fullName: user?.full_name || '', 
-          phone: user?.phone || '', 
+        {
+          fullName: user?.full_name || '',
+          phone: user?.phone || '',
+          email: (user as any)?.email || '',
           cccd: '',
           issueDate: '',
           issuePlace: '',
@@ -131,6 +135,29 @@ export const GroupRegistrationPage: React.FC = () => {
     control,
     name: 'members'
   });
+
+  // Tự động điền thông tin người đại diện (thành viên đầu tiên) từ hồ sơ tài khoản đang đăng nhập.
+  // Chỉ prefill khi chưa có bản nháp (tránh ghi đè khi người dùng quay lại bước 1).
+  useEffect(() => {
+    if (!profileData) return;
+    if (draftData.members && draftData.members.length > 0) return;
+
+    const details = profileData.details || {};
+    const genderRaw = details.gender || '';
+    const gender = genderRaw === 'Nam' ? 'male' : genderRaw === 'Nữ' ? 'female' : 'male';
+
+    setGroupValue('members.0.fullName', profileData.full_name || details.full_name || '');
+    setGroupValue('members.0.phone', profileData.phone || details.phone || '');
+    setGroupValue('members.0.email', profileData.email || details.email || '');
+    setGroupValue('members.0.cccd', details.cccd || '');
+    setGroupValue('members.0.dob', details.dob || '');
+    setGroupValue('members.0.gender', gender as any);
+    setGroupValue('members.0.nationality', details.nationality || 'Việt Nam');
+    setGroupValue('members.0.issueDate', details.cccd_issue_date || '');
+    setGroupValue('members.0.issuePlace', details.cccd_issue_place || '');
+    setGroupValue('members.0.permanentAddress', details.address || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileData]);
 
   type RentalInfoType = z.infer<typeof rentalInfoSchema>;
   const { setValue: setRentalValue, watch: watchRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm<RentalInfoType>({
@@ -189,20 +216,25 @@ export const GroupRegistrationPage: React.FC = () => {
       const preferredRoomType = roomDetail.room_type || 'Dorm';
       const preferredPrice = Number(roomDetail.price) || 0; // cột preferred_price là numeric (VND)
 
-      await createLeaseRegistrationApi({
-        occupants_count: draftData.members.length,
+      await createGroupLeaseRegistrationApi({
+        members: draftData.members.map((m) => ({
+          fullName: m.fullName,
+          cccd: m.cccd,
+          email: m.email,
+          phone: m.phone
+        })),
         preferred_area: preferredArea,
         preferred_room_type: preferredRoomType,
         preferred_price: preferredPrice,
         viewing_preference: 'Chưa quyết định',
         expected_move_in_date: draftData.moveInDate || '',
         rental_duration: `${draftData.leaseTerm || '6'} tháng`,
+        // Danh sách thành viên được lưu chuẩn ở bảng n-n; other_criteria chỉ giữ meta phòng/giường.
         other_criteria: JSON.stringify({
           isGroup: true,
           roomId: roomDetail.id,
           roomName: roomDetail.name,
-          beds: selectedBeds,
-          members: draftData.members
+          beds: selectedBeds
         })
       });
 
@@ -318,7 +350,10 @@ export const GroupRegistrationPage: React.FC = () => {
               
               <div className="bg-blue-50 text-blue-800 p-4 rounded-[12px] mb-6 flex items-start">
                 <Info size={20} className="text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                <p className="text-sm">Thành viên đầu tiên trong danh sách sẽ là <strong>người đại diện nhóm</strong> để ký hợp đồng và nhận hóa đơn thanh toán hàng tháng.</p>
+                <div className="text-sm space-y-1">
+                  <p>Thành viên đầu tiên trong danh sách là <strong>người đại diện nhóm</strong> (tài khoản đang đăng nhập) để ký hợp đồng và nhận hóa đơn hàng tháng.</p>
+                  <p>Mỗi thành viên <strong>phải đã có tài khoản và cập nhật đầy đủ hồ sơ cá nhân</strong>. Hệ thống sẽ đối chiếu <strong>họ tên, CCCD và email</strong> bạn nhập với hồ sơ của tài khoản đó; nếu không khớp sẽ không thể đăng ký.</p>
+                </div>
               </div>
 
               <div className="space-y-6 mb-6">
@@ -351,6 +386,11 @@ export const GroupRegistrationPage: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
                         <input {...registerGroup(`members.${index}.phone` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="090..." />
                         {errorsGroup.members?.[index]?.phone && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.phone?.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input {...registerGroup(`members.${index}.email` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="email@example.com" />
+                        {errorsGroup.members?.[index]?.email && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.email?.message}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Số CCCD</label>
@@ -414,9 +454,10 @@ export const GroupRegistrationPage: React.FC = () => {
               {fields.length < availableBeds && (
                 <button 
                   type="button" 
-                  onClick={() => append({ 
-                    fullName: '', 
-                    phone: '', 
+                  onClick={() => append({
+                    fullName: '',
+                    phone: '',
+                    email: '',
                     cccd: '',
                     issueDate: '',
                     issuePlace: '',

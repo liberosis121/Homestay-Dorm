@@ -5,6 +5,7 @@ export interface GroupMember {
   fullName: string;
   phone: string;
   cccd: string;
+  email: string;
   isRepresentative?: boolean;
   issueDate?: string;
   issuePlace?: string;
