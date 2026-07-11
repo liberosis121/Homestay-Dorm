@@ -1,5 +1,28 @@
 import { residencyInfoRepo, ResidencyInfoDto } from '../repositories/residency-info.repo';
+import { registrationMemberRepo } from '../repositories/registration-member.repo';
+import { getCustomerByCccd } from '../repositories/profile.repo';
 import { supabase } from '../utils/supabase';
+
+/**
+ * Lay tat ca registration_id ma mot CCCD tham gia — voi tu cach NGUOI DAI DIEN (cccd nam
+ * tren rental_registrations) HOAC THANH VIEN nhom (qua rental_registration_members).
+ * Nho vay thanh vien nhom (cccd khong nam tren phieu) van khai bao / duoc kiem tra cu tru.
+ */
+async function getRegistrationIdsForCccd(cccd: string): Promise<string[]> {
+  if (!cccd) return [];
+  const ids = new Set<string>();
+
+  const { data: ownRegs } = await supabase
+    .from('rental_registrations').select('id').eq('cccd', cccd);
+  (ownRegs || []).forEach((r: any) => ids.add(r.id));
+
+  const customer = await getCustomerByCccd(cccd);
+  if (customer?.user_id) {
+    const memberships = await registrationMemberRepo.getRegistrationIdsByUser(customer.user_id);
+    memberships.forEach((m) => ids.add(m.registration_id));
+  }
+  return Array.from(ids);
+}
 
 export const residencyService = {
   getResidencyChecks: async (filters?: { contract_id?: string; check_result?: string }) => {
@@ -13,18 +36,32 @@ export const residencyService = {
       { data: deposits },
       { data: customers },
       { data: rooms },
-      { data: registrations }
+      { data: registrations },
+      { data: members }
     ] = await Promise.all([
       supabase.from('contracts').select('*'),
       supabase.from('deposit_requests').select('*'),
       supabase.from('customers').select('*'),
       supabase.from('rooms').select('*'),
-      supabase.from('rental_registrations').select('id, cccd')
+      supabase.from('rental_registrations').select('id, cccd'),
+      supabase.from('rental_registration_members').select('registration_id, customer_user_id')
     ]);
 
-    // Helper: resolve phieu coc DA THANH TOAN gan nhat cua 1 CCCD (cho ban ghi cu tru chua co hop dong).
+    // Map cccd -> user_id de tra membership.
+    const userIdByCccd = new Map((customers || []).map((c: any) => [c.cccd, c.user_id]));
+
+    // Cac registration_id ma 1 cccd tham gia (dai dien HOAC thanh vien nhom).
+    const regIdsForCccd = (cccd: string): Set<string> => {
+      const ids = new Set<string>();
+      (registrations || []).forEach((r: any) => { if (r.cccd === cccd) ids.add(r.id); });
+      const uid = userIdByCccd.get(cccd);
+      if (uid) (members || []).forEach((m: any) => { if (m.customer_user_id === uid) ids.add(m.registration_id); });
+      return ids;
+    };
+
+    // Helper: resolve phieu coc DA THANH TOAN gan nhat cua 1 CCCD (dai dien lan thanh vien nhom).
     const paidDepositByCccd = (cccd: string) => {
-      const regIds = new Set((registrations || []).filter(r => r.cccd === cccd).map(r => r.id));
+      const regIds = regIdsForCccd(cccd);
       return (deposits || [])
         .filter(d => regIds.has(d.registration_id) && d.status === 'paid')
         .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
@@ -84,12 +121,8 @@ export const residencyService = {
   getPendingResidencyDeposit: async (cccd: string) => {
     if (!cccd) return null;
 
-    // 1. Cac phieu dang ky thuoc ve khach hang nay
-    const { data: regs } = await supabase
-      .from('rental_registrations')
-      .select('id')
-      .eq('cccd', cccd);
-    const regIds = (regs || []).map(r => r.id);
+    // 1. Cac phieu dang ky ma khach tham gia (dai dien HOAC thanh vien nhom)
+    const regIds = await getRegistrationIdsForCccd(cccd);
     if (regIds.length === 0) return null;
 
     // 2. Phieu coc DA THANH TOAN (status='paid') moi nhat cua khach
@@ -180,12 +213,9 @@ export const residencyService = {
       ? await supabase.from('contracts').select('*').in('id', contractIds)
       : { data: [] as any[] };
 
-    // Phieu coc cua chinh khach (resolve phong cho ca ban ghi co hop dong LAN ban ghi chua co HD).
-    const { data: regs } = await supabase
-      .from('rental_registrations')
-      .select('id')
-      .eq('cccd', cccd);
-    const regIds = (regs || []).map(r => r.id);
+    // Phieu coc cua khach (dai dien HOAC thanh vien nhom) — resolve phong cho ca ban ghi
+    // co hop dong LAN ban ghi chua co HD.
+    const regIds = await getRegistrationIdsForCccd(cccd);
     const { data: deposits } = regIds.length > 0
       ? await supabase.from('deposit_requests').select('*').in('registration_id', regIds)
       : { data: [] as any[] };
@@ -220,6 +250,106 @@ export const residencyService = {
         created_at: res.created_at
       };
     });
+  },
+
+  /**
+   * Lay danh sach CCCD cua nhung nguoi O trong 1 phieu coc (thanh vien nhom con hieu luc,
+   * hoac nguoi dai dien neu la coc le/du lieu cu khong co thanh vien).
+   */
+  getOccupantCccdsOfDeposit: async (depositId: string): Promise<string[]> => {
+    const { data: dep } = await supabase
+      .from('deposit_requests').select('registration_id').eq('id', depositId).maybeSingle();
+    if (!dep?.registration_id) return [];
+
+    const { data: members } = await supabase
+      .from('rental_registration_members')
+      .select('customer_user_id')
+      .eq('registration_id', dep.registration_id);
+
+    if (members && members.length > 0) {
+      const userIds = members.map((m: any) => m.customer_user_id);
+      const { data: custs } = await supabase.from('customers').select('cccd').in('user_id', userIds);
+      return (custs || []).map((c: any) => c.cccd).filter(Boolean);
+    }
+
+    // Fallback (du lieu cu khong co thanh vien): nguoi dai dien tren phieu dang ky.
+    const { data: reg } = await supabase
+      .from('rental_registrations').select('cccd').eq('id', dep.registration_id).maybeSingle();
+    return reg?.cccd ? [reg.cccd] : [];
+  },
+
+  /**
+   * Kiem tra 1 phieu coc DA DAT dieu kien luu tru: MOI nguoi o hien tai (thanh vien con hieu luc)
+   * deu co ban ghi cu tru 'approved' (ban ghi tien-hop-dong, contract_id null). Dung de gate lap HD.
+   */
+  isDepositResidencyApproved: async (depositId: string): Promise<boolean> => {
+    const cccds = await residencyService.getOccupantCccdsOfDeposit(depositId);
+    if (cccds.length === 0) return false;
+    const { data: residency } = await supabase
+      .from('residency_info')
+      .select('cccd, check_result, contract_id')
+      .in('cccd', cccds);
+    return cccds.every((cccd) =>
+      (residency || []).some((r: any) => r.cccd === cccd && r.check_result === 'approved')
+    );
+  },
+
+  /**
+   * TH3 — sau khi Quan ly duyet cu tru va nhom quyet dinh TIEP TUC voi nguoi da dat:
+   * loai cac thanh vien 'rejected' khoi phieu coc nhom, nha bot giuong tuong ung
+   * (giuong trong dorm dong gia nen nha bat ky), giam so nguoi. Phan con lai (deu 'approved')
+   * se du dieu kien lap HD.
+   * No-op neu khong ai rot (TH1). Tra 'all_rejected' de FE chuyen sang huy/hoan coc (TH2).
+   */
+  finalizeGroupResidency: async (depositId: string) => {
+    const { data: dep } = await supabase
+      .from('deposit_requests')
+      .select('id, registration_id, bed_id')
+      .eq('id', depositId)
+      .maybeSingle();
+    if (!dep) throw new Error('Không tìm thấy phiếu cọc.');
+
+    const { data: members } = await supabase
+      .from('rental_registration_members')
+      .select('customer_user_id')
+      .eq('registration_id', dep.registration_id);
+    if (!members || members.length === 0) return { outcome: 'no_members' };
+
+    const userIds = members.map((m: any) => m.customer_user_id);
+    const { data: custs } = await supabase.from('customers').select('user_id, cccd').in('user_id', userIds);
+    const cccdByUser = new Map((custs || []).map((c: any) => [c.user_id, c.cccd]));
+    const cccds = (custs || []).map((c: any) => c.cccd);
+
+    const { data: residency } = await supabase
+      .from('residency_info').select('cccd, check_result').in('cccd', cccds);
+    const isRejected = (cccd: string) =>
+      (residency || []).some((r: any) => r.cccd === cccd && r.check_result === 'rejected');
+
+    const rejectedUserIds = userIds.filter((uid: string) => isRejected(cccdByUser.get(uid) as string));
+    if (rejectedUserIds.length === 0) return { outcome: 'all_approved' };
+    if (rejectedUserIds.length === userIds.length) return { outcome: 'all_rejected' };
+
+    // 1. Loai thanh vien rot khoi nhom.
+    await supabase.from('rental_registration_members')
+      .delete().eq('registration_id', dep.registration_id).in('customer_user_id', rejectedUserIds);
+
+    // 2. Nha bot so giuong = so nguoi rot (chi ap dung coc nhom co deposit_beds).
+    const { data: depBeds } = await supabase
+      .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
+    const bedIds = (depBeds || []).map((b: any) => b.bed_id);
+    const toRelease = bedIds.slice(0, rejectedUserIds.length);
+    if (toRelease.length > 0) {
+      await supabase.from('deposit_beds').delete().eq('deposit_id', depositId).in('bed_id', toRelease);
+      await supabase.from('beds').update({ status: 'available' }).in('id', toRelease);
+    }
+
+    // 3. Cap nhat so nguoi con lai tren phieu coc (giu nguyen deposit_amount da thanh toan —
+    //    phan chenh do loai nguoi se do Ke toan xu ly hoan sau, ngoai pham vi demo nay).
+    const remainingCount = userIds.length - rejectedUserIds.length;
+    await supabase.from('deposit_requests')
+      .update({ occupants_count: remainingCount }).eq('id', depositId);
+
+    return { outcome: 'partial', removed: rejectedUserIds.length, remaining: remainingCount };
   },
 
   createResidencyCheck: async (info: ResidencyInfoDto) => {

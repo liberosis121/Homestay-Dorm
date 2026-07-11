@@ -1,4 +1,5 @@
 import { managerContractRepo } from '../repositories/manager-contract.repo';
+import { residencyService } from './residency.service';
 import { supabase } from '../utils/supabase';
 import crypto from 'crypto';
 
@@ -23,6 +24,19 @@ export const managerContractService = {
   },
 
   createContract: async (contract: any) => {
+    // GATE nghiệp vụ (bước 11 → 12): chỉ được lập HĐ khi phiếu cọc đã ĐẠT điều kiện lưu trú
+    // cho TẤT CẢ người ở hiện tại (thành viên còn hiệu lực). Chặn cả cá nhân lẫn nhóm.
+    const depositId = contract.deposit_code || contract.deposit_id;
+    if (depositId) {
+      const ok = await residencyService.isDepositResidencyApproved(depositId);
+      if (!ok) {
+        throw new Error(
+          'Chưa thể lập hợp đồng: phiếu cọc chưa đạt điều kiện lưu trú cho tất cả người ở. ' +
+          'Vui lòng chờ Quản lý duyệt điều kiện lưu trú (đạt) trước khi lập hợp đồng.'
+        );
+      }
+    }
+
     if (!contract.contract_code) {
       const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
       contract.contract_code = `HD-2026-${uniqueSuffix}`;

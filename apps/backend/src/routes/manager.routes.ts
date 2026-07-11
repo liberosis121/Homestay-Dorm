@@ -7,6 +7,8 @@ import { residencyService } from '../services/residency.service';
 import { roomStatusService } from '../services/room-status.service';
 import { incidentalCostService } from '../services/incidental-cost.service';
 import { assetService } from '../services/asset.service';
+import { getStaffByUserId } from '../repositories/profile.repo';
+import { supabase } from '../utils/supabase';
 
 const router = Router();
 
@@ -123,6 +125,23 @@ router.get('/handovers/:id', async (req, res) => {
 router.post('/handovers', async (req, res) => {
   try {
     const { detailsList, ...handoverData } = req.body;
+
+    // staff_id BẮT BUỘC là UUID nhân viên thật (FK employees.id). KHÔNG tin id do client gửi
+    // (trang này gửi id mock kiểu 'u-1'/'u-2' từ localStorage → gây lỗi "invalid input syntax for type uuid").
+    // Ưu tiên nhân viên của phiên đăng nhập; nếu người dùng không phải nhân viên (vd admin) thì
+    // lấy nhân viên phụ trách hợp đồng của biên bản này.
+    const staff = await getStaffByUserId(req.user!.id).catch(() => null);
+    let staffId: string | undefined = staff?.id;
+    if (!staffId && handoverData.contract_id) {
+      const { data: contract } = await supabase
+        .from('contracts').select('staff_id').eq('id', handoverData.contract_id).maybeSingle();
+      staffId = contract?.staff_id || undefined;
+    }
+    if (!staffId) {
+      return sendError(res, null, 'Không xác định được nhân viên phụ trách bàn giao.', 400);
+    }
+    handoverData.staff_id = staffId;
+
     const data = await handoverService.createHandover(handoverData, detailsList);
     sendSuccess(res, data, 'Created handover successfully');
   } catch (err) {
@@ -258,6 +277,18 @@ router.patch('/residency/:id/status', async (req, res) => {
     const id = Number(req.params.id);
     const data = await residencyService.updateResidencyCheck(id, req.body);
     sendSuccess(res, data, 'Updated residency status successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// TH3: chốt nhóm sau kiểm tra lưu trú — loại thành viên rớt + nhả giường, phần còn lại đi tiếp.
+router.post('/residency/finalize', async (req, res) => {
+  try {
+    const { deposit_id } = req.body;
+    if (!deposit_id) return sendError(res, null, 'Thiếu deposit_id.', 400);
+    const data = await residencyService.finalizeGroupResidency(deposit_id);
+    sendSuccess(res, data, 'Chốt nhóm lưu trú thành công');
   } catch (err) {
     sendError(res, err);
   }

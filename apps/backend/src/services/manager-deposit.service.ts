@@ -29,7 +29,7 @@ export const managerDepositService = {
     // Bo sung du lieu cho coc NHOM: danh sach giuong (deposit_beds) + thanh vien nhom.
     const depositIds = deposits.map((d) => d.id);
     const regIds = deposits.map((d) => d.registration_id).filter(Boolean);
-    const [depBedsRes, membersRes] = await Promise.all([
+    const [depBedsRes, membersRes, residencyRes] = await Promise.all([
       depositIds.length > 0
         ? supabase.from('deposit_beds').select('deposit_id, bed_id').in('deposit_id', depositIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -37,8 +37,14 @@ export const managerDepositService = {
         ? supabase.from('rental_registration_members')
             .select('registration_id, customer_user_id, is_representative')
             .in('registration_id', regIds)
-        : Promise.resolve({ data: [] as any[] })
+        : Promise.resolve({ data: [] as any[] }),
+      supabase.from('residency_info').select('cccd, check_result, contract_id')
     ]);
+    // Cccd da DAT dieu kien luu tru (ban ghi tien-hop-dong) + map user_id -> cccd.
+    const approvedResidencyCccds = new Set(
+      (residencyRes.data || []).filter((r: any) => r.check_result === 'approved').map((r: any) => r.cccd)
+    );
+    const cccdByUserId = new Map((customers || []).map((c: any) => [c.user_id, c.cccd]));
     const groupBedIdsByDeposit: Record<string, string[]> = {};
     for (const r of (depBedsRes.data || [])) {
       (groupBedIdsByDeposit[(r as any).deposit_id] ||= []).push((r as any).bed_id);
@@ -103,6 +109,13 @@ export const managerDepositService = {
           // Trưởng nhóm hiển thị trước.
           .sort((a, b) => (a.role === 'representative' ? -1 : 1) - (b.role === 'representative' ? -1 : 1));
 
+        // Da dat dieu kien luu tru chua: MOI nguoi o hien tai deu co ban ghi cu tru 'approved'.
+        const occupantCccds: string[] = regMembers.length > 0
+          ? regMembers.map((m) => cccdByUserId.get(m.customer_user_id)).filter(Boolean) as string[]
+          : ((registration as any).cccd ? [(registration as any).cccd] : []);
+        const residencyApproved = occupantCccds.length > 0
+          && occupantCccds.every((c) => approvedResidencyCccds.has(c));
+
         return {
           id: dep.id,
           customer_id: (customer as any).user_id || '',
@@ -117,6 +130,7 @@ export const managerDepositService = {
           occupants_count: (registration as any).occupants_count || (depositType === 'group' ? bedNames.length : 1),
           room_capacity: (room as any).capacity,
           tenants,
+          residency_approved: residencyApproved,
           amount: Number(dep.deposit_amount) || 0,
           deposit_date: dep.deposit_time || dep.created_at,
           bill_image_url: (invoice as any).evidence_url || '',
