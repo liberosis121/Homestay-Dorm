@@ -93,7 +93,9 @@ export default function AccountantPayoutsPage() {
             bank_account: p.account_details || '',
             bank_name: '',
             account_holder: customer_name.toUpperCase(),
-            amount: Number(p.amount ?? rec.final_refund ?? 0),
+            // Uu tien final_refund (giu dau am/duong dung ban chat) tu doi soat, vi invoices.amount
+            // luon duoc luu tri tuyet doi (Math.abs) o nhanh "khach no them tien" trong refund.service.ts.
+            amount: Number(rec.final_refund ?? p.amount ?? 0),
             payment_method: p.payment_method || p.payout_method || 'transfer',
             status: normalizePayoutStatus(p.status || p.payout_status),
             paid_at: p.payment_time,
@@ -183,7 +185,7 @@ export default function AccountantPayoutsPage() {
           bank_account: p.account_details || '',
           bank_name: '',
           account_holder: customer_name.toUpperCase(),
-          amount: Number(p.amount ?? rec.final_refund ?? 0),
+          amount: Number(rec.final_refund ?? p.amount ?? 0),
           payment_method: p.payment_method || p.payout_method || 'transfer',
           status: normalizePayoutStatus(p.status || p.payout_status),
           paid_at: p.payment_time,
