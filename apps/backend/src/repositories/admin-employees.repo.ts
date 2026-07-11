@@ -8,6 +8,7 @@ export interface DbEmployeeAdmin {
   phone: string;
   role: 'sale' | 'manager' | 'accountant' | 'admin';
   branch: string;
+  branch_id?: string;
   status: 'active' | 'locked';
   joinDate: string;
 }
@@ -60,6 +61,7 @@ export const adminEmployeesRepo = {
         phone: emp.phone || '',
         role: emp.role || 'sale',
         branch: branchName,
+        branch_id: emp.branch_id,
         status: isLocked ? 'locked' : 'active',
         joinDate: formatDate(emp.join_date)
       };
@@ -123,6 +125,7 @@ export const adminEmployeesRepo = {
       phone: emp.phone,
       role: emp.role as any,
       branch: branchName,
+      branch_id: branchId,
       status: 'active',
       joinDate: formatDate(joinDateStr)
     };
@@ -179,7 +182,7 @@ export const adminEmployeesRepo = {
       branchName = branchObj?.name || 'Chi nhánh khác';
     }
 
-    return { id, ...emp, branch: branchName };
+    return { id, ...emp, branch: branchName, branch_id: emp.branch };
   },
 
   toggleLock: async (id: string): Promise<string> => {
