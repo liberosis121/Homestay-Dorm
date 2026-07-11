@@ -30,6 +30,7 @@ interface Employee {
   phone: string;
   role: Role;
   branch: string;
+  branch_id?: string;
   status: "active" | "locked";
   joinDate: string;
 }
@@ -149,7 +150,7 @@ export default function AdminEmployeesPage() {
           e.full_name.toLowerCase().includes(q) ||
           e.email.toLowerCase().includes(q);
         const matchRole = !filterRole || e.role === filterRole;
-        const matchBranch = !filterBranch || e.branch === filterBranch;
+        const matchBranch = !filterBranch || e.branch_id === filterBranch;
         return matchQ && matchRole && matchBranch;
       }),
     [employees, search, filterRole, filterBranch],

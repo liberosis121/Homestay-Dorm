@@ -1,6 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useState, useEffect, useMemo } from "react";
-import { fetchAdminCustomers, toggleCustomerLockApi } from "./services/admin.service";
+import { fetchAdminCustomers, toggleCustomerLockApi, createCustomerApi } from "./services/admin.service";
 import CustomSelect from "../../components/ui/CustomSelect";
 
 // ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
@@ -26,7 +26,21 @@ interface CustomerRow {
   accountStatus: "active" | "locked";
   joinDate: string;
   note?: string;
+  customers?: {
+    cccd: string;
+    dob: string;
+    gender: string;
+    nationality: string;
+    address: string;
+  } | null;
 }
+
+const getCustomerCode = (c: CustomerRow) => {
+  if (c.customers?.cccd) {
+    return formatShortId(c.customers.cccd, 'customer');
+  }
+  return formatShortId(c.id, 'customer');
+};
 
 const STATUS_MAP = {
   renting: { label: "Đang thuê", cls: "bg-[#e8ede7] text-[#5f745d]" },
@@ -65,6 +79,15 @@ export default function AdminUsersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [confirmLockCustomer, setConfirmLockCustomer] = useState<CustomerRow | null>(null);
   const [isConfirmHover, setIsConfirmHover] = useState(false);
+  const [showAddPassword, setShowAddPassword] = useState(false);
+  const [addFullName, setAddFullName] = useState("");
+  const [addCccd, setAddCccd] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addPassword, setAddPassword] = useState("");
+  const [addError, setAddError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
@@ -81,6 +104,55 @@ export default function AdminUsersPage() {
     { value: "active", label: "Hoạt động" },
     { value: "locked", label: "Bị khóa" }
   ];
+
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+    setAddFullName("");
+    setAddCccd("");
+    setAddPhone("");
+    setAddEmail("");
+    setAddPassword("");
+    setAddError("");
+    setShowAddPassword(false);
+  };
+
+  const reloadCustomers = async () => {
+    setIsLoading(true);
+    try {
+      const rows = await fetchAdminCustomers();
+      setCustomers(rows);
+    } catch (err) {
+      console.error("Lỗi khi tải khách hàng:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!addFullName.trim() || !addCccd.trim() || !addPhone.trim() || !addEmail.trim() || !addPassword.trim()) {
+      setAddError("Vui lòng nhập đầy đủ các trường thông tin.");
+      return;
+    }
+    setAddError("");
+    setIsSubmitting(true);
+    try {
+      await createCustomerApi({
+        fullName: addFullName.trim(),
+        cccd: addCccd.trim(),
+        phone: addPhone.trim(),
+        email: addEmail.trim(),
+        password: addPassword.trim(),
+      });
+      setSuccessMsg("Đã tạo khách hàng mới thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
+      await reloadCustomers();
+      handleCloseAddModal();
+    } catch (err: any) {
+      setAddError(err.message || "Lỗi xảy ra khi tạo tài khoản khách hàng.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Load from database
   useEffect(() => {
@@ -220,6 +292,14 @@ export default function AdminUsersPage() {
       className="space-y-6 animate-fade-in-up"
       style={{ fontFamily: "Lexend, sans-serif" }}
     >
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -473,7 +553,7 @@ export default function AdminUsersPage() {
                         style={{ color: A.textMuted }}
                         title={c.id}
                       >
-                        {formatShortId(c.id, 'customer')}
+                        {getCustomerCode(c)}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -670,7 +750,7 @@ export default function AdminUsersPage() {
                     {selectedCustomer.full_name}
                   </h3>
                   <p className="text-xs break-all mt-1" style={{ color: A.textMuted }} title={selectedCustomer.id}>
-                    Mã: {formatShortId(selectedCustomer.id, 'customer')}
+                    Mã: {getCustomerCode(selectedCustomer)}
                   </p>
                   <div className="mt-2 flex justify-center">
                     <span
@@ -901,7 +981,7 @@ export default function AdminUsersPage() {
                               className="text-sm font-semibold"
                               style={{ color: A.primary }}
                             >
-                              {inv.id}
+                              {formatShortId(inv.id, 'invoice')}
                             </p>
                             <div className="flex flex-col gap-0.5 mt-1 text-xs" style={{ color: A.textMuted }}>
                               <p>Phòng: <span className="font-medium" style={{ color: A.textPrimary }}>{inv.room || "Chưa có phòng"}</span></p>
@@ -928,14 +1008,18 @@ export default function AdminUsersPage() {
       {/* ── ADD MODAL (minimal) ── */}
       {showAddModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: `${A.primary}66` }}
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+          style={{ background: `rgba(0, 0, 0, 0.4)` }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAddModal(false);
+            if (e.target === e.currentTarget && !isSubmitting) handleCloseAddModal();
           }}
         >
-          <div
-            className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateCustomer();
+            }}
+            className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5 border border-[#eadfd4]"
             style={{ background: A.surface }}
           >
             <div className="flex items-center justify-between">
@@ -943,8 +1027,10 @@ export default function AdminUsersPage() {
                 Thêm khách hàng mới
               </h2>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-full hover:bg-[#d1c4b9]/30 transition-all active:scale-95 flex items-center justify-center"
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleCloseAddModal}
+                className="p-1 rounded-full hover:bg-[#d1c4b9]/30 transition-all active:scale-95 flex items-center justify-center disabled:opacity-55"
               >
                 <span
                   className="material-symbols-outlined"
@@ -954,37 +1040,132 @@ export default function AdminUsersPage() {
                 </span>
               </button>
             </div>
-            {["Họ và tên", "CCCD", "Email", "Mật khẩu"].map((label) => (
-              <div key={label}>
-                <label
-                  className="block text-xs font-semibold mb-1.5 uppercase"
-                  style={{ color: A.textMuted }}
-                >
-                  {label}
+
+            {addError && (
+              <div className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                {addError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Họ và tên
                 </label>
                 <input
-                  type={label === "Mật khẩu" ? "password" : "text"}
-                  placeholder={`Nhập ${label.toLowerCase()}...`}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
+                  type="text"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập họ và tên..."
+                  value={addFullName}
+                  onChange={(e) => setAddFullName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
                 />
               </div>
-            ))}
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  CCCD
+                </label>
+                <input
+                  type="text"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập cccd..."
+                  value={addCccd}
+                  onChange={(e) => setAddCccd(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập số điện thoại..."
+                  value={addPhone}
+                  onChange={(e) => setAddPhone(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập email..."
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <input
+                    type={showAddPassword ? "text" : "password"}
+                    required
+                    disabled={isSubmitting}
+                    placeholder="Nhập mật khẩu..."
+                    value={addPassword}
+                    onChange={(e) => setAddPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] pr-10 disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setShowAddPassword(!showAddPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer flex items-center disabled:opacity-50"
+                    aria-label={showAddPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showAddPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-black/5 active:scale-95 cursor-pointer"
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleCloseAddModal}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-black/5 active:scale-95 cursor-pointer disabled:opacity-60"
                 style={{ borderColor: A.border, color: A.textMuted }}
               >
                 Hủy
               </button>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
-                Tạo tài khoản
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Đang tạo...
+                  </>
+                ) : (
+                  "Tạo tài khoản"
+                )}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -1053,7 +1234,7 @@ export default function AdminUsersPage() {
                 <div className="flex justify-between items-center gap-4">
                   <span className="font-semibold text-gray-500">Mã KH:</span>
                   <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmLockCustomer.id}>
-                    {formatShortId(confirmLockCustomer.id, 'customer')}
+                    {getCustomerCode(confirmLockCustomer)}
                   </span>
                 </div>
               </div>

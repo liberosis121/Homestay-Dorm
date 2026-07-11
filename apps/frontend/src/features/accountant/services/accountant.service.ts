@@ -125,6 +125,54 @@ export const accountantService = {
     return result.data;
   },
 
+  fetchContractIncidentals: async (_email: string, contractId: string) => {
+    const res = await fetch(`${API}/api/accountant/monthly-invoices/incidentals/${contractId}`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Không thể tải danh sách phí phát sinh');
+    const result = await res.json();
+    return result.data;
+  },
+
+  createContractIncidental: async (_email: string, data: {
+    id: string;
+    contractId: string;
+    costName: string;
+    amount: number;
+    status: string;
+    recordedDate: string;
+  }) => {
+    const res = await fetch(`${API}/api/accountant/monthly-invoices/incidentals`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Không thể ghi nhận khoản phí phát sinh');
+    const result = await res.json();
+    return result.data;
+  },
+
+  confirmContractIncidental: async (_email: string, id: string) => {
+    const res = await fetch(`${API}/api/accountant/monthly-invoices/incidentals/${id}/status`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ status: 'confirmed' })
+    });
+    if (!res.ok) throw new Error('Không thể xác nhận khoản phí phát sinh');
+    const result = await res.json();
+    return result.data;
+  },
+
+  deleteContractIncidental: async (_email: string, id: string) => {
+    const res = await fetch(`${API}/api/accountant/monthly-invoices/incidentals/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Không thể xóa khoản phí phát sinh');
+    const result = await res.json();
+    return result.data;
+  },
+
   createMonthlyInvoice: async (_email: string, data: {
     contractId: string;
     roomId: string;
@@ -171,6 +219,15 @@ export const accountantService = {
     return result.data;
   },
 
+  fetchCancellationRefunds: async (_email: string) => {
+    const res = await fetch(`${API}/api/accountant/cancellation-refunds`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Không thể tải danh sách hoàn cọc chưa ký HĐ');
+    const result = await res.json();
+    return result.data;
+  },
+
   createRefundReconciliation: async (_email: string, data: {
     checkoutId: string;
     contractId: string;
@@ -181,6 +238,7 @@ export const accountantService = {
     finalRefund: number;
     additionalCharge: number;
     note?: string;
+    deductions?: { reason: string; amount: number }[];
   }) => {
     const res = await fetch(`${API}/api/accountant/refunds`, {
       method: 'POST',

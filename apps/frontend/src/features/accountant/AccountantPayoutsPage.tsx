@@ -53,8 +53,8 @@ export default function AccountantPayoutsPage() {
             refund_id: rec.id || p.reconciliation_id || p.contract_id || '',
             customer_id: contract.customer_id || p.contract_id || '',
             customer_name,
-            bank_account: p.account_details || (p.payment_method === 'cash' ? '' : '07909' + (p.contract_id || p.id).substring(0, 5)),
-            bank_name: p.payment_method === 'cash' ? '' : 'Vietcombank',
+            bank_account: p.account_details || '',
+            bank_name: '',
             account_holder: customer_name.toUpperCase(),
             amount: Number(p.amount ?? rec.final_refund ?? 0),
             payment_method: p.payment_method || p.payout_method || 'transfer',
@@ -518,14 +518,16 @@ export default function AccountantPayoutsPage() {
                         {payMethod === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Tiền mặt tại quầy'}
                       </div>
                     ) : (
-                      <select
+                      <CustomSelect
                         value={payMethod}
-                        onChange={(e) => setPayMethod(e.target.value as 'transfer' | 'cash')}
-                        className="w-full bg-white border border-[#d1c4b9] rounded py-1.5 px-3 text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                      >
-                        <option value="transfer">Chuyển khoản ngân hàng</option>
-                        <option value="cash">Tiền mặt tại quầy</option>
-                      </select>
+                        onChange={(v) => setPayMethod(v as 'transfer' | 'cash')}
+                        theme="accountant"
+                        triggerClassName="py-1.5 text-xs"
+                        options={[
+                          { value: 'transfer', label: 'Chuyển khoản ngân hàng' },
+                          { value: 'cash', label: 'Tiền mặt tại quầy' },
+                        ]}
+                      />
                     )}
                   </div>
 

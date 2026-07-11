@@ -9,6 +9,7 @@ import { getCustomerByUserId, getStaffByUserId } from '../repositories/profile.r
 import { roomRepo } from '../repositories/room.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX, DEPOSIT_STATUS, BED_STATUS, ROOM_STATUS, DEPOSIT_DEADLINE_DAYS } from '../types/constants';
+import { supabase } from '../utils/supabase';
 
 export const customerDepositService = {
   /**
@@ -84,9 +85,12 @@ export const customerDepositService = {
       throw new Error('Ban dang co mot yeu cau dat coc dang cho xu ly. Khong the tao them yeu cau dat coc moi.');
     }
 
-    // 5. Tinh toan thoi han thanh toan (+7 ngay tu luc tao)
+    // 5. Tinh toan tien coc (2 thang tien thue * so giuong thue) va thoi han thanh toan (24 gio)
+    const occupantsCount = registration.occupants_count || 1;
+    const depositAmount = bed.price * 2 * occupantsCount;
+
     const paymentDeadline = new Date();
-    paymentDeadline.setDate(paymentDeadline.getDate() + DEPOSIT_DEADLINE_DAYS);
+    paymentDeadline.setHours(paymentDeadline.getHours() + 24);
 
     // 6. Tu dong sinh ID duy nhat cho phieu dat coc (PDC-XXX)
     const nextId = await generateNextId(ID_PREFIX.DEPOSIT_REQUEST, 'deposit_requests');
@@ -97,7 +101,7 @@ export const customerDepositService = {
       registration_id: data.registration_id,
       bed_id: data.bed_id,
       room_id: bed.room_id,
-      deposit_amount: bed.price,
+      deposit_amount: depositAmount,
       deposit_time: new Date().toISOString(),
       payment_deadline: paymentDeadline.toISOString(),
       status: DEPOSIT_STATUS.PENDING,
@@ -200,5 +204,60 @@ export const customerDepositService = {
    */
   getDepositsForStaff: async (filters: { status?: string; staff_id?: string }) => {
     return await depositRequestRepo.getAllDeposits(filters);
+  },
+
+  /**
+   * Tu dong quet va huy cac phieu dat coc qua han 24 gio ma chua thanh toan.
+   */
+  autoCancelExpiredDeposits: async () => {
+    const nowStr = new Date().toISOString();
+    const { data: expiredDeposits, error } = await supabase
+      .from('deposit_requests')
+      .select(`
+        id,
+        registration_id,
+        bed_id,
+        rental_registrations (
+          staff_id
+        )
+      `)
+      .eq('status', DEPOSIT_STATUS.PENDING)
+      .lt('payment_deadline', nowStr);
+
+    if (error) {
+      console.error('[DepositAutoCancel] Error fetching expired deposits:', error.message);
+      return;
+    }
+
+    if (!expiredDeposits || expiredDeposits.length === 0) {
+      return;
+    }
+
+    console.log(`[DepositAutoCancel] Found ${expiredDeposits.length} expired deposits to cancel.`);
+
+    for (const dep of expiredDeposits) {
+      try {
+        // 1. Cap nhat trang thai phieu dat coc sang cancelled
+        await depositRequestRepo.updateDepositStatus(dep.id, DEPOSIT_STATUS.CANCELLED);
+
+        // 2. Tra lai trang thai giuong ve available
+        await roomRepo.updateBedStatus(dep.bed_id, BED_STATUS.AVAILABLE);
+
+        // 3. Khoi phuc lai trang thai don dang ky thue
+        const staffId = (dep.rental_registrations as any)?.staff_id;
+        const newRegStatus = staffId 
+          ? REGISTRATION_STATUS.SCHEDULED 
+          : REGISTRATION_STATUS.PENDING_SCHEDULE;
+          
+        await leaseRepo.updateRegistrationStatus(
+          dep.registration_id, 
+          newRegStatus, 
+          staffId
+        );
+        console.log(`[DepositAutoCancel] Successfully cancelled expired deposit id=${dep.id}`);
+      } catch (err: any) {
+        console.error(`[DepositAutoCancel] Error cancelling deposit id=${dep.id}:`, err.message);
+      }
+    }
   }
 };

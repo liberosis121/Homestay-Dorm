@@ -29,25 +29,28 @@ router.post('/', requireAuth, async (req, res) => {
       other_criteria
     } = req.body;
 
-    // Validate input basic
-    if (!occupants_count || !preferred_area || !preferred_room_type || !preferred_price || !viewing_preference || !expected_move_in_date || !rental_duration) {
-      return sendError(res, null, 'Vui long dien day du cac truong bat buoc.', 400);
+    // Validate input basic (preferred_price cho phep = 0 nghia la "linh hoat")
+    const priceNum = Number(preferred_price);
+    if (!occupants_count || !preferred_area || !preferred_room_type ||
+        preferred_price === undefined || preferred_price === null || preferred_price === '' || Number.isNaN(priceNum) ||
+        !viewing_preference || !expected_move_in_date || !rental_duration) {
+      return sendError(res, null, 'Vui lòng điền đầy đủ các trường bắt buộc.', 400);
     }
 
     const result = await leaseService.createRegistration(req.user!.id, {
       occupants_count: parseInt(occupants_count, 10),
       preferred_area,
       preferred_room_type,
-      preferred_price,
+      preferred_price: priceNum,
       viewing_preference,
       expected_move_in_date,
       rental_duration,
       other_criteria
     });
 
-    return sendSuccess(res, result, 'Gui don dang ky thue phong thanh cong!', 201);
+    return sendSuccess(res, result, 'Gửi đơn đăng ký thuê phòng thành công!', 201);
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Loi khi tao don dang ky thue.');
+    return sendError(res, error, error.message || 'Lỗi khi tạo đơn đăng ký thuê.');
   }
 });
 
@@ -58,9 +61,9 @@ router.post('/', requireAuth, async (req, res) => {
 router.get('/my', requireAuth, async (req, res) => {
   try {
     const result = await leaseService.getCustomerRegistrations(req.user!.id);
-    return sendSuccess(res, result, 'Lay danh sach don dang ky thue thanh cong!');
+    return sendSuccess(res, result, 'Lấy danh sách đơn đăng ký thuê thành công!');
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Loi khi lay lich su dang ky thue.');
+    return sendError(res, error, error.message || 'Lỗi khi lấy lịch sử đăng ký thuê.');
   }
 });
 
@@ -77,9 +80,9 @@ router.get('/', requireAuth, requireRole(USER_ROLE.SALE, USER_ROLE.MANAGER), asy
     };
 
     const result = await leaseService.getRegistrationsForStaff(filters);
-    return sendSuccess(res, result, 'Lay tat ca don dang ky thue thanh cong!');
+    return sendSuccess(res, result, 'Lấy tất cả đơn đăng ký thuê thành công!');
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Loi khi lay danh sach don dang ky thue.');
+    return sendError(res, error, error.message || 'Lỗi khi lấy danh sách đơn đăng ký thuê.');
   }
 });
 
@@ -100,10 +103,10 @@ router.get('/:id', requireAuth, async (req, res) => {
       }
     }
 
-    return sendSuccess(res, registration, 'Lay chi tiet don dang ky thue thanh cong!');
+    return sendSuccess(res, registration, 'Lấy chi tiết đơn đăng ký thuê thành công!');
   } catch (error: any) {
     const statusCode = error.message?.includes('không tồn tại') || error.message?.includes('Không tìm thấy') ? 404 : 500;
-    return sendError(res, error, error.message || 'Loi khi lay chi tiet don dang ky.', statusCode);
+    return sendError(res, error, error.message || 'Lỗi khi lấy chi tiết đơn đăng ký.', statusCode);
   }
 });
 
@@ -114,9 +117,9 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.put('/:id/cancel', requireAuth, async (req, res) => {
   try {
     const result = await leaseService.cancelRegistration(req.user!.id, req.params.id);
-    return sendSuccess(res, result, 'Huy don dang ky thue thanh cong!');
+    return sendSuccess(res, result, 'Hủy đơn đăng ký thuê thành công!');
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Loi khi huy don dang ky thue.');
+    return sendError(res, error, error.message || 'Lỗi khi hủy đơn đăng ký thuê.');
   }
 });
 
@@ -127,9 +130,9 @@ router.put('/:id/cancel', requireAuth, async (req, res) => {
 router.put('/:id/assign', requireAuth, requireRole(USER_ROLE.SALE), async (req, res) => {
   try {
     const result = await leaseService.assignStaff(req.user!.id, req.params.id);
-    return sendSuccess(res, result, 'Nhan phu trach don dang ky thanh cong!');
+    return sendSuccess(res, result, 'Nhận phụ trách đơn đăng ký thành công!');
   } catch (error: any) {
-    return sendError(res, error, error.message || 'Loi khi gan nhan vien phu trach.');
+    return sendError(res, error, error.message || 'Lỗi khi gán nhân viên phụ trách.');
   }
 });
 

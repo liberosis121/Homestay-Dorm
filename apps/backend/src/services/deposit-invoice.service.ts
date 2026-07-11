@@ -55,7 +55,8 @@ export const depositInvoiceService = {
       contract_id: null,
       water_record_id: null,
       reconciliation_id: null,
-      staff_id: data.staffId
+      staff_id: data.staffId,
+      note: data.note || null
     };
 
     return await depositInvoiceRepo.createDepositInvoice(invoiceData, data.requestId);

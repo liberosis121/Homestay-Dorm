@@ -47,6 +47,9 @@ export const customerLookupService = {
               branches (
                 name
               )
+            ),
+            employees (
+              full_name
             )
           `)
           .in('registration_id', registrationIds)
@@ -144,12 +147,12 @@ export const customerLookupService = {
         roomName: v.rooms?.name || '',
         branch: v.rooms?.branches?.name || '',
         date: v.scheduled_time ? new Date(v.scheduled_time).toLocaleDateString('vi-VN') : '',
-        staffName: '',
+        staffName: v.employees?.full_name || '—',
         status: v.result === 'completed' ? 'viewed' : v.result === 'cancelled' ? 'cancelled' : 'confirmed'
       }));
 
       const formattedDeposits = depList.map(d => ({
-        content: `Cọc giữ chỗ phòng ${d.rooms?.name || ''}`,
+        content: `Cọc giữ chỗ ${d.rooms?.name || ''}`,
         date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '',
         amount: d.deposit_amount ? `${d.deposit_amount.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ',
         status: d.status === 'paid' ? 'approved' : d.status === 'cancelled' ? 'refunded' : 'pending'
@@ -212,18 +215,8 @@ export const customerLookupService = {
         viewings: accurateFormattedViewings,
         deposits: formattedDeposits,
         contracts: formattedContracts,
-        recentActivities,
-        importantNote: ''
+        recentActivities
       };
     });
-  },
-
-  /**
-   * Cap nhat ghi chu cho khach hang.
-   */
-  updateNote: async (customerId: string, note: string) => {
-    // Do bang khach_hang khong co cot note thuc te trong DB, ta tra ve mo phong thanh cong de tranh loi runtime
-    console.log(`[CustomerLookupService] Cap nhat ghi chu cho khach hang (CCCD=${customerId}): ${note}`);
-    return { cccd: customerId, note };
   }
 };
