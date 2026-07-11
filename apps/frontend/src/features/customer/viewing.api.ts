@@ -82,12 +82,15 @@ const mapViewingResponse = (v: any): ViewingSchedule => {
   if (status === 'completed') timeline_step = 3;
   else if (status === 'confirmed') timeline_step = 2;
 
-  // Xác định ảnh phòng
-  let image = roomSingle;
-  const roomType = v.rooms?.room_type?.toLowerCase() || '';
-  if (roomType.includes('dorm') || roomType.includes('ktx')) image = roomDorm;
-  else if (roomType.includes('twin')) image = roomTwin;
-  else if (roomType.includes('studio')) image = roomStudio;
+  // Ưu tiên ảnh thật từ DB (rooms.image_url), fallback theo room_type nếu không có
+  let image: string = v.rooms?.image_url || '';
+  if (!image) {
+    const roomType = v.rooms?.room_type?.toLowerCase() || '';
+    if (roomType.includes('dorm') || roomType.includes('ktx')) image = roomDorm;
+    else if (roomType.includes('twin')) image = roomTwin;
+    else if (roomType.includes('studio')) image = roomStudio;
+    else image = roomSingle;
+  }
 
   // Parse ngày và giờ từ scheduled_time (chuỗi ISO)
   const dateObj = new Date(v.scheduled_time);

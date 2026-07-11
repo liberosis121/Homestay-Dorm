@@ -22,6 +22,7 @@ interface DbContract {
       name: string;
       area?: string;
       room_type: string;
+      image_url?: string;
       branches?: {
         name: string;
       };
@@ -96,11 +97,10 @@ export const contractService = {
         statusLabel,
         // Room
         branch: branch.name || 'N/A',
-        building: room.area || 'N/A',
         roomCode: room.name || 'N/A',
         bedCode: bed.name || 'N/A',
         roomType: room.room_type === 'dorm' ? 'Dormitory' : room.room_type || 'N/A',
-        roomImage: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?q=80&w=500&auto=format&fit=crop', // default nice placeholder
+        roomImage: room.image_url || 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?q=80&w=500&auto=format&fit=crop', // default nice placeholder
         // Finance
         rentPrice: c.rent_price,
         depositAmount: depReq.deposit_amount || c.rent_price,
