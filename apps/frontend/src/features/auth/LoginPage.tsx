@@ -149,7 +149,7 @@ export default function LoginPage() {
                 <p className="text-error text-sm font-body-md ml-2">{localError || authError}</p>
               )}
 
-              <div className="flex items-center justify-end pt-2">
+              <div className="flex items-center justify-start pt-2">
                 <a href="#/forgot-password" className="font-label-md text-sm text-primary hover:underline hover:text-primary-dark transition-colors">Quên mật khẩu?</a>
               </div>
 
