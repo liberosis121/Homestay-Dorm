@@ -162,14 +162,25 @@ export const invoiceService = {
         serviceDetails = 'Phí đăng ký dịch vụ phát sinh';
       }
 
-      // Due date logic (e.g. 5 days after recorded date / created date, or 5th of the month)
-      let dueDate = `${year}-${month < 10 ? '0' + month : month}-05`;
+      // Due date logic
+      let dueDate: string;
       if (isRefund && inv.refund_reconciliations) {
         dueDate = inv.refund_reconciliations.reconciliation_date;
       } else if (isDeposit && inv.deposit_requests) {
-        dueDate = inv.deposit_requests.payment_deadline 
-          ? inv.deposit_requests.payment_deadline.split('T')[0] 
+        dueDate = inv.deposit_requests.payment_deadline
+          ? inv.deposit_requests.payment_deadline.split('T')[0]
           : new Date().toISOString().split('T')[0];
+      } else if (inv.electricity_water_records) {
+        // Hóa đơn tiền phòng định kỳ theo kỳ điện/nước → hạn là ngày 05 của tháng kỳ.
+        dueDate = `${year}-${month < 10 ? '0' + month : month}-05`;
+      } else {
+        // Hóa đơn nhận phòng (check-in) / phát sinh chưa gắn kỳ điện nước:
+        // hạn = ngày lập hóa đơn + 3 ngày (đúng nghiệp vụ "hạn 3 ngày sau nhận phòng").
+        const base = inv.created_at
+          ? new Date(inv.created_at)
+          : (inv.payment_time ? new Date(inv.payment_time) : new Date());
+        base.setDate(base.getDate() + 3);
+        dueDate = base.toISOString().split('T')[0];
       }
 
       // Status mapping: 'paid' | 'unpaid' | 'overdue'

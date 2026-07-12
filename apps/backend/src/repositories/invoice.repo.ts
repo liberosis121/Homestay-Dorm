@@ -13,6 +13,7 @@ export interface DbInvoice {
   water_record_id: number | null;
   reconciliation_id: string | null;
   staff_id: string | null;
+  created_at?: string | null;
   electricity_water_records?: {
     id: number;
     room_id: string;
