@@ -338,7 +338,10 @@ export const invoiceService = {
         }
         return { success: true, paidAt: (inv as any).payment_time || paymentTime, alreadyPaid: true };
       }
-      if (deposit.status !== DEPOSIT_STATUS.INVOICE_CREATED) {
+      // Kế toán được thu tiền khi phiếu ở 'invoice_created' (thu tiền mặt trực tiếp)
+      // HOẶC 'pending' (khách đã nộp minh chứng, chờ kế toán xác nhận).
+      if (deposit.status !== DEPOSIT_STATUS.INVOICE_CREATED &&
+          deposit.status !== DEPOSIT_STATUS.PENDING) {
         throw new Error('Yeu cau dat coc chua o trang thai cho thanh toan.');
       }
 

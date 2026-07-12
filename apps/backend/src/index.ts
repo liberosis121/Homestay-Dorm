@@ -17,7 +17,9 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+// Minh chứng thanh toán được gửi dưới dạng data URI base64 nên body có thể lớn.
+// Mặc định express.json() chỉ cho 100KB -> nâng lên 10MB để không bị PayloadTooLargeError.
+app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 
 app.use('/api', apiRouter);
@@ -28,7 +30,14 @@ app.get('/', (req, res) => {
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('[Unhandled Error]:', err);
-  res.status(500).json({ success: false, message: 'Unhandled Server Error' });
+  // Tôn trọng mã lỗi mà body-parser (và các middleware khác) gắn sẵn, thay vì luôn trả 500.
+  const status = err?.status || err?.statusCode || 500;
+  const message = err?.type === 'entity.too.large'
+    ? 'Tệp minh chứng quá lớn. Vui lòng chọn ảnh nhỏ hơn (tối đa 10MB).'
+    : status !== 500 && err?.message
+      ? err.message
+      : 'Unhandled Server Error';
+  res.status(status).json({ success: false, message });
 });
 
 app.listen(PORT, () => {
