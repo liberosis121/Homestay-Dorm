@@ -135,6 +135,45 @@ async function releaseResourcesAfterContract(depositId: string) {
   }
 }
 
+/**
+ * Sau khi lap HD thanh cong, gan cac ban ghi cu tru TIEN-HOP-DONG (contract_id null, 'approved')
+ * cua nhung nguoi o thuoc phieu coc vao contract_id moi. Nho vay lan dang ky sau cua cung khach
+ * khong bi tinh nham la "da khai bao/da dat" tu ban ghi cu.
+ * Chi gan dung CCCD thuoc phieu coc dang lap HD, ban ghi 'approved' va contract_id dang null.
+ */
+async function attachResidencyToContract(depositId: string, contractId: string) {
+  if (!depositId || !contractId) return;
+
+  const { data: dep } = await supabase
+    .from('deposit_requests').select('registration_id').eq('id', depositId).maybeSingle();
+  if (!dep?.registration_id) return;
+
+  // Occupant CCCDs: thanh vien nhom con hieu luc; fallback nguoi dai dien (coc le / du lieu cu).
+  let cccds: string[] = [];
+  const { data: members } = await supabase
+    .from('rental_registration_members')
+    .select('customer_user_id')
+    .eq('registration_id', dep.registration_id);
+  if (members && members.length > 0) {
+    const userIds = members.map((m: any) => m.customer_user_id);
+    const { data: custs } = await supabase.from('customers').select('cccd').in('user_id', userIds);
+    cccds = (custs || []).map((c: any) => c.cccd).filter(Boolean);
+  } else {
+    const { data: reg } = await supabase
+      .from('rental_registrations').select('cccd').eq('id', dep.registration_id).maybeSingle();
+    if (reg?.cccd) cccds = [reg.cccd];
+  }
+  if (cccds.length === 0) return;
+
+  const { error } = await supabase
+    .from('residency_info')
+    .update({ contract_id: contractId })
+    .in('cccd', cccds)
+    .is('contract_id', null)
+    .eq('check_result', 'approved');
+  if (error) throw error;
+}
+
 export const managerContractRepo = {
   findAll: async (filters?: { customer_id?: string; status?: string }) => {
     // 1. Fetch contracts from CSDL
@@ -379,7 +418,11 @@ export const managerContractRepo = {
     // Nếu lỗi → rollback HĐ vừa tạo để tránh trạng thái không nhất quán.
     try {
       await activateResourcesAfterContract(dbContract.deposit_id);
+      // Gan cu tru tien-hop-dong vao HD moi CHI khi kich hoat tai nguyen da thanh cong.
+      await attachResidencyToContract(dbContract.deposit_id, data.id);
     } catch (sideErr) {
+      // Rollback: go lien ket cu tru vua gan (tranh tro toi HD sap bi xoa) roi xoa HD.
+      await supabase.from('residency_info').update({ contract_id: null }).eq('contract_id', data.id);
       await supabase.from('contracts').delete().eq('id', data.id);
       throw sideErr;
     }
