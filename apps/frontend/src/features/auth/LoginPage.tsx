@@ -149,14 +149,7 @@ export default function LoginPage() {
                 <p className="text-error text-sm font-body-md ml-2">{localError || authError}</p>
               )}
 
-              <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative flex items-center justify-center">
-                    <input type="checkbox" className="peer appearance-none w-5 h-5 border-2 border-on-surface-variant/50 rounded flex-shrink-0 checked:bg-primary checked:border-primary transition-all cursor-pointer" />
-                    <span className="material-symbols-outlined absolute text-white text-sm opacity-0 peer-checked:opacity-100 pointer-events-none font-bold">check</span>
-                  </div>
-                  <span className="font-body-md text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Ghi nhớ đăng nhập</span>
-                </label>
+              <div className="flex items-center justify-end pt-2">
                 <a href="#/forgot-password" className="font-label-md text-sm text-primary hover:underline hover:text-primary-dark transition-colors">Quên mật khẩu?</a>
               </div>
 
