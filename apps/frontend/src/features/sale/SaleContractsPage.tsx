@@ -67,6 +67,7 @@ export interface CreatedContract {
   roomCode: string;
   branch: string;
   startDate: string;
+  checkinPaid?: boolean;   // Đã thanh toán hóa đơn nhận phòng chưa
 }
 
 // ─── Helpers: map dữ liệu THẬT từ backend → cấu trúc UI ──────────────────────
@@ -126,6 +127,7 @@ const toCreatedContract = (c: any): CreatedContract => {
     roomCode: room.name || dep.room_id || '—',
     branch: (room.branches?.name || '').replace('Chi nhánh ', ''),
     startDate: formatDate(c.start_date),
+    checkinPaid: c.checkin_paid === true,
   };
 };
 
@@ -203,6 +205,7 @@ export default function SaleContractsPage() {
         roomCode: selectedDeposit.roomCode,
         branch: selectedDeposit.branch,
         startDate: data.startDate ? new Date(data.startDate).toLocaleDateString('vi-VN') : '—',
+        checkinPaid: false,   // HĐ vừa lập → chưa thanh toán nhận phòng
       };
       setCreatedContract(contract);
       setCompletedContracts((prev) => [contract, ...prev]);

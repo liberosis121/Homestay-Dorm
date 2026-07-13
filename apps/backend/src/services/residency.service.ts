@@ -9,6 +9,28 @@ import { supabase } from '../utils/supabase';
  * tren rental_registrations) HOAC THANH VIEN nhom (qua rental_registration_members).
  * Nho vay thanh vien nhom (cccd khong nam tren phieu) van khai bao / duoc kiem tra cu tru.
  */
+/**
+ * Kiem tra 1 phieu coc DA DUOC QUAN LY DUYET hay chua.
+ * Nguon su that: invoice coc tuong ung (invoices.deposit_id = depositId, invoice_type='deposit'),
+ * parse invoices.note JSON — chi coi la da duyet khi note.manager_deposit_status === 'approved'.
+ * Neu khong co invoice / note null / khong co marker => coi nhu CHUA duyet.
+ */
+async function isDepositManagerApproved(depositId: string): Promise<boolean> {
+  if (!depositId) return false;
+  const { data: invoices } = await supabase
+    .from('invoices')
+    .select('note')
+    .eq('deposit_id', depositId)
+    .eq('invoice_type', 'deposit');
+  return (invoices || []).some((inv: any) => {
+    try {
+      return JSON.parse(inv.note || '{}')?.manager_deposit_status === 'approved';
+    } catch {
+      return false;
+    }
+  });
+}
+
 async function getRegistrationIdsForCccd(cccd: string): Promise<string[]> {
   if (!cccd) return [];
   const ids = new Set<string>();
@@ -143,7 +165,13 @@ export const residencyService = {
       .in('deposit_id', depositIds);
     const contractedDepositIds = new Set((contracts || []).map(c => c.deposit_id));
 
-    const candidate = deposits.find(d => !contractedDepositIds.has(d.id));
+    // Chi cho khai bao sau khi QUAN LY DA DUYET coc (buoc 9). Coc paid nhung quan ly chua duyet
+    // -> chua duoc khai bao luu tru. Duyet theo tung phieu (khach co the co nhieu phieu).
+    let candidate: any = null;
+    for (const d of deposits) {
+      if (contractedDepositIds.has(d.id)) continue;
+      if (await isDepositManagerApproved(d.id)) { candidate = d; break; }
+    }
     if (!candidate) return null;
 
     // 4. Neu khach da khai bao cu tru dang cho/da duyet (contract_id null) thi khong hien form nua
@@ -284,6 +312,8 @@ export const residencyService = {
    * deu co ban ghi cu tru 'approved' (ban ghi tien-hop-dong, contract_id null). Dung de gate lap HD.
    */
   isDepositResidencyApproved: async (depositId: string): Promise<boolean> => {
+    // Dieu kien tien quyet: quan ly phai DA DUYET coc (tranh Sale lap HD khi bo qua buoc duyet coc).
+    if (!(await isDepositManagerApproved(depositId))) return false;
     const cccds = await residencyService.getOccupantCccdsOfDeposit(depositId);
     if (cccds.length === 0) return false;
     const { data: residency } = await supabase
