@@ -4,6 +4,7 @@ import { customerDepositService } from './customer-deposit.service';
 import { getCustomerByUserId } from '../repositories/profile.repo';
 import { DEPOSIT_STATUS } from '../types/constants';
 import { contractRepo } from '../repositories/contract.repo';
+import { computeMonthlyDueDate, computeCheckinDueDate } from '../utils/invoice-due-date';
 
 // Utility helpers
 function getMonthYearFromPeriod(periodStr: string | null): { month: number; year: number } {
@@ -162,25 +163,27 @@ export const invoiceService = {
         serviceDetails = 'Phí đăng ký dịch vụ phát sinh';
       }
 
-      // Due date logic
+      // Hạn thanh toán được CHỐT lúc lập hóa đơn (invoices.due_date) — dùng chung cho khách hàng,
+      // kế toán và cả phòng cá nhân lẫn phòng nhóm. Các nhánh dưới chỉ là fallback cho hóa đơn cũ
+      // được tạo trước khi cột due_date tồn tại.
       let dueDate: string;
-      if (isRefund && inv.refund_reconciliations) {
+      if (inv.due_date) {
+        dueDate = inv.due_date.split('T')[0];
+      } else if (isRefund && inv.refund_reconciliations) {
         dueDate = inv.refund_reconciliations.reconciliation_date;
       } else if (isDeposit && inv.deposit_requests) {
         dueDate = inv.deposit_requests.payment_deadline
           ? inv.deposit_requests.payment_deadline.split('T')[0]
-          : new Date().toISOString().split('T')[0];
+          : computeCheckinDueDate();
       } else if (inv.electricity_water_records) {
-        // Hóa đơn tiền phòng định kỳ theo kỳ điện/nước → hạn là ngày 05 của tháng kỳ.
-        dueDate = `${year}-${month < 10 ? '0' + month : month}-05`;
+        dueDate = computeMonthlyDueDate(
+          inv.electricity_water_records.billing_period,
+          inv.created_at || undefined
+        );
       } else {
         // Hóa đơn nhận phòng (check-in) / phát sinh chưa gắn kỳ điện nước:
         // hạn = ngày lập hóa đơn + 3 ngày (đúng nghiệp vụ "hạn 3 ngày sau nhận phòng").
-        const base = inv.created_at
-          ? new Date(inv.created_at)
-          : (inv.payment_time ? new Date(inv.payment_time) : new Date());
-        base.setDate(base.getDate() + 3);
-        dueDate = base.toISOString().split('T')[0];
+        dueDate = computeCheckinDueDate(inv.created_at || inv.payment_time || new Date());
       }
 
       // Status mapping: 'paid' | 'unpaid' | 'overdue'
