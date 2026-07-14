@@ -490,7 +490,7 @@ export default function ManagerHandoversPage() {
               <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Chờ bàn giao (Nhận phòng)</span>
             </div>
             <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: T.blue, marginTop: 4 }}>
-              {pendingCheckouts.filter(c => c.type === 'checkin').length}
+              {pendingCheckouts.filter(c => c.type === 'checkin' && !records.some(r => r.contract_id === c.contract_id && r.type === 'checkin')).length}
             </div>
           </div>
           <div
@@ -509,7 +509,7 @@ export default function ManagerHandoversPage() {
               <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Chờ kiểm kê (Trả phòng)</span>
             </div>
             <div style={{ fontFamily: "'Lexend', sans-serif", fontSize: 28, fontWeight: 800, color: T.amber, marginTop: 4 }}>
-              {pendingCheckouts.filter(c => c.type === 'checkout').length}
+              {pendingCheckouts.filter(c => c.type === 'checkout' && c.status === 'pending').length}
             </div>
           </div>
         </div>
@@ -629,7 +629,14 @@ export default function ManagerHandoversPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingCheckouts.map(ch => {
+                  {pendingCheckouts.filter(ch => {
+                    if (ch.type === 'checkin') {
+                      // Ẩn nếu đã có biên bản nhận phòng cho contract này
+                      return !records.some(r => r.contract_id === ch.contract_id && r.type === 'checkin');
+                    }
+                    // Với checkout: chỉ hiện những cái chưa kiểm kê (status === 'pending')
+                    return ch.status === 'pending';
+                  }).map(ch => {
                     const isCheckin = ch.type === 'checkin';
                     return (
                       <tr key={`${ch.type}-${ch.id}`} style={{ borderBottom: `1px solid ${T.border}` }} className="hover:bg-[#FAF2E8] transition-colors duration-150">
