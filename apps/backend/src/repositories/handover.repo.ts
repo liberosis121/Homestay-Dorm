@@ -13,6 +13,7 @@ export interface AssetHandoverDto {
 export interface HandoverDetailDto {
   handover_id: string;
   serial_number: string;
+  /** So luong tai san ban giao — cot handover_details.quantity, FE gui khi lap bien ban. */
   quantity: number;
   condition: string;
   note?: string;
@@ -31,7 +32,7 @@ export const handoverRepo = {
 
     // 2. Fetch related tables.
     // HIEU NANG: chi lay DUNG cac ban ghi lien quan (loc theo khoa bang .in) thay vi
-    // SELECT * toan bo 7 bang (truoc day keo ca 106 tai san + toan bo khach hang ve
+    // SELECT * toan bo 8 bang (truoc day keo ca 106 tai san + toan bo khach hang ve
     // roi loc trong bo nho o moi lan goi API).
     const handoverIds = handovers.map((h: any) => h.id).filter(Boolean);
     const handoverContractIds = Array.from(
@@ -70,13 +71,20 @@ export const handoverRepo = {
     const roomIds = Array.from(
       new Set((deposits || []).map((d: any) => d.room_id).filter(Boolean))
     );
+    // Coc theo GIUONG: bien ban ban giao hien them ten giuong duoc ban giao.
+    const bedIds = Array.from(
+      new Set((deposits || []).map((d: any) => d.bed_id).filter(Boolean))
+    );
 
-    const [{ data: registrations }, { data: rooms }] = await Promise.all([
+    const [{ data: registrations }, { data: rooms }, { data: beds }] = await Promise.all([
       registrationIds.length > 0
         ? supabase.from('rental_registrations').select('id, cccd').in('id', registrationIds)
         : Promise.resolve({ data: [] as any[] }),
       roomIds.length > 0
         ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
+        : Promise.resolve({ data: [] as any[] }),
+      bedIds.length > 0
+        ? supabase.from('beds').select('id, name').in('id', bedIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
@@ -94,6 +102,7 @@ export const handoverRepo = {
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
       const customer = customers?.find(c => c.cccd === reg.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
+      const bed = beds?.find(b => b.id === dep.bed_id) || null;
 
       // Filter details for this handover
       const hDetails = details?.filter(d => d.handover_id === h.id) || [];
@@ -118,6 +127,8 @@ export const handoverRepo = {
         customer_name: customer.full_name || 'Khách thuê',
         room_id: dep.room_id || '',
         room_name: room.name || 'Phòng',
+        bed_id: dep.bed_id || '',
+        bed_name: bed ? bed.name : '',
         branch_id: room.branch_id || '',
         handover_date: h.handover_time ? h.handover_time.slice(0, 10) : new Date().toISOString().slice(0, 10),
         checklist,

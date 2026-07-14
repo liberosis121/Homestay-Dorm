@@ -30,7 +30,7 @@ export const depositInvoiceService = {
     roomId: string;
     amount: number;
     deadlineType: string;
-    paymentMethod: 'transfer' | 'cash';
+    paymentMethod?: 'transfer' | 'cash' | null;
     note?: string;
     staffId: string;
   }) => {
@@ -48,7 +48,7 @@ export const depositInvoiceService = {
       amount: data.amount,
       status: 'pending',
       invoice_type: 'deposit',
-      payment_method: data.paymentMethod,
+      payment_method: data.paymentMethod || null,
       payment_time: null,
       evidence_url: null,
       deposit_id: data.requestId,
