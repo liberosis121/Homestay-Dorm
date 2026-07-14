@@ -432,7 +432,7 @@ export default function AdminAssetsPage() {
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
                 {['Mã TS', 'Tên tài sản', 'Loại', 'Vị trí', 'Thương hiệu', 'Giá trị', 'Trạng thái', 'Thao tác'].map(h => (
-                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${h === 'Thao tác' ? 'text-center' : 'text-left'}`}
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${h === 'Thao tác' ? 'text-center' : 'text-left'}`}
                     style={{ color: A.textMuted }}>{h}</th>
                 ))}
               </tr>
@@ -471,12 +471,28 @@ export default function AdminAssetsPage() {
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.accent }}>{formatShortId(a.id, 'checkout')}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{a.name}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5" style={{ color: A.textMuted }}>
+                      <div className="flex items-center gap-1.5 whitespace-nowrap" style={{ color: A.textMuted }}>
                         <span className="material-symbols-outlined text-[16px]">{cat.icon}</span>
                         <span className="text-xs">{cat.label}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>{getLocationString(a)}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>
+                      {a.bed ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-[#1e1b17]">{a.bed.name} - {a.room?.name}</span>
+                          <span className="text-xs">{a.branch?.name}</span>
+                        </div>
+                      ) : a.room ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-[#1e1b17]">{a.room.name}</span>
+                          <span className="text-xs">{a.branch?.name}</span>
+                        </div>
+                      ) : a.branch ? (
+                        <span className="font-medium text-[#1e1b17]">Kho {a.branch.name}</span>
+                      ) : (
+                        <span>Chưa sắp xếp</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{a.brand}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.primary }}>
                       {a.value.toLocaleString('vi-VN')}đ
