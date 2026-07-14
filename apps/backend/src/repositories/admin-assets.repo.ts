@@ -5,17 +5,27 @@ export interface DbAsset {
   name: string;
   category: string;
   brand: string;
-  location: string;
   value: number;
   purchase_date: string;
   status: string;
+  branch_id?: string;
+  room_id?: string;
+  bed_id?: string;
+  branch?: { id: string; name: string };
+  room?: { id: string; name: string };
+  bed?: { id: string; name: string };
 }
 
 export const adminAssetsRepo = {
   findAll: async (): Promise<DbAsset[]> => {
     const { data, error } = await supabase
       .from('assets')
-      .select('*')
+      .select(`
+        *,
+        branch:branches(id, name),
+        room:rooms(id, name),
+        bed:beds(id, name)
+      `)
       .order('purchase_date', { ascending: false });
 
     if (error) throw error;
@@ -27,7 +37,9 @@ export const adminAssetsRepo = {
     name: string;
     category: string;
     brand: string;
-    location: string;
+    branch_id: string;
+    room_id?: string;
+    bed_id?: string;
     value: number;
     purchase_date?: string;
     status: string;
@@ -42,12 +54,19 @@ export const adminAssetsRepo = {
         name: asset.name,
         category: asset.category,
         brand: asset.brand,
-        location: asset.location,
+        branch_id: asset.branch_id,
+        room_id: asset.room_id || null,
+        bed_id: asset.bed_id || null,
         value: asset.value,
         purchase_date: pDate,
         status: asset.status
       })
-      .select()
+      .select(`
+        *,
+        branch:branches(id, name),
+        room:rooms(id, name),
+        bed:beds(id, name)
+      `)
       .single();
 
     if (error) throw error;
@@ -57,17 +76,26 @@ export const adminAssetsRepo = {
   update: async (serialNumber: string, asset: {
     status?: string;
     value?: number;
-    location?: string;
+    branch_id?: string;
+    room_id?: string;
+    bed_id?: string;
   }): Promise<DbAsset> => {
     const { data, error } = await supabase
       .from('assets')
       .update({
         status: asset.status,
         value: asset.value,
-        location: asset.location
+        branch_id: asset.branch_id,
+        room_id: asset.room_id || null,
+        bed_id: asset.bed_id || null
       })
       .eq('serial_number', serialNumber)
-      .select()
+      .select(`
+        *,
+        branch:branches(id, name),
+        room:rooms(id, name),
+        bed:beds(id, name)
+      `)
       .single();
 
     if (error) throw error;
