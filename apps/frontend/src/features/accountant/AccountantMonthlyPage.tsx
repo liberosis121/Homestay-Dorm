@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, MonthlyInvoice, ServiceSubscription } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
@@ -1187,15 +1188,13 @@ export default function AccountantMonthlyPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
-                    Ngày ghi nhận sự cố <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
+                  <CustomDatePicker
+                    label="Ngày ghi nhận sự cố"
+                    required={true}
                     value={newIncidentalDate}
-                    onChange={(e) => setNewIncidentalDate(e.target.value)}
-                    className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-2.5 px-4 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] "
+                    onChange={setNewIncidentalDate}
+                    variant="brown"
+                    triggerClassName="bg-[#fbf9f8] border-[#d1c4b9] rounded-24 py-2.5 px-4 text-xs focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]"
                   />
                 </div>
               </div>
