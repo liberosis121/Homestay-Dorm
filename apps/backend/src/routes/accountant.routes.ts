@@ -23,7 +23,7 @@ router.use(requireAuth, requireRole(USER_ROLE.ACCOUNTANT));
  */
 router.get('/deposit-requests/pending', async (req, res) => {
   try {
-    const data = await depositInvoiceService.getPendingRequests();
+    const data = await depositInvoiceService.getPendingRequests(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach phieu dat coc cho thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay danh sach phieu dat coc.');
@@ -36,7 +36,7 @@ router.get('/deposit-requests/pending', async (req, res) => {
  */
 router.get('/deposit-invoices', async (req, res) => {
   try {
-    const data = await depositInvoiceService.getDepositInvoices();
+    const data = await depositInvoiceService.getDepositInvoices(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach hoa don dat coc thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay hoa don dat coc.');
@@ -79,7 +79,7 @@ router.post('/deposit-invoices', async (req, res) => {
  */
 router.get('/checkin-invoices', async (req, res) => {
   try {
-    const data = await checkinInvoiceService.getInvoices();
+    const data = await checkinInvoiceService.getInvoices(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach hoa don nhan phong thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay danh sach hoa don nhan phong.');
@@ -119,7 +119,8 @@ router.post('/checkin-invoices', async (req, res) => {
  */
 router.get('/active-contracts', async (req, res) => {
   try {
-    const data = await monthlyInvoiceService.getActiveContracts();
+    // ?purpose=checkin => bao gom ca HD 'pending_payment' de ke toan lap hoa don nhan phong.
+    const data = await monthlyInvoiceService.getActiveContracts(req.query.purpose as string, req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach hop dong active thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay hop dong active.');
@@ -132,7 +133,7 @@ router.get('/active-contracts', async (req, res) => {
  */
 router.get('/monthly-invoices', async (req, res) => {
   try {
-    const data = await monthlyInvoiceService.getInvoices();
+    const data = await monthlyInvoiceService.getInvoices(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach hoa don dinh ky thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay danh sach hoa don dinh ky.');
@@ -273,7 +274,7 @@ router.post('/monthly-invoices', async (req, res) => {
  */
 router.get('/checkouts/pending', async (req, res) => {
   try {
-    const data = await refundService.getPendingCheckouts();
+    const data = await refundService.getPendingCheckouts(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach yeu cau tra phong cho doi soat thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay yeu cau tra phong.');
@@ -286,7 +287,7 @@ router.get('/checkouts/pending', async (req, res) => {
  */
 router.get('/cancellation-refunds', async (req, res) => {
   try {
-    const data = await refundService.getCancellationRefunds();
+    const data = await refundService.getCancellationRefunds(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach hoan coc chua ky HD thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay danh sach hoan coc chua ky HD.');
@@ -316,7 +317,7 @@ router.post('/cancellation-refunds', async (req, res) => {
  */
 router.get('/refunds', async (req, res) => {
   try {
-    const data = await refundService.getReconciliations();
+    const data = await refundService.getReconciliations(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach doi soat hoan coc thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay danh sach doi soat.');
@@ -373,7 +374,7 @@ router.post('/refunds', async (req, res) => {
  */
 router.get('/payouts', async (req, res) => {
   try {
-    const data = await payoutService.getPayouts();
+    const data = await payoutService.getPayouts(req.user!.id);
     return sendSuccess(res, data, 'Lay danh sach phieu chi hoan coc thanh cong!');
   } catch (err: any) {
     return sendError(res, err, err.message || 'Loi khi lay phieu chi.');

@@ -38,7 +38,7 @@ router.get('/', requireAuth, requireRole(USER_ROLE.SALE, USER_ROLE.MANAGER), asy
     const staffOnly = req.query.staff_only === 'true';
     const result = staffOnly
       ? await viewingService.getStaffSchedules(req.user!.id)
-      : await viewingService.getAllSchedules();
+      : await viewingService.getAllSchedules(req.user!.id);
 
     return sendSuccess(res, result, 'Lấy danh sách lịch hẹn thành công!');
   } catch (error: any) {

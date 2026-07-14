@@ -11,7 +11,7 @@ interface DbContract {
   rent_price: number;
   contract_type: 'long_term' | 'short_term';
   payment_cycle: '1_month' | '3_months' | '6_months';
-  status: 'active' | 'expired' | 'terminated';
+  status: 'pending_payment' | 'active' | 'expired' | 'terminated';
   deposit_id: string;
   staff_id: string;
   employees?: {
@@ -110,9 +110,11 @@ export const contractService = {
       const monthsPassed = calculateMonthsDifference(c.start_date, new Date().toISOString().split('T')[0]);
       const remainingDays = calculateRemainingDays(c.end_date);
 
-      // Map status label
+      // Map status label. 'pending_payment' = HĐ đã lập nhưng CHƯA thanh toán hóa đơn nhận
+      // phòng → chưa có hiệu lực, khách phải thấy đúng là "Chờ thanh toán".
       let statusLabel = 'Không xác định';
-      if (c.status === 'active') statusLabel = 'Đang hiệu lực';
+      if (c.status === 'pending_payment') statusLabel = 'Chờ thanh toán';
+      else if (c.status === 'active') statusLabel = 'Đang hiệu lực';
       else if (c.status === 'expired') statusLabel = 'Đã hết hạn';
       else if (c.status === 'terminated') statusLabel = 'Đã thanh lý';
 

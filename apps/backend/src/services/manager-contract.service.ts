@@ -1,6 +1,7 @@
 import { managerContractRepo } from '../repositories/manager-contract.repo';
 import { residencyService } from './residency.service';
 import { supabase } from '../utils/supabase';
+import { CONTRACT_STATUS } from '../types/constants';
 import crypto from 'crypto';
 
 export const managerContractService = {
@@ -41,7 +42,9 @@ export const managerContractService = {
       const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
       contract.contract_code = `HD-2026-${uniqueSuffix}`;
     }
-    contract.status = contract.status || 'active';
+    // HĐ mới lập CHƯA có hiệu lực: phải chờ khách thanh toán hóa đơn nhận phòng thành công
+    // thì invoiceService.payInvoice mới kích hoạt sang 'active'.
+    contract.status = contract.status || CONTRACT_STATUS.PENDING_PAYMENT;
     return await managerContractRepo.create(contract);
   },
 
