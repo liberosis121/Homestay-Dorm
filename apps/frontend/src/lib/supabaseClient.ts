@@ -1213,16 +1213,16 @@ function generateAssetHandovers(): AssetHandover[] {
   const names = ['Nguyễn Văn Bình', 'Trần Minh Châu', 'Lê Thị Duyên', 'Phạm Quốc Hùng', 'Hoàng Thị Lan', 'Đỗ Văn Mạnh', 'Nguyễn Thu Ngân', 'Bùi Đình Phúc', 'Lý Ngọc Quỳnh', 'Phan Văn Sơn', 'Vũ Thị Tâm'];
   const rooms = ['Phòng 101 (Nam)', 'Phòng 102 (Nữ)', 'Phòng 201 (Nam)', 'Phòng 202 (Nữ)', 'Phòng 301 (Nam)'];
   const defaultChecklist = [
-    { item: 'Giường đơn + nệm', condition: 'Tốt', checked: true },
-    { item: 'Tủ quần áo', condition: 'Tốt', checked: true },
-    { item: 'Bàn học + ghế', condition: 'Tốt', checked: true },
-    { item: 'Máy lạnh (1.5HP)', condition: 'Tốt, vừa bảo dưỡng', checked: true },
-    { item: 'Quạt trần', condition: 'Hoạt động bình thường', checked: true },
-    { item: 'Đèn LED phòng', condition: 'Tốt', checked: true },
-    { item: 'Thiết bị nhà vệ sinh', condition: 'Đầy đủ, sạch sẽ', checked: true },
-    { item: 'Khóa cửa điện tử', condition: 'Hoạt động tốt', checked: true },
-    { item: 'Kệ sách / Kệ đa năng', condition: 'Tốt', checked: true },
-    { item: 'Ổ cắm điện + USB', condition: '4 ổ, hoạt động tốt', checked: true }
+    { item: 'Giường đơn + nệm', serial_number: 'TS-001', condition: 'Tốt', checked: true },
+    { item: 'Tủ quần áo', serial_number: 'TS-002', condition: 'Tốt', checked: true },
+    { item: 'Bàn học + ghế', serial_number: 'TS-003', condition: 'Tốt', checked: true },
+    { item: 'Máy lạnh (1.5HP)', serial_number: 'TS-004', condition: 'Tốt, vừa bảo dưỡng', checked: true },
+    { item: 'Quạt trần', serial_number: 'TS-005', condition: 'Hoạt động bình thường', checked: true },
+    { item: 'Đèn LED phòng', serial_number: 'TS-006', condition: 'Tốt', checked: true },
+    { item: 'Thiết bị nhà vệ sinh', serial_number: 'TS-007', condition: 'Đầy đủ, sạch sẽ', checked: true },
+    { item: 'Khóa cửa điện tử', serial_number: 'TS-008', condition: 'Hoạt động tốt', checked: true },
+    { item: 'Kệ sách / Kệ đa năng', serial_number: 'TS-009', condition: 'Tốt', checked: true },
+    { item: 'Ổ cắm điện + USB', serial_number: 'TS-010', condition: '4 ổ, hoạt động tốt', checked: true }
   ];
   const statuses: AssetHandover['status'][] = ['signed', 'signed', 'signed', 'partial', 'partial'];
   const list: AssetHandover[] = [];

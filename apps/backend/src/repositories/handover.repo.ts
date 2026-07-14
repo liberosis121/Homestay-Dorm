@@ -13,8 +13,6 @@ export interface AssetHandoverDto {
 export interface HandoverDetailDto {
   handover_id: string;
   serial_number: string;
-  /** So luong tai san ban giao — cot handover_details.quantity, FE gui khi lap bien ban. */
-  quantity: number;
   condition: string;
   compensation?: number;
   note?: string;

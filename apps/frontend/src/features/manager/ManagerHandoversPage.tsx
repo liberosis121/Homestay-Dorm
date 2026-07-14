@@ -553,7 +553,7 @@ export default function ManagerHandoversPage() {
                 </thead>
                 <tbody>
                   {filtered.map((rec) => {
-                    const meta = STATUS_LABELS[rec.status];
+                    const meta = STATUS_LABELS[rec.status as AssetHandover['status']] || STATUS_LABELS['pending'];
                     return (
                       <tr key={rec.id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer' }}
                         onClick={() => { setSelected(rec); setDrawerOpen(true); }}
@@ -726,7 +726,7 @@ export default function ManagerHandoversPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Biên bản bàn giao</h3>
-                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>{formatShortId(selected.id, 'checkout')} — {selected.customer_name} — {selected.bed_id ? `${selected.bed_name} - ${selected.room_name}` : `Full ${selected.room_name.toLowerCase()}`}</p>
+                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>{formatShortId(selected.id, 'checkout')} — {selected.customer_name} — {selected.bed_id ? `${selected.bed_name || ''} - ${selected.room_name || ''}` : `Full ${(selected.room_name || '').toLowerCase()}`}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)}
                   style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -868,7 +868,7 @@ export default function ManagerHandoversPage() {
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Phòng:</span>
                       <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
-                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name} - ${selectedCheckout.room_name}` : `Full phòng ${selectedCheckout.room_name.replace('Phòng ', '')}`}
+                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name || ''} - ${selectedCheckout.room_name || ''}` : `Full phòng ${(selectedCheckout.room_name || '').replace('Phòng ', '')}`}
                       </p>
                     </div>
                     <div>
@@ -881,7 +881,7 @@ export default function ManagerHandoversPage() {
                     </div>
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Tiền đặt cọc:</span>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>{selectedCheckout.deposit_amount.toLocaleString('vi-VN')}đ</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>{(selectedCheckout.deposit_amount || 0).toLocaleString('vi-VN')}đ</p>
                     </div>
                   </div>
                 </div>
@@ -967,7 +967,7 @@ export default function ManagerHandoversPage() {
                   ) : (
                     <div className="space-y-3">
                       {roomAssets.map((asset) => {
-                        const maxVal = asset.purchase_price;
+                        const maxVal = asset.purchase_price || 0;
                         const currentCompVal = compensations[asset.id] || 0;
                         const currentCond = checkoutConditions[asset.id] || 'Tốt';
                         const currentNote = checkoutAssetNotes[asset.id] || '';
