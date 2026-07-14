@@ -341,6 +341,8 @@ export interface AssetHandover {
   customer_name: string;
   room_id: string;
   room_name: string;
+  bed_id?: string;
+  bed_name?: string;
   handover_date: string;
   checklist: { item: string; condition: string; note?: string; checked: boolean; quantity?: number }[];
   customer_signed: boolean;
@@ -358,6 +360,9 @@ export interface ManagedAsset {
   name: string;
   category: 'furniture' | 'electronics' | 'appliance' | 'fixture';
   serial_number?: string;
+  branch_id?: string;
+  room_id?: string;
+  bed_id?: string;
   current_location: string;  // "Phòng 101" | "Kho"
   location_type: 'room' | 'warehouse' | 'maintenance';
   status: 'in_use' | 'in_stock' | 'maintenance' | 'retired';

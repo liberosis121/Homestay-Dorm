@@ -6,11 +6,13 @@ import { DepositInvoice, CustomerDepositRequest } from '../../lib/supabaseClient
 import CustomSelect from '../../components/ui/CustomSelect';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
 export default function AccountantDepositPage() {
   const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
   const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
   
@@ -114,8 +116,13 @@ export default function AccountantDepositPage() {
     setNote('');
   };
 
+  // Khóa chống double-click: chỉ cho 1 request lập hóa đơn chạy tại một thời điểm.
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doCreateInvoice());
+  };
+
+  const doCreateInvoice = async () => {
     if (!selectedRequestId || !selectedCustomerId || !selectedRoomId) {
       setToastMessage('Vui lòng chọn phiếu đặt cọc trước!');
       return;
@@ -195,6 +202,10 @@ export default function AccountantDepositPage() {
 
 
   const handleConfirmPayment = async (id: string) => {
+    await guard(() => doConfirmPayment(id));
+  };
+
+  const doConfirmPayment = async (id: string) => {
     const email = user?.email || 'accountant@homestay.vn';
     try {
       await accountantService.confirmInvoicePayment(email, id, 'transfer');
@@ -504,11 +515,11 @@ export default function AccountantDepositPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!selectedRequestId}
+                  disabled={!selectedRequestId || isSubmitting}
                   className="px-5 py-2 bg-[#5C4632] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Tạo hóa đơn</span>
+                  <span>{isSubmitting ? 'Đang xử lý...' : 'Tạo hóa đơn'}</span>
                 </button>
               </div>
             </form>

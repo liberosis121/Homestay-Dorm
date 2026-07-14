@@ -78,6 +78,33 @@ export const DEPOSIT_STATUS = {
 export type DepositStatus = typeof DEPOSIT_STATUS[keyof typeof DEPOSIT_STATUS];
 
 // ============================================================
+// 3b. TRẠNG THÁI HỢP ĐỒNG THUÊ (bảng contracts)
+// ============================================================
+/**
+ * Luồng chuyển trạng thái hợp đồng:
+ *
+ *   [Sale lập hợp đồng từ phiếu cọc đã đạt điều kiện lưu trú]
+ *              ↓
+ *      pending_payment  →  [Kế toán lập hóa đơn nhận phòng, khách thanh toán]
+ *              ↓
+ *          active       →  [Hóa đơn nhận phòng đã 'paid' → HĐ chính thức có hiệu lực]
+ *              ↓
+ *   expired / terminated
+ *
+ * RÀNG BUỘC: hợp đồng CHỈ được chuyển sang 'active' khi hóa đơn nhận phòng đã thanh toán
+ * thành công. Trước đó khách hàng thấy hợp đồng ở trạng thái "Chờ thanh toán", KHÔNG phải
+ * "Đang hiệu lực" (xem invoiceService.payInvoice → activateContractIfCheckinPaid).
+ */
+export const CONTRACT_STATUS = {
+  PENDING_PAYMENT: 'pending_payment', // Đã lập HĐ, chờ thanh toán hóa đơn nhận phòng
+  ACTIVE: 'active',                   // Đã thanh toán → hợp đồng có hiệu lực
+  EXPIRED: 'expired',                 // Hết hạn
+  TERMINATED: 'terminated',           // Đã thanh lý
+} as const;
+
+export type ContractStatus = typeof CONTRACT_STATUS[keyof typeof CONTRACT_STATUS];
+
+// ============================================================
 // 4. TRẠNG THÁI PHÒNG (bảng rooms)
 // ============================================================
 export const ROOM_STATUS = {

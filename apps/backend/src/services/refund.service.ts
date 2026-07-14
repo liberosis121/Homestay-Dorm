@@ -1,27 +1,34 @@
 import { refundRepo } from '../repositories/refund.repo';
 import { supabase } from '../utils/supabase';
+import { getStaffBranchId, scopeToBranch } from '../utils/branch-scope';
 import crypto from 'crypto';
 
 export const refundService = {
   /**
-   * Lay cac don yeu cau tra phong chua doi soat.
+   * Lay cac don yeu cau tra phong chua doi soat — CHI trong chi nhanh cua ke toan.
    */
-  getPendingCheckouts: async () => {
-    return await refundRepo.getPendingCheckouts();
+  getPendingCheckouts: async (staffUserId?: string) => {
+    const checkouts = await refundRepo.getPendingCheckouts();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(checkouts, branchId, (c: any) => c.branch_id);
   },
 
   /**
-   * Lay cac ban doi soat hoan coc.
+   * Lay cac ban doi soat hoan coc — CHI trong chi nhanh cua ke toan.
    */
-  getReconciliations: async () => {
-    return await refundRepo.getRefundReconciliations();
+  getReconciliations: async (staffUserId?: string) => {
+    const reconciliations = await refundRepo.getRefundReconciliations();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(reconciliations, branchId, (r: any) => r.branch_id);
   },
 
   /**
-   * Lay danh sach ung vien hoan coc khi chua ky hop dong (hoan 80%).
+   * Lay danh sach ung vien hoan coc khi chua ky hop dong (hoan 80%) — CHI trong chi nhanh.
    */
-  getCancellationRefunds: async () => {
-    return await refundRepo.getCancellationRefunds();
+  getCancellationRefunds: async (staffUserId?: string) => {
+    const refunds = await refundRepo.getCancellationRefunds();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(refunds, branchId, (r: any) => r.branch_id);
   },
 
   /**

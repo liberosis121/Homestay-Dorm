@@ -1,13 +1,16 @@
 import { checkinInvoiceRepo } from '../repositories/checkin-invoice.repo';
 import { supabase } from '../utils/supabase';
 import { computeCheckinDueDate } from '../utils/invoice-due-date';
+import { getStaffBranchId, scopeToBranch } from '../utils/branch-scope';
 
 export const checkinInvoiceService = {
   /**
-   * Lay danh sach hoa don nhan phong.
+   * Lay danh sach hoa don nhan phong — CHI trong chi nhanh cua ke toan.
    */
-  getInvoices: async () => {
-    return await checkinInvoiceRepo.getCheckinInvoices();
+  getInvoices: async (staffUserId?: string) => {
+    const invoices = await checkinInvoiceRepo.getCheckinInvoices();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(invoices, branchId, (i: any) => i.branch_id);
   },
 
   /**

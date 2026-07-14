@@ -149,6 +149,7 @@ export const payoutRepo = {
       // Fallback cho hoan coc CHUA KY HD: resolve khach hang/phong truc tiep tu inv.deposit_id.
       let depositCustomerName: string | null = null;
       let depositRoomName: string | null = null;
+      let depositBranchId: string | null = null;
       if (inv.deposit_id) {
         const depReq = (depositReqs || []).find(dr => dr.id === inv.deposit_id);
         if (depReq) {
@@ -157,6 +158,7 @@ export const payoutRepo = {
           const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
           depositCustomerName = customer?.full_name || null;
           depositRoomName = room?.name || null;
+          depositBranchId = room?.branch_id || null;
         }
       }
 
@@ -164,6 +166,12 @@ export const payoutRepo = {
         ...inv,
         customer_name: mappedRec?.checkouts?.contracts?.customer_name || mappedDirectContract?.customer_name || depositCustomerName || 'Khách hàng',
         room_name: mappedRec?.checkouts?.contracts?.rooms?.name || mappedDirectContract?.rooms?.name || depositRoomName || 'Phòng',
+        // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
+        branch_id:
+          (mappedRec as any)?.checkouts?.contracts?.rooms?.branches?.id ||
+          mappedDirectContract?.rooms?.branches?.id ||
+          depositBranchId ||
+          '',
         refund_reconciliations: mappedRec
       };
     });

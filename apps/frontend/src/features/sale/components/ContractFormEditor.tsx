@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   User, Users, Phone, Mail, MapPin, Home, Building2,
   FileText, Banknote, ChevronLeft, Save, FileSignature,
-  AlertCircle, CheckCircle2, Info, Edit3
+  AlertCircle, CheckCircle2, Info, Edit3, Loader2
 } from 'lucide-react';
 import { ContractFormData, DepositRecord } from '../SaleContractsPage';
 import ContractReceiptWidget from './ContractReceiptWidget';
@@ -13,8 +13,10 @@ import FormLabel from '../../../components/ui/FormLabel';
 interface Props {
   deposit: DepositRecord;
   onBack: () => void;
-  onSubmit: (data: ContractFormData) => void;
+  onSubmit: (data: ContractFormData) => void | Promise<void>;
   onSaveDraft: (data: ContractFormData) => void;
+  /** Đang gửi request lập hợp đồng → khóa nút, tránh tạo HĐ trùng do click nhiều lần. */
+  isSubmitting?: boolean;
 }
 
 type ContractType = 'long_term' | 'short_term';
@@ -63,7 +65,7 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
   );
 }
 
-export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDraft }: Props) {
+export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDraft, isSubmitting = false }: Props) {
   // Form state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -130,6 +132,7 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return; // đang gửi → bỏ qua click thừa
     setSubmitted(true);
     const errs = validate();
     setErrors(errs);
@@ -713,15 +716,19 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!allChecklistDone}
+              disabled={!allChecklistDone || isSubmitting}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-md ${
-                allChecklistDone
+                allChecklistDone && !isSubmitting
                   ? 'bg-[#6f583c] text-white hover:bg-[#5c4830] hover:shadow-lg active:scale-95 cursor-pointer'
                   : 'bg-[#d1c4b9] text-[#9d8879] cursor-not-allowed'
               }`}
             >
-              <FileSignature className="w-4 h-4" />
-              Lập hợp đồng
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <FileSignature className="w-4 h-4" />
+              )}
+              {isSubmitting ? 'Đang lập hợp đồng...' : 'Lập hợp đồng'}
             </button>
           </div>
         </div>
