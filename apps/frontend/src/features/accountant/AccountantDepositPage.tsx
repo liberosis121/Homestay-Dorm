@@ -6,11 +6,13 @@ import { DepositInvoice, CustomerDepositRequest } from '../../lib/supabaseClient
 import CustomSelect from '../../components/ui/CustomSelect';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
 export default function AccountantDepositPage() {
   const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
   const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
   
@@ -114,8 +116,13 @@ export default function AccountantDepositPage() {
     setNote('');
   };
 
+  // Khóa chống double-click: chỉ cho 1 request lập hóa đơn chạy tại một thời điểm.
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doCreateInvoice());
+  };
+
+  const doCreateInvoice = async () => {
     if (!selectedRequestId || !selectedCustomerId || !selectedRoomId) {
       setToastMessage('Vui lòng chọn phiếu đặt cọc trước!');
       return;
@@ -194,63 +201,7 @@ export default function AccountantDepositPage() {
 
 
 
-  const handleConfirmPayment = async (id: string) => {
-    const email = user?.email || 'accountant@homestay.vn';
-    try {
-      await accountantService.confirmInvoicePayment(email, id, 'transfer');
-      setToastMessage('Đã xác nhận thu tiền thành công.');
 
-      // Refresh live data
-      const [pendingRequests, depInvoices] = await Promise.all([
-        accountantService.fetchPendingDepositRequests(email),
-        accountantService.fetchDepositInvoices(email)
-      ]);
-      const mappedRequests = (pendingRequests || []).map((req: any) => {
-        const kh = req.rental_registrations?.customers || {};
-        const prof = kh.profiles || {};
-        return {
-          id: req.id,
-          customer_id: kh.user_id || req.customer_id,
-          customer_name: prof.full_name || req.customer_name || 'Khách hàng',
-          customer_phone: prof.phone || req.customer_phone || '',
-          room_id: req.room_id,
-          room_name: req.rooms?.name || req.room_name || 'Phòng',
-          room_image_url: req.room_image_url || '',
-          branch_name: req.rooms?.branches?.name || req.branch_name || '',
-          viewing_schedule_id: req.viewing_schedule_id || '',
-          deposit_amount: req.deposit_amount,
-          expected_move_in_date: req.expected_move_in_date || '',
-          status: req.status,
-          note: req.note || '',
-          created_at: req.created_at || ''
-        };
-      });
-      const mappedInvoices = (depInvoices || []).map((inv: any) => {
-        const req = inv.deposit_requests || {};
-        const rawDeadline = inv.deadline || req.payment_deadline || '';
-        const rawCreatedAt = inv.created_at || req.created_at || '';
-        return {
-          id: inv.id,
-          customer_id: inv.customer_id || req.customer_id,
-          customer_name: inv.customer_name || 'Khách hàng',
-          room_id: inv.room_id || req.room_id,
-          room_name: inv.room_name || req.rooms?.name || 'Phòng',
-          amount: inv.amount,
-          deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
-          payment_method: inv.payment_method,
-          status: inv.status,
-          created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
-          note: inv.note
-        };
-      });
-      setDepositRequests(mappedRequests);
-      setInvoices(mappedInvoices);
-    } catch (err: any) {
-      console.error('[AccountantDeposit] Live API confirm payment failed:', err);
-      setToastMessage(err?.message || 'Không thể xác nhận thu tiền trên hệ thống thật.');
-      return;
-    }
-  };
 
   // DB dùng status 'unpaid' cho hóa đơn cọc chưa thu (mock DB cũ dùng 'pending') → gộp chung.
   const isUnpaidStatus = (status: string) => status === 'unpaid' || status === 'pending';
@@ -504,11 +455,11 @@ export default function AccountantDepositPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!selectedRequestId}
+                  disabled={!selectedRequestId || isSubmitting}
                   className="px-5 py-2 bg-[#5C4632] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Tạo hóa đơn</span>
+                  <span>{isSubmitting ? 'Đang xử lý...' : 'Tạo hóa đơn'}</span>
                 </button>
               </div>
             </form>
@@ -674,21 +625,6 @@ export default function AccountantDepositPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
-
-                      {/* Luôn render nút để giữ chỗ (invisible khi không cần) — tránh icon mắt bị
-                          lệch vị trí giữa các dòng do bề rộng nội dung ô thay đổi theo điều kiện. */}
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Xác nhận đã thu tiền cho hóa đơn ${inv.id}?`)) {
-                            handleConfirmPayment(inv.id);
-                          }
-                        }}
-                        className={`px-2.5 py-1 bg-[#5F7D4E] hover:bg-[#5F7D4E]/90 text-white text-xs font-semibold rounded-md transition-all cursor-pointer active:scale-[0.95] ${
-                          isUnpaidStatus(inv.status) ? '' : 'invisible pointer-events-none'
-                        }`}
-                      >
-                        Thu tiền
-                      </button>
                       <button
                         onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
                         className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]"

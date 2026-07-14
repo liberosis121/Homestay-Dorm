@@ -1,19 +1,24 @@
 import { depositInvoiceRepo } from '../repositories/deposit-invoice.repo';
 import { DEPOSIT_PAYMENT_DEADLINE_HOURS } from '../types/constants';
+import { getStaffBranchId, scopeToBranch } from '../utils/branch-scope';
 
 export const depositInvoiceService = {
   /**
-   * Lay danh sach cac phieu dat coc cho lap hoa don.
+   * Lay danh sach cac phieu dat coc cho lap hoa don — CHI trong chi nhanh cua ke toan.
    */
-  getPendingRequests: async () => {
-    return await depositInvoiceRepo.getPendingDepositRequests();
+  getPendingRequests: async (staffUserId?: string) => {
+    const requests = await depositInvoiceRepo.getPendingDepositRequests();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(requests, branchId, (r: any) => r.branch_id);
   },
 
   /**
-   * Lay toan bo hoa don dat coc da lap.
+   * Lay hoa don dat coc da lap — CHI trong chi nhanh cua ke toan.
    */
-  getDepositInvoices: async () => {
-    return await depositInvoiceRepo.getDepositInvoices();
+  getDepositInvoices: async (staffUserId?: string) => {
+    const invoices = await depositInvoiceRepo.getDepositInvoices();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(invoices, branchId, (i: any) => i.branch_id);
   },
 
   /**

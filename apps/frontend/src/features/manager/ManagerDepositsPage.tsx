@@ -1,5 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useEffect, useMemo, useState } from 'react';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { ManagerDeposit } from '../../lib/supabaseClient';
 
 const formatDate = (dateStr?: string) => {
@@ -54,6 +55,7 @@ const getPaymentDisplay = (value?: string) => {
 
 export default function ManagerDepositsPage() {
   const [deposits, setDeposits] = useState<ManagerDeposit[]>([]);
+  const { isSubmitting, guard } = useSubmitLock();
   const [selected, setSelected] = useState<ManagerDeposit | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
@@ -183,7 +185,12 @@ export default function ManagerDepositsPage() {
     return dep.bed_name || '';
   };
 
+  // Khoa chong double-click: tranh duyet/tu choi phieu coc nhieu lan.
   const updateStatus = async (newStatus: ManagerDeposit['status']) => {
+    await guard(() => doUpdateStatus(newStatus));
+  };
+
+  const doUpdateStatus = async (newStatus: ManagerDeposit['status']) => {
     if (!selected) return;
     try {
       const headers = await getAuthHeaders();
@@ -525,18 +532,18 @@ export default function ManagerDepositsPage() {
             {/* Actions */}
             {selected.status === 'pending' && (
               <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
-                <button onClick={() => updateStatus('approved')}
+                <button onClick={() => updateStatus('approved')} disabled={isSubmitting}
                   style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
                   className="hover:opacity-90 active:scale-[0.98]">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
                   Duyệt & Giữ {selected.deposit_type === 'room' ? 'phòng' : 'giường'}
                 </button>
-                <button onClick={() => updateStatus('need_more')}
+                <button onClick={() => updateStatus('need_more')} disabled={isSubmitting}
                   style={{ flex: 1, background: '#F3F4F6', color: '#4B5563', border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                   className="hover:bg-gray-200 active:scale-[0.98]">
                   Cần bổ sung
                 </button>
-                <button onClick={() => updateStatus('rejected')}
+                <button onClick={() => updateStatus('rejected')} disabled={isSubmitting}
                   style={{ flex: 1, background: T.redBg, color: T.red, border: `1px solid ${T.red}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                   className="hover:bg-red-100 active:scale-[0.98]">
                   Từ chối

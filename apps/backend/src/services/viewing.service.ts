@@ -9,6 +9,7 @@ import { roomRepo } from '../repositories/room.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX, VIEWING_STATUS, ROOM_STATUS } from '../types/constants';
 import { appendViewingLog, getPendingConfirmationActor } from '../utils/viewing-log';
+import { getStaffBranchId, scopeToBranch } from '../utils/branch-scope';
 
 const fmtVN = (iso: string) => {
   const d = new Date(iso);
@@ -178,8 +179,14 @@ export const viewingService = {
     return await viewingRepo.getSchedulesByStaff(staff.id);
   },
 
-  getAllSchedules: async () => {
-    return await viewingRepo.getAllSchedules();
+  /**
+   * Toan bo lich xem phong — nhung CHI trong chi nhanh cua nhan vien dang dang nhap.
+   * (Admin khong bi gioi han — xem utils/branch-scope.)
+   */
+  getAllSchedules: async (staffUserId?: string) => {
+    const schedules = await viewingRepo.getAllSchedules();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(schedules, branchId, (s: any) => s.rooms?.branches?.id);
   },
 
   cancelSchedule: async (userId: string, scheduleId: string) => {

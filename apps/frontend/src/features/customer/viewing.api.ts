@@ -110,8 +110,8 @@ const mapViewingResponse = (v: any): ViewingSchedule => {
     scheduled_time,
     status,
     timeline_step,
-    staff_name: 'Nguyễn Văn Sale', // Fallback vì bảng viewing_schedules chỉ chứa UUID của staff
-    staff_phone: '0901234567',
+    staff_name: v.employees?.full_name || 'Chưa phân công',
+    staff_phone: v.employees?.phone || '',
     result: v.result || undefined,
     note: v.note || undefined,
     pendingConfirmationActor: status === 'pending' ? getPendingConfirmationActor(v.note) : undefined,

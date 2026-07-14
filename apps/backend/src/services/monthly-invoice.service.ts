@@ -2,20 +2,32 @@ import { monthlyInvoiceRepo } from '../repositories/monthly-invoice.repo';
 import { serviceRegistrationRepo } from '../repositories/service-registration.repo';
 import { incidentalCostRepo } from '../repositories/incidental-cost.repo';
 import { computeMonthlyDueDate } from '../utils/invoice-due-date';
+import { CONTRACT_STATUS } from '../types/constants';
+import { getStaffBranchId, scopeToBranch } from '../utils/branch-scope';
 
 export const monthlyInvoiceService = {
   /**
-   * Lay danh sach hoa don dinh ky.
+   * Lay danh sach hoa don dinh ky — CHI trong chi nhanh cua ke toan.
    */
-  getInvoices: async () => {
-    return await monthlyInvoiceRepo.getMonthlyInvoices();
+  getInvoices: async (staffUserId?: string) => {
+    const invoices = await monthlyInvoiceRepo.getMonthlyInvoices();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(invoices, branchId, (i: any) => i.branch_id);
   },
 
   /**
-   * Lay danh sach cac hop dong dang active.
+   * Lay danh sach hop dong cho man hinh ke toan — CHI trong chi nhanh cua ke toan.
+   *
+   * @param purpose 'checkin' => lay ca HD dang 'pending_payment' (doi tuong can lap hoa don
+   *                nhan phong). Mac dinh ('monthly') chi lay HD da co hieu luc.
    */
-  getActiveContracts: async () => {
-    return await monthlyInvoiceRepo.getActiveContracts();
+  getActiveContracts: async (purpose?: string, staffUserId?: string) => {
+    const statuses = purpose === 'checkin'
+      ? [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.PENDING_PAYMENT]
+      : [CONTRACT_STATUS.ACTIVE];
+    const contracts = await monthlyInvoiceRepo.getActiveContracts(statuses);
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(contracts, branchId, (c: any) => c.branch_id);
   },
 
   /**

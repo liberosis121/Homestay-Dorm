@@ -1,11 +1,14 @@
 import { payoutRepo } from '../repositories/payout.repo';
+import { getStaffBranchId, scopeToBranch } from '../utils/branch-scope';
 
 export const payoutService = {
   /**
-   * Lay danh sach cac phieu chi hoan coc.
+   * Lay danh sach cac phieu chi hoan coc — CHI trong chi nhanh cua ke toan.
    */
-  getPayouts: async () => {
-    return await payoutRepo.getPayouts();
+  getPayouts: async (staffUserId?: string) => {
+    const payouts = await payoutRepo.getPayouts();
+    const branchId = await getStaffBranchId(staffUserId);
+    return scopeToBranch(payouts, branchId, (p: any) => p.branch_id);
   },
 
   /**

@@ -148,6 +148,9 @@ export const refundRepo = {
       return {
         ...checkout,
         contracts: mappedContract,
+        // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
+        branch_id: mappedContract?.rooms?.branches?.id || '',
+        branch_name: mappedContract?.rooms?.branches?.name || '',
         incidental_costs: damage_deductions.length > 0 ? damage_deductions : contractIncidentals,
         debt_amount: utility_debt,
         cleaning_fee: cleaning_fee,
@@ -215,7 +218,7 @@ export const refundRepo = {
     // 5. Lay chi tiet phong + khach hang
     const roomIds = (deposits || []).map(d => d.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
-      ? await supabase.from('rooms').select('id, name').in('id', roomIds)
+      ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
       : { data: [] as any[] };
     const regIds = (deposits || []).map(d => d.registration_id).filter(Boolean);
     const { data: regs } = regIds.length > 0
@@ -236,6 +239,8 @@ export const refundRepo = {
         customer_name: customer?.full_name || 'Khách hàng',
         room_id: d.room_id || '',
         room_name: room?.name || 'Phòng',
+        // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
+        branch_id: room?.branch_id || '',
         deposit_amount: Number(d.deposit_amount) || 0,
         request_date: d.deposit_time || d.created_at || '',
         // 'rejected' = quan ly tu choi ky do khong du dieu kien; con lai = khach chu dong huy
@@ -279,7 +284,7 @@ export const refundRepo = {
 
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
-      ? await supabase.from('rooms').select('id, name').in('id', roomIds)
+      ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
       : { data: [] as any[] };
 
     const regIds = (depositReqs || []).map(dr => dr.registration_id).filter(Boolean);
@@ -337,9 +342,16 @@ export const refundRepo = {
 
       const recDeductions = (deductions || []).filter((d: any) => d.reconciliation_id === rec.id);
 
+      // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
+      const recContract = mappedCheckout?.contracts as any;
+      const recRoom = recContract
+        ? (rooms || []).find((r: any) => r.id === recContract.room_id)
+        : null;
+
       return {
         ...rec,
         checkouts: mappedCheckout,
+        branch_id: recRoom?.branch_id || '',
         deductions: recDeductions.map((d: any) => ({
           id: d.id,
           reason: d.reason,

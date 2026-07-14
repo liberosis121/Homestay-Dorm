@@ -31,6 +31,11 @@ export const viewingRepo = {
       .from('viewing_schedules')
       .select(`
         *,
+        employees!staff_id (
+          id,
+          full_name,
+          phone
+        ),
         rental_registrations!inner (
           id,
           cccd,

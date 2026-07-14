@@ -64,6 +64,9 @@ export const depositInvoiceRepo = {
       return {
         ...r,
         customer_id: customer?.user_id,
+        // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
+        branch_id: room?.branch_id || '',
+        branch_name: branch?.name || '',
         rental_registrations: reg ? {
           id: reg.id,
           cccd: reg.cccd,
@@ -173,6 +176,9 @@ export const depositInvoiceRepo = {
         customer_name: mappedReq?.customer_name || 'Khách hàng',
         customer_phone: mappedReq?.customer_phone || '',
         room_name: mappedReq?.rooms?.name || 'Phòng',
+        // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
+        branch_id: mappedReq?.rooms?.branches?.id || '',
+        branch_name: mappedReq?.rooms?.branches?.name || '',
         deposit_requests: mappedReq
       };
     });

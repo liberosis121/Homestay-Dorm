@@ -1,5 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { AssetHandover, ManagedAsset } from '../../lib/supabaseClient';
 
 const T = {
@@ -20,6 +21,7 @@ export default function ManagerHandoversPage() {
   const [records, setRecords] = useState<AssetHandover[]>([]);
   const [managedAssets, setManagedAssets] = useState<ManagedAsset[]>([]);
   const [selected, setSelected] = useState<AssetHandover | null>(null);
+  const { isSubmitting, guard } = useSubmitLock();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
@@ -164,7 +166,12 @@ export default function ManagerHandoversPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Khoa chong double-click: tranh gui trung yeu cau ky/ban giao.
   const markSigned = async () => {
+    await guard(() => doMarkSigned());
+  };
+
+  const doMarkSigned = async () => {
     if (!selected) return;
     try {
       const headers = await getAuthHeaders();
@@ -215,6 +222,10 @@ export default function ManagerHandoversPage() {
   };
 
   const submitCheckoutInspection = async () => {
+    await guard(() => doSubmitCheckoutInspection());
+  };
+
+  const doSubmitCheckoutInspection = async () => {
     if (!selectedCheckout) return;
 
     // Load original assets from the check-in handover record
@@ -286,6 +297,10 @@ export default function ManagerHandoversPage() {
   };
 
   const submitCheckinHandover = async () => {
+    await guard(() => doSubmitCheckinHandover());
+  };
+
+  const doSubmitCheckinHandover = async () => {
     if (!selectedCheckout) return;
 
     // Filter room assets
@@ -767,7 +782,7 @@ export default function ManagerHandoversPage() {
             {/* Actions */}
             <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 12 }}>
               {selected.status !== 'signed' && (
-                <button onClick={markSigned} style={{
+                <button onClick={markSigned} disabled={isSubmitting} style={{
                   flex: 1.5, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12,
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   transition: 'all 0.15s'
@@ -1058,7 +1073,7 @@ export default function ManagerHandoversPage() {
                   className="hover:bg-primaryLight active:scale-[0.98]">
                   Hủy bỏ
                 </button>
-                <button onClick={submitCheckoutInspection} style={{
+                <button onClick={submitCheckoutInspection} disabled={isSubmitting} style={{
                   flex: 1, background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 20px',
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   transition: 'all 0.15s'
@@ -1233,7 +1248,7 @@ export default function ManagerHandoversPage() {
                   className="hover:bg-primaryLight active:scale-[0.98]">
                   Hủy bỏ
                 </button>
-                <button onClick={submitCheckinHandover} style={{
+                <button onClick={submitCheckinHandover} disabled={isSubmitting} style={{
                   flex: 1, background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 20px',
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   transition: 'all 0.15s'

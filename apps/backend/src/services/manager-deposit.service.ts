@@ -199,14 +199,20 @@ export const managerDepositService = {
 
   updateStatus: async (id: string, newStatus: string, reviewerNote?: string) => {
     const reviewNote = buildManagerReviewNote(newStatus, reviewerNote);
+    const nowStr = new Date().toISOString();
 
     // 1. Update deposit request status in deposit_requests table.
-    // 'paid' means money was collected by Accountant; manager approval is stored in invoice.note.
+    // 'paid' means money was collected; manager approval confirms this and updates status.
+    const depositUpdateData: Record<string, any> = {
+      status: newStatus === 'approved' ? 'paid' : newStatus
+    };
+    if (newStatus === 'approved') {
+      depositUpdateData.deposit_time = nowStr;
+    }
+
     const { data: updatedDeposit, error: updateErr } = await supabase
       .from('deposit_requests')
-      .update({
-        status: newStatus === 'approved' ? 'paid' : newStatus
-      })
+      .update(depositUpdateData)
       .eq('id', id)
       .select()
       .single();
@@ -216,7 +222,11 @@ export const managerDepositService = {
     if (newStatus === 'approved') {
       await supabase
         .from('invoices')
-        .update({ status: 'paid', note: reviewNote })
+        .update({ 
+          status: 'paid', 
+          payment_time: nowStr,
+          note: reviewNote 
+        })
         .eq('deposit_id', id)
         .eq('invoice_type', 'deposit');
     } else if (newStatus === 'rejected') {

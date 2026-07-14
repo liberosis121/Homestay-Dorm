@@ -430,7 +430,7 @@ const generateDepositInvoices = (): DepositInvoice[] => {
     { id: 'r-6', name: 'Phòng 203 (Nữ)' }
   ];
   const statuses: ('pending' | 'paid' | 'overdue' | 'cancelled')[] = ['paid', 'paid', 'pending', 'overdue', 'cancelled'];
-  
+
   for (let i = 1; i <= 32; i++) {
     const name = names[i % names.length];
     const room = rooms[i % rooms.length];
@@ -438,7 +438,7 @@ const generateDepositInvoices = (): DepositInvoice[] => {
     const date = new Date(2026, 4, 1 + i); // May 2026
     const deadline = new Date(date);
     deadline.setDate(deadline.getDate() + 2);
-    
+
     list.push({
       id: `DEP-${1000 + i}`,
       customer_id: `u-mock-${100 + i}`,
@@ -453,7 +453,7 @@ const generateDepositInvoices = (): DepositInvoice[] => {
       note: i % 4 === 0 ? 'Khách hàng đặt cọc online giữ chỗ' : undefined
     });
   }
-  
+
   // Append test cases for u-6
   list.push(
     {
@@ -522,7 +522,7 @@ const generateCheckinInvoices = (): CheckinInvoice[] => {
       { name: 'Phí làm thẻ từ (2x)', amount: 100000 }
     ];
     const total = rentAmount * 2 + 300000; // rent + deposit + services
-    
+
     list.push({
       id: `CHK-${1000 + i}`,
       customer_id: `u-mock-chk-${100 + i}`,
@@ -606,12 +606,12 @@ const generateRefundRecords = (): RefundRecord[] => {
     const room = rooms[i % rooms.length];
     const status = i <= 3 ? statuses[i] : statuses[Math.floor(Math.random() * statuses.length)];
     const checkoutDate = new Date(2026, 5, 1 + i);
-    
+
     const isCancellation = i % 4 === 0;
     const type = isCancellation ? 'cancellation' : 'checkout';
     const cancellation_reason = isCancellation ? (i % 2 === 0 ? 'failed_residency' : 'user_cancelled') : undefined;
     const deposit_original = 2000000;
-    
+
     let damage_deductions: { item: string; amount: number }[] = [];
     let debt_deductions = 0;
     let total_deductions = 0;
@@ -663,7 +663,7 @@ const generatePayoutRecords = (): PayoutRecord[] => {
     const amount = 2000000 - (i % 3 === 0 ? 850000 : 0) - (i % 4 === 0 ? 350000 : 0);
     const bankName = banks[i % banks.length];
     const bankAccount = `001100${12345 + i}`;
-    
+
     list.push({
       id: `PAY-${1000 + i}`,
       refund_id: `REF-${1000 + i}`,
@@ -1028,52 +1028,52 @@ const INITIAL_DB = {
     { id: 'al-5', title: 'Hủy lịch hẹn bởi khách hàng', detail: '06:15 AM', type: 'schedule' }
   ] as ActivityLog[],
   services: [
-    { id: 'svc-1',  name: 'Điện sinh hoạt',                  category: 'essential',   description: 'Điện theo chỉ số công tơ riêng từng phòng, quyết toán hàng tháng.',                                     unit_price: 3500,   billing_cycle: 'per_kwh',  status: 'available',    icon: 'Zap',         is_default: true  },
-    { id: 'svc-2',  name: 'Nước sinh hoạt',                  category: 'essential',   description: 'Nước theo đồng hồ riêng từng phòng, quyết toán hàng tháng.',                                          unit_price: 15000,  billing_cycle: 'per_m3',   status: 'available',    icon: 'Droplets',    is_default: true  },
-    { id: 'svc-3',  name: 'Internet cáp quang 100 Mbps',     category: 'utility',     description: 'Đường truyền cáp quang tốc độ cao, ổn định, không giới hạn dữ liệu.',                               unit_price: 150000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wifi',        is_default: false },
-    { id: 'svc-4',  name: 'Internet cáp quang 300 Mbps',     category: 'utility',     description: 'Gói internet tốc độ siêu cao, lý tưởng cho làm việc và giải trí 4K.',                               unit_price: 220000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wifi',        is_default: false },
-    { id: 'svc-5',  name: 'Gửi xe máy',                      category: 'utility',     description: 'Bãi gửi xe máy có mái che, camera an ninh 24/7, thẻ từ cá nhân.',                                  unit_price: 150000, billing_cycle: 'monthly',  status: 'available',    icon: 'Bike',        is_default: false },
-    { id: 'svc-6',  name: 'Gửi xe đạp',                      category: 'utility',     description: 'Khu vực để xe đạp riêng, có khóa an toàn, miễn phí điện sạc xe đạp điện.',                       unit_price: 50000,  billing_cycle: 'monthly',  status: 'available',    icon: 'Bike',        is_default: false },
-    { id: 'svc-7',  name: 'Gửi ô tô',                        category: 'utility',     description: 'Bãi đỗ ô tô ngoài trời có bảo vệ, camera 24/7. Đặt chỗ theo tháng.',                              unit_price: 800000, billing_cycle: 'monthly',  status: 'available',    icon: 'Car',         is_default: false },
-    { id: 'svc-8',  name: 'Giặt là máy giặt công cộng',      category: 'convenience', description: 'Máy giặt và máy sấy công cộng theo lần sử dụng, mã QR thanh toán tiện lợi.',                       unit_price: 30000,  billing_cycle: 'per_use',  status: 'available',    icon: 'Wind',        is_default: false },
-    { id: 'svc-9',  name: 'Giặt là trọn gói (pick-up)',      category: 'convenience', description: 'Thu gom – giặt – giao tận phòng mỗi tuần, không giới hạn số lần trong tháng.',                     unit_price: 150000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wind',        is_default: false },
-    { id: 'svc-10', name: 'Vệ sinh phòng 1 lần/tuần',        category: 'convenience', description: 'Nhân viên vệ sinh phòng chuyên nghiệp, sử dụng sản phẩm tẩy rửa thân thiện môi trường.',            unit_price: 200000, billing_cycle: 'monthly',  status: 'available',    icon: 'Sparkles',    is_default: false },
-    { id: 'svc-11', name: 'Vệ sinh phòng 2 lần/tuần',        category: 'convenience', description: 'Gói vệ sinh cao cấp 2 lần/tuần, bao gồm thay ga gối và bổ sung vật dụng tiêu hao.',               unit_price: 350000, billing_cycle: 'monthly',  status: 'available',    icon: 'Sparkles',    is_default: false },
-    { id: 'svc-12', name: 'Tủ lạnh mini (90L)',               category: 'premium',     description: 'Tủ lạnh mini Panasonic 90L, đặt trong phòng riêng của bạn. Sử dụng điện riêng.',               unit_price: 300000, billing_cycle: 'monthly',  status: 'available',    icon: 'Refrigerator', is_default: false },
-    { id: 'svc-13', name: 'Tủ lạnh side-by-side (300L)',      category: 'premium',     description: 'Tủ lạnh Samsung 300L cao cấp, có ngăn đá riêng. Phù hợp cho phòng Studio.',                     unit_price: 500000, billing_cycle: 'monthly',  status: 'available',    icon: 'Refrigerator', is_default: false },
-    { id: 'svc-14', name: 'Máy giặt riêng trong phòng',       category: 'premium',     description: 'Máy giặt lồng ngang Electrolux 7kg, lắp đặt trong phòng tắm riêng.',                            unit_price: 450000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wind',        is_default: false },
-    { id: 'svc-15', name: 'Điều hoà bổ sung',                 category: 'premium',     description: 'Điều hoà Daikin 1.5HP bổ sung, lý tưởng khi phòng đã có sẵn 1 máy nhưng cần mát hơn.',       unit_price: 400000, billing_cycle: 'monthly',  status: 'available',    icon: 'Wind',        is_default: false },
-    { id: 'svc-16', name: 'Bình nước nóng riêng',             category: 'premium',     description: 'Bình nước nóng Ariston 15L, dùng riêng cho phòng tắm cá nhân hoặc phòng đôi.',               unit_price: 180000, billing_cycle: 'monthly',  status: 'available',    icon: 'Flame',       is_default: false },
-    { id: 'svc-17', name: 'Két an toàn trong phòng',          category: 'premium',     description: 'Két sắt điện tử nhỏ, khoá mã số 6 chữ số, gắn tường trong tủ quần áo.',                      unit_price: 100000, billing_cycle: 'monthly',  status: 'available',    icon: 'Shield',      is_default: false },
-    { id: 'svc-18', name: 'Dịch vụ giặt khô',                 category: 'convenience', description: 'Nhận giặt khô quần áo cao cấp, vest, áo dài. Giao nhận tại phòng trong 48 giờ.',               unit_price: 80000,  billing_cycle: 'per_use',  status: 'available',    icon: 'Shirt',       is_default: false },
-    { id: 'svc-19', name: 'Gói bảo hiểm tài sản cá nhân',    category: 'premium',     description: 'Bảo hiểm tài sản cá nhân trong phòng, bồi thường tối đa 20 triệu đồng/sự cố.',               unit_price: 250000, billing_cycle: 'monthly',  status: 'coming_soon', icon: 'Shield',      is_default: false },
-    { id: 'svc-20', name: 'Vệ sinh tổng thể toàn phòng',      category: 'convenience', description: 'Tổng vệ sinh phòng chuyên sâu: lau kính, khử trùng, vệ sinh điều hoà, máy lọc nước.',          unit_price: 500000, billing_cycle: 'per_use',  status: 'available',    icon: 'Sparkles',    is_default: false }
+    { id: 'svc-1', name: 'Điện sinh hoạt', category: 'essential', description: 'Điện theo chỉ số công tơ riêng từng phòng, quyết toán hàng tháng.', unit_price: 3500, billing_cycle: 'per_kwh', status: 'available', icon: 'Zap', is_default: true },
+    { id: 'svc-2', name: 'Nước sinh hoạt', category: 'essential', description: 'Nước theo đồng hồ riêng từng phòng, quyết toán hàng tháng.', unit_price: 15000, billing_cycle: 'per_m3', status: 'available', icon: 'Droplets', is_default: true },
+    { id: 'svc-3', name: 'Internet cáp quang 100 Mbps', category: 'utility', description: 'Đường truyền cáp quang tốc độ cao, ổn định, không giới hạn dữ liệu.', unit_price: 150000, billing_cycle: 'monthly', status: 'available', icon: 'Wifi', is_default: false },
+    { id: 'svc-4', name: 'Internet cáp quang 300 Mbps', category: 'utility', description: 'Gói internet tốc độ siêu cao, lý tưởng cho làm việc và giải trí 4K.', unit_price: 220000, billing_cycle: 'monthly', status: 'available', icon: 'Wifi', is_default: false },
+    { id: 'svc-5', name: 'Gửi xe máy', category: 'utility', description: 'Bãi gửi xe máy có mái che, camera an ninh 24/7, thẻ từ cá nhân.', unit_price: 150000, billing_cycle: 'monthly', status: 'available', icon: 'Bike', is_default: false },
+    { id: 'svc-6', name: 'Gửi xe đạp', category: 'utility', description: 'Khu vực để xe đạp riêng, có khóa an toàn, miễn phí điện sạc xe đạp điện.', unit_price: 50000, billing_cycle: 'monthly', status: 'available', icon: 'Bike', is_default: false },
+    { id: 'svc-7', name: 'Gửi ô tô', category: 'utility', description: 'Bãi đỗ ô tô ngoài trời có bảo vệ, camera 24/7. Đặt chỗ theo tháng.', unit_price: 800000, billing_cycle: 'monthly', status: 'available', icon: 'Car', is_default: false },
+    { id: 'svc-8', name: 'Giặt là máy giặt công cộng', category: 'convenience', description: 'Máy giặt và máy sấy công cộng theo lần sử dụng, mã QR thanh toán tiện lợi.', unit_price: 30000, billing_cycle: 'per_use', status: 'available', icon: 'Wind', is_default: false },
+    { id: 'svc-9', name: 'Giặt là trọn gói (pick-up)', category: 'convenience', description: 'Thu gom – giặt – giao tận phòng mỗi tuần, không giới hạn số lần trong tháng.', unit_price: 150000, billing_cycle: 'monthly', status: 'available', icon: 'Wind', is_default: false },
+    { id: 'svc-10', name: 'Vệ sinh phòng 1 lần/tuần', category: 'convenience', description: 'Nhân viên vệ sinh phòng chuyên nghiệp, sử dụng sản phẩm tẩy rửa thân thiện môi trường.', unit_price: 200000, billing_cycle: 'monthly', status: 'available', icon: 'Sparkles', is_default: false },
+    { id: 'svc-11', name: 'Vệ sinh phòng 2 lần/tuần', category: 'convenience', description: 'Gói vệ sinh cao cấp 2 lần/tuần, bao gồm thay ga gối và bổ sung vật dụng tiêu hao.', unit_price: 350000, billing_cycle: 'monthly', status: 'available', icon: 'Sparkles', is_default: false },
+    { id: 'svc-12', name: 'Tủ lạnh mini (90L)', category: 'premium', description: 'Tủ lạnh mini Panasonic 90L, đặt trong phòng riêng của bạn. Sử dụng điện riêng.', unit_price: 300000, billing_cycle: 'monthly', status: 'available', icon: 'Refrigerator', is_default: false },
+    { id: 'svc-13', name: 'Tủ lạnh side-by-side (300L)', category: 'premium', description: 'Tủ lạnh Samsung 300L cao cấp, có ngăn đá riêng. Phù hợp cho phòng Studio.', unit_price: 500000, billing_cycle: 'monthly', status: 'available', icon: 'Refrigerator', is_default: false },
+    { id: 'svc-14', name: 'Máy giặt riêng trong phòng', category: 'premium', description: 'Máy giặt lồng ngang Electrolux 7kg, lắp đặt trong phòng tắm riêng.', unit_price: 450000, billing_cycle: 'monthly', status: 'available', icon: 'Wind', is_default: false },
+    { id: 'svc-15', name: 'Điều hoà bổ sung', category: 'premium', description: 'Điều hoà Daikin 1.5HP bổ sung, lý tưởng khi phòng đã có sẵn 1 máy nhưng cần mát hơn.', unit_price: 400000, billing_cycle: 'monthly', status: 'available', icon: 'Wind', is_default: false },
+    { id: 'svc-16', name: 'Bình nước nóng riêng', category: 'premium', description: 'Bình nước nóng Ariston 15L, dùng riêng cho phòng tắm cá nhân hoặc phòng đôi.', unit_price: 180000, billing_cycle: 'monthly', status: 'available', icon: 'Flame', is_default: false },
+    { id: 'svc-17', name: 'Két an toàn trong phòng', category: 'premium', description: 'Két sắt điện tử nhỏ, khoá mã số 6 chữ số, gắn tường trong tủ quần áo.', unit_price: 100000, billing_cycle: 'monthly', status: 'available', icon: 'Shield', is_default: false },
+    { id: 'svc-18', name: 'Dịch vụ giặt khô', category: 'convenience', description: 'Nhận giặt khô quần áo cao cấp, vest, áo dài. Giao nhận tại phòng trong 48 giờ.', unit_price: 80000, billing_cycle: 'per_use', status: 'available', icon: 'Shirt', is_default: false },
+    { id: 'svc-19', name: 'Gói bảo hiểm tài sản cá nhân', category: 'premium', description: 'Bảo hiểm tài sản cá nhân trong phòng, bồi thường tối đa 20 triệu đồng/sự cố.', unit_price: 250000, billing_cycle: 'monthly', status: 'coming_soon', icon: 'Shield', is_default: false },
+    { id: 'svc-20', name: 'Vệ sinh tổng thể toàn phòng', category: 'convenience', description: 'Tổng vệ sinh phòng chuyên sâu: lau kính, khử trùng, vệ sinh điều hoà, máy lọc nước.', unit_price: 500000, billing_cycle: 'per_use', status: 'available', icon: 'Sparkles', is_default: false }
   ] as Service[],
   service_subscriptions: [
-    { id: 'ss-1',  customer_id: 'u-5', service_id: 'svc-1',  service_name: 'Điện sinh hoạt',                registered_date: '2025-10-01', monthly_cost: 350000, status: 'active'    },
-    { id: 'ss-2',  customer_id: 'u-5', service_id: 'svc-2',  service_name: 'Nước sinh hoạt',                registered_date: '2025-10-01', monthly_cost: 90000,  status: 'active'    },
-    { id: 'ss-3',  customer_id: 'u-5', service_id: 'svc-3',  service_name: 'Internet cáp quang 100 Mbps',   registered_date: '2025-10-01', monthly_cost: 150000, status: 'active'    },
-    { id: 'ss-4',  customer_id: 'u-5', service_id: 'svc-5',  service_name: 'Gửi xe máy',                    registered_date: '2025-10-15', monthly_cost: 150000, status: 'active'    },
-    { id: 'ss-5',  customer_id: 'u-5', service_id: 'svc-9',  service_name: 'Giặt là trọn gói (pick-up)',    registered_date: '2025-11-01', monthly_cost: 150000, status: 'active'    },
-    { id: 'ss-6',  customer_id: 'u-5', service_id: 'svc-10', service_name: 'Vệ sinh phòng 1 lần/tuần',      registered_date: '2025-12-01', monthly_cost: 200000, status: 'active'    },
-    { id: 'ss-7',  customer_id: 'u-5', service_id: 'svc-12', service_name: 'Tủ lạnh mini (90L)',             registered_date: '2026-01-01', monthly_cost: 300000, status: 'active'    },
-    { id: 'ss-8',  customer_id: 'u-5', service_id: 'svc-16', service_name: 'Bình nước nóng riêng',           registered_date: '2026-02-01', monthly_cost: 180000, status: 'active'    },
-    { id: 'ss-9',  customer_id: 'u-5', service_id: 'svc-6',  service_name: 'Gửi xe đạp',                    registered_date: '2025-10-15', monthly_cost: 50000,  status: 'suspended' },
-    { id: 'ss-10', customer_id: 'u-5', service_id: 'svc-15', service_name: 'Điều hoà bổ sung',               registered_date: '2026-03-01', monthly_cost: 400000, status: 'cancelled' }
+    { id: 'ss-1', customer_id: 'u-5', service_id: 'svc-1', service_name: 'Điện sinh hoạt', registered_date: '2025-10-01', monthly_cost: 350000, status: 'active' },
+    { id: 'ss-2', customer_id: 'u-5', service_id: 'svc-2', service_name: 'Nước sinh hoạt', registered_date: '2025-10-01', monthly_cost: 90000, status: 'active' },
+    { id: 'ss-3', customer_id: 'u-5', service_id: 'svc-3', service_name: 'Internet cáp quang 100 Mbps', registered_date: '2025-10-01', monthly_cost: 150000, status: 'active' },
+    { id: 'ss-4', customer_id: 'u-5', service_id: 'svc-5', service_name: 'Gửi xe máy', registered_date: '2025-10-15', monthly_cost: 150000, status: 'active' },
+    { id: 'ss-5', customer_id: 'u-5', service_id: 'svc-9', service_name: 'Giặt là trọn gói (pick-up)', registered_date: '2025-11-01', monthly_cost: 150000, status: 'active' },
+    { id: 'ss-6', customer_id: 'u-5', service_id: 'svc-10', service_name: 'Vệ sinh phòng 1 lần/tuần', registered_date: '2025-12-01', monthly_cost: 200000, status: 'active' },
+    { id: 'ss-7', customer_id: 'u-5', service_id: 'svc-12', service_name: 'Tủ lạnh mini (90L)', registered_date: '2026-01-01', monthly_cost: 300000, status: 'active' },
+    { id: 'ss-8', customer_id: 'u-5', service_id: 'svc-16', service_name: 'Bình nước nóng riêng', registered_date: '2026-02-01', monthly_cost: 180000, status: 'active' },
+    { id: 'ss-9', customer_id: 'u-5', service_id: 'svc-6', service_name: 'Gửi xe đạp', registered_date: '2025-10-15', monthly_cost: 50000, status: 'suspended' },
+    { id: 'ss-10', customer_id: 'u-5', service_id: 'svc-15', service_name: 'Điều hoà bổ sung', registered_date: '2026-03-01', monthly_cost: 400000, status: 'cancelled' }
   ] as ServiceSubscription[],
   consumption_records: [
-    { id: 'cr-1',  customer_id: 'u-5', room_id: 'r-1', period: '2025-07', electricity_kwh: 95,  electricity_cost: 332500,  water_m3: 6.5, water_cost: 97500,  recorded_at: '2025-08-01T08:00:00Z' },
-    { id: 'cr-2',  customer_id: 'u-5', room_id: 'r-1', period: '2025-08', electricity_kwh: 118, electricity_cost: 413000,  water_m3: 7.0, water_cost: 105000, recorded_at: '2025-09-01T08:00:00Z' },
-    { id: 'cr-3',  customer_id: 'u-5', room_id: 'r-1', period: '2025-09', electricity_kwh: 110, electricity_cost: 385000,  water_m3: 6.8, water_cost: 102000, recorded_at: '2025-10-01T08:00:00Z' },
-    { id: 'cr-4',  customer_id: 'u-5', room_id: 'r-1', period: '2025-10', electricity_kwh: 98,  electricity_cost: 343000,  water_m3: 7.2, water_cost: 108000, recorded_at: '2025-11-01T08:00:00Z' },
-    { id: 'cr-5',  customer_id: 'u-5', room_id: 'r-1', period: '2025-11', electricity_kwh: 88,  electricity_cost: 308000,  water_m3: 6.0, water_cost: 90000,  recorded_at: '2025-12-01T08:00:00Z' },
-    { id: 'cr-6',  customer_id: 'u-5', room_id: 'r-1', period: '2025-12', electricity_kwh: 92,  electricity_cost: 322000,  water_m3: 6.5, water_cost: 97500,  recorded_at: '2026-01-01T08:00:00Z' },
-    { id: 'cr-7',  customer_id: 'u-5', room_id: 'r-1', period: '2026-01', electricity_kwh: 85,  electricity_cost: 297500,  water_m3: 5.8, water_cost: 87000,  recorded_at: '2026-02-01T08:00:00Z' },
-    { id: 'cr-8',  customer_id: 'u-5', room_id: 'r-1', period: '2026-02', electricity_kwh: 90,  electricity_cost: 315000,  water_m3: 6.2, water_cost: 93000,  recorded_at: '2026-03-01T08:00:00Z' },
-    { id: 'cr-9',  customer_id: 'u-5', room_id: 'r-1', period: '2026-03', electricity_kwh: 102, electricity_cost: 357000,  water_m3: 7.0, water_cost: 105000, recorded_at: '2026-04-01T08:00:00Z' },
-    { id: 'cr-10', customer_id: 'u-5', room_id: 'r-1', period: '2026-04', electricity_kwh: 108, electricity_cost: 378000,  water_m3: 7.5, water_cost: 112500, recorded_at: '2026-05-01T08:00:00Z' },
-    { id: 'cr-11', customer_id: 'u-5', room_id: 'r-1', period: '2026-05', electricity_kwh: 115, electricity_cost: 402500,  water_m3: 7.8, water_cost: 117000, recorded_at: '2026-06-01T08:00:00Z' },
-    { id: 'cr-12', customer_id: 'u-5', room_id: 'r-1', period: '2026-06', electricity_kwh: 52,  electricity_cost: 182000,  water_m3: 3.5, water_cost: 52500,  recorded_at: '2026-06-02T08:00:00Z' }
+    { id: 'cr-1', customer_id: 'u-5', room_id: 'r-1', period: '2025-07', electricity_kwh: 95, electricity_cost: 332500, water_m3: 6.5, water_cost: 97500, recorded_at: '2025-08-01T08:00:00Z' },
+    { id: 'cr-2', customer_id: 'u-5', room_id: 'r-1', period: '2025-08', electricity_kwh: 118, electricity_cost: 413000, water_m3: 7.0, water_cost: 105000, recorded_at: '2025-09-01T08:00:00Z' },
+    { id: 'cr-3', customer_id: 'u-5', room_id: 'r-1', period: '2025-09', electricity_kwh: 110, electricity_cost: 385000, water_m3: 6.8, water_cost: 102000, recorded_at: '2025-10-01T08:00:00Z' },
+    { id: 'cr-4', customer_id: 'u-5', room_id: 'r-1', period: '2025-10', electricity_kwh: 98, electricity_cost: 343000, water_m3: 7.2, water_cost: 108000, recorded_at: '2025-11-01T08:00:00Z' },
+    { id: 'cr-5', customer_id: 'u-5', room_id: 'r-1', period: '2025-11', electricity_kwh: 88, electricity_cost: 308000, water_m3: 6.0, water_cost: 90000, recorded_at: '2025-12-01T08:00:00Z' },
+    { id: 'cr-6', customer_id: 'u-5', room_id: 'r-1', period: '2025-12', electricity_kwh: 92, electricity_cost: 322000, water_m3: 6.5, water_cost: 97500, recorded_at: '2026-01-01T08:00:00Z' },
+    { id: 'cr-7', customer_id: 'u-5', room_id: 'r-1', period: '2026-01', electricity_kwh: 85, electricity_cost: 297500, water_m3: 5.8, water_cost: 87000, recorded_at: '2026-02-01T08:00:00Z' },
+    { id: 'cr-8', customer_id: 'u-5', room_id: 'r-1', period: '2026-02', electricity_kwh: 90, electricity_cost: 315000, water_m3: 6.2, water_cost: 93000, recorded_at: '2026-03-01T08:00:00Z' },
+    { id: 'cr-9', customer_id: 'u-5', room_id: 'r-1', period: '2026-03', electricity_kwh: 102, electricity_cost: 357000, water_m3: 7.0, water_cost: 105000, recorded_at: '2026-04-01T08:00:00Z' },
+    { id: 'cr-10', customer_id: 'u-5', room_id: 'r-1', period: '2026-04', electricity_kwh: 108, electricity_cost: 378000, water_m3: 7.5, water_cost: 112500, recorded_at: '2026-05-01T08:00:00Z' },
+    { id: 'cr-11', customer_id: 'u-5', room_id: 'r-1', period: '2026-05', electricity_kwh: 115, electricity_cost: 402500, water_m3: 7.8, water_cost: 117000, recorded_at: '2026-06-01T08:00:00Z' },
+    { id: 'cr-12', customer_id: 'u-5', room_id: 'r-1', period: '2026-06', electricity_kwh: 52, electricity_cost: 182000, water_m3: 3.5, water_cost: 52500, recorded_at: '2026-06-02T08:00:00Z' }
   ] as ConsumptionRecord[],
   deposit_invoices: generateDepositInvoices(),
   checkin_invoices: generateCheckinInvoices(),
@@ -1168,20 +1168,20 @@ function generateResidencyChecks(): ResidencyCheck[] {
     const name = names[i % names.length];
     const status = statuses[i % statuses.length];
     const isApproved = status === 'approved';
-    
+
     const checklist = isApproved
       ? {
-          valid_documents: true,
-          info_matches: true,
-          age_verified: true,
-          no_violation: true
-        }
+        valid_documents: true,
+        info_matches: true,
+        age_verified: true,
+        no_violation: true
+      }
       : {
-          valid_documents: i % 7 !== 0,
-          info_matches: i % 5 !== 0,
-          age_verified: true,
-          no_violation: i % 8 !== 0
-        };
+        valid_documents: i % 7 !== 0,
+        info_matches: i % 5 !== 0,
+        age_verified: true,
+        no_violation: i % 8 !== 0
+      };
 
     const violation_note = (!isApproved && !checklist.no_violation)
       ? 'Khách hàng có tiền sử vi phạm quy định nội quy phòng trọ tại địa chỉ cũ'
@@ -1321,7 +1321,7 @@ function generateContracts(): ManagerContract[] {
     const room = rooms[i % rooms.length];
     const isBed = i % 2 === 0;
     const status = statuses[i];
-    
+
     // Dates
     const startYear = status === 'expired' || status === 'terminated' ? 2024 : 2025;
     const endYear = startYear + 1;
@@ -1497,7 +1497,7 @@ export const mockSupabase = {
       localStorage.removeItem('homestay_session_user');
     }
   },
-  
+
   from: (table: keyof typeof INITIAL_DB) => {
     return {
       select: () => {

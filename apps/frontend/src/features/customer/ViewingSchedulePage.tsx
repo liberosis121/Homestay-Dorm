@@ -337,9 +337,13 @@ const AppointmentCard = ({
           <div className="flex items-center gap-2 text-sm text-on-surface-variant">
             <User className="w-4 h-4 shrink-0 text-primary" />
             <span>{schedule.staff_name}</span>
-            <span className="text-outline">·</span>
-            <Phone className="w-3.5 h-3.5 shrink-0" />
-            <span>{schedule.staff_phone}</span>
+            {schedule.staff_phone && (
+              <>
+                <span className="text-outline">·</span>
+                <Phone className="w-3.5 h-3.5 shrink-0" />
+                <span>{schedule.staff_phone}</span>
+              </>
+            )}
           </div>
         </div>
 

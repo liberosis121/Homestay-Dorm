@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { CONTRACT_STATUS } from '../types/constants';
 
 export const monthlyInvoiceRepo = {
   /**
@@ -129,13 +130,19 @@ export const monthlyInvoiceRepo = {
   },
 
   /**
-   * Lay danh sach cac hop dong dang active phuc vu ghi chi so dien nuoc.
+   * Lay danh sach hop dong phuc vu man hinh ke toan.
+   *
+   * @param statuses Cac trang thai hop dong can lay.
+   *   - Hoa don DINH KY (ghi chi so dien nuoc): chi ['active'] — HD phai co hieu luc.
+   *   - Hoa don NHAN PHONG: ['active', 'pending_payment'] — HD vua lap con dang cho
+   *     thanh toan chinh la doi tuong can lap hoa don nhan phong. Neu chi loc 'active'
+   *     thi ke toan se khong thay HD nao de lap hoa don => ket cung nghiep vu.
    */
-  getActiveContracts: async () => {
+  getActiveContracts: async (statuses: string[] = [CONTRACT_STATUS.ACTIVE]) => {
     const { data: contracts, error } = await supabase
       .from('contracts')
       .select('*')
-      .eq('status', 'active');
+      .in('status', statuses);
 
     if (error) {
       throw new Error(`[MonthlyInvoiceRepo] Loi khi lay hop dong active: ${error.message}`);
@@ -203,6 +210,8 @@ export const monthlyInvoiceRepo = {
         id: c.id,
         contract_code: c.contract_code || c.id,
         deposit_id: c.deposit_id || '',
+        // 'pending_payment' = HD cho thanh toan hoa don nhan phong; 'active' = da co hieu luc.
+        status: c.status,
         start_date: c.start_date || '',
         customer_id: customer?.cccd || c.id,
         customer_name: customer?.full_name || 'Khách thuê',

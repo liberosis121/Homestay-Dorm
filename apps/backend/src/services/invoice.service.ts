@@ -2,9 +2,46 @@ import { invoiceRepo, DbInvoice } from '../repositories/invoice.repo';
 import { supabase } from '../utils/supabase';
 import { customerDepositService } from './customer-deposit.service';
 import { getCustomerByUserId } from '../repositories/profile.repo';
-import { DEPOSIT_STATUS } from '../types/constants';
+import { DEPOSIT_STATUS, CONTRACT_STATUS } from '../types/constants';
 import { contractRepo } from '../repositories/contract.repo';
 import { computeMonthlyDueDate, computeCheckinDueDate } from '../utils/invoice-due-date';
+
+/**
+ * Hoa don NHAN PHONG = invoice_type 'monthly' NHUNG chua gan ky dien/nuoc (water_record_id null)
+ * va co gan hop dong. Day la quy uoc san co cua he thong (xem sale-contract.repo.findAll).
+ */
+function isCheckinInvoice(inv: { invoice_type?: string | null; water_record_id?: number | null; contract_id?: string | null }): boolean {
+  return inv.invoice_type === 'monthly' && !inv.water_record_id && !!inv.contract_id;
+}
+
+/**
+ * RANG BUOC NGHIEP VU: hop dong chi CO HIEU LUC sau khi hoa don nhan phong duoc thanh toan.
+ * Goi sau khi mot hoa don chuyen sang 'paid'. Chi nang trang thai tu 'pending_payment' len
+ * 'active' — khong dung toi hop dong da 'expired'/'terminated'.
+ */
+async function activateContractIfCheckinPaid(contractId: string): Promise<void> {
+  const { data: contract, error } = await supabase
+    .from('contracts')
+    .select('id, status')
+    .eq('id', contractId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[activateContractIfCheckinPaid] Khong doc duoc hop dong:', error.message);
+    return;
+  }
+  if (!contract || contract.status !== CONTRACT_STATUS.PENDING_PAYMENT) return;
+
+  const { error: updateErr } = await supabase
+    .from('contracts')
+    .update({ status: CONTRACT_STATUS.ACTIVE })
+    .eq('id', contractId)
+    .eq('status', CONTRACT_STATUS.PENDING_PAYMENT); // guard tranh ghi de trang thai khac
+
+  if (updateErr) {
+    console.error('[activateContractIfCheckinPaid] Khong kich hoat duoc hop dong:', updateErr.message);
+  }
+}
 
 // Utility helpers
 function getMonthYearFromPeriod(periodStr: string | null): { month: number; year: number } {
@@ -304,7 +341,7 @@ export const invoiceService = {
     // 1. Fetch invoice info to check if it's a deposit invoice
     const { data: inv, error: fErr } = await supabase
       .from('invoices')
-        .select('invoice_type, deposit_id, status, payment_time')
+        .select('invoice_type, deposit_id, status, payment_time, water_record_id, contract_id')
       .eq('id', invoiceId)
       .maybeSingle();
 
@@ -379,6 +416,11 @@ export const invoiceService = {
       if (dErr) {
         console.error('[payInvoice] Error updating deposit request status:', dErr.message);
       }
+    }
+
+    // 4. Hoa don NHAN PHONG da thanh toan -> hop dong chinh thuc CO HIEU LUC.
+    if (isCheckinInvoice(inv as any)) {
+      await activateContractIfCheckinPaid((inv as any).contract_id);
     }
 
     return { success: true, paidAt: paymentTime };

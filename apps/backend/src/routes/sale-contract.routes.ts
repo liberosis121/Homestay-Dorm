@@ -30,7 +30,7 @@ router.use(requireAuth, requireStaff);
 
 router.get('/contracts', async (req: Request, res: Response) => {
   try {
-    const data = await saleContractService.getAllContracts();
+    const data = await saleContractService.getAllContracts(req.user!.id);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

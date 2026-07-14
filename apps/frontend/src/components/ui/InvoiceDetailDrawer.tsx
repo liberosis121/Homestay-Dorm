@@ -157,12 +157,6 @@ export default function InvoiceDetailDrawer({
                   <span className="font-bold text-[#1b1c1c]">Tổng tiền đặt cọc:</span>
                   <span className="text-xl font-bold text-[#5a462d] ">{formattedAmount(invoiceData.amount)}</span>
                 </div>
-                {invoiceData.note && (
-                  <div className="mt-2 text-xs bg-[#FAF9F6] p-3 rounded-lg border border-[#DCCFC0]/40 text-[#8A7563]">
-                    <span className="font-semibold block text-[#5C4632] mb-0.5">Ghi chú:</span>
-                    {invoiceData.note}
-                  </div>
-                )}
               </div>
             </>
           )}
