@@ -29,7 +29,12 @@ interface Asset {
   id: string;
   name: string;
   category: AssetCategory;
-  location: string;
+  branch?: { id: string; name: string };
+  room?: { id: string; name: string };
+  bed?: { id: string; name: string };
+  branch_id?: string;
+  room_id?: string;
+  bed_id?: string;
   brand: string;
   purchaseDate: string;
   value: number;
@@ -39,7 +44,7 @@ interface Asset {
 
 const STATUS_ASSET: Record<AssetStatus, { label: string; cls: string }> = {
   in_use: { label: 'Đang sử dụng', cls: 'bg-[#e8ede7] text-[#5f745d]' },
-  available: { label: 'Sẵn sàng', cls: 'bg-emerald-50 text-emerald-700' },
+  available: { label: 'Trong kho', cls: 'bg-emerald-50 text-emerald-700' },
   maintenance: { label: 'Đang bảo trì', cls: 'bg-amber-50 text-amber-700' },
   damaged: { label: 'Hư hỏng', cls: 'bg-red-50 text-red-700' },
 };
@@ -51,6 +56,13 @@ const CAT_LABEL: Record<AssetCategory, { label: string; icon: string }> = {
   facility: { label: 'Cơ sở hạ tầng', icon: 'construction' },
 };
 
+const getLocationString = (asset: Asset): string => {
+  if (asset.bed) return `${asset.bed.name} - ${asset.room?.name} (${asset.branch?.name})`;
+  if (asset.room) return `${asset.room.name} (${asset.branch?.name})`;
+  if (asset.branch) return `Kho ${asset.branch.name}`;
+  return 'Chưa sắp xếp';
+};
+
 export default function AdminAssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +70,7 @@ export default function AdminAssetsPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [filterBranchId, setFilterBranchId] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
@@ -83,7 +96,12 @@ export default function AdminAssetsPage() {
         id: dbAsset.serial_number,
         name: dbAsset.name || '',
         category: dbAsset.category || 'furniture',
-        location: dbAsset.location || '',
+        branch: dbAsset.branch,
+        room: dbAsset.room,
+        bed: dbAsset.bed,
+        branch_id: dbAsset.branch_id,
+        room_id: dbAsset.room_id,
+        bed_id: dbAsset.bed_id,
         brand: dbAsset.brand || '',
         purchaseDate: dbAsset.purchase_date ? dbAsset.purchase_date.split('-').reverse().join('/') : '',
         value: dbAsset.value || 0,
@@ -150,16 +168,17 @@ export default function AdminAssetsPage() {
 
   const filtered = useMemo(() => assets.filter(a => {
     const q = search.toLowerCase();
-    const matchQ = !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || a.location.toLowerCase().includes(q);
+    const matchQ = !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || getLocationString(a).toLowerCase().includes(q);
     const matchStatus = !filterStatus || a.status === filterStatus;
     const matchCat = !filterCategory || a.category === filterCategory;
-    return matchQ && matchStatus && matchCat;
-  }), [assets, search, filterStatus, filterCategory]);
+    const matchBranch = !filterBranchId || a.branch_id === filterBranchId;
+    return matchQ && matchStatus && matchCat && matchBranch;
+  }), [assets, search, filterStatus, filterCategory, filterBranchId]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterStatus, filterCategory]);
+  }, [search, filterStatus, filterCategory, filterBranchId]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -169,47 +188,9 @@ export default function AdminAssetsPage() {
   const pageStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1;
   const pageEnd = Math.min(safeCurrentPage * ITEMS_PER_PAGE, filtered.length);
 
-  const formatBranchCode = (name: string) => {
-    if (!name) return '';
-    return name
-      .replace(/Cơ sở\s+/i, '')
-      .replace(/Quận\s+/i, 'Q')
-      .replace(/\s+/g, '');
-  };
-
-  const formatRoomCode = (name: string) => {
-    if (!name) return '';
-    return name
-      .replace(/Phòng\s+/i, 'P')
-      .replace(/\s+/g, '');
-  };
-
-  const formatBedCode = (name: string) => {
-    if (!name) return '';
-    return name
-      .replace(/Giường\s+/i, 'G')
-      .replace(/\s+/g, '');
-  };
-
-  const computeLocationString = (bId: string, rId: string, bedId: string) => {
-    const branchObj = branches.find(b => b.id === bId);
-    const roomObj = allRooms.find(r => r.id === rId);
-    const bedObj = bedsForRoom.find(bd => bd.id === bedId);
-    
-    if (!branchObj) return '';
-    const bCode = formatBranchCode(branchObj.name);
-    
-    if (!roomObj) return `CN_${bCode}`;
-    
-    const rCode = formatRoomCode(roomObj.name);
-    const bdCode = bedObj ? `-${formatBedCode(bedObj.name)}` : '';
-    
-    return `CN_${bCode}-${rCode}${bdCode}`;
-  };
-
   const openAdd = () => {
     setModalMode('add');
-    setForm({ name: '', category: 'furniture', location: '', brand: '', purchaseDate: '', value: 0, status: 'available', serialNumber: '' });
+    setForm({ name: '', category: 'furniture', brand: '', purchaseDate: '', value: 0, status: 'available', serialNumber: '' });
     setSelectedBranchId('');
     setSelectedRoomId('');
     setSelectedBedId('');
@@ -220,44 +201,21 @@ export default function AdminAssetsPage() {
     setModalMode('edit');
     setForm({ ...a });
 
-    const loc = a.location || '';
-    let foundBranchId = '';
-    let foundRoomId = '';
-    let foundBedId = '';
+    setSelectedBranchId(a.branch_id || '');
+    setSelectedRoomId(a.room_id || '');
+    setSelectedBedId(a.bed_id || '');
 
-    if (loc.startsWith('CN_')) {
-      const parts = loc.substring(3).split('-');
-      const bCode = parts[0];
-      const rCode = parts[1];
-      const bdCode = parts[2];
-
-      const branchObj = branches.find(b => formatBranchCode(b.name) === bCode);
-      if (branchObj) {
-        foundBranchId = branchObj.id;
-        if (rCode) {
-          const roomObj = allRooms.find(r => r.branch_id === branchObj.id && formatRoomCode(r.name) === rCode);
-          if (roomObj) {
-            foundRoomId = roomObj.id;
-            if (bdCode) {
-              try {
-                const bedsData = await fetchBedsByRoom(roomObj.id);
-                setBedsForRoom(bedsData || []);
-                const bedObj = (bedsData || []).find((bd: any) => formatBedCode(bd.name) === bdCode);
-                if (bedObj) {
-                  foundBedId = bedObj.id;
-                }
-              } catch (err) {
-                console.error('Lỗi khi parse giường cũ:', err);
-              }
-            }
-          }
-        }
+    if (a.room_id) {
+      try {
+        const bedsData = await fetchBedsByRoom(a.room_id);
+        setBedsForRoom(bedsData || []);
+      } catch (err) {
+        console.error('Lỗi khi tải giường:', err);
       }
+    } else {
+      setBedsForRoom([]);
     }
 
-    setSelectedBranchId(foundBranchId);
-    setSelectedRoomId(foundRoomId);
-    setSelectedBedId(foundBedId);
     setShowModal(true);
   };
 
@@ -278,15 +236,16 @@ export default function AdminAssetsPage() {
     }
 
     const apiStatus = finalStatus === 'available' ? 'in_stock' : finalStatus;
-    const computedLocation = computeLocationString(selectedBranchId, selectedRoomId, selectedBedId);
 
     try {
       if (modalMode === 'add') {
-        const pDate = new Date().toISOString().split('T')[0];
+        const pDate = form.purchaseDate ? form.purchaseDate.split('/').reverse().join('-') : new Date().toISOString().split('T')[0];
         const created = await createAssetApi({
           name: form.name,
           category: form.category || 'furniture',
-          location: computedLocation,
+          branch_id: selectedBranchId,
+          room_id: selectedRoomId,
+          bed_id: selectedBedId,
           brand: form.brand || '',
           value: form.value || 0,
           status: apiStatus,
@@ -296,7 +255,9 @@ export default function AdminAssetsPage() {
           id: created.serial_number,
           name: created.name,
           category: created.category as AssetCategory,
-          location: created.location,
+          branch_id: created.branch_id || '',
+          room_id: created.room_id || '',
+          bed_id: created.bed_id || '',
           brand: created.brand,
           value: created.value,
           status: (created.status === 'in_stock' ? 'available' : created.status) as AssetStatus,
@@ -309,13 +270,17 @@ export default function AdminAssetsPage() {
       } else {
         if (!form.serialNumber) return;
         const updated = await updateAssetApi(form.serialNumber, {
-          location: computedLocation,
+          branch_id: selectedBranchId,
+          room_id: selectedRoomId,
+          bed_id: selectedBedId,
           value: form.value,
           status: apiStatus
         });
         setAssets(prev => prev.map(a => a.serialNumber === form.serialNumber ? {
           ...a,
-          location: updated.location,
+          branch_id: updated.branch_id || '',
+          room_id: updated.room_id || '',
+          bed_id: updated.bed_id || '',
           value: updated.value,
           status: (updated.status === 'in_stock' ? 'available' : updated.status) as AssetStatus
         } : a));
@@ -345,7 +310,7 @@ export default function AdminAssetsPage() {
   const statusFilterOptions = [
     { value: "", label: "Tất cả" },
     { value: "in_use", label: "Đang sử dụng" },
-    { value: "available", label: "Sẵn sàng" },
+    { value: "available", label: "Trong kho" },
     { value: "maintenance", label: "Đang bảo trì" },
     { value: "damaged", label: "Hư hỏng" }
   ];
@@ -358,7 +323,7 @@ export default function AdminAssetsPage() {
   ];
 
   const statusFormOptions = [
-    { value: "available", label: "Sẵn sàng" },
+    { value: "available", label: "Trong kho" },
     { value: "in_use", label: "Đang sử dụng" },
     { value: "maintenance", label: "Bảo trì" },
     { value: "damaged", label: "Hư hỏng" }
@@ -425,6 +390,17 @@ export default function AdminAssetsPage() {
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
         <CustomSelect
+          value={filterBranchId}
+          onChange={setFilterBranchId}
+          options={[
+            { value: "", label: "Tất cả chi nhánh" },
+            ...branches.map(b => ({ value: b.id, label: b.name }))
+          ]}
+          placeholder="Chi nhánh"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
+        <CustomSelect
           value={filterCategory}
           onChange={setFilterCategory}
           options={categoryFilterOptions}
@@ -456,7 +432,7 @@ export default function AdminAssetsPage() {
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
                 {['Mã TS', 'Tên tài sản', 'Loại', 'Vị trí', 'Thương hiệu', 'Giá trị', 'Trạng thái', 'Thao tác'].map(h => (
-                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${h === 'Thao tác' ? 'text-center' : 'text-left'}`}
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${h === 'Thao tác' ? 'text-center' : 'text-left'}`}
                     style={{ color: A.textMuted }}>{h}</th>
                 ))}
               </tr>
@@ -495,12 +471,28 @@ export default function AdminAssetsPage() {
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.accent }}>{formatShortId(a.id, 'checkout')}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{a.name}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5" style={{ color: A.textMuted }}>
+                      <div className="flex items-center gap-1.5 whitespace-nowrap" style={{ color: A.textMuted }}>
                         <span className="material-symbols-outlined text-[16px]">{cat.icon}</span>
                         <span className="text-xs">{cat.label}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>{a.location}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>
+                      {a.bed ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-[#1e1b17]">{a.bed.name} - {a.room?.name}</span>
+                          <span className="text-xs">{a.branch?.name}</span>
+                        </div>
+                      ) : a.room ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-[#1e1b17]">{a.room.name}</span>
+                          <span className="text-xs">{a.branch?.name}</span>
+                        </div>
+                      ) : a.branch ? (
+                        <span className="font-medium text-[#1e1b17]">Kho {a.branch.name}</span>
+                      ) : (
+                        <span>Chưa sắp xếp</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{a.brand}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.primary }}>
                       {a.value.toLocaleString('vi-VN')}đ
@@ -682,6 +674,27 @@ export default function AdminAssetsPage() {
                 />
               </div>
 
+              {/* Ngày mua */}
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Ngày mua</label>
+                <input
+                  type="date"
+                  style={{ accentColor: '#6f583c' }}
+                  value={form.purchaseDate ? form.purchaseDate.split('/').reverse().join('-') : ''}
+                  onChange={e => {
+                    const d = e.target.value;
+                    setForm(prev => ({ ...prev, purchaseDate: d ? d.split('-').reverse().join('/') : '' }));
+                  }}
+                  readOnly={modalMode === 'edit'}
+                  disabled={modalMode === 'edit'}
+                  tabIndex={modalMode === 'edit' ? -1 : undefined}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
+                    }`}
+                />
+              </div>
+
               {/* Chi nhánh */}
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chi nhánh <span className="text-red-500">*</span></label>
@@ -709,6 +722,11 @@ export default function AdminAssetsPage() {
                   onChange={val => {
                     setSelectedRoomId(val);
                     setSelectedBedId('');
+                    if (val && form.status === 'available') {
+                      setForm(prev => ({ ...prev, status: 'in_use' }));
+                    } else if (!val && form.status === 'in_use') {
+                      setForm(prev => ({ ...prev, status: 'available' }));
+                    }
                   }}
                   options={[
                     { value: "", label: selectedBranchId ? "Cất vào kho chi nhánh" : "Vui lòng chọn chi nhánh trước" },
@@ -742,7 +760,14 @@ export default function AdminAssetsPage() {
               {selectedBranchId && (
                 <div className="col-span-2 p-3 rounded-lg border border-[#5f745d]/20 bg-[#5f745d]/5 text-xs text-[#5f745d] font-semibold flex items-center gap-1.5 animate-fade-in-up">
                   <span className="material-symbols-outlined text-[16px]">location_on</span>
-                  Vị trí lưu trữ thực tế: <span className="font-extrabold underline">{computeLocationString(selectedBranchId, selectedRoomId, selectedBedId)}</span>
+                  Vị trí lưu trữ thực tế: <span className="font-extrabold underline">
+                    {(() => {
+                      const b = branches.find(x => x.id === selectedBranchId);
+                      const r = allRooms.find(x => x.id === selectedRoomId);
+                      const bd = bedsForRoom.find(x => x.id === selectedBedId);
+                      return getLocationString({ branch: b, room: r, bed: bd } as any);
+                    })()}
+                  </span>
                 </div>
               )}
 
@@ -771,6 +796,20 @@ export default function AdminAssetsPage() {
         @keyframes slideInRight {
           from { transform: translateX(100%); }
           to { transform: translateX(0); }
+        }
+        input[type="date"]::selection {
+          background-color: #6f583c;
+          color: white;
+        }
+        input[type="date"]::-webkit-datetime-edit-month-field:focus,
+        input[type="date"]::-webkit-datetime-edit-day-field:focus,
+        input[type="date"]::-webkit-datetime-edit-year-field:focus {
+          background-color: #6f583c !important;
+          color: white !important;
+        }
+        input[type="date"]::-moz-selection {
+          background-color: #6f583c;
+          color: white;
         }
       `}</style>
     </div>

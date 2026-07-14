@@ -5,15 +5,17 @@ export interface AssetDto {
   name: string;
   category: string;
   brand?: string;
-  location: string;
+  branch_id?: string;
+  room_id?: string;
+  bed_id?: string;
   value: number;
   purchase_date: string;
   status: string;
 }
 
 export const assetRepo = {
-  findAll: async (filters?: { category?: string; status?: string; location?: string }) => {
-    let query = supabase.from('assets').select('*');
+  findAll: async (filters?: { category?: string; status?: string; branch_id?: string }) => {
+    let query = supabase.from('assets').select('*, branch:branches(id, name), room:rooms(id, name), bed:beds(id, name)');
     
     if (filters?.category && filters.category !== 'all') {
       query = query.eq('category', filters.category);
@@ -21,8 +23,8 @@ export const assetRepo = {
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
-    if (filters?.location) {
-      query = query.ilike('location', `%${filters.location}%`);
+    if (filters?.branch_id) {
+      query = query.eq('branch_id', filters.branch_id);
     }
 
     const { data, error } = await query;

@@ -59,7 +59,9 @@ export const handoverService = {
           const asset = await assetRepo.findBySerialNumber(sa.serial_number);
           if (asset) {
             await assetRepo.update(sa.serial_number, {
-              location: destinationLocation,
+              branch_id: room?.branch_id,
+              room_id: room?.id,
+              bed_id: dep?.bed_id || undefined,
               status: 'in_use'
             });
           }
