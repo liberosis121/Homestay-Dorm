@@ -787,6 +787,21 @@ export default function ProfilePage() {
               ) : (
                 <div className="space-y-5 animate-fade-in">
 
+                  {/* Residency Info Banner */}
+                  <div className="bg-[#eff3ef] border border-[#a8c3a5] rounded-32 p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm animate-fade-in">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-[#4a6549] text-white rounded-24 shadow-inner shrink-0">
+                        <Info className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-[#4a6549] text-base">Quy định Khai báo Thông tin Cư trú</h4>
+                        <p className="text-sm text-on-surface-variant leading-relaxed">
+                          Theo quy định quản lý lưu trú, quý khách vui lòng hoàn tất khai báo cư trú <strong>sau khi thanh toán cọc giữ phòng/giường thành công</strong>. Ban quản lý cơ sở sẽ đối chiếu thông tin này để thẩm định điều kiện trước khi phê duyệt và lập hợp đồng thuê phòng chính thức.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Form khai báo cư trú — chỉ hiện khi có phiếu cọc đã thanh toán đang chờ khai báo (bước 9) */}
                   {pendingResidencyDeposit && (
                     <form onSubmit={handleSubmitResidency} className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border-2 border-[#a8c3a5] shadow-sm">
