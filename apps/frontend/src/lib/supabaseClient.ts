@@ -337,6 +337,7 @@ export interface ResidencyCheck {
 
 export interface AssetHandover {
   id: string;             // "AHO-XXXX"
+  contract_id: string;
   customer_id: string;
   customer_name: string;
   room_id: string;
@@ -344,7 +345,7 @@ export interface AssetHandover {
   bed_id?: string;
   bed_name?: string;
   handover_date: string;
-  checklist: { item: string; condition: string; note?: string; checked: boolean }[];
+  checklist: { item: string; serial_number: string; condition: string; note?: string; checked: boolean; compensation?: number }[];
   customer_signed: boolean;
   manager_signed: boolean;
   signature_ip?: string;
@@ -1229,6 +1230,7 @@ function generateAssetHandovers(): AssetHandover[] {
     const isSigned = statuses[i % statuses.length] === 'signed';
     list.push({
       id: `AHO-${4000 + i}`,
+      contract_id: `CT-${1000 + i}`,
       customer_id: `u-mock-${400 + i}`,
       customer_name: names[i % names.length],
       room_id: `r-${(i % 5) + 1}`,

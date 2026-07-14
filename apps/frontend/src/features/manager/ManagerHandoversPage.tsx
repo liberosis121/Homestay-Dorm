@@ -43,7 +43,6 @@ export default function ManagerHandoversPage() {
   const [checkinDrawerOpen, setCheckinDrawerOpen] = useState(false);
   const [checkinNotes, setCheckinNotes] = useState('');
   const [handoverConditions, setHandoverConditions] = useState<Record<string, string>>({});
-  const [handoverQuantities, setHandoverQuantities] = useState<Record<string, number>>({});
   const [handoverNotes, setHandoverNotes] = useState<Record<string, string>>({});
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
@@ -140,8 +139,9 @@ export default function ManagerHandoversPage() {
           name: asset.name,
           category: asset.category,
           serial_number: asset.serial_number,
-          current_location: asset.location,
-          location_type: asset.status === 'in_stock' ? 'warehouse' : 'room',
+          branch_id: asset.branch_id,
+          room_id: asset.room_id,
+          bed_id: asset.bed_id,
           status: asset.status,
           purchase_date: asset.purchase_date,
           purchase_price: Number(asset.value) || 0,
@@ -217,11 +217,23 @@ export default function ManagerHandoversPage() {
   const submitCheckoutInspection = async () => {
     if (!selectedCheckout) return;
 
-    // Filter room assets
-    const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
-    const branchCode = selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
-    const expectedLocation = `CN_${branchCode}-${roomCode}`;
-    const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
+    // Load original assets from the check-in handover record
+    const checkinRecord = records.find(r => r.contract_id === selectedCheckout.contract_id && r.type === 'checkin');
+    
+    let roomAssets: any[] = [];
+    if (checkinRecord && checkinRecord.checklist && checkinRecord.checklist.length > 0) {
+      roomAssets = checkinRecord.checklist.map(item => ({
+        id: item.serial_number,
+        name: item.item,
+        serial_number: item.serial_number
+      }));
+    } else {
+      // Fallback if no checkin record found
+      roomAssets = managedAssets.filter(asset => 
+        asset.room_id === selectedCheckout.room_id &&
+        (!selectedCheckout.bed_id || !asset.bed_id || asset.bed_id === selectedCheckout.bed_id)
+      );
+    }
 
     const damages = roomAssets.map(asset => {
       const comp = compensations[asset.id] || 0;
@@ -269,7 +281,6 @@ export default function ManagerHandoversPage() {
     setSelectedCheckout(task);
     setCheckinNotes('');
     setHandoverConditions({});
-    setHandoverQuantities({});
     setHandoverNotes({});
     setCheckinDrawerOpen(true);
   };
@@ -278,15 +289,14 @@ export default function ManagerHandoversPage() {
     if (!selectedCheckout) return;
 
     // Filter room assets
-    const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
-    const branchCode = selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
-    const expectedLocation = `CN_${branchCode}-${roomCode}`;
-    const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
+    const roomAssets = managedAssets.filter(asset => 
+      asset.room_id === selectedCheckout.room_id &&
+      (!selectedCheckout.bed_id || !asset.bed_id || asset.bed_id === selectedCheckout.bed_id)
+    );
 
     // Prepare detailsList
     const detailsList = roomAssets.map(asset => ({
       serial_number: asset.serial_number || asset.id,
-      quantity: handoverQuantities[asset.id] || 1,
       condition: handoverConditions[asset.id] || 'Tốt',
       note: handoverNotes[asset.id] || ''
     }));
@@ -498,14 +508,12 @@ export default function ManagerHandoversPage() {
             <>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '14%' }} />
                   <col style={{ width: '16%' }} />
-                  <col style={{ width: '13%' }} />
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '10%' }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: T.bg }}>
@@ -514,7 +522,7 @@ export default function ManagerHandoversPage() {
                       color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                       borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                     }}>Mã biên bản</th>
-                    {['Khách hàng', 'Phòng', 'Ngày bàn giao', 'Chữ ký khách', 'Chữ ký QL', 'Trạng thái'].map(h => (
+                    {['Khách hàng', 'Phòng', 'Ngày bàn giao', 'Trạng thái'].map(h => (
                       <th key={h} style={{
                         padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                         color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -537,24 +545,14 @@ export default function ManagerHandoversPage() {
                         className="hover:bg-[#FAF2E8] transition-colors duration-150">
                         <td style={{ padding: '13px 16px 13px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>{formatShortId(rec.id, 'checkout')}</td>
                         <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.customer_name}</td>
-                        <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 600, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.room_name}</td>
+                        <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                          <div className="flex flex-col gap-0.5">
+                            <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{rec.room_name}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>{rec.bed_id ? rec.bed_name : 'Full phòng'}</span>
+                          </div>
+                        </td>
                         <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', fontWeight: 600 }}>{rec.handover_date}</td>
-                        <td style={{ padding: '13px 16px' }}>
-                          <span style={{
-                            background: rec.customer_signed ? T.sageBg : T.amberBg, color: rec.customer_signed ? T.sage : T.amber,
-                            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, border: `1px solid ${rec.customer_signed ? T.sage : T.amber}1A`, whiteSpace: 'nowrap'
-                          }}>
-                            {rec.customer_signed ? 'Đã ký' : 'Chưa ký'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '13px 16px' }}>
-                          <span style={{
-                            background: rec.manager_signed ? T.sageBg : T.amberBg, color: rec.manager_signed ? T.sage : T.amber,
-                            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, border: `1px solid ${rec.manager_signed ? T.sage : T.amber}1A`, whiteSpace: 'nowrap'
-                          }}>
-                            {rec.manager_signed ? 'Đã ký' : 'Chưa ký'}
-                          </span>
-                        </td>
+
                         <td style={{ padding: '13px 16px' }}>
                           <span style={{
                             background: meta.bg, color: meta.text,
@@ -641,8 +639,11 @@ export default function ManagerHandoversPage() {
                           <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{ch.customer_name}</p>
                           <p style={{ fontSize: 11, color: T.textMuted }}>{ch.customer_phone}</p>
                         </td>
-                        <td style={{ padding: '13px 16px' }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ch.room_name}</p>
+                        <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                          <div className="flex flex-col gap-0.5">
+                            <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{ch.room_name}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>{ch.bed_id ? ch.bed_name : 'Full phòng'}</span>
+                          </div>
                         </td>
                         <td style={{ padding: '13px 16px' }}>
                           <span style={{
@@ -710,7 +711,7 @@ export default function ManagerHandoversPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Biên bản bàn giao</h3>
-                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>{formatShortId(selected.id, 'checkout')} — {selected.customer_name} — {selected.room_name}</p>
+                  <p style={{ color: T.textMuted, fontSize: 13, marginTop: 4 }}>{formatShortId(selected.id, 'checkout')} — {selected.customer_name} — {selected.bed_id ? `${selected.bed_name} - ${selected.room_name}` : `Full ${selected.room_name.toLowerCase()}`}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)}
                   style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -745,9 +746,7 @@ export default function ManagerHandoversPage() {
                         <p style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
                           Tình trạng: {item.condition}
                         </p>
-                        <p style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
-                          Số lượng: {item.quantity || 1}
-                        </p>
+                        {item.compensation && <p style={{ fontSize: 11.5, color: T.red, marginTop: 1, fontWeight: 700 }}>Đền bù: {Number(item.compensation).toLocaleString('vi-VN')}đ</p>}
                         {item.note && <p style={{ fontSize: 11.5, color: T.amber, marginTop: 1, fontWeight: 600 }}>Ghi chú: {item.note}</p>}
                       </div>
                       <span style={{ fontSize: 11, fontWeight: 800, color: item.checked ? T.sage : T.textFaint }}>{item.checked ? 'Đạt' : '—'}</span>
@@ -798,10 +797,23 @@ export default function ManagerHandoversPage() {
       {/* ================= DRAWER: INSPECT CHECKOUT & DAMAGE COMPENSATION ================= */}
       {checkoutDrawerOpen && selectedCheckout && (() => {
         // Resolve room assets
-        const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
-        const branchCode = selectedCheckout.branch_name.includes('Qu9') || selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Qu10') || selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
-        const expectedLocation = `CN_${branchCode}-${roomCode}`;
-        const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
+        // Load original assets from the check-in handover record
+        const checkinRecord = records.find(r => r.contract_id === selectedCheckout.contract_id && r.type === 'checkin');
+        
+        let roomAssets: any[] = [];
+        if (checkinRecord && checkinRecord.checklist && checkinRecord.checklist.length > 0) {
+          roomAssets = checkinRecord.checklist.map(item => ({
+            id: item.serial_number,
+            name: item.item,
+            serial_number: item.serial_number
+          }));
+        } else {
+          // Fallback if no checkin record found
+          roomAssets = managedAssets.filter(asset => 
+            asset.room_id === selectedCheckout.room_id &&
+            (!selectedCheckout.bed_id || !asset.bed_id || asset.bed_id === selectedCheckout.bed_id)
+          );
+        }
 
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setCheckoutDrawerOpen(false)}>
@@ -840,7 +852,9 @@ export default function ManagerHandoversPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Phòng:</span>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedCheckout.room_name}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name} - ${selectedCheckout.room_name}` : `Full phòng ${selectedCheckout.room_name.replace('Phòng ', '')}`}
+                      </p>
                     </div>
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Chi nhánh:</span>
@@ -1061,10 +1075,11 @@ export default function ManagerHandoversPage() {
       {/* ================= DRAWER: CHECK-IN ASSET HANDOVER ================= */}
       {checkinDrawerOpen && selectedCheckout && (() => {
         // Resolve room assets
-        const roomCode = selectedCheckout.room_name.replace('Phòng ', 'P').replace(/\s+/g, '');
-        const branchCode = selectedCheckout.branch_name.includes('Qu9') || selectedCheckout.branch_name.includes('Quận 9') ? 'Q9' : (selectedCheckout.branch_name.includes('Qu10') || selectedCheckout.branch_name.includes('Quận 10') ? 'Q10' : 'Q5');
-        const expectedLocation = `CN_${branchCode}-${roomCode}`;
-        const roomAssets = managedAssets.filter(asset => asset.current_location === expectedLocation);
+        // Resolve room assets
+        const roomAssets = managedAssets.filter(asset => 
+          asset.room_id === selectedCheckout.room_id &&
+          (!selectedCheckout.bed_id || !asset.bed_id || asset.bed_id === selectedCheckout.bed_id)
+        );
 
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setCheckinDrawerOpen(false)}>
@@ -1103,7 +1118,9 @@ export default function ManagerHandoversPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Phòng:</span>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{selectedCheckout.room_name}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name} - ${selectedCheckout.room_name}` : `Full phòng ${selectedCheckout.room_name.replace('Phòng ', '')}`}
+                      </p>
                     </div>
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Chi nhánh:</span>
@@ -1136,7 +1153,6 @@ export default function ManagerHandoversPage() {
                     <div className="space-y-3">
                       {roomAssets.map((asset) => {
                         const currentCond = handoverConditions[asset.id] || 'Tốt';
-                        const currentQty = handoverQuantities[asset.id] || 1;
                         const currentNote = handoverNotes[asset.id] || '';
                         return (
                           <div key={asset.id} style={{
@@ -1149,20 +1165,6 @@ export default function ManagerHandoversPage() {
                                 <div className="flex-1">
                                   <h5 style={{ fontSize: 13.5, fontWeight: 800, color: T.text }}>{asset.name}</h5>
                                   <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontFamily: "'Lexend', sans-serif" }}>Seri: {asset.serial_number || asset.id}</p>
-                                </div>
-                                <div style={{ width: 100 }}>
-                                  <label style={{ display: 'block', fontSize: 10, color: T.textFaint, textTransform: 'uppercase', fontWeight: 800, marginBottom: 4, textAlign: 'right' }}>Số lượng</label>
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    value={currentQty}
-                                    onChange={e => setHandoverQuantities(prev => ({ ...prev, [asset.id]: Number(e.target.value) || 1 }))}
-                                    style={{
-                                      width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 8,
-                                      padding: '6px 10px', fontSize: 12, color: T.text, background: T.bg, outline: 'none',
-                                      textAlign: 'right'
-                                    }}
-                                  />
                                 </div>
                               </div>
 

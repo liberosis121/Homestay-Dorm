@@ -1,5 +1,6 @@
 import { managerContractRepo } from '../repositories/manager-contract.repo';
 import { residencyService } from './residency.service';
+import { handoverRepo } from '../repositories/handover.repo';
 import { supabase } from '../utils/supabase';
 import crypto from 'crypto';
 
@@ -253,6 +254,30 @@ export const managerContractService = {
       .eq('id', checkoutId);
     if (chErr) throw chErr;
 
+    // 2.5 Create handover record for checkout
+    const handoverId = `AHO-${Math.floor(1000 + Math.random() * 9000)}`;
+    await handoverRepo.create({
+      id: handoverId,
+      contract_id: checkout.contract_id,
+      handover_time: new Date().toISOString(),
+      customer_confirmed: true,
+      staff_confirmed: true,
+      note: 'Biên bản trả phòng',
+      staff_id: managerId || 'e002e002-e002-e002-e002-e002e002e002'
+    });
+
+    const details = data.damages.map(d => ({
+      handover_id: handoverId,
+      serial_number: d.serialNumber,
+      condition: d.condition || 'Tốt',
+      compensation: Number(d.compensation) || undefined,
+      note: d.note || ''
+    }));
+
+    if (details.length > 0) {
+      await handoverRepo.createDetails(details);
+    }
+
     // 3. Prepare JSON note for the refund invoice
     const invoiceNote = JSON.stringify({
       damages: data.damages,
@@ -294,35 +319,7 @@ export const managerContractService = {
       if (invErr) throw invErr;
     }
 
-    // 5. Create checkout handover in asset_handovers and handover_details
-    const handoverId = crypto.randomUUID();
-    const { error: handoverErr } = await supabase
-      .from('asset_handovers')
-      .insert({
-        id: handoverId,
-        contract_id: checkout.contract_id,
-        handover_time: new Date().toISOString(),
-        customer_confirmed: false,
-        staff_confirmed: true,
-        note: data.note || 'Biên bản kiểm kê trả phòng',
-        staff_id: managerId || 'e002e002-e002-e002-e002-e002e002e002'
-      });
-    if (handoverErr) throw handoverErr;
 
-    const details = data.damages.map(d => ({
-      handover_id: handoverId,
-      serial_number: d.serialNumber,
-      quantity: 1,
-      condition: d.condition || 'Tốt',
-      note: `Đền bù: ${Number(d.compensation || 0).toLocaleString('vi-VN')}đ | Ghi chú: ${d.note || 'Không có'}`
-    }));
-
-    if (details.length > 0) {
-      const { error: detailsErr } = await supabase
-        .from('handover_details')
-        .insert(details);
-      if (detailsErr) throw detailsErr;
-    }
 
     return { success: true };
   }

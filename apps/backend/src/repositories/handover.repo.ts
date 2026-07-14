@@ -14,6 +14,7 @@ export interface HandoverDetailDto {
   handover_id: string;
   serial_number: string;
   condition: string;
+  compensation?: number;
   note?: string;
 }
 
@@ -64,7 +65,9 @@ export const handoverRepo = {
         const asset = assets?.find(a => a.serial_number === d.serial_number) || {};
         return {
           item: asset.name || d.serial_number,
+          serial_number: d.serial_number,
           condition: d.condition || 'Tốt',
+          compensation: d.compensation || null,
           note: d.note || '',
           checked: true
         };
