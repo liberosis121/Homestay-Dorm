@@ -817,11 +817,15 @@ export default function ManagerHandoversPage() {
         
         let roomAssets: any[] = [];
         if (checkinRecord && checkinRecord.checklist && checkinRecord.checklist.length > 0) {
-          roomAssets = checkinRecord.checklist.map(item => ({
-            id: item.serial_number,
-            name: item.item,
-            serial_number: item.serial_number
-          }));
+          roomAssets = checkinRecord.checklist.map(item => {
+            const assetInfo = managedAssets.find(a => a.serial_number === item.serial_number || a.id === item.serial_number);
+            return {
+              id: item.serial_number,
+              name: item.item,
+              serial_number: item.serial_number,
+              purchase_price: assetInfo?.purchase_price || 0
+            };
+          });
         } else {
           // Fallback if no checkin record found
           roomAssets = managedAssets.filter(asset => 
