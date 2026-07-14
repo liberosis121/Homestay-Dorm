@@ -167,8 +167,33 @@ router.get('/assets', async (req, res) => {
   try {
     const category = req.query.category as string;
     const status = req.query.status as string;
-    const location = req.query.location as string;
-    const data = await assetService.getAssets({ category, status, location });
+    
+    let branch_id = req.query.branch_id as string;
+    
+    // Tự động tìm chi nhánh của quản lý dựa trên token đăng nhập
+    if (req.user?.id) {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('branch_id')
+        .eq('id', req.user.id)
+        .maybeSingle();
+
+      if (employee && employee.branch_id) {
+        branch_id = employee.branch_id;
+      } else {
+        const { data: branch } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('manager_id', req.user.id)
+          .maybeSingle();
+
+        if (branch) {
+          branch_id = branch.id;
+        }
+      }
+    }
+
+    const data = await assetService.getAssets({ category, status, branch_id });
     sendSuccess(res, data, 'Fetched assets successfully');
   } catch (err) {
     sendError(res, err);

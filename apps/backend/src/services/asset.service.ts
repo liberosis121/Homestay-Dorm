@@ -1,7 +1,7 @@
 import { assetRepo, AssetDto } from '../repositories/asset.repo';
 
 export const assetService = {
-  getAssets: async (filters?: { category?: string; status?: string; location?: string }) => {
+  getAssets: async (filters?: { category?: string; status?: string; branch_id?: string }) => {
     return await assetRepo.findAll(filters);
   },
 

@@ -782,22 +782,6 @@ export default function ManagerResidencyPage() {
 
               <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
 
-                {/* ID Images */}
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Ảnh giấy tờ tùy thân</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div style={{ background: T.bg, borderRadius: 16, padding: 8, border: `1px solid ${T.border}` }}>
-                      <p style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', textAlign: 'center' }}>Mặt trước</p>
-                      <img src={selectedMember.front_image_url} alt="Front" style={{ width: '100%', borderRadius: 12, objectFit: 'cover', height: 110 }} />
-                    </div>
-                    {selectedMember.back_image_url && (
-                      <div style={{ background: T.bg, borderRadius: 16, padding: 8, border: `1px solid ${T.border}` }}>
-                        <p style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', textAlign: 'center' }}>Mặt sau</p>
-                        <img src={selectedMember.back_image_url} alt="Back" style={{ width: '100%', borderRadius: 12, objectFit: 'cover', height: 110 }} />
-                      </div>
-                    )}
-                  </div>
-                </div>
 
                 {/* Info Panel */}
                 <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>

@@ -1,7 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
-import { ManagedAsset } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 
 const T = {
@@ -12,26 +11,55 @@ const T = {
   text: '#2C2520', textMuted: '#6E6259', textFaint: '#8A7563'
 };
 
+export type AssetCategory = 'furniture' | 'electronics' | 'appliance' | 'facility';
+export type AssetStatus = 'in_use' | 'available' | 'maintenance' | 'damaged';
+
+export interface Asset {
+  id: string;
+  name: string;
+  category: AssetCategory;
+  branch?: { id: string; name: string };
+  room?: { id: string; name: string };
+  bed?: { id: string; name: string };
+  branch_id?: string;
+  room_id?: string;
+  bed_id?: string;
+  brand: string;
+  purchaseDate: string;
+  value: number;
+  status: AssetStatus;
+  serialNumber: string;
+  /** Số serial dạng snake_case do API trả về — dùng làm khóa khi gọi PUT /assets/:serialNumber. */
+  serial_number: string;
+  transfer_history?: any[];
+}
+
 const STATUS_META: Record<string, { label: string; bg: string; text: string }> = {
   in_use:      { label: 'Đang sử dụng', bg: T.sageBg,      text: T.sage    },
-  in_stock:    { label: 'Trong kho',    bg: T.primaryLight, text: T.primary },
-  available:   { label: 'Sẵn có',       bg: T.primaryLight, text: T.primary },
+  available:   { label: 'Trong kho',    bg: T.primaryLight, text: T.primary },
   maintenance: { label: 'Bảo trì',      bg: T.amberBg,     text: T.amber   },
-  retired:     { label: 'Ngừng dùng',   bg: T.redBg,       text: T.red     },
+  damaged:     { label: 'Hư hỏng',      bg: T.redBg,       text: T.red     },
 };
 
-const CAT_LABELS: Record<ManagedAsset['category'], string> = {
+const CAT_LABELS: Record<string, string> = {
   furniture:   'Nội thất',
   electronics: 'Điện tử',
   appliance:   'Thiết bị',
-  fixture:     'Cố định',
+  facility:    'Cơ sở hạ tầng',
+};
+
+const getLocationString = (asset: Asset): string => {
+  if (asset.bed) return `${asset.bed.name} - ${asset.room?.name} (${asset.branch?.name})`;
+  if (asset.room) return `${asset.room.name} (${asset.branch?.name})`;
+  if (asset.branch) return `Kho ${asset.branch.name}`;
+  return 'Chưa sắp xếp';
 };
 
 export default function ManagerAssetsPage() {
   const { isSubmitting, guard } = useSubmitLock();
-  const [assets, setAssets] = useState<ManagedAsset[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selected, setSelected] = useState<ManagedAsset | null>(null);
+  const [selected, setSelected] = useState<Asset | null>(null);
   const [filterCat, setFilterCat] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [toast, setToast] = useState<string | null>(null);
@@ -110,21 +138,27 @@ export default function ManagerAssetsPage() {
     setIsLoading(true);
     try {
       const headers = await getAuthHeaders();
+      // Nếu manager chỉ cần lấy asset của branch mình, truyền query branch_id
+      // const branch_id = rooms[0]?.branch_id; 
+      // Nhưng API backend chưa lấy theo query. Tạm để lấy tất cả hoặc tuỳ backend
       const res = await fetch(`${API_BASE}/assets`, { headers });
       const result = await res.json();
       if (result.success) {
         const mappedAssets = (result.data || []).map((asset: any) => ({
-          id: asset.serial_number, // use serial_number as identifier
+          id: asset.serial_number,
+          serial_number: asset.serial_number,
           name: asset.name,
           category: asset.category,
-          serial_number: asset.serial_number,
-          current_location: asset.location,
-          location_type: asset.status === 'in_stock' ? 'warehouse' : 'room',
+          branch: asset.branch,
+          room: asset.room,
+          bed: asset.bed,
+          branch_id: asset.branch_id,
+          room_id: asset.room_id,
+          bed_id: asset.bed_id,
+          brand: asset.brand || '',
+          value: Number(asset.value) || 0,
+          purchaseDate: asset.purchase_date || '',
           status: asset.status,
-          purchase_date: asset.purchase_date,
-          purchase_price: Number(asset.value) || 0,
-          depreciation_rate: 10,
-          transfer_history: []
         }));
         setAssets(mappedAssets);
       }
@@ -184,45 +218,6 @@ export default function ManagerAssetsPage() {
     }
   }, [selectedRoomId]);
 
-  const formatBranchCode = (name: string) => {
-    if (!name) return '';
-    return name
-      .replace(/Cơ sở\s+/i, '')
-      .replace(/Quận\s+/i, 'Q')
-      .replace(/\s+/g, '');
-  };
-
-  const formatRoomCode = (name: string) => {
-    if (!name) return '';
-    return name
-      .replace(/Phòng\s+/i, 'P')
-      .replace(/\s+/g, '');
-  };
-
-  const formatBedCode = (name: string) => {
-    if (!name) return '';
-    return name
-      .replace(/Giường\s+/i, 'G')
-      .replace(/\s+/g, '');
-  };
-
-  const computeLocationString = (rId: string, bedId: string) => {
-    const myBranchId = rooms[0]?.branch_id;
-    const branchObj = branches.find(b => b.id === myBranchId);
-    const roomObj = rooms.find(r => r.id === rId);
-    const bedObj = bedsForRoom.find(bd => bd.id === bedId);
-    
-    if (!branchObj) return '';
-    const bCode = formatBranchCode(branchObj.name);
-    
-    if (!roomObj) return `CN_${bCode}`;
-    
-    const rCode = formatRoomCode(roomObj.name);
-    const bdCode = bedObj ? `-${formatBedCode(bedObj.name)}` : '';
-    
-    return `CN_${bCode}-${rCode}${bdCode}`;
-  };
-
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
@@ -242,21 +237,17 @@ export default function ManagerAssetsPage() {
       return;
     }
 
-    const computedLocation = computeLocationString(selectedRoomId, selectedBedId);
-    if (!computedLocation) {
-      alert('Lỗi khi tính toán vị trí điều phối!');
-      return;
-    }
-
     try {
       const headers = await getAuthHeaders();
-      const nextStatus = selectedRoomId ? 'in_use' : 'in_stock';
+      const nextStatus = selectedRoomId ? 'in_use' : 'available';
 
       const res = await fetch(`${API_BASE}/assets/${selected.serial_number}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({
-          location: computedLocation,
+          branch_id: myBranchId,
+          room_id: selectedRoomId || null,
+          bed_id: selectedBedId || null,
           status: nextStatus
         })
       });
@@ -267,13 +258,15 @@ export default function ManagerAssetsPage() {
         
         setSelected(prev => prev ? {
           ...prev,
-          current_location: computedLocation,
+          branch_id: myBranchId,
+          room_id: selectedRoomId || undefined,
+          bed_id: selectedBedId || undefined,
           status: nextStatus as any
         } : null);
 
         setSelectedRoomId('');
         setSelectedBedId('');
-        showToast(`✓ Đã điều phối thành công ${selected.name} → ${computedLocation}`);
+        showToast(`✓ Đã điều phối thành công ${selected.name}`);
       }
     } catch (err) {
       console.error('Error transferring asset:', err);
@@ -415,7 +408,23 @@ export default function ManagerAssetsPage() {
                           <p style={{ fontSize: 11, color: T.textFaint, fontFamily: "'Lexend', sans-serif", marginTop: 2 }}>{formatShortId(asset.id, 'checkout')}</p>
                         </td>
                         <td style={{ padding: '13px 14px', fontSize: 12, color: T.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>{CAT_LABELS[asset.category]}</td>
-                        <td style={{ padding: '13px 14px', fontSize: 13, color: T.text, fontWeight: 700, whiteSpace: 'nowrap' }}>{asset.current_location}</td>
+                        <td style={{ padding: '13px 14px', fontSize: 13, color: T.text, fontWeight: 700 }}>
+                          {asset.bed ? (
+                            <div className="flex flex-col gap-0.5 whitespace-nowrap">
+                              <span className="font-bold text-[#1e1b17]">{asset.bed.name} - {asset.room?.name}</span>
+                              <span className="text-xs text-[#8A7563] font-medium">{asset.branch?.name}</span>
+                            </div>
+                          ) : asset.room ? (
+                            <div className="flex flex-col gap-0.5 whitespace-nowrap">
+                              <span className="font-bold text-[#1e1b17]">{asset.room.name}</span>
+                              <span className="text-xs text-[#8A7563] font-medium">{asset.branch?.name}</span>
+                            </div>
+                          ) : asset.branch ? (
+                            <span className="font-bold text-[#1e1b17] whitespace-nowrap">Kho {asset.branch.name}</span>
+                          ) : (
+                            <span className="whitespace-nowrap">Chưa sắp xếp</span>
+                          )}
+                        </td>
                         <td style={{ padding: '13px 14px' }}>
                           <span style={{
                             background: meta.bg, color: meta.text,
@@ -454,7 +463,7 @@ export default function ManagerAssetsPage() {
                   {/* TỪ (HIỆN TẠI) */}
                   <div style={{ background: '#FAF9F6', border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 14px' }}>
                     <span style={{ fontSize: 10.5, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5 }}>TỪ (HIỆN TẠI)</span>
-                    <span style={{ fontSize: 15, color: T.text, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.current_location}</span>
+                    <span style={{ fontSize: 15, color: T.text, fontWeight: 700, marginTop: 4, display: 'block' }}>{getLocationString(selected)}</span>
                   </div>
                   
                   {/* Arrow downward */}
@@ -518,7 +527,13 @@ export default function ManagerAssetsPage() {
 
                     {/* Xem trước vị trí mới */}
                     <div style={{ padding: '10px 12px', background: T.primaryLight, borderRadius: 8, fontSize: 13, color: T.primary, fontWeight: 700 }}>
-                      Vị trí mới: {computeLocationString(selectedRoomId, selectedBedId) || 'Chưa xác định'}
+                      Vị trí mới: {
+                        selectedRoomId && selectedBedId 
+                          ? `${bedsForRoom.find(b => b.id === selectedBedId)?.name} - ${rooms.find(r => r.id === selectedRoomId)?.name}`
+                          : selectedRoomId 
+                            ? rooms.find(r => r.id === selectedRoomId)?.name
+                            : `Kho ${branches.find(b => b.id === rooms[0]?.branch_id)?.name || ''}`
+                      }
                     </div>
                   </div>
                 </div>
@@ -546,19 +561,26 @@ export default function ManagerAssetsPage() {
                 {/* Cụm thông tin chi tiết */}
                 <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16 }} className="space-y-3">
                   <p style={{ fontSize: 12, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8 }}>Thông tin tài sản</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     <div style={{ background: T.bg, padding: '10px 12px', borderRadius: 12, border: `1px solid ${T.border}` }}>
-                      <span style={{ fontSize: 11, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Trạng thái</span>
-                      <span style={{
-                        fontSize: 12, color: STATUS_META[selected.status].text, fontWeight: 800,
-                        background: STATUS_META[selected.status].bg, padding: '3px 8px', borderRadius: 9999,
-                        border: `1px solid ${STATUS_META[selected.status].text}1A`, display: 'inline-block', marginTop: 4,
-                        whiteSpace: 'nowrap'
-                      }}>{STATUS_META[selected.status].label}</span>
+                      <span style={{ fontSize: 10, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>Thương hiệu</span>
+                      <span style={{ fontSize: 12.5, color: T.text, fontWeight: 700, marginTop: 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selected.brand}>
+                        {selected.brand || '—'}
+                      </span>
                     </div>
                     <div style={{ background: T.bg, padding: '10px 12px', borderRadius: 12, border: `1px solid ${T.border}` }}>
-                      <span style={{ fontSize: 11, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Giá trị</span>
-                      <span style={{ fontSize: 13.5, color: T.primary, fontWeight: 700, marginTop: 4, display: 'block' }}>{selected.purchase_price.toLocaleString('vi-VN')}đ</span>
+                      <span style={{ fontSize: 10, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>Giá trị</span>
+                      <span style={{ fontSize: 12.5, color: T.primary, fontWeight: 700, marginTop: 4, display: 'block', whiteSpace: 'nowrap' }}>
+                        {selected.value.toLocaleString('vi-VN')}đ
+                      </span>
+                    </div>
+                    <div style={{ background: T.bg, padding: '10px 12px', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 10, color: T.textFaint, display: 'block', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>Ngày mua</span>
+                      <span style={{ fontSize: 12.5, color: T.text, fontWeight: 700, marginTop: 4, display: 'block', whiteSpace: 'nowrap' }}>
+                        {selected.purchaseDate && !isNaN(Date.parse(selected.purchaseDate)) 
+                          ? new Date(selected.purchaseDate).toLocaleDateString('vi-VN') 
+                          : '—'}
+                      </span>
                     </div>
                   </div>
                 </div>

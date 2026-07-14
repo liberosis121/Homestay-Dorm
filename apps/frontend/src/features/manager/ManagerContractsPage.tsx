@@ -2,6 +2,7 @@ import { formatShortId } from '../../lib/utils';
 import { useEffect, useState, useMemo } from 'react';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { ManagerContract } from '../../lib/supabaseClient';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -796,38 +797,24 @@ export default function ManagerContractsPage() {
                   {/* Dates Row */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                        Ngày hiệu lực
-                      </label>
-                      <input
-                        type="date"
-                        value={editForm.start_date}
-                        onChange={e => handleInputChange('start_date', e.target.value)}
-                        style={{
-                          width: '100%', border: `1.5px solid ${errors.start_date ? T.red : T.border}`,
-                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
-                          background: errors.start_date ? T.redBg : T.surface, transition: 'all 0.15s'
-                        }}
-                        className={errors.start_date ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
+                      <CustomDatePicker
+                        label="Ngày hiệu lực"
+                        value={editForm.start_date || ''}
+                        onChange={val => handleInputChange('start_date', val)}
+                        error={errors.start_date}
+                        variant="surface"
+                        triggerClassName="border-2 rounded-xl text-xs py-2 px-3 bg-white"
                       />
-                      {errors.start_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.start_date}</p>}
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                        Ngày kết thúc
-                      </label>
-                      <input
-                        type="date"
-                        value={editForm.end_date}
-                        onChange={e => handleInputChange('end_date', e.target.value)}
-                        style={{
-                          width: '100%', border: `1.5px solid ${errors.end_date ? T.red : T.border}`,
-                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
-                          background: errors.end_date ? T.redBg : T.surface, transition: 'all 0.15s'
-                        }}
-                        className={errors.end_date ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
+                      <CustomDatePicker
+                        label="Ngày kết thúc"
+                        value={editForm.end_date || ''}
+                        onChange={val => handleInputChange('end_date', val)}
+                        error={errors.end_date}
+                        variant="surface"
+                        triggerClassName="border-2 rounded-xl text-xs py-2 px-3 bg-white"
                       />
-                      {errors.end_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.end_date}</p>}
                     </div>
                   </div>
 

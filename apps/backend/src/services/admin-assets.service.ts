@@ -10,13 +10,15 @@ export const adminAssetsService = {
     name: string;
     category: string;
     brand: string;
-    location: string;
+    branch_id: string;
+    room_id?: string;
+    bed_id?: string;
     value: number;
     purchase_date?: string;
     status: string;
   }): Promise<DbAsset> => {
-    if (!asset.name || !asset.location) {
-      throw new Error('Tên tài sản và vị trí là bắt buộc');
+    if (!asset.name || !asset.branch_id) {
+      throw new Error('Tên tài sản và Chi nhánh là bắt buộc');
     }
     return await adminAssetsRepo.create(asset);
   },
@@ -24,7 +26,9 @@ export const adminAssetsService = {
   updateAsset: async (serialNumber: string, asset: {
     status?: string;
     value?: number;
-    location?: string;
+    branch_id?: string;
+    room_id?: string;
+    bed_id?: string;
   }): Promise<DbAsset> => {
     if (!serialNumber) {
       throw new Error('Số serial là bắt buộc');

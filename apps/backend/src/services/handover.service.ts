@@ -53,10 +53,11 @@ export const handoverService = {
             .maybeSingle()
         : { data: null };
 
+      // Lay kem branch_id: tai san duoc gan theo ca chi nhanh / phong / giuong.
       const { data: room } = dep?.room_id
         ? await supabase
             .from('rooms')
-            .select('id, name')
+            .select('id, name, branch_id')
             .eq('id', dep.room_id)
             .maybeSingle()
         : { data: null };
@@ -66,15 +67,22 @@ export const handoverService = {
       // HIEU NANG: truoc day vong lap tuan tu, moi tai san ton 2 round-trip (SELECT roi UPDATE)
       // => chon 20 tai san = 40 luot di-ve noi duoi nhau => rat cham.
       //
-      // SUA LOI COT: truoc day ghi vao cot `assets.location` — cot nay KHONG TON TAI trong DB
-      // (bang assets chi co branch_id / room_id / bed_id). Moi lenh update deu that bai nhung
-      // bi try/catch nuot mat, nen tai san khong bao gio duoc gan vao phong.
+      // VI TRI TAI SAN: gan theo branch_id / room_id / bed_id (cot `assets.location` cu
+      // KHONG TON TAI trong DB nen moi lenh update truoc day deu that bai am tham).
       if (room) {
         const serialNumbers = detailsList.map(d => d.serial_number).filter(Boolean);
         if (serialNumbers.length > 0) {
+          const assetUpdates: Record<string, any> = {
+            branch_id: room.branch_id,
+            room_id: room.id,
+            status: 'in_use',
+          };
+          // Coc theo GIUONG thi gan them bed_id; coc ca PHONG thi de nguyen bed_id cu.
+          if (dep?.bed_id) assetUpdates.bed_id = dep.bed_id;
+
           const { error: assetErr } = await supabase
             .from('assets')
-            .update({ room_id: room.id, status: 'in_use' })
+            .update(assetUpdates)
             .in('serial_number', serialNumbers);
 
           // KHONG nuot loi: sai cot/sai du lieu phai bao ngay thay vi hong am tham.
