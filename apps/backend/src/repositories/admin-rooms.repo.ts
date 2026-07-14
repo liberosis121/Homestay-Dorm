@@ -33,6 +33,15 @@ export const adminRoomsRepo = {
     return data || [];
   },
 
+  findAllBeds: async (): Promise<DbBed[]> => {
+    const { data, error } = await supabase
+      .from('beds')
+      .select('*');
+      
+    if (error) throw error;
+    return data || [];
+  },
+
   createRoom: async (room: {
     branch_id: string;
     name: string;

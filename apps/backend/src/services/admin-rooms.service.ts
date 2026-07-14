@@ -2,8 +2,30 @@ import { adminRoomsRepo, DbRoom, DbBed } from '../repositories/admin-rooms.repo'
 
 export const adminRoomsService = {
   // ─── ROOMS ─────────────────────────────────────────────────────────────
-  getAllRooms: async (): Promise<DbRoom[]> => {
-    return await adminRoomsRepo.findAllRooms();
+  getAllRooms: async (): Promise<any[]> => {
+    const rooms = await adminRoomsRepo.findAllRooms();
+    const beds = await adminRoomsRepo.findAllBeds();
+    
+    return rooms.map(room => {
+      const roomBeds = beds.filter(b => b.room_id === room.id);
+      const availableCount = roomBeds.filter((b) => b.status === 'available').length;
+      let derivedStatus = room.status;
+
+      if (room.status !== 'maintenance') {
+        if (roomBeds.length === 0 || availableCount === 0) {
+          derivedStatus = 'occupied';
+        } else if (availableCount === roomBeds.length) {
+          derivedStatus = 'available';
+        } else {
+          derivedStatus = 'partial';
+        }
+      }
+
+      return {
+        ...room,
+        status: derivedStatus
+      };
+    });
   },
 
   createRoom: async (room: {
