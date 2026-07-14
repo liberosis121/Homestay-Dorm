@@ -47,6 +47,8 @@ const classifyCondition = (title: string, desc: string) => {
     category = 'Vệ sinh';
   } else if (text.includes('bảo vệ') || text.includes('an ninh') || text.includes('thẻ từ') || text.includes('trộm') || text.includes('cổng')) {
     category = 'An ninh';
+  } else if (text.includes('lưu trú') || text.includes('nhận phòng') || text.includes('trả phòng') || text.includes('giới nghiêm') || text.includes('đăng ký')) {
+    category = 'Lưu trú';
   }
 
   let priority: 'high' | 'medium' | 'low' = 'medium';
@@ -202,7 +204,8 @@ export default function AdminConditionsPage() {
     { value: "Nội quy", label: "Nội quy" },
     { value: "Pháp lý", label: "Pháp lý" },
     { value: "Vệ sinh", label: "Vệ sinh" },
-    { value: "An ninh", label: "An ninh" }
+    { value: "An ninh", label: "An ninh" },
+    { value: "Lưu trú", label: "Lưu trú" }
   ];
 
   const priorityFormOptions = [
