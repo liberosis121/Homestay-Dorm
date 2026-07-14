@@ -16,10 +16,11 @@ export default function ContractDetailModal({ contract, onClose, onPrint }: Prop
   // thuộc thay vì hiển thị dữ liệu giả (đã bỏ MOCK_DEPOSITS).
   const deposit = null as DepositRecord | null;
 
+  const checkinPaid = contract.checkinPaid === true;
   const steps = [
     { label: 'Lập hợp đồng', done: true, time: 'Đã hoàn thành' },
-    { label: 'Chờ thanh toán', done: false, active: true, time: 'Hạn chót: 3 ngày sau nhận phòng' },
-    { label: 'Nhận bàn giao phòng', done: false, active: false, time: 'Sau khi thanh toán' },
+    { label: 'Thanh toán nhận phòng', done: checkinPaid, active: !checkinPaid, time: checkinPaid ? 'Đã thanh toán' : 'Hạn chót: 3 ngày sau nhận phòng' },
+    { label: 'Nhận bàn giao phòng', done: false, active: checkinPaid, time: checkinPaid ? 'Chờ bàn giao' : 'Sau khi thanh toán' },
   ];
 
   return (
@@ -54,10 +55,17 @@ export default function ContractDetailModal({ contract, onClose, onPrint }: Prop
             <span className="px-2.5 py-0.5 rounded-md text-[9px] uppercase font-bold tracking-wider bg-[#6f583c]/15 text-[#6f583c] border border-[#6f583c]/25">
               Chi tiết Hợp đồng
             </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#fef3c7] text-[#92400e] border border-[#fcd34d]">
-              <Clock className="w-2.5 h-2.5" />
-              Chờ thanh toán nhận phòng
-            </span>
+            {checkinPaid ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#d8f3dc] text-[#1b5e20] border border-[#a8c3a5]/60">
+                <CheckCircle2 className="w-2.5 h-2.5" />
+                Đã nhận phòng
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#fef3c7] text-[#92400e] border border-[#fcd34d]">
+                <Clock className="w-2.5 h-2.5" />
+                Chờ thanh toán nhận phòng
+              </span>
+            )}
           </div>
 
           <h2 className="text-2xl font-extrabold leading-tight flex items-center gap-2 text-[#1e1b17]">

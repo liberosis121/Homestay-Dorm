@@ -18,6 +18,7 @@ interface CustomSelectProps {
   pill?: boolean;
   theme?: 'default' | 'accountant' | 'sale';
   disabled?: boolean;
+  hideArrow?: boolean;
 }
 
 export default function CustomSelect({
@@ -32,6 +33,7 @@ export default function CustomSelect({
   pill = false,
   theme = 'default',
   disabled = false,
+  hideArrow = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -152,7 +154,7 @@ export default function CustomSelect({
           pill ? 'rounded-[24px]' : 'rounded-[12px]'
         } ${
           isOpen ? focusRingClass : hoverBorderClass
-        } disabled:cursor-not-allowed disabled:opacity-60 ${triggerClassName}`}
+        } disabled:cursor-not-allowed disabled:bg-[#f6f5f1] disabled:text-on-surface-variant/70 disabled:border-[#e3e2de] disabled:opacity-100 ${triggerClassName}`}
       >
         <div className="flex items-center gap-2 truncate">
           {icon && (
@@ -162,13 +164,15 @@ export default function CustomSelect({
           )}
           <span className="truncate">{displayLabel}</span>
         </div>
-        <span
-          className={`material-symbols-outlined text-[#737970] text-[20px] transition-transform duration-200 shrink-0 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        >
-          expand_more
-        </span>
+        {!hideArrow && (
+          <span
+            className={`material-symbols-outlined text-[#737970] text-[20px] transition-transform duration-200 shrink-0 ${
+              isOpen ? 'rotate-180' : ''
+            }`}
+          >
+            expand_more
+          </span>
+        )}
       </button>
 
       {/* Dropdown Menu (Rendered via Portal to body) */}

@@ -8,12 +8,23 @@ import { useAuthStore } from '../../stores/authStore';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
-// Han thanh toan = ngay 10 cua thang KE TIEP sau ky ghi chi so (theo dung quy dinh da neu o Dashboard).
-const computeDueDate = (billingPeriod: string): string => {
+// Han thanh toan = ngay 10 cua thang KE TIEP sau ky ghi chi so, nhung khong som hon ngay lap + 7 ngay
+// (ke toan co the lap hoa don tre — khach van phai co toi thieu 7 ngay de tra, khong bi 'Qua han' ngay).
+// Backend chot han nay vao invoices.due_date luc lap; ham duoi chi la fallback cho hoa don cu chua co due_date.
+const MIN_GRACE_DAYS = 7;
+const toDateOnly = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const computeDueDate = (billingPeriod: string, createdAt?: string): string => {
   const [year, month] = billingPeriod.split('-').map(Number);
   if (!year || !month) return '';
-  const due = new Date(year, month, 10); // month (1-based) lam index 0-based cua Date = thang ke tiep
-  return due.toISOString().split('T')[0];
+  const scheduled = toDateOnly(new Date(year, month, 10)); // month (1-based) = index 0-based cua thang ke tiep
+  if (!createdAt) return scheduled;
+
+  const floorDate = new Date(createdAt);
+  floorDate.setDate(floorDate.getDate() + MIN_GRACE_DAYS);
+  const floor = toDateOnly(floorDate);
+  return scheduled > floor ? scheduled : floor;
 };
 
 // Chuyen 'YYYY-MM' (dinh dang billing_period trong DB) sang 'MM/YYYY' (dinh dang hien thi/filter cua trang).
@@ -53,7 +64,7 @@ const mapMonthlyInvoices = (liveInvoices: any[]): MonthlyInvoice[] =>
       water_cost: waterUse * 15000,
       services_cost: inv.services_cost ?? 0,
       total: inv.amount,
-      due_date: billingPeriod ? computeDueDate(billingPeriod) : '',
+      due_date: inv.due_date || (billingPeriod ? computeDueDate(billingPeriod, inv.created_at) : ''),
       status: inv.status,
       created_at: inv.created_at || '',
       incidentals: inv.incidentals || []

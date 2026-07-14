@@ -32,12 +32,18 @@ interface Props {
 
 type Tab = 'contracts' | 'drafts';
 
-const CONTRACT_STATUS_BADGE = (
-  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#fef3c7] text-[#92400e] border border-[#fcd34d]">
-    <Clock className="w-3 h-3" />
-    Chờ thanh toán nhận phòng
-  </span>
-);
+const renderStatusBadge = (checkinPaid?: boolean) =>
+  checkinPaid ? (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#d8f3dc] text-[#1b5e20] border border-[#a8c3a5]/60">
+      <CheckCircle2 className="w-3 h-3" />
+      Đã nhận phòng
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#fef3c7] text-[#92400e] border border-[#fcd34d]">
+      <Clock className="w-3 h-3" />
+      Chờ thanh toán nhận phòng
+    </span>
+  );
 
 export default function ContractListView({
   completedContracts,
@@ -227,7 +233,7 @@ export default function ContractListView({
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          {CONTRACT_STATUS_BADGE}
+                          {renderStatusBadge(c.checkinPaid)}
                         </td>
                         <td className="px-5 py-4 text-center">
                           <button

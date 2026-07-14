@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useInvoiceStore } from './store/useInvoiceStore';
+import type { Invoice } from './store/useInvoiceStore';
 import InvoiceTable from './components/InvoiceTable';
 import InvoiceDetail from './components/InvoiceDetail';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -36,6 +37,21 @@ const INVOICE_TYPE_OPTIONS = [
   { value: 'service', label: 'Dịch vụ' },
   { value: 'incidental', label: 'Phát sinh' },
 ];
+
+// Cac khoan dich vu ma khach dang dung (dien, nuoc, tien ich dang ky them) KHONG duoc lap hoa don rieng
+// loai 'service' — chung duoc GOP vao hoa don dinh ky. Neu bo loc "Dich vu" chi so khop inv.type === 'service'
+// thi no luon rong (ke ca nut "Lich su thanh toan" ben trang Dich vu dieu huong sang day).
+// Dung nghiep vu: "Dich vu" = moi hoa don co chua khoan dich vu / dien / nuoc.
+const matchesTypeFilter = (inv: Invoice, type: string): boolean => {
+  if (!type || type === 'Tất cả') return true;
+  if (type === 'service') {
+    return inv.type === 'service'
+      || inv.servicePrice > 0
+      || inv.electricityPrice > 0
+      || inv.waterPrice > 0;
+  }
+  return inv.type === type;
+};
 
 export default function InvoicesDashboardPage() {
   const navigate = useNavigate();
@@ -115,7 +131,7 @@ export default function InvoicesDashboardPage() {
       // Year
       if (filters.year !== 'Tất cả' && inv.year !== parseInt(filters.year)) return false;
       // Invoice type
-      if ((filters.type || 'Tất cả') !== 'Tất cả' && inv.type !== filters.type) return false;
+      if (!matchesTypeFilter(inv, filters.type)) return false;
       // Status
       if (filters.status !== 'Tất cả') {
         if (filters.status === 'paid' && inv.status !== 'paid') return false;

@@ -4,6 +4,7 @@ import { customerDepositService } from './customer-deposit.service';
 import { getCustomerByUserId } from '../repositories/profile.repo';
 import { DEPOSIT_STATUS } from '../types/constants';
 import { contractRepo } from '../repositories/contract.repo';
+import { computeMonthlyDueDate, computeCheckinDueDate } from '../utils/invoice-due-date';
 
 // Utility helpers
 function getMonthYearFromPeriod(periodStr: string | null): { month: number; year: number } {
@@ -162,14 +163,27 @@ export const invoiceService = {
         serviceDetails = 'Phí đăng ký dịch vụ phát sinh';
       }
 
-      // Due date logic (e.g. 5 days after recorded date / created date, or 5th of the month)
-      let dueDate = `${year}-${month < 10 ? '0' + month : month}-05`;
-      if (isRefund && inv.refund_reconciliations) {
+      // Hạn thanh toán được CHỐT lúc lập hóa đơn (invoices.due_date) — dùng chung cho khách hàng,
+      // kế toán và cả phòng cá nhân lẫn phòng nhóm. Các nhánh dưới chỉ là fallback cho hóa đơn cũ
+      // được tạo trước khi cột due_date tồn tại.
+      let dueDate: string;
+      if (inv.due_date) {
+        dueDate = inv.due_date.split('T')[0];
+      } else if (isRefund && inv.refund_reconciliations) {
         dueDate = inv.refund_reconciliations.reconciliation_date;
       } else if (isDeposit && inv.deposit_requests) {
-        dueDate = inv.deposit_requests.payment_deadline 
-          ? inv.deposit_requests.payment_deadline.split('T')[0] 
-          : new Date().toISOString().split('T')[0];
+        dueDate = inv.deposit_requests.payment_deadline
+          ? inv.deposit_requests.payment_deadline.split('T')[0]
+          : computeCheckinDueDate();
+      } else if (inv.electricity_water_records) {
+        dueDate = computeMonthlyDueDate(
+          inv.electricity_water_records.billing_period,
+          inv.created_at || undefined
+        );
+      } else {
+        // Hóa đơn nhận phòng (check-in) / phát sinh chưa gắn kỳ điện nước:
+        // hạn = ngày lập hóa đơn + 3 ngày (đúng nghiệp vụ "hạn 3 ngày sau nhận phòng").
+        dueDate = computeCheckinDueDate(inv.created_at || inv.payment_time || new Date());
       }
 
       // Status mapping: 'paid' | 'unpaid' | 'overdue'
@@ -338,7 +352,10 @@ export const invoiceService = {
         }
         return { success: true, paidAt: (inv as any).payment_time || paymentTime, alreadyPaid: true };
       }
-      if (deposit.status !== DEPOSIT_STATUS.INVOICE_CREATED) {
+      // Kế toán được thu tiền khi phiếu ở 'invoice_created' (thu tiền mặt trực tiếp)
+      // HOẶC 'pending' (khách đã nộp minh chứng, chờ kế toán xác nhận).
+      if (deposit.status !== DEPOSIT_STATUS.INVOICE_CREATED &&
+          deposit.status !== DEPOSIT_STATUS.PENDING) {
         throw new Error('Yeu cau dat coc chua o trang thai cho thanh toan.');
       }
 

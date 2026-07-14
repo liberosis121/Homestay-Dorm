@@ -1,5 +1,6 @@
 import { checkinInvoiceRepo } from '../repositories/checkin-invoice.repo';
 import { supabase } from '../utils/supabase';
+import { computeCheckinDueDate } from '../utils/invoice-due-date';
 
 export const checkinInvoiceService = {
   /**
@@ -51,7 +52,8 @@ export const checkinInvoiceService = {
       water_record_id: null,
       reconciliation_id: null,
       staff_id: data.staffId,
-      note: data.note || null
+      note: data.note || null,
+      due_date: computeCheckinDueDate()
     };
 
     return await checkinInvoiceRepo.createCheckinInvoice(invoiceData);

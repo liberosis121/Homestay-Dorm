@@ -1,6 +1,7 @@
 import { monthlyInvoiceRepo } from '../repositories/monthly-invoice.repo';
 import { serviceRegistrationRepo } from '../repositories/service-registration.repo';
 import { incidentalCostRepo } from '../repositories/incidental-cost.repo';
+import { computeMonthlyDueDate } from '../utils/invoice-due-date';
 
 export const monthlyInvoiceService = {
   /**
@@ -157,7 +158,8 @@ export const monthlyInvoiceService = {
       water_record_id: reading.id,
       reconciliation_id: null,
       staff_id: data.staffId,
-      note: data.note || null
+      note: data.note || null,
+      due_date: computeMonthlyDueDate(data.billingPeriod)
     };
 
     const invoice = await monthlyInvoiceRepo.createMonthlyInvoice(invoiceData);

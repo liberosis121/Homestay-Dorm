@@ -189,7 +189,9 @@ export const depositInvoiceRepo = {
       .from('invoices')
       .insert({
         ...invoiceData,
-        invoice_type: 'deposit'
+        invoice_type: 'deposit',
+        // Han hoa don coc = dung han thanh toan coc (24h) cua phieu, khong tu suy ra o cho khac.
+        due_date: paymentDeadline ? paymentDeadline.split('T')[0] : null
       })
       .select()
       .single();
