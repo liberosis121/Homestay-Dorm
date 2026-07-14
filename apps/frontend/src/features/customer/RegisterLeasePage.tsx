@@ -53,7 +53,7 @@ const viewingTimeOptions = [
 ];
 
 const today = new Date().toISOString().split('T')[0];
-const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px-5 text-sm font-body-md shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface hover:border-primary/40';
+const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px-5 text-sm font-body-md shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface hover:border-primary/40 disabled:bg-[#f6f5f1] disabled:text-on-surface-variant/70 disabled:cursor-not-allowed disabled:border-[#e3e2de]';
 const selectTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
 const datePickerTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 px-5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
 
@@ -145,6 +145,25 @@ export const RegisterLeasePage: React.FC = () => {
           address.trim() !== ''
         );
         setIsProfileComplete(complete);
+
+        // Load thông tin của người dùng vào form
+        const genderVal = details.gender || '';
+        let mappedGender = 'male';
+        if (genderVal === 'female' || genderVal === 'Nữ') {
+          mappedGender = 'female';
+        } else if (genderVal === 'other' || genderVal === 'Khác') {
+          mappedGender = 'other';
+        } else if (genderVal === 'male' || genderVal === 'Nam') {
+          mappedGender = 'male';
+        }
+
+        setForm(prev => ({
+          ...prev,
+          fullName: data.full_name || prev.fullName,
+          phone: phone || prev.phone,
+          email: data.email || prev.email,
+          gender: mappedGender,
+        }));
       })
       .catch((err) => {
         console.error('Lỗi khi kiểm tra hồ sơ cá nhân:', err);
@@ -438,16 +457,16 @@ export const RegisterLeasePage: React.FC = () => {
             <FormSection icon={<UserRound className="w-5 h-5" />} title="Thông tin liên hệ">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Họ và tên" error={errors.fullName}>
-                  <input value={form.fullName} onChange={e => setField('fullName', e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" />
+                  <input value={form.fullName} onChange={e => setField('fullName', e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" disabled />
                 </Field>
                 <Field label="Số điện thoại" error={errors.phone}>
-                  <input value={form.phone} onChange={e => setField('phone', e.target.value)} className={inputClass} placeholder="0901234567" />
+                  <input value={form.phone} onChange={e => setField('phone', e.target.value)} className={inputClass} placeholder="0901234567" disabled />
                 </Field>
                 <Field label="Email" error={errors.email}>
-                  <input value={form.email} onChange={e => setField('email', e.target.value)} className={inputClass} placeholder="email@example.com" />
+                  <input value={form.email} onChange={e => setField('email', e.target.value)} className={inputClass} placeholder="email@example.com" disabled />
                 </Field>
                 <Field label="Giới tính">
-                  <CustomSelect value={form.gender} onChange={val => setField('gender', val)} options={genderOptions} triggerClassName={selectTriggerClass} />
+                  <CustomSelect value={form.gender} onChange={val => setField('gender', val)} options={genderOptions} triggerClassName={selectTriggerClass} disabled pill hideArrow />
                 </Field>
               </div>
             </FormSection>
