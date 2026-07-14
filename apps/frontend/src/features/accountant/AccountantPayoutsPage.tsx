@@ -5,6 +5,7 @@ import {
 import { getMockDB, saveMockDB, PayoutRecord, RefundRecord } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
@@ -16,6 +17,7 @@ const normalizePayoutStatus = (status?: string): PayoutRecord['status'] => {
 
 export default function AccountantPayoutsPage() {
   const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [selectedPayoutId, setSelectedPayoutId] = useState('');
@@ -153,7 +155,12 @@ export default function AccountantPayoutsPage() {
 
 
 
+  // Khoa chong double-click: tranh chi tien 2 lan cho cung mot phieu.
   const handleConfirmPayout = async () => {
+    await guard(() => doConfirmPayout());
+  };
+
+  const doConfirmPayout = async () => {
     if (!activePayout) return;
 
     const email = user?.email || 'accountant@homestay.vn';
@@ -638,9 +645,9 @@ export default function AccountantPayoutsPage() {
             <div className="p-6 border-t border-[#d1c4b9] bg-[#fbf9f8] shrink-0 space-y-3">
               <button
                 onClick={handleConfirmPayout}
-                disabled={activePayout.status === 'completed'}
+                disabled={activePayout.status === 'completed' || isSubmitting}
                 className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm transition ${
-                  activePayout.status === 'completed'
+                  activePayout.status === 'completed' || isSubmitting
                     ? 'bg-[#e4e2e1] text-[#7f756c] cursor-not-allowed'
                     : 'bg-[#735d43] text-white hover:opacity-90'
                 }`}

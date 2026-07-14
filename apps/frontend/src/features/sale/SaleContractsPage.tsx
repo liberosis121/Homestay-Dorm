@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, XCircle } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import DepositPendingList from './components/DepositPendingList';
 import ContractFormEditor from './components/ContractFormEditor';
 import ContractSuccessModal from './components/ContractSuccessModal';
@@ -141,6 +143,10 @@ type PageState = 'list' | 'form' | 'success' | 'contracts';
 type ContractListTab = 'contracts' | 'drafts';
 
 export default function SaleContractsPage() {
+  const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
+  // Chi nhánh làm việc của chính nhân viên Sale đang đăng nhập (backend trả kèm trong /auth/me).
+  const staffBranch = user?.branch_name || 'Chưa phân công chi nhánh';
   const [pageState, setPageState] = useState<PageState>('list');
   const [deposits, setDeposits] = useState<DepositRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -185,38 +191,41 @@ export default function SaleContractsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Khóa chống double-click: chỉ cho 1 request lập hợp đồng chạy tại một thời điểm.
   const handleSubmitContract = async (data: ContractFormData) => {
     if (!selectedDeposit) return;
-    setSubmitError(null);
-    try {
-      const created = await createSaleContractApi({
-        deposit_id: selectedDeposit.id,
-        start_date: data.startDate,
-        end_date: data.endDate,
-        rent_amount: data.rentPrice,
-        contract_type: data.contractType,
-        payment_cycle: data.paymentCycle,
-      });
-      const contract: CreatedContract = {
-        contractCode: created?.contract_code || '—',
-        invoiceCode: '',
-        handoverCode: '',
-        customerName: selectedDeposit.customerName,
-        roomCode: selectedDeposit.roomCode,
-        branch: selectedDeposit.branch,
-        startDate: data.startDate ? new Date(data.startDate).toLocaleDateString('vi-VN') : '—',
-        checkinPaid: false,   // HĐ vừa lập → chưa thanh toán nhận phòng
-      };
-      setCreatedContract(contract);
-      setCompletedContracts((prev) => [contract, ...prev]);
-      setCompletedDepositIds((prev) => [...prev, selectedDeposit.id]);
-      setDraftContracts((prev) => prev.filter((d) => d.depositCode !== selectedDeposit.depositCode));
-      setPageState('success');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
-      setSubmitError(err?.response?.data?.message || err?.message || 'Lỗi khi lập hợp đồng. Vui lòng thử lại.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    await guard(async () => {
+      setSubmitError(null);
+      try {
+        const created = await createSaleContractApi({
+          deposit_id: selectedDeposit.id,
+          start_date: data.startDate,
+          end_date: data.endDate,
+          rent_amount: data.rentPrice,
+          contract_type: data.contractType,
+          payment_cycle: data.paymentCycle,
+        });
+        const contract: CreatedContract = {
+          contractCode: created?.contract_code || '—',
+          invoiceCode: '',
+          handoverCode: '',
+          customerName: selectedDeposit.customerName,
+          roomCode: selectedDeposit.roomCode,
+          branch: selectedDeposit.branch,
+          startDate: data.startDate ? new Date(data.startDate).toLocaleDateString('vi-VN') : '—',
+          checkinPaid: false,   // HĐ vừa lập → chưa thanh toán nhận phòng
+        };
+        setCreatedContract(contract);
+        setCompletedContracts((prev) => [contract, ...prev]);
+        setCompletedDepositIds((prev) => [...prev, selectedDeposit.id]);
+        setDraftContracts((prev) => prev.filter((d) => d.depositCode !== selectedDeposit.depositCode));
+        setPageState('success');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err: any) {
+        setSubmitError(err?.response?.data?.message || err?.message || 'Lỗi khi lập hợp đồng. Vui lòng thử lại.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
   };
 
   const handleSaveDraft = (data: ContractFormData) => {
@@ -300,7 +309,7 @@ export default function SaleContractsPage() {
           <DepositPendingList
             deposits={pendingDeposits}
             onSelect={handleSelectDeposit}
-            staffBranch="Tất cả chi nhánh"
+            staffBranch={staffBranch}
             onViewContracts={() => handleViewContracts('contracts')}
           />
         )
@@ -316,6 +325,7 @@ export default function SaleContractsPage() {
           }}
           onSubmit={handleSubmitContract}
           onSaveDraft={handleSaveDraft}
+          isSubmitting={isSubmitting}
         />
       )}
 
@@ -325,7 +335,7 @@ export default function SaleContractsPage() {
           <DepositPendingList
             deposits={pendingDeposits}
             onSelect={handleSelectDeposit}
-            staffBranch="Tất cả chi nhánh"
+            staffBranch={staffBranch}
             onViewContracts={() => handleViewContracts('contracts')}
           />
           <ContractSuccessModal

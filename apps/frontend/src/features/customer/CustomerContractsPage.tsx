@@ -16,7 +16,7 @@ export interface ContractData {
   startDate: string;
   endDate: string;
   duration: string;
-  status: 'active' | 'expired' | 'terminated';
+  status: 'pending_payment' | 'active' | 'expired' | 'terminated';
   statusLabel: string;
   // Room
   branch: string;
@@ -133,8 +133,16 @@ export default function CustomerContractsPage() {
 
 
 
-  const getStatusBadge = (status: 'active' | 'expired' | 'terminated') => {
+  const getStatusBadge = (status: 'pending_payment' | 'active' | 'expired' | 'terminated') => {
     switch (status) {
+      // HĐ đã lập nhưng chưa thanh toán hóa đơn nhận phòng → CHƯA có hiệu lực.
+      case 'pending_payment':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fef3c7] text-[#92400e] text-xs font-bold border border-[#fcd34d]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#d97706]"></span>
+            Chờ thanh toán
+          </span>
+        );
       case 'active':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
@@ -399,7 +407,37 @@ export default function CustomerContractsPage() {
               Tiến độ hợp đồng
             </h3>
 
-            {contract.status === 'active' ? (
+            {contract.status === 'pending_payment' ? (
+              /* HĐ chưa có hiệu lực: chưa bắt đầu tính tiến độ cư trú. */
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-extrabold text-[#92400e]">
+                      0/{contract.totalMonths}
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant font-medium">chưa bắt đầu</span>
+                  </div>
+                  <span className="text-xs font-bold text-[#92400e] bg-[#fef3c7] px-2 py-0.5 rounded-md">
+                    Chờ thanh toán
+                  </span>
+                </div>
+
+                <div className="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
+                  <div className="bg-[#fcd34d] h-full rounded-full" style={{ width: '0%' }}></div>
+                </div>
+
+                <div className="pt-3 border-t border-[#eee7e1] space-y-2 text-xs">
+                  <p className="text-on-surface-variant leading-relaxed">
+                    Hợp đồng sẽ chính thức <strong className="text-on-surface">có hiệu lực</strong> ngay
+                    sau khi bạn thanh toán thành công hóa đơn nhận phòng.
+                  </p>
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Ngày bắt đầu dự kiến:</span>
+                    <span className="font-semibold text-on-surface">{contract.startDate}</span>
+                  </div>
+                </div>
+              </div>
+            ) : contract.status === 'active' ? (
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <div className="flex flex-col">

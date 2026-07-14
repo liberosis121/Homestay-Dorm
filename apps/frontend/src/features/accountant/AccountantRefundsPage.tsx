@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, X, Info } from 'lucide-react';
 import { RefundRecord } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import CustomSelect from '../../components/ui/CustomSelect';
 
@@ -32,6 +33,7 @@ const formatNumberInput = (val: string | number): string => {
 
 export default function AccountantRefundsPage() {
   const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [refunds, setRefunds] = useState<LiveRefundRecord[]>([]);
   const [selectedRefundId, setSelectedRefundId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -227,7 +229,12 @@ export default function AccountantRefundsPage() {
     setIsCalculated(true);
   };
 
+  // Khoa chong double-click: tranh lap trung ban doi soat hoan coc.
   const handleApproveRefund = async () => {
+    await guard(() => doApproveRefund());
+  };
+
+  const doApproveRefund = async () => {
     if (!activeRefund) return;
     if (activeRefund.status === 'confirmed' || activeRefund.status === 'paid') {
       alert('Hồ sơ này đã được lập đối soát, vui lòng chuyển sang phân hệ chi tiền để xử lý tiếp.');
@@ -650,9 +657,9 @@ export default function AccountantRefundsPage() {
                 <button
                   type="button"
                   onClick={handleApproveRefund}
-                  disabled={activeRefund.status === 'confirmed' || activeRefund.status === 'paid'}
+                  disabled={activeRefund.status === 'confirmed' || activeRefund.status === 'paid' || isSubmitting}
                   className={`flex-1 py-2 rounded text-xs font-bold transition cursor-pointer ${
-                    activeRefund.status === 'confirmed' || activeRefund.status === 'paid'
+                    activeRefund.status === 'confirmed' || activeRefund.status === 'paid' || isSubmitting
                       ? 'bg-[#e4e2e1] text-[#7f756c] cursor-not-allowed'
                       : 'bg-[#5a462d] text-white hover:opacity-90 shadow-sm'
                   }`}

@@ -39,7 +39,7 @@ export const accountantService = {
     roomId: string;
     amount: number;
     deadlineType: string;
-    paymentMethod: 'transfer' | 'cash';
+    paymentMethod?: 'transfer' | 'cash' | null;
     note?: string;
   }) => {
     const res = await fetch(`${API}/api/accountant/deposit-invoices`, {
@@ -98,8 +98,13 @@ export const accountantService = {
     return result.data;
   },
 
-  fetchActiveContracts: async (_email: string) => {
-    const res = await fetch(`${API}/api/accountant/active-contracts`, {
+  /**
+   * @param purpose 'checkin' → lấy thêm cả HĐ đang chờ thanh toán (pending_payment), vì đó
+   *   chính là các HĐ cần lập hóa đơn nhận phòng. Bỏ trống → chỉ HĐ đã có hiệu lực (hóa đơn định kỳ).
+   */
+  fetchActiveContracts: async (_email: string, purpose?: 'checkin') => {
+    const query = purpose ? `?purpose=${purpose}` : '';
+    const res = await fetch(`${API}/api/accountant/active-contracts${query}`, {
       headers: getHeaders()
     });
     if (!res.ok) throw new Error('Không thể tải danh sách hợp đồng hoạt động');

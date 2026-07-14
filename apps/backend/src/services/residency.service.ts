@@ -4,6 +4,42 @@ import { getCustomerByCccd } from '../repositories/profile.repo';
 import { calculateRemovedGroupDepositRefund } from '../utils/group-refund';
 import { supabase } from '../utils/supabase';
 
+// ============================================================
+// CHUAN HOA QUOC TICH
+// ============================================================
+/**
+ * Cot customers.nationality luu chuoi tu do do nguoi dung / seed nhap:
+ * 'Việt Nam', 'Viet Nam', 'vietnamese', 'VN'... hoac NULL (tai khoan Google OAuth,
+ * khach chua khai bao). Man duyet cu tru chi can phan biet 2 nhom: nguoi Viet vs
+ * nguoi nuoc ngoai (can dang ky tam tru trong 24h).
+ *
+ * Quy uoc: KHONG khai bao (null/rong) => mac dinh coi la nguoi Viet Nam.
+ *
+ * LUU Y: truoc day code so sanh `nationality === 'vietnamese'`, nhung DB thuc te luu
+ * 'Việt Nam' => moi khach deu roi vao nhanh 'foreign' (luon hien "Nuoc ngoai").
+ */
+type NationalityGroup = 'vietnamese' | 'foreign';
+
+/** Bo dau tieng Viet + ha chu thuong + go khoang trang thua. */
+const normalizeNationality = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // bo cac dau thanh sau khi tach to hop
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** Cac cach viet duoc coi la quoc tich Viet Nam. */
+const VIETNAMESE_ALIASES = new Set(['viet nam', 'vietnam', 'vietnamese', 'vn', 'kinh']);
+
+/** Quy doi gia tri tho trong customers.nationality ve 1 trong 2 nhom. */
+function toNationalityGroup(value?: string | null): NationalityGroup {
+  if (!value || !value.trim()) return 'vietnamese'; // chua khai bao -> mac dinh Viet Nam
+  return VIETNAMESE_ALIASES.has(normalizeNationality(value)) ? 'vietnamese' : 'foreign';
+}
+
 /**
  * Lay tat ca registration_id ma mot CCCD tham gia — voi tu cach NGUOI DAI DIEN (cccd nam
  * tren rental_registrations) HOAC THANH VIEN nhom (qua rental_registration_members).
@@ -113,7 +149,7 @@ export const residencyService = {
         id_type: 'cccd',
         id_number: res.cccd,
         dob: customer.dob || '2000-01-01',
-        nationality: customer.nationality === 'vietnamese' ? 'vietnamese' : 'foreign',
+        nationality: toNationalityGroup(customer.nationality),
         front_image_url: 'https://storage.supabase.com/evidence/id-front.jpg',
         back_image_url: 'https://storage.supabase.com/evidence/id-back.jpg',
         checklist: {

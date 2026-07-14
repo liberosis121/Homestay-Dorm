@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, CreditCard, Save, Eye, QrCode, CheckCircle2
+  Search, Save, Eye, CheckCircle2
 } from 'lucide-react';
 import { DepositInvoice, CustomerDepositRequest } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
 export default function AccountantDepositPage() {
   const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
   const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
   
@@ -18,8 +20,7 @@ export default function AccountantDepositPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [amount, setAmount] = useState('');
-  const [deadlineType, setDeadlineType] = useState('24h');
-  const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'cash'>('transfer');
+  const deadlineType = '24h';
   const [note, setNote] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,13 +113,16 @@ export default function AccountantDepositPage() {
     setSelectedCustomerId('');
     setSelectedRoomId('');
     setAmount('');
-    setDeadlineType('24h');
-    setPaymentMethod('transfer');
     setNote('');
   };
 
+  // Khóa chống double-click: chỉ cho 1 request lập hóa đơn chạy tại một thời điểm.
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doCreateInvoice());
+  };
+
+  const doCreateInvoice = async () => {
     if (!selectedRequestId || !selectedCustomerId || !selectedRoomId) {
       setToastMessage('Vui lòng chọn phiếu đặt cọc trước!');
       return;
@@ -137,7 +141,6 @@ export default function AccountantDepositPage() {
         roomId: selectedRoomId,
         amount: parsedAmount,
         deadlineType,
-        paymentMethod,
         note
       });
 
@@ -199,6 +202,7 @@ export default function AccountantDepositPage() {
 
 
 
+
   // DB dùng status 'unpaid' cho hóa đơn cọc chưa thu (mock DB cũ dùng 'pending') → gộp chung.
   const isUnpaidStatus = (status: string) => status === 'unpaid' || status === 'pending';
 
@@ -243,16 +247,7 @@ export default function AccountantDepositPage() {
 
   const selectedRequest = depositRequests.find(r => r.id === selectedRequestId);
 
-  const deadlineOptions = [
-    { value: '24h', label: '24 giờ (Mặc định)' },
-    { value: '48h', label: '48 giờ' },
-    { value: '72h', label: '72 giờ' }
-  ];
 
-  const paymentOptions = [
-    { value: 'transfer', label: 'Chuyển khoản (Mã QR)' },
-    { value: 'cash', label: 'Tiền mặt' }
-  ];
 
   return (
     <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
@@ -419,30 +414,14 @@ export default function AccountantDepositPage() {
                   </div>
                 </div>
 
-                {/* Hạn thanh toán */}
-                <div>
-                  <label className="block font-label-caps text-[11px] text-[#5C4632] mb-1 font-bold uppercase tracking-wider">Hạn thanh toán</label>
-                  <CustomSelect
-                    value={deadlineType}
-                    onChange={setDeadlineType}
-                    options={deadlineOptions}
-                    theme="accountant"
-                    disabled={!selectedRequestId}
-                    triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
-                  />
-                </div>
-
-                {/* Phương thức thu */}
-                <div>
-                  <label className="block font-label-caps text-[11px] text-[#5C4632] mb-1 font-bold uppercase tracking-wider">Phương thức thu</label>
-                  <CustomSelect
-                    value={paymentMethod}
-                    onChange={(val) => setPaymentMethod(val as 'transfer' | 'cash')}
-                    options={paymentOptions}
-                    theme="accountant"
-                    disabled={!selectedRequestId}
-                    triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
-                  />
+                {/* Hạn thanh toán - Readonly info block */}
+                <div className="col-span-1 md:col-span-2">
+                  <div className="bg-[#5C4632]/5 border border-[#DCCFC0]/60 rounded-xl p-3 text-sm text-[#5C4632] transition-colors">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#8A7563] mb-0.5">Hạn thanh toán</div>
+                    <div className="font-semibold">
+                      {selectedRequest ? '24 giờ (Mặc định - Theo quy định)' : <span className="text-[#8A7563]/60 italic font-normal">Chưa chọn phiếu đặt cọc</span>}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Ghi chú */}
@@ -476,11 +455,11 @@ export default function AccountantDepositPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!selectedRequestId}
+                  disabled={!selectedRequestId || isSubmitting}
                   className="px-5 py-2 bg-[#5C4632] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Tạo hóa đơn</span>
+                  <span>{isSubmitting ? 'Đang xử lý...' : 'Tạo hóa đơn'}</span>
                 </button>
               </div>
             </form>
@@ -496,7 +475,7 @@ export default function AccountantDepositPage() {
                 <p className="text-xs text-[#8A7563] font-bold uppercase tracking-widest mt-1">HÓA ĐƠN ĐẶT CỌC GIỮ CHỖ</p>
               </div>
 
-              {/* Helper alert in the preview panel */}
+              {/* Helper alert in the preview */}
               {!selectedRequestId && (
                 <div className="mb-6 p-4 bg-[#FAF2E8]/40 border border-dashed border-[#B9792B]/40 rounded-xl text-center">
                   <p className="text-sm font-semibold text-[#B9792B]">Chưa chọn phiếu đặt cọc</p>
@@ -519,20 +498,18 @@ export default function AccountantDepositPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Hạn thanh toán:</span>
-                  <span className=" font-semibold text-right">
+                  <span className="font-semibold text-right">
                     {selectedRequestId ? (() => {
                       const d = new Date();
-                      if (deadlineType === '24h') d.setDate(d.getDate() + 1);
-                      else if (deadlineType === '48h') d.setDate(d.getDate() + 2);
-                      else d.setDate(d.getDate() + 3);
+                      d.setDate(d.getDate() + 1);
                       return d.toLocaleDateString('vi-VN') + ' ' + d.toTimeString().substring(0, 5);
                     })() : <span className="text-[#8A7563]/60 italic font-normal">---</span>}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Phương thức:</span>
-                  <span className="font-bold text-right">
-                    {selectedRequestId ? (paymentMethod === 'transfer' ? 'Chuyển khoản (QR)' : 'Tiền mặt') : <span className="text-[#8A7563]/60 italic font-normal">---</span>}
+                  <span className="font-semibold text-[#8A7563] text-right">
+                    {selectedRequestId ? 'Khách chọn khi thanh toán' : <span className="text-[#8A7563]/60 italic font-normal">---</span>}
                   </span>
                 </div>
               </div>
@@ -551,34 +528,12 @@ export default function AccountantDepositPage() {
             </div>
 
             {/* QR / Payment details */}
-            {selectedRequestId ? (
-              paymentMethod === 'transfer' ? (
-                <div className="flex flex-col items-center justify-center border border-[#DCCFC0] rounded-xl p-4 bg-white">
-                  <div className="w-24 h-24 bg-[#E7DED2]/60 flex items-center justify-center mb-2 border border-[#DCCFC0] rounded-lg">
-                    <QrCode className="w-16 h-16 text-[#8A7563]" />
-                  </div>
-                  <p className="font-label-caps text-[10px] text-[#8A7563] text-center font-bold uppercase tracking-wider">
-                    MÃ QR DEMO<br />
-                    <span className="text-[#5C4632]">(VietQR Placeholder)</span>
-                  </p>
-                </div>
-              ) : (
-                <div className="border border-[#DCCFC0] rounded-xl p-4 bg-[#f6f3f2] flex items-center gap-3">
-                  <div className="p-2 bg-[#5C4632] rounded text-white">
-                    <CreditCard className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[#5C4632]">THU TIỀN MẶT TRỰC TIẾP</p>
-                    <p className="text-[11px] text-[#8A7563]">Kế toán thu trực tiếp và bàn giao phiếu thu giấy.</p>
-                  </div>
-                </div>
-              )
-            ) : (
-              <div className="border border-dashed border-[#DCCFC0] rounded-xl p-6 bg-[#f6f3f2]/40 flex flex-col items-center justify-center text-center">
-                <span className="material-symbols-outlined text-[#8A7563]/60 text-4xl mb-2">qr_code_scanner</span>
-                <p className="text-xs text-[#8A7563]">Chờ thông tin thanh toán...</p>
-              </div>
-            )}
+            <div className="border border-dashed border-[#DCCFC0] rounded-xl p-4 bg-[#f6f3f2]/40 flex flex-col items-center justify-center text-center">
+              <span className="material-symbols-outlined text-[#8A7563]/60 text-3xl mb-2">payments</span>
+              <p className="text-[11px] text-[#8A7563] max-w-[220px] leading-relaxed">
+                Phương thức thanh toán và mã QR chuyển khoản sẽ do khách hàng tự chọn khi thực hiện trên ứng dụng.
+              </p>
+            </div>
           </div>
         </div>
       </div>

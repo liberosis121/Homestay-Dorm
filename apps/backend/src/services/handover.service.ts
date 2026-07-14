@@ -1,5 +1,4 @@
 import { handoverRepo, AssetHandoverDto, HandoverDetailDto } from '../repositories/handover.repo';
-import { assetRepo } from '../repositories/asset.repo';
 import { supabase } from '../utils/supabase';
 
 export const handoverService = {
@@ -28,7 +27,7 @@ export const handoverService = {
   ) => {
     // 1. Create the parent handover record
     const createdHandover = await handoverRepo.create(handover);
-    
+
     // 2. Map and insert details list
     if (detailsList && detailsList.length > 0) {
       const detailsToInsert: HandoverDetailDto[] = detailsList.map(detail => ({
@@ -37,59 +36,80 @@ export const handoverService = {
       }));
       await handoverRepo.createDetails(detailsToInsert);
 
-      // 3. Resolve destination room location from contract
-      const [
-        { data: contracts },
-        { data: deposits },
-        { data: rooms }
-      ] = await Promise.all([
-        supabase.from('contracts').select('*').eq('id', handover.contract_id),
-        supabase.from('deposit_requests').select('*'),
-        supabase.from('rooms').select('*')
-      ]);
+      // 3. Resolve phong dich tu hop dong.
+      // HIEU NANG: chi lay DUNG ban ghi can thiet theo khoa (truoc day quet TOAN BO bang
+      // deposit_requests va rooms roi loc trong bo nho).
+      const { data: contract } = await supabase
+        .from('contracts')
+        .select('id, deposit_id')
+        .eq('id', handover.contract_id)
+        .maybeSingle();
 
-      const contract = contracts?.[0];
-      const dep = deposits?.find(d => d.id === contract?.deposit_id);
-      const room = rooms?.find(r => r.id === dep?.room_id);
-      const destinationLocation = room?.name || 'Phòng';
+      const { data: dep } = contract?.deposit_id
+        ? await supabase
+            .from('deposit_requests')
+            .select('id, room_id, bed_id')
+            .eq('id', contract.deposit_id)
+            .maybeSingle()
+        : { data: null };
 
-      // 4. Update each asset location and status to 'in_use'
-      for (const sa of detailsList) {
-        try {
-          const asset = await assetRepo.findBySerialNumber(sa.serial_number);
-          if (asset) {
-            await assetRepo.update(sa.serial_number, {
-              branch_id: room?.branch_id,
-              room_id: room?.id,
-              bed_id: dep?.bed_id || undefined,
-              status: 'in_use'
-            });
-          }
-        } catch (err) {
-          console.error(`Failed to update asset ${sa.serial_number} during handover:`, err);
-        }
-      }
+      // Lay kem branch_id: tai san duoc gan theo ca chi nhanh / phong / giuong.
+      const { data: room } = dep?.room_id
+        ? await supabase
+            .from('rooms')
+            .select('id, name, branch_id')
+            .eq('id', dep.room_id)
+            .maybeSingle()
+        : { data: null };
 
-      // 5. Update room & bed occupant counts and statuses
+      // 4. Cap nhat tai san: MOT lenh update theo LO cho tat ca serial_number.
+      //
+      // HIEU NANG: truoc day vong lap tuan tu, moi tai san ton 2 round-trip (SELECT roi UPDATE)
+      // => chon 20 tai san = 40 luot di-ve noi duoi nhau => rat cham.
+      //
+      // VI TRI TAI SAN: gan theo branch_id / room_id / bed_id (cot `assets.location` cu
+      // KHONG TON TAI trong DB nen moi lenh update truoc day deu that bai am tham).
       if (room) {
-        const isBed = dep?.bed_id ? true : false;
-        const nextOccupants = isBed 
-          ? Math.min(room.capacity || 4, (room.current_occupants || 0) + 1) 
-          : (room.capacity || 4);
-        
-        await supabase
+        const serialNumbers = detailsList.map(d => d.serial_number).filter(Boolean);
+        if (serialNumbers.length > 0) {
+          const assetUpdates: Record<string, any> = {
+            branch_id: room.branch_id,
+            room_id: room.id,
+            status: 'in_use',
+          };
+          // Coc theo GIUONG thi gan them bed_id; coc ca PHONG thi de nguyen bed_id cu.
+          if (dep?.bed_id) assetUpdates.bed_id = dep.bed_id;
+
+          const { error: assetErr } = await supabase
+            .from('assets')
+            .update(assetUpdates)
+            .in('serial_number', serialNumbers);
+
+          // KHONG nuot loi: sai cot/sai du lieu phai bao ngay thay vi hong am tham.
+          if (assetErr) {
+            throw new Error(`[HandoverService] Loi khi cap nhat tai san khi ban giao: ${assetErr.message}`);
+          }
+        }
+
+        // 5. Cap nhat trang thai phong & giuong.
+        // SUA LOI COT: bo `current_occupants` — bang rooms khong co cot nay (chi co max_occupants),
+        // nen lenh update cu that bai va phong khong bao gio chuyen sang 'occupied'.
+        const { error: roomErr } = await supabase
           .from('rooms')
-          .update({
-            status: 'occupied',
-            current_occupants: nextOccupants
-          })
+          .update({ status: 'occupied' })
           .eq('id', room.id);
+        if (roomErr) {
+          throw new Error(`[HandoverService] Loi khi cap nhat trang thai phong: ${roomErr.message}`);
+        }
 
         if (dep?.bed_id) {
-          await supabase
+          const { error: bedErr } = await supabase
             .from('beds')
             .update({ status: 'occupied' })
             .eq('id', dep.bed_id);
+          if (bedErr) {
+            throw new Error(`[HandoverService] Loi khi cap nhat trang thai giuong: ${bedErr.message}`);
+          }
         }
       }
     }

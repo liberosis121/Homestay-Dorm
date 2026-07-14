@@ -6,8 +6,10 @@ import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room } from '../..
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
+import { SERVICE_FEE, CARD_FEE, CLEANING_FEE, calcCheckinTotal } from '../../lib/billing';
 
 // Chuẩn hóa danh sách hóa đơn check-in từ response API.
 const mapCheckinInvoices = (checkinInvoices: any[]): CheckinInvoice[] =>
@@ -53,6 +55,7 @@ const mapCheckinContracts = (contracts: any[], checkedInContractIds: Set<string>
 
 export default function AccountantCheckinPage() {
   const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<CheckinInvoice[]>([]);
   const [selectedContractId, setSelectedContractId] = useState('');
   const [cardFeeChecked, setCardFeeChecked] = useState(true);
@@ -88,7 +91,7 @@ export default function AccountantCheckinPage() {
       try {
         const [checkinInvoices, activeContracts] = await Promise.all([
           accountantService.fetchCheckinInvoices(email),
-          accountantService.fetchActiveContracts(email)
+          accountantService.fetchActiveContracts(email, 'checkin')
         ]);
 
         const mappedInvoices = mapCheckinInvoices(checkinInvoices);
@@ -120,23 +123,33 @@ export default function AccountantCheckinPage() {
   const selectedDeposit = pendingDeposits.find(d => d.id === selectedContractId);
 
   // Auto-calculated fees — tiền thuê tháng đầu lấy từ hợp đồng, tiền cọc từ phiếu cọc gốc.
+  // Tiền cọc CHỈ để hiển thị đối chiếu, KHÔNG cộng vào tổng phải thu (khách đã trả ở bước đặt cọc).
   const rentAmount = selectedDeposit ? Number(selectedDeposit.rent_amount) || 0 : 0;
   const depositAmount = selectedDeposit ? Number(selectedDeposit.deposit_amount) || 0 : 0;
-  const cardFee = cardFeeChecked ? 100000 : 0;
-  const cleaningFee = cleaningFeeChecked ? 200000 : 0;
-  const totalCost = rentAmount + depositAmount + cardFee + cleaningFee;
+  const cardFee = cardFeeChecked ? CARD_FEE : 0;
+  const cleaningFee = cleaningFeeChecked ? CLEANING_FEE : 0;
+  const totalCost = calcCheckinTotal({
+    monthlyRent: rentAmount,
+    cardFee: cardFeeChecked,
+    cleaningFee: cleaningFeeChecked,
+  });
 
+  // Khóa chống double-click: tránh lập trùng hóa đơn nhận phòng khi click nhiều lần.
   const handleCreateCheckinInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedContractId || !selectedDeposit) {
       setToastMessage('Vui lòng chọn một hợp đồng đã duyệt!');
       return;
     }
+    await guard(() => createCheckinInvoice());
+  };
 
+  const createCheckinInvoice = async () => {
+    if (!selectedContractId || !selectedDeposit) return;
     const email = user?.email || 'accountant@homestay.vn';
-    const services = [];
-    if (cardFeeChecked) services.push({ name: 'Phí cấp thẻ từ (2 thẻ)', amount: 100000 });
-    if (cleaningFeeChecked) services.push({ name: 'Phí vệ sinh ban đầu', amount: 200000 });
+    const services = [{ name: 'Phí dịch vụ cố định', amount: SERVICE_FEE }];
+    if (cardFeeChecked) services.push({ name: 'Phí cấp thẻ từ (2 thẻ)', amount: CARD_FEE });
+    if (cleaningFeeChecked) services.push({ name: 'Phí vệ sinh ban đầu', amount: CLEANING_FEE });
 
     try {
       await accountantService.createCheckinInvoice(email, {
@@ -153,7 +166,7 @@ export default function AccountantCheckinPage() {
 
       // Refresh list
       const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
-      const activeContracts = await accountantService.fetchActiveContracts(email);
+      const activeContracts = await accountantService.fetchActiveContracts(email, 'checkin');
 
       const mappedInvoices = mapCheckinInvoices(checkinInvoices);
       const checkedInContractIds = new Set(mappedInvoices.map((inv) => inv.contract_id).filter((id): id is string => !!id));
@@ -196,6 +209,10 @@ export default function AccountantCheckinPage() {
   };
 
   const handleConfirmPayment = async (id: string) => {
+    await guard(() => confirmPayment(id));
+  };
+
+  const confirmPayment = async (id: string) => {
     const email = user?.email || 'accountant@homestay.vn';
     try {
       await accountantService.confirmInvoicePayment(email, id, 'transfer');
@@ -435,10 +452,10 @@ export default function AccountantCheckinPage() {
                 <span className=" font-medium text-sm text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} ₫</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
-                <span className="text-sm text-[#1b1c1c]">Tiền Cọc Định Kỳ (Giữ hộ)</span>
-                <span className=" font-medium text-sm text-[#1b1c1c]">{depositAmount.toLocaleString('vi-VN')} ₫</span>
+                <span className="text-sm text-[#1b1c1c]">Phí Dịch Vụ Cố Định</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{SERVICE_FEE.toLocaleString('vi-VN')} ₫</span>
               </div>
-              
+
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
                 <label className="flex items-center gap-2.5 text-sm text-[#1b1c1c] cursor-pointer group">
                   <input
@@ -487,7 +504,17 @@ export default function AccountantCheckinPage() {
                 <span className=" font-medium text-sm text-[#1b1c1c]">{cleaningFee.toLocaleString('vi-VN')} ₫</span>
               </div>
 
-              <div className="flex justify-between items-center pt-3 mt-3">
+              {/* Tiền cọc: KHÔNG cộng vào tổng phải thu — khách đã thanh toán ở bước đặt cọc. */}
+              <div className="flex justify-between items-center gap-3 mt-3 rounded-lg bg-[#E8EDE5]/60 border border-[#5F7D4E]/25 px-3 py-2">
+                <span className="text-xs text-[#4E6840] font-semibold">
+                  Tiền cọc phòng (đã thu ở phiếu cọc — không tính vào hóa đơn này)
+                </span>
+                <span className="font-bold text-sm text-[#5F7D4E] whitespace-nowrap">
+                  {depositAmount.toLocaleString('vi-VN')} ₫
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 mt-1 border-t border-[#DCCFC0]">
                 <span className="text-lg font-bold text-[#5C4632]">Tổng Cộng:</span>
                 <span className="text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} ₫</span>
               </div>
@@ -508,11 +535,11 @@ export default function AccountantCheckinPage() {
               <button
                 type="button"
                 onClick={handleCreateCheckinInvoice}
-                disabled={!selectedContractId}
+                disabled={!selectedContractId || isSubmitting}
                 className="px-5 py-2 bg-[#5C4632] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 <Save className="w-4 h-4" />
-                <span>Tạo hóa đơn</span>
+                <span>{isSubmitting ? 'Đang xử lý...' : 'Tạo hóa đơn'}</span>
               </button>
             </div>
           </div>
@@ -555,8 +582,8 @@ export default function AccountantCheckinPage() {
                       <td className="py-1.5 text-right text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')}</td>
                     </tr>
                     <tr>
-                      <td className="py-1.5 text-[#1b1c1c]">Tiền cọc phòng</td>
-                      <td className="py-1.5 text-right text-[#1b1c1c]">{depositAmount.toLocaleString('vi-VN')}</td>
+                      <td className="py-1.5 text-[#1b1c1c]">Phí dịch vụ cố định</td>
+                      <td className="py-1.5 text-right text-[#1b1c1c]">{SERVICE_FEE.toLocaleString('vi-VN')}</td>
                     </tr>
                     {cardFeeChecked && (
                       <tr>
@@ -575,9 +602,17 @@ export default function AccountantCheckinPage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center mt-6 pt-3 border-t-2 border-[#DCCFC0]">
-              <span className="font-bold text-sm text-[#1b1c1c]">Tổng thanh toán:</span>
-              <span className=" text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} đ</span>
+            <div className="mt-6">
+              {selectedDeposit && depositAmount > 0 && (
+                <div className="flex justify-between items-center text-[11px] text-[#5F7D4E] pb-2">
+                  <span>Tiền cọc đã thu trước (không tính vào hóa đơn)</span>
+                  <span className="font-semibold">{depositAmount.toLocaleString('vi-VN')} ₫</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-3 border-t-2 border-[#DCCFC0]">
+                <span className="font-bold text-sm text-[#1b1c1c]">Tổng thanh toán:</span>
+                <span className=" text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} đ</span>
+              </div>
             </div>
           </div>
         </div>
@@ -656,7 +691,8 @@ export default function AccountantCheckinPage() {
                       {inv.status === 'pending' && (
                         <button
                           onClick={() => handleConfirmPayment(inv.id)}
-                          className="px-2.5 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:bg-[#4E6840] transition-colors cursor-pointer active:scale-[0.95] focus:outline-none focus:ring-2 focus:ring-[#5F7D4E]/40"
+                          disabled={isSubmitting}
+                          className="px-2.5 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:bg-[#4E6840] transition-colors cursor-pointer active:scale-[0.95] focus:outline-none focus:ring-2 focus:ring-[#5F7D4E]/40 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Xác nhận thu
                         </button>
