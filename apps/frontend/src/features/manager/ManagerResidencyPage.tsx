@@ -1,5 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useEffect, useState, useMemo } from 'react';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { ResidencyCheck } from '../../lib/supabaseClient';
 
 const T = {
@@ -39,6 +40,7 @@ const COMPLIANCE_RULES = [
 ];
 
 export default function ManagerResidencyPage() {
+  const { isSubmitting, guard } = useSubmitLock();
   const [records, setRecords] = useState<ResidencyCheck[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -209,7 +211,12 @@ export default function ManagerResidencyPage() {
     setMemberResult(null);
   };
 
+  // Khoa chong double-click: tranh gui trung ket qua tham dinh cu tru.
   const saveMemberResult = async (newStatus: 'approved' | 'rejected') => {
+    await guard(() => doSaveMemberResult(newStatus));
+  };
+
+  const doSaveMemberResult = async (newStatus: 'approved' | 'rejected') => {
     if (!selectedMember) return;
     try {
       const headers = await getAuthHeaders();
@@ -260,6 +267,10 @@ export default function ManagerResidencyPage() {
   };
 
   const handleCancelDeposit = async () => {
+    await guard(() => doCancelDeposit());
+  };
+
+  const doCancelDeposit = async () => {
     if (!selectedGroup) return;
     try {
       const headers = await getAuthHeaders();
@@ -297,6 +308,10 @@ export default function ManagerResidencyPage() {
   };
 
   const handleConfirmGroup = async () => {
+    await guard(() => doConfirmGroup());
+  };
+
+  const doConfirmGroup = async () => {
     if (!selectedGroup) return;
     try {
       const headers = await getAuthHeaders();
@@ -626,7 +641,7 @@ export default function ManagerResidencyPage() {
             {/* Member List */}
             <div style={{ flex: 1, overflowY: 'auto', padding: 20 }} className="space-y-3">
               <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
-                Danh sách thành viên trong nhóm
+                {selectedGroup.members.length > 1 ? 'Danh sách thành viên trong nhóm' : 'Cá nhân cần xét duyệt'}
               </p>
 
               {selectedGroup.members.map((member, idx) => {
@@ -905,7 +920,7 @@ export default function ManagerResidencyPage() {
                   <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
                     <button
                       onClick={() => saveMemberResult('approved')}
-                      disabled={!isChecklistComplete}
+                      disabled={!isChecklistComplete || isSubmitting}
                       style={{
                         flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12,
                         fontSize: 13, fontWeight: 700, cursor: isChecklistComplete ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -917,7 +932,7 @@ export default function ManagerResidencyPage() {
                     </button>
                     <button
                       onClick={() => saveMemberResult('rejected')}
-                      disabled={isRejectionDisabled}
+                      disabled={isRejectionDisabled || isSubmitting}
                       style={{
                         flex: 1,
                         background: isRejectionDisabled ? '#FFF0F0' : T.redBg,
@@ -1019,7 +1034,7 @@ export default function ManagerResidencyPage() {
               </button>
               <button 
                 onClick={handleConfirmGroup}
-                disabled={eligibleMembers.length === 0}
+                disabled={eligibleMembers.length === 0 || isSubmitting}
                 style={{ flex: 1.5, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: eligibleMembers.length === 0 ? 0.5 : 1 }}>
                 Tiếp tục lập hợp đồng
               </button>

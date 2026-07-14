@@ -5,6 +5,7 @@ import {
 import { mockSupabase, getMockDB, saveMockDB, MonthlyInvoice, ServiceSubscription } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
@@ -87,6 +88,7 @@ const STANDARD_INCIDENTALS = [
 
 export default function AccountantMonthlyPage() {
   const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<MonthlyInvoice[]>([]);
   const [activeTab, setActiveTab] = useState<'input' | 'list'>('input');
   
@@ -292,6 +294,10 @@ export default function AccountantMonthlyPage() {
 
   const handleSubmitIncidental = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doSubmitIncidental());
+  };
+
+  const doSubmitIncidental = async () => {
     const finalName = selectedIncidentalType === 'other' ? newIncidentalName : STANDARD_INCIDENTALS.find(item => item.value === selectedIncidentalType)?.label;
     if (!finalName || !finalName.trim() || !selectedContract) return;
 
@@ -322,8 +328,13 @@ export default function AccountantMonthlyPage() {
     if (selectedContract) await loadContractIncidentals(selectedContract.id);
   };
 
+  // Khoa chong double-click: tranh lap trung hoa don dinh ky.
   const handleCreateMonthlyInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doCreateMonthlyInvoice());
+  };
+
+  const doCreateMonthlyInvoice = async () => {
     if (!selectedContract) return;
 
     if (hasUnconfirmedIncidentals) {
@@ -404,6 +415,10 @@ export default function AccountantMonthlyPage() {
   };
 
   const handleConfirmPayment = async (id: string) => {
+    await guard(() => doConfirmPayment(id));
+  };
+
+  const doConfirmPayment = async (id: string) => {
     const email = user?.email || 'accountant@homestay.vn';
     try {
       await accountantService.confirmInvoicePayment(email, id, 'transfer');
@@ -860,10 +875,11 @@ export default function AccountantMonthlyPage() {
                       </button>
                       <button
                         type="submit"
-                        className="bg-[#5a462d] text-white font-bold py-2 px-5 rounded text-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        disabled={isSubmitting}
+                        className="bg-[#5a462d] text-white font-bold py-2 px-5 rounded text-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Receipt className="w-4 h-4" />
-                        Lập hóa đơn định kỳ
+                        {isSubmitting ? 'Đang lập...' : 'Lập hóa đơn định kỳ'}
                       </button>
                     </div>
                   </div>
@@ -1211,9 +1227,10 @@ export default function AccountantMonthlyPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#5a462d] text-white hover:opacity-90 py-3 rounded-24 text-xs font-bold transition-all cursor-pointer shadow-sm hover:shadow"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-[#5a462d] text-white hover:opacity-90 py-3 rounded-24 text-xs font-bold transition-all cursor-pointer shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Xác nhận thêm
+                  {isSubmitting ? 'Đang xử lý...' : 'Xác nhận thêm'}
                 </button>
               </div>
             </form>

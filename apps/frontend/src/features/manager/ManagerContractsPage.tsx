@@ -1,5 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useEffect, useState, useMemo } from 'react';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { ManagerContract } from '../../lib/supabaseClient';
 
 const T = {
@@ -23,6 +24,7 @@ const DEPOSIT_TYPE_CONFIG = {
 };
 
 export default function ManagerContractsPage() {
+  const { isSubmitting, guard } = useSubmitLock();
   const [contracts, setContracts] = useState<ManagerContract[]>([]);
   const [selected, setSelected] = useState<ManagerContract | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -208,7 +210,12 @@ export default function ManagerContractsPage() {
     return Object.keys(errs).length === 0;
   };
 
+  // Khoa chong double-click: tranh gui trung cap nhat hop dong.
   const handleSave = async () => {
+    await guard(() => doSave());
+  };
+
+  const doSave = async () => {
     if (!selected || !validateForm()) return;
 
     try {
@@ -903,7 +910,7 @@ export default function ManagerContractsPage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={handleSave}
+                  <button onClick={handleSave} disabled={isSubmitting}
                     style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s ease-in-out' }}
                     className="hover:opacity-90 active:scale-[0.98]">
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>save</span>

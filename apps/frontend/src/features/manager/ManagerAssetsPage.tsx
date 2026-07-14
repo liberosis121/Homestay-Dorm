@@ -1,5 +1,6 @@
 import { formatShortId } from '../../lib/utils';
 import { useEffect, useState } from 'react';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { ManagedAsset } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 
@@ -27,6 +28,7 @@ const CAT_LABELS: Record<ManagedAsset['category'], string> = {
 };
 
 export default function ManagerAssetsPage() {
+  const { isSubmitting, guard } = useSubmitLock();
   const [assets, setAssets] = useState<ManagedAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selected, setSelected] = useState<ManagedAsset | null>(null);
@@ -226,7 +228,12 @@ export default function ManagerAssetsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  // Khoa chong double-click: tranh gui trung yeu cau dieu chuyen tai san.
   const doTransfer = async () => {
+    await guard(() => runTransfer());
+  };
+
+  const runTransfer = async () => {
     if (!selected) return;
 
     const myBranchId = rooms[0]?.branch_id;
@@ -518,7 +525,7 @@ export default function ManagerAssetsPage() {
 
                 {/* Submit Action */}
                 <div>
-                  <button onClick={doTransfer}
+                  <button onClick={doTransfer} disabled={isSubmitting}
                     style={{
                       width: '100%',
                       height: 48,
