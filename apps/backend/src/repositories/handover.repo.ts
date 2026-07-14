@@ -13,7 +13,6 @@ export interface AssetHandoverDto {
 export interface HandoverDetailDto {
   handover_id: string;
   serial_number: string;
-  quantity: number;
   condition: string;
   note?: string;
 }
@@ -37,7 +36,8 @@ export const handoverRepo = {
       { data: deposits },
       { data: registrations },
       { data: customers },
-      { data: rooms }
+      { data: rooms },
+      { data: beds }
     ] = await Promise.all([
       supabase.from('handover_details').select('*'),
       supabase.from('assets').select('*'),
@@ -45,7 +45,8 @@ export const handoverRepo = {
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
       supabase.from('customers').select('*'),
-      supabase.from('rooms').select('*')
+      supabase.from('rooms').select('*'),
+      supabase.from('beds').select('*')
     ]);
 
     // 3. Construct frontend AssetHandover model with full relation info
@@ -55,6 +56,7 @@ export const handoverRepo = {
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
       const customer = customers?.find(c => c.cccd === reg.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
+      const bed = beds?.find(b => b.id === dep.bed_id) || null;
 
       // Filter details for this handover
       const hDetails = details?.filter(d => d.handover_id === h.id) || [];
@@ -64,8 +66,7 @@ export const handoverRepo = {
           item: asset.name || d.serial_number,
           condition: d.condition || 'Tốt',
           note: d.note || '',
-          checked: true,
-          quantity: d.quantity || 1
+          checked: true
         };
       });
 
@@ -79,6 +80,8 @@ export const handoverRepo = {
         customer_name: customer.full_name || 'Khách thuê',
         room_id: dep.room_id || '',
         room_name: room.name || 'Phòng',
+        bed_id: dep.bed_id || '',
+        bed_name: bed ? bed.name : '',
         branch_id: room.branch_id || '',
         handover_date: h.handover_time ? h.handover_time.slice(0, 10) : new Date().toISOString().slice(0, 10),
         checklist,
