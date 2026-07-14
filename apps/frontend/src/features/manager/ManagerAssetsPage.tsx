@@ -232,7 +232,7 @@ export default function ManagerAssetsPage() {
       const headers = await getAuthHeaders();
       const nextStatus = selectedRoomId ? 'in_use' : 'available';
 
-      const res = await fetch(`${API_BASE}/assets/${selected.serial_number}`, {
+      const res = await fetch(`${API_BASE}/assets/${selected.serialNumber}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({
