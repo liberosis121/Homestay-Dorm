@@ -264,7 +264,12 @@ export const managerContractRepo = {
         service_fee: 50000,
         start_date: contract.start_date,
         end_date: contract.end_date,
-        duration: reg.rental_duration || '6 tháng',
+        duration: (() => {
+          const start = new Date(contract.start_date);
+          const end = new Date(contract.end_date);
+          const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+          return diffMonths > 0 ? `${diffMonths} tháng` : (reg.rental_duration || '6 tháng');
+        })(),
         status: contract.status || 'active',
         terms: 'Hợp đồng thuê nhà Homestay-Dorm bao gồm các điều khoản cơ bản về thời hạn thuê, giá thuê và quy định sinh hoạt chung.',
         payment_policy: 'Thanh toán tiền nhà đầu mỗi kỳ thanh toán.',
@@ -368,7 +373,12 @@ export const managerContractRepo = {
       service_fee: 50000,
       start_date: contract.start_date,
       end_date: contract.end_date,
-      duration: reg.rental_duration || '6 tháng',
+      duration: (() => {
+        const start = new Date(contract.start_date);
+        const end = new Date(contract.end_date);
+        const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+        return diffMonths > 0 ? `${diffMonths} tháng` : (reg.rental_duration || '6 tháng');
+      })(),
       status: contract.status || 'active',
       terms: 'Hợp đồng thuê nhà Homestay-Dorm bao gồm các điều khoản cơ bản về thời hạn thuê, giá thuê và quy định sinh hoạt chung.',
       payment_policy: 'Thanh toán tiền nhà đầu mỗi kỳ thanh toán.',

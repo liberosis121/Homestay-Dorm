@@ -67,7 +67,18 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
   // Form state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [contractType, setContractType] = useState<ContractType>('long_term');
+  
+  // Parse deposit.duration to number (e.g. "6 tháng" -> 6)
+  const getInitialDuration = () => {
+    const durStr = (deposit as any).duration || (deposit as any).rental_duration || '';
+    const match = durStr.match(/\d+/);
+    const months = match ? parseInt(match[0], 10) : 6;
+    if ([6, 12, 18, 24].includes(months)) return months;
+    return 6;
+  };
+
+  const [durationMonths, setDurationMonths] = useState<number>(getInitialDuration());
+  const [contractType, setContractType] = useState<ContractType>('short_term');
   const [rentPrice, setRentPrice] = useState(deposit.roomMonthlyRent);
   const [paymentCycle, setPaymentCycle] = useState<PaymentCycle>('1_month');
   const [terms, setTerms] = useState(DEFAULT_TERMS);
@@ -76,18 +87,22 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
-  // Auto-calculate end date based on contract type
+  // Auto-calculate end date and contract type based on startDate and durationMonths
   useEffect(() => {
     if (startDate) {
       const d = new Date(startDate);
-      if (contractType === 'long_term') {
-        d.setFullYear(d.getFullYear() + 1);
-      } else {
-        d.setMonth(d.getMonth() + 3);
-      }
+      d.setMonth(d.getMonth() + durationMonths);
       setEndDate(d.toISOString().split('T')[0]);
+
+      if (durationMonths < 12) {
+        setContractType('short_term');
+      } else {
+        setContractType('long_term');
+      }
+    } else {
+      setEndDate('');
     }
-  }, [startDate, contractType]);
+  }, [startDate, durationMonths]);
 
   const formData: Partial<ContractFormData> = {
     startDate,
@@ -417,29 +432,29 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
             <SectionHeader icon={FileText} title="Thông tin hợp đồng" />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Loại hợp đồng */}
-              <div className="sm:col-span-2">
-                <FormLabel label="Loại hợp đồng" required className="mb-2" />
-                <div className="grid grid-cols-2 gap-3">
-                  {([
-                    { val: 'long_term', label: 'Dài hạn', desc: '≥ 12 tháng' },
-                    { val: 'short_term', label: 'Ngắn hạn', desc: '3 – 11 tháng' },
-                  ] as const).map(({ val, label, desc }) => (
-                    <button
+              {/* Loại hợp đồng (Tự động cập nhật) */}
+              <div>
+                <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2">
+                  Loại hợp đồng
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { val: 'long_term', label: 'Dài hạn', desc: 'Thời hạn từ 12 tháng trở lên' },
+                    { val: 'short_term', label: 'Ngắn hạn', desc: 'Thời hạn dưới 12 tháng' },
+                  ].map(({ val, label, desc }) => (
+                    <div
                       key={val}
-                      type="button"
-                      onClick={() => setContractType(val)}
-                      className={`px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer active:scale-[0.98] ${
+                      className={`px-4 py-3 rounded-xl border-2 text-left transition-all ${
                         contractType === val
-                          ? 'border-[#6f583c] bg-[#fff8f3]'
-                          : 'border-[#d1c4b9] bg-white hover:border-[#9d8879]'
+                          ? 'border-[#6f583c] bg-[#fff8f3] opacity-100'
+                          : 'border-[#d1c4b9] bg-gray-50 opacity-60'
                       }`}
                     >
-                      <p className={`font-semibold text-sm ${contractType === val ? 'text-[#6f583c]' : 'text-[#1e1b17]'}`}>
+                      <p className={`font-semibold text-sm ${contractType === val ? 'text-[#6f583c]' : 'text-gray-400'}`}>
                         {label}
                       </p>
-                      <p className="text-xs text-[#9d8879]">{desc}</p>
-                    </button>
+                      <p className="text-xs text-gray-400">{desc}</p>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -460,20 +475,41 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
                 />
               </div>
 
+              {/* Thời hạn hợp đồng */}
+              <div>
+                <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2">
+                  Thời hạn hợp đồng *
+                </label>
+                <select
+                  value={durationMonths}
+                  onChange={(e) => setDurationMonths(parseInt(e.target.value, 10))}
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#d1c4b9] text-sm bg-[#fff8f3] focus:outline-none focus:ring-2 focus:ring-[#6f583c]/30 focus:border-[#6f583c] transition"
+                >
+                  <option value={6}>6 tháng</option>
+                  <option value={12}>12 tháng</option>
+                  <option value={18}>18 tháng</option>
+                  <option value={24}>24 tháng</option>
+                </select>
+              </div>
+
               {/* Ngày kết thúc */}
               <div>
-                <CustomDatePicker
-                  label="Ngày kết thúc"
-                  required
-                  value={endDate}
-                  onChange={setEndDate}
-                  min={startDate || (() => {
-                    const d = new Date();
-                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                  })()}
-                  error={errors.endDate}
-                  placeholder="Chọn ngày kết thúc"
+                <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider mb-2">
+                  Ngày kết thúc (Tự động tính)
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  disabled
+                  value={endDate ? (() => {
+                    const parts = endDate.split('-');
+                    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : endDate;
+                  })() : 'Chưa xác định'}
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#d1c4b9] text-sm bg-gray-100 text-gray-500 cursor-not-allowed focus:outline-none"
                 />
+                <p className="text-[10px] text-[#9d8879] mt-1">
+                  Được tính tự động bằng Ngày bắt đầu cộng thêm thời hạn hợp đồng.
+                </p>
               </div>
 
               {/* Giá thuê */}
