@@ -70,6 +70,7 @@ export default function AdminAssetsPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [filterBranchId, setFilterBranchId] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
@@ -170,13 +171,14 @@ export default function AdminAssetsPage() {
     const matchQ = !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || getLocationString(a).toLowerCase().includes(q);
     const matchStatus = !filterStatus || a.status === filterStatus;
     const matchCat = !filterCategory || a.category === filterCategory;
-    return matchQ && matchStatus && matchCat;
-  }), [assets, search, filterStatus, filterCategory]);
+    const matchBranch = !filterBranchId || a.branch_id === filterBranchId;
+    return matchQ && matchStatus && matchCat && matchBranch;
+  }), [assets, search, filterStatus, filterCategory, filterBranchId]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterStatus, filterCategory]);
+  }, [search, filterStatus, filterCategory, filterBranchId]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -387,6 +389,17 @@ export default function AdminAssetsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
+        <CustomSelect
+          value={filterBranchId}
+          onChange={setFilterBranchId}
+          options={[
+            { value: "", label: "Tất cả chi nhánh" },
+            ...branches.map(b => ({ value: b.id, label: b.name }))
+          ]}
+          placeholder="Chi nhánh"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
         <CustomSelect
           value={filterCategory}
           onChange={setFilterCategory}
