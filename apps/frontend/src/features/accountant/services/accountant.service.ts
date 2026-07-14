@@ -39,7 +39,7 @@ export const accountantService = {
     roomId: string;
     amount: number;
     deadlineType: string;
-    paymentMethod: 'transfer' | 'cash';
+    paymentMethod?: 'transfer' | 'cash' | null;
     note?: string;
   }) => {
     const res = await fetch(`${API}/api/accountant/deposit-invoices`, {
