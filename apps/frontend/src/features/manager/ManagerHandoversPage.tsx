@@ -973,14 +973,23 @@ export default function ManagerHandoversPage() {
                       {roomAssets.map((asset) => {
                         const maxVal = asset.purchase_price || 0;
                         const currentCompVal = compensations[asset.id] || 0;
-                        const currentCond = checkoutConditions[asset.id] || 'Tốt';
+                        const currentCond = checkoutConditions[asset.id] ?? 'Tốt';
                         const currentNote = checkoutAssetNotes[asset.id] || '';
+                        
+                        const originalCheckinItem = checkinRecord?.checklist?.find(
+                          (item: any) => item.serial_number === asset.serial_number
+                        );
+                        const checkinCondition = originalCheckinItem?.condition || 'Tốt';
+                        const checkinDate = checkinRecord?.handover_date || 'Chưa rõ';
+
                         return (
                           <div key={asset.id} style={{
                             padding: '14px 16px', borderRadius: 16,
                             background: T.surface, border: `1.5px solid ${T.border}`,
-                            boxShadow: '0 2px 8px rgba(111,88,60,0.02)'
-                          }}>
+                            boxShadow: '0 2px 8px rgba(111,88,60,0.02)',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          className="relative group hover:border-[#A8C3A5] hover:shadow-md">
                             <div className="flex flex-col gap-3">
                               <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
@@ -1040,6 +1049,29 @@ export default function ManagerHandoversPage() {
                                   />
                                 </div>
                               </div>
+                              {/* Check-in comparison info (Slide down on hover) */}
+                              {checkinRecord && (
+                                <div 
+                                  style={{
+                                    background: T.sageBg,
+                                    border: `1.5px solid ${T.sage}20`,
+                                    borderRadius: 10,
+                                    padding: '8px 12px',
+                                    fontSize: 11.5,
+                                    color: T.sage,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                  }}
+                                  className="max-h-0 opacity-0 overflow-hidden group-hover:max-h-[80px] group-hover:opacity-100 group-hover:mt-3 transition-all duration-300 ease-in-out"
+                                >
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>info</span>
+                                    <span>Tình trạng lúc nhận: <strong>{checkinCondition}</strong></span>
+                                  </span>
+                                  <span style={{ fontSize: 11, opacity: 0.85, fontWeight: 600 }}>Ngày nhận: {checkinDate}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -1171,7 +1203,7 @@ export default function ManagerHandoversPage() {
                   ) : (
                     <div className="space-y-3">
                       {roomAssets.map((asset) => {
-                        const currentCond = handoverConditions[asset.id] || 'Tốt';
+                        const currentCond = handoverConditions[asset.id] ?? 'Tốt';
                         const currentNote = handoverNotes[asset.id] || '';
                         return (
                           <div key={asset.id} style={{

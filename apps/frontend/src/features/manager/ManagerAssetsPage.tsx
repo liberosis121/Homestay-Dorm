@@ -159,6 +159,7 @@ export default function ManagerAssetsPage() {
           value: Number(asset.value) || 0,
           purchaseDate: asset.purchase_date || '',
           status: asset.status,
+          serialNumber: asset.serial_number || '',
         }));
         setAssets(mappedAssets);
       }
@@ -241,7 +242,7 @@ export default function ManagerAssetsPage() {
       const headers = await getAuthHeaders();
       const nextStatus = selectedRoomId ? 'in_use' : 'available';
 
-      const res = await fetch(`${API_BASE}/assets/${selected.serialNumber}`, {
+      const res = await fetch(`${API_BASE}/assets/${selected.serial_number || selected.serialNumber}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({
@@ -283,24 +284,25 @@ export default function ManagerAssetsPage() {
       {/* Toast */}
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 20, right: 20, zIndex: 100,
-          background: '#5f745d',
-          color: '#ffffff',
-          padding: '12px 18px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8,
-          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-          animation: 'fadeInUp 0.3s ease forwards',
+          position: 'fixed', top: 96, right: 24, zIndex: 100,
+          background: T.sageBg,
+          color: T.sage,
+          border: '1.5px solid #A8C3A5',
+          padding: '14px 20px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: '0 8px 30px rgba(111,88,60,0.12)',
+          animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           fontFamily: "'Lexend', sans-serif"
         }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>{toast}</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{toast}</span>
         </div>
       )}
 
       {/* Styled slide animation */}
       <style>{`
-        @keyframes fadeInUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
+        @keyframes slideInRight {
+          from { transform: translateX(110%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
 
