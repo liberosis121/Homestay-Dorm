@@ -206,12 +206,17 @@ export default function LoginPage() {
                 <div className="grid grid-cols-1 gap-2 mt-4">
                   {[
                     { email: 'admin@homestay.com', name: 'Quản trị viên (Admin)' },
-                    { email: 'quanly@homestay.com', name: 'Quản lý (Manager)' },
-                    { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)' },
-                    { email: 'ketoan@homestay.com', name: 'Kế toán (Accountant)' },
+                    { email: 'ketoan@homestay.com', name: 'Kế toán (CN Quận 9)' },
+                    { email: 'hqh@gmail.com', name: 'Kế toán (CN Quận 5)' },
+                    { email: 'tul@gmail.com', name: 'Kế toán (CN Quận 10)' },
+                    { email: 'quanly@homestay.com', name: 'Quản lý (CN Quận 9)' },
+                    { email: 'nekolele@gmail.com', name: 'Quản lý (CN Quận 5)' },
+                    { email: 'ttk@gmail.com', name: 'Quản lý (CN Quận 10)' },
+                    { email: 'sale@homestay.com', name: 'Sale (CN Quận 9)' },
+                    { email: 'btlui@gmail.com', name: 'Sale (CN Quận 5)' },
+                    { email: 'tbn@gmail.com', name: 'Sale (CN Quận 10)' },
                     { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)', password: '12345678' },
-                    { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thuê)' },
-                    { email: 'khach_moi@homestay.com', name: 'Khách hàng mới (Chưa thuê)' }
+                    { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thanh lý)' }
                   ].map((p) => (
                     <button
                       key={p.email}
