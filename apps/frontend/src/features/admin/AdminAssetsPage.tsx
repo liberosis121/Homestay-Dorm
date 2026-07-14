@@ -278,15 +278,16 @@ export default function AdminAssetsPage() {
     }
 
     const apiStatus = finalStatus === 'available' ? 'in_stock' : finalStatus;
-    const computedLocation = computeLocationString(selectedBranchId, selectedRoomId, selectedBedId);
 
     try {
       if (modalMode === 'add') {
-        const pDate = new Date().toISOString().split('T')[0];
+        const pDate = form.purchaseDate ? form.purchaseDate.split('/').reverse().join('-') : new Date().toISOString().split('T')[0];
         const created = await createAssetApi({
           name: form.name,
           category: form.category || 'furniture',
-          location: computedLocation,
+          branch_id: selectedBranchId,
+          room_id: selectedRoomId,
+          bed_id: selectedBedId,
           brand: form.brand || '',
           value: form.value || 0,
           status: apiStatus,
@@ -296,7 +297,9 @@ export default function AdminAssetsPage() {
           id: created.serial_number,
           name: created.name,
           category: created.category as AssetCategory,
-          location: created.location,
+          branch_id: created.branch_id || '',
+          room_id: created.room_id || '',
+          bed_id: created.bed_id || '',
           brand: created.brand,
           value: created.value,
           status: (created.status === 'in_stock' ? 'available' : created.status) as AssetStatus,
@@ -309,13 +312,17 @@ export default function AdminAssetsPage() {
       } else {
         if (!form.serialNumber) return;
         const updated = await updateAssetApi(form.serialNumber, {
-          location: computedLocation,
+          branch_id: selectedBranchId,
+          room_id: selectedRoomId,
+          bed_id: selectedBedId,
           value: form.value,
           status: apiStatus
         });
         setAssets(prev => prev.map(a => a.serialNumber === form.serialNumber ? {
           ...a,
-          location: updated.location,
+          branch_id: updated.branch_id || '',
+          room_id: updated.room_id || '',
+          bed_id: updated.bed_id || '',
           value: updated.value,
           status: (updated.status === 'in_stock' ? 'available' : updated.status) as AssetStatus
         } : a));
@@ -682,6 +689,27 @@ export default function AdminAssetsPage() {
                 />
               </div>
 
+              {/* Ngày mua */}
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Ngày mua</label>
+                <input
+                  type="date"
+                  style={{ accentColor: '#6f583c' }}
+                  value={form.purchaseDate ? form.purchaseDate.split('/').reverse().join('-') : ''}
+                  onChange={e => {
+                    const d = e.target.value;
+                    setForm(prev => ({ ...prev, purchaseDate: d ? d.split('-').reverse().join('/') : '' }));
+                  }}
+                  readOnly={modalMode === 'edit'}
+                  disabled={modalMode === 'edit'}
+                  tabIndex={modalMode === 'edit' ? -1 : undefined}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
+                    }`}
+                />
+              </div>
+
               {/* Chi nhánh */}
               <div>
                 <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chi nhánh <span className="text-red-500">*</span></label>
@@ -771,6 +799,20 @@ export default function AdminAssetsPage() {
         @keyframes slideInRight {
           from { transform: translateX(100%); }
           to { transform: translateX(0); }
+        }
+        input[type="date"]::selection {
+          background-color: #6f583c;
+          color: white;
+        }
+        input[type="date"]::-webkit-datetime-edit-month-field:focus,
+        input[type="date"]::-webkit-datetime-edit-day-field:focus,
+        input[type="date"]::-webkit-datetime-edit-year-field:focus {
+          background-color: #6f583c !important;
+          color: white !important;
+        }
+        input[type="date"]::-moz-selection {
+          background-color: #6f583c;
+          color: white;
         }
       `}</style>
     </div>
