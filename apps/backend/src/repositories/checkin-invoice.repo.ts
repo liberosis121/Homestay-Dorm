@@ -95,6 +95,9 @@ export const checkinInvoiceRepo = {
         room_name: mappedContract?.rooms?.name || 'Phòng',
         room_type: mappedContract?.rooms?.room_type || '',
         deposit_amount: mappedContract?.deposit_amount ?? null,
+        // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
+        branch_id: mappedContract?.rooms?.branches?.id || '',
+        branch_name: mappedContract?.rooms?.branches?.name || '',
         contracts: mappedContract,
         created_at: inv.created_at || mappedContract?.created_date || mappedContract?.created_at || ''
       };

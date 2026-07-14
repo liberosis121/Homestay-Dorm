@@ -29,24 +29,63 @@ export const handoverRepo = {
     if (handoverErr) throw handoverErr;
     if (!handovers || handovers.length === 0) return [];
 
-    // 2. Fetch related tables in parallel to map full handover details
-    const [
-      { data: details },
-      { data: assets },
-      { data: contracts },
-      { data: deposits },
-      { data: registrations },
-      { data: customers },
-      { data: rooms }
-    ] = await Promise.all([
-      supabase.from('handover_details').select('*'),
-      supabase.from('assets').select('*'),
-      supabase.from('contracts').select('*'),
-      supabase.from('deposit_requests').select('*'),
-      supabase.from('rental_registrations').select('*'),
-      supabase.from('customers').select('*'),
-      supabase.from('rooms').select('*')
+    // 2. Fetch related tables.
+    // HIEU NANG: chi lay DUNG cac ban ghi lien quan (loc theo khoa bang .in) thay vi
+    // SELECT * toan bo 7 bang (truoc day keo ca 106 tai san + toan bo khach hang ve
+    // roi loc trong bo nho o moi lan goi API).
+    const handoverIds = handovers.map((h: any) => h.id).filter(Boolean);
+    const handoverContractIds = Array.from(
+      new Set(handovers.map((h: any) => h.contract_id).filter(Boolean))
+    );
+
+    const [{ data: details }, { data: contracts }] = await Promise.all([
+      handoverIds.length > 0
+        ? supabase.from('handover_details').select('*').in('handover_id', handoverIds)
+        : Promise.resolve({ data: [] as any[] }),
+      handoverContractIds.length > 0
+        ? supabase.from('contracts').select('*').in('id', handoverContractIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
+
+    // Cac bang con phu thuoc ket qua o tren -> lay theo tung tang khoa.
+    const serialNumbers = Array.from(
+      new Set((details || []).map((d: any) => d.serial_number).filter(Boolean))
+    );
+    const depositIds = Array.from(
+      new Set((contracts || []).map((c: any) => c.deposit_id).filter(Boolean))
+    );
+
+    const [{ data: assets }, { data: deposits }] = await Promise.all([
+      serialNumbers.length > 0
+        ? supabase.from('assets').select('serial_number, name').in('serial_number', serialNumbers)
+        : Promise.resolve({ data: [] as any[] }),
+      depositIds.length > 0
+        ? supabase.from('deposit_requests').select('*').in('id', depositIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const registrationIds = Array.from(
+      new Set((deposits || []).map((d: any) => d.registration_id).filter(Boolean))
+    );
+    const roomIds = Array.from(
+      new Set((deposits || []).map((d: any) => d.room_id).filter(Boolean))
+    );
+
+    const [{ data: registrations }, { data: rooms }] = await Promise.all([
+      registrationIds.length > 0
+        ? supabase.from('rental_registrations').select('id, cccd').in('id', registrationIds)
+        : Promise.resolve({ data: [] as any[] }),
+      roomIds.length > 0
+        ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const cccds = Array.from(
+      new Set((registrations || []).map((r: any) => r.cccd).filter(Boolean))
+    );
+    const { data: customers } = cccds.length > 0
+      ? await supabase.from('customers').select('cccd, user_id, full_name').in('cccd', cccds)
+      : { data: [] as any[] };
 
     // 3. Construct frontend AssetHandover model with full relation info
     const mapped = handovers.map(h => {
@@ -110,7 +149,18 @@ export const handoverRepo = {
   },
 
   findById: async (id: string) => {
-    const handovers = await handoverRepo.findAll();
+    // HIEU NANG: truoc day goi findAll() (keo toan bo bang) roi .find() trong bo nho.
+    // Nay chi lay dung bien ban can qua contract_id cua chinh no.
+    const { data: handover, error } = await supabase
+      .from('asset_handovers')
+      .select('contract_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!handover) return null;
+
+    const handovers = await handoverRepo.findAll({ contract_id: handover.contract_id });
     return handovers.find(h => h.id === id) || null;
   },
 
