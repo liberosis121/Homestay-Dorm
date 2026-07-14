@@ -89,22 +89,25 @@ export default function ContractFormEditor({ deposit, onBack, onSubmit, onSaveDr
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
-  // Auto-calculate end date and contract type based on startDate and durationMonths
+  // Auto-calculate end date based on startDate and durationMonths
   useEffect(() => {
     if (startDate) {
       const d = new Date(startDate);
       d.setMonth(d.getMonth() + durationMonths);
       setEndDate(d.toISOString().split('T')[0]);
-
-      if (durationMonths < 12) {
-        setContractType('short_term');
-      } else {
-        setContractType('long_term');
-      }
     } else {
       setEndDate('');
     }
   }, [startDate, durationMonths]);
+
+  // Auto-calculate contract type based on durationMonths
+  useEffect(() => {
+    if (durationMonths < 12) {
+      setContractType('short_term');
+    } else {
+      setContractType('long_term');
+    }
+  }, [durationMonths]);
 
   const formData: Partial<ContractFormData> = {
     startDate,
