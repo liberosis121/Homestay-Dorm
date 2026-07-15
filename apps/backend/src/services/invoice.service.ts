@@ -223,10 +223,12 @@ export const invoiceService = {
         dueDate = computeCheckinDueDate(inv.created_at || inv.payment_time || new Date());
       }
 
-      // Status mapping: 'paid' | 'unpaid' | 'overdue'
-      let status: 'paid' | 'unpaid' | 'overdue' = 'unpaid';
+      // Status mapping: 'paid' | 'pending' | 'unpaid' | 'overdue'
+      let status: 'paid' | 'pending' | 'unpaid' | 'overdue' = 'unpaid';
       if (inv.status === 'paid') {
         status = 'paid';
+      } else if (inv.status === 'pending') {
+        status = 'pending';
       } else {
         const today = new Date().toISOString().split('T')[0];
         if (today > dueDate) {
@@ -355,6 +357,12 @@ export const invoiceService = {
       return { success: true, paidAt: (inv as any).payment_time || paymentTime, alreadyPaid: true };
     }
 
+    if (isCheckinInvoice(inv as any)) {
+      if ((inv as any).status === 'pending' && actorRole === 'customer') {
+        throw new Error('Hóa đơn đang chờ Kế toán xác nhận thu tiền.');
+      }
+    }
+
     if (inv && inv.invoice_type === 'deposit' && inv.deposit_id) {
       const { data: deposit, error: depErr } = await supabase
         .from('deposit_requests')
@@ -403,8 +411,9 @@ export const invoiceService = {
       }
     }
 
-    // 2. Update invoice status to paid
-    await invoiceRepo.updateStatus(invoiceId, 'paid', paymentMethod, paymentTime);
+    // 2. Update invoice status to paid or pending (check-in invoice paid by customer transitions to 'pending')
+    const nextStatus = (isCheckinInvoice(inv as any) && actorRole === 'customer') ? 'pending' : 'paid';
+    await invoiceRepo.updateStatus(invoiceId, nextStatus, paymentMethod, paymentTime);
 
     // 3. If it's a deposit invoice, update associated deposit request status to paid
     if (inv && inv.invoice_type === 'deposit' && inv.deposit_id) {
@@ -419,7 +428,7 @@ export const invoiceService = {
     }
 
     // 4. Hoa don NHAN PHONG da thanh toan -> hop dong chinh thuc CO HIEU LUC.
-    if (isCheckinInvoice(inv as any)) {
+    if (isCheckinInvoice(inv as any) && nextStatus === 'paid') {
       await activateContractIfCheckinPaid((inv as any).contract_id);
     }
 

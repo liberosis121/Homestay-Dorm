@@ -211,7 +211,7 @@ export interface CheckinInvoice {
   contract_id?: string;   // ref to contract (nguồn hợp đồng active)
   services: { name: string; amount: number }[];
   total: number;
-  status: 'pending' | 'paid' | 'overdue' | 'cancelled' | 'draft';
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled' | 'draft' | 'unpaid';
   created_at: string;
 }
 

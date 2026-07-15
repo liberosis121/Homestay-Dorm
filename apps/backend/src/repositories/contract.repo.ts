@@ -14,7 +14,7 @@ export const contractRepo = {
             *,
             branches!inner (*)
           ),
-          beds!bed_id (*),
+          beds!deposit_beds (*),
           rental_registrations!inner (
             *,
             customers!cccd!inner (*)
@@ -47,7 +47,7 @@ export const contractRepo = {
             *,
             branches!inner (*)
           ),
-          beds!bed_id (*),
+          beds!deposit_beds (*),
           rental_registrations!inner (
             *,
             customers!cccd!inner (*)

@@ -17,7 +17,7 @@ export interface Invoice {
   serviceDetails: string;
   totalAmount: number;
   dueDate: string; // YYYY-MM-DD
-  status: 'paid' | 'unpaid' | 'overdue';
+  status: 'paid' | 'unpaid' | 'overdue' | 'pending';
   paidAt?: string;
 }
 

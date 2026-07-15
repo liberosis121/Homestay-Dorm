@@ -33,6 +33,13 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
             <span>Hóa đơn này đã quá hạn thanh toán! Vui lòng thanh toán ngay để tránh gián đoạn dịch vụ.</span>
           </div>
         );
+      case 'pending':
+        return (
+          <div className="flex items-center gap-2 p-3 bg-status-warning/10 border border-status-warning/20 rounded-xl text-status-warning text-xs font-semibold">
+            <Info className="w-4 h-4 shrink-0" />
+            <span>Hóa đơn đang chờ Kế toán xác nhận thu tiền. Vui lòng không thanh toán lại.</span>
+          </div>
+        );
       default:
         return null;
     }
@@ -126,7 +133,17 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
             </span>
           </div>
 
-          {invoice.status !== 'paid' ? (
+          {invoice.status === 'paid' ? (
+            <div className="w-full py-3 text-center border-2 border-status-success/30 text-status-success font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-success/5 cursor-default">
+              <CheckCircle2 className="w-5 h-5" />
+              ĐÃ THANH TOÁN
+            </div>
+          ) : invoice.status === 'pending' ? (
+            <div className="w-full py-3 text-center border-2 border-status-warning/30 text-status-warning font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-warning/5 cursor-default">
+              <Info className="w-5 h-5" />
+              CHỜ XÁC NHẬN
+            </div>
+          ) : (
             <button
               onClick={() => onPay(invoice.id)}
               className="w-full py-3.5 bg-primary hover:bg-[#253228] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-primary/10 hover:shadow-lg cursor-pointer"
@@ -134,11 +151,6 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
               <CreditCard className="w-5 h-5" />
               THANH TOÁN NGAY
             </button>
-          ) : (
-            <div className="w-full py-3 text-center border-2 border-status-success/30 text-status-success font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-success/5 cursor-default">
-              <CheckCircle2 className="w-5 h-5" />
-              ĐÃ THANH TOÁN
-            </div>
           )}
         </div>
       </div>

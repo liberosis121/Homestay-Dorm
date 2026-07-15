@@ -24,6 +24,12 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
             Chờ thanh toán
           </span>
         );
+      case 'pending':
+        return (
+          <span className="inline-flex h-7 min-w-[104px] items-center justify-center rounded-full bg-[#FAF2E8] border border-[#E7DED2] px-3 text-xs font-semibold text-[#B9792B]">
+            Chờ xác nhận
+          </span>
+        );
       case 'overdue':
         return (
           <span className="inline-flex h-7 min-w-[104px] items-center justify-center rounded-full bg-status-error/15 px-3 text-xs font-semibold text-status-error">
@@ -136,7 +142,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {invoice.status !== 'paid' && (
+                        {invoice.status !== 'paid' && invoice.status !== 'pending' && (
                           <button
                             onClick={() => onPay(invoice.id)}
                             className="bg-primary hover:bg-[#253228] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer hover:shadow-md"

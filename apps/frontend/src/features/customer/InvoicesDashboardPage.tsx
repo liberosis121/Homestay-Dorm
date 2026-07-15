@@ -135,7 +135,7 @@ export default function InvoicesDashboardPage() {
       // Status
       if (filters.status !== 'Tất cả') {
         if (filters.status === 'paid' && inv.status !== 'paid') return false;
-        if (filters.status === 'unpaid' && inv.status !== 'unpaid') return false;
+        if (filters.status === 'unpaid' && inv.status !== 'unpaid' && inv.status !== 'pending') return false;
         if (filters.status === 'overdue' && inv.status !== 'overdue') return false;
       }
       return true;

@@ -39,10 +39,16 @@ export default function InvoiceDetailDrawer({
             Đã thanh toán
           </span>
         );
-      case 'pending':
+      case 'unpaid':
         return (
           <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF6F0] text-[#B9792B] border border-[#E7DED2]">
             Chờ thanh toán
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF6F0] text-[#B9792B] border border-[#E7DED2]">
+            Chờ xác nhận
           </span>
         );
       case 'overdue':
