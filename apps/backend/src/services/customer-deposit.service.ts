@@ -95,14 +95,15 @@ export const customerDepositService = {
 
     // 4. Kiem tra xem khach hang da co yeu cau dat coc nao dang cho xu ly (pending) khong de tranh spam
     const existingDeposits = await depositRequestRepo.getDepositsByCustomer(customer.cccd);
-    const hasPendingDeposit = existingDeposits.some((d) => d.status === DEPOSIT_STATUS.PENDING);
+    const hasPendingDeposit = existingDeposits.some(
+      (d) => d.status === DEPOSIT_STATUS.PENDING || d.status === DEPOSIT_STATUS.INVOICE_CREATED
+    );
     if (hasPendingDeposit) {
       throw new Error('Ban dang co mot yeu cau dat coc dang cho xu ly. Khong the tao them yeu cau dat coc moi.');
     }
 
-    // 5. Tinh toan tien coc (2 thang tien thue * so giuong thue) va thoi han thanh toan (24 gio)
-    const occupantsCount = registration.occupants_count || 1;
-    const depositAmount = bed.price * 2 * occupantsCount;
+    // 5. Tinh toan tien coc giuong le = 2 thang tien thue cua dung giuong da chon.
+    const depositAmount = bed.price * 2;
 
     const paymentDeadline = new Date();
     paymentDeadline.setHours(paymentDeadline.getHours() + DEPOSIT_PAYMENT_DEADLINE_HOURS);

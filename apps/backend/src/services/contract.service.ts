@@ -79,6 +79,9 @@ export const contractService = {
       const bedNames: string[] = Array.isArray(depReq.bed_names) ? depReq.bed_names : [];
       const bedLabel = bedNames.length > 0 ? bedNames.join(', ') : 'N/A';
       const staff: { full_name?: string; phone?: string } = c.employees || {};
+      const depositAmount = bedNames.length > 0
+        ? Number(c.rent_price || 0) * 2
+        : Number(depReq.deposit_amount || c.rent_price || 0);
 
       const totalMonths = calculateMonthsDifference(c.start_date, c.end_date);
       const monthsPassed = calculateMonthsDifference(c.start_date, new Date().toISOString().split('T')[0]);
@@ -109,7 +112,7 @@ export const contractService = {
         roomImage: room.image_url || CONTRACT_TEMPLATES.defaultRoomImage,
         // Finance
         rentPrice: c.rent_price,
-        depositAmount: depReq.deposit_amount || c.rent_price,
+        depositAmount,
         serviceFee: CONTRACT_TEMPLATES.serviceFee,
         // Terms
         terms: CONTRACT_TEMPLATES.getTermsTemplate(bedLabel, room.name || 'N/A', branch.name || 'N/A'),

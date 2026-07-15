@@ -14,6 +14,16 @@ function isCheckinInvoice(inv: { invoice_type?: string | null; water_record_id?:
   return inv.invoice_type === 'monthly' && !inv.water_record_id && !!inv.contract_id;
 }
 
+function parseInvoiceNote(note?: string | null): Record<string, any> {
+  if (!note) return {};
+  try {
+    const parsed = JSON.parse(note);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 /**
  * RANG BUOC NGHIEP VU: hop dong chi CO HIEU LUC sau khi hoa don nhan phong duoc thanh toan.
  * Goi sau khi mot hoa don chuyen sang 'paid'. Chi nang trang thai tu 'pending_payment' len
@@ -129,11 +139,18 @@ export const invoiceService = {
 
     // 7. Map database records to frontend Invoice structures
     return rawInvoices.map((inv: DbInvoice) => {
+      const invoiceNote = parseInvoiceNote(inv.note);
+      const isGroupResidencyPartialRefund =
+        inv.invoice_type === 'refund'
+        && inv.reconciliation_id === null
+        && inv.deposit_id !== null
+        && invoiceNote.source === 'group_residency_partial';
       const isDeposit = inv.invoice_type === 'deposit' && inv.deposit_id !== null;
-      const isRefund = inv.invoice_type === 'refund' && inv.reconciliation_id !== null;
+      const isRefund = (inv.invoice_type === 'refund' && inv.reconciliation_id !== null) || isGroupResidencyPartialRefund;
       const isMonthly = inv.invoice_type === 'monthly' || inv.invoice_type === 'checkin';
       const isService = inv.invoice_type === 'service' || (inv.invoice_type === 'deposit' && inv.deposit_id === null);
-      const isIncidentalCost = inv.invoice_type === 'liquidation' || (inv.invoice_type === 'refund' && inv.reconciliation_id === null);
+      const isIncidentalCost = inv.invoice_type === 'liquidation'
+        || (inv.invoice_type === 'refund' && inv.reconciliation_id === null && !isGroupResidencyPartialRefund);
 
       // Billing Period
       let rawPeriod = '';
@@ -150,12 +167,15 @@ export const invoiceService = {
       const billingPeriod = `Tháng ${month < 10 ? '0' + month : month}/${year}`;
 
       // Invoice Type mapping
-      let type: 'monthly' | 'service' | 'incidental' | 'deposit' = 'incidental';
+      let type: 'monthly' | 'service' | 'incidental' | 'deposit' | 'refund' = 'incidental';
       let typeName = 'Hóa đơn phát sinh';
 
       if (isDeposit) {
         type = 'deposit';
         typeName = 'Hóa đơn đặt cọc';
+      } else if (isRefund) {
+        type = 'refund';
+        typeName = 'Hoàn cọc';
       } else if (isMonthly) {
         type = 'monthly';
         typeName = 'Hóa đơn định kỳ';
@@ -201,6 +221,8 @@ export const invoiceService = {
       } else if (isService) {
         servicePrice = inv.amount;
         serviceDetails = 'Phí đăng ký dịch vụ phát sinh';
+      } else if (isGroupResidencyPartialRefund) {
+        serviceDetails = 'Hoàn cọc do loại thành viên không đạt điều kiện lưu trú';
       }
 
       // Hạn thanh toán được CHỐT lúc lập hóa đơn (invoices.due_date) — dùng chung cho khách hàng,
@@ -264,7 +286,11 @@ export const invoiceService = {
         totalAmount: inv.amount,
         dueDate,
         status,
-        paidAt: inv.payment_time || undefined
+        paidAt: inv.payment_time || undefined,
+        isCredit: isRefund,
+        canPay: !isRefund,
+        refundRecipientUserId: isGroupResidencyPartialRefund ? invoiceNote.recipient_user_id || undefined : undefined,
+        refundRecipientRole: isGroupResidencyPartialRefund ? 'representative' : undefined
       };
     });
   },
