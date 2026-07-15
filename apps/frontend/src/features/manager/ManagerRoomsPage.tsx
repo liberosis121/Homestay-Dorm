@@ -253,7 +253,18 @@ export default function ManagerRoomsPage() {
                     {/* Top Section */}
                     <div className="w-full">
                       <div className="flex items-center justify-between mb-2">
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: T.textFaint }}>Phòng {room.floor}xx</span>
+                        <span style={{
+                          display: 'inline-block',
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          background: T.primary,
+                          color: T.surface,
+                          border: `1px solid ${T.primary}`
+                        }}>
+                          {room.room_type}
+                        </span>
                         <span style={{
                           display: 'inline-block',
                           fontSize: 9.5,
