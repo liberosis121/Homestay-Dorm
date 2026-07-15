@@ -4,28 +4,7 @@ import { getCustomerByCccd } from '../repositories/profile.repo';
 import { calculateRemovedGroupDepositRefund } from '../utils/group-refund';
 import { GROUP_RESIDENCY_REFUND_RATE } from '../types/constants';
 import { supabase } from '../utils/supabase';
-
-type ResidencyDecisionRow = {
-  id?: number | null;
-  cccd?: string | null;
-  check_result?: string | null;
-  contract_id?: string | null;
-  created_at?: string | null;
-};
-
-function latestPreContractResidencyByCccd(rows: ResidencyDecisionRow[] | null | undefined) {
-  const latest = new Map<string, ResidencyDecisionRow>();
-  for (const row of rows || []) {
-    if (!row.cccd || row.contract_id != null) continue;
-    const prev = latest.get(row.cccd);
-    const rowTime = row.created_at ? new Date(row.created_at).getTime() : 0;
-    const prevTime = prev?.created_at ? new Date(prev.created_at).getTime() : 0;
-    if (!prev || rowTime > prevTime || (rowTime === prevTime && Number(row.id || 0) > Number(prev.id || 0))) {
-      latest.set(row.cccd, row);
-    }
-  }
-  return latest;
-}
+import { latestPreContractResidencyByCccd } from '../utils/residency-decision';
 
 // ============================================================
 // CHUAN HOA QUOC TICH
