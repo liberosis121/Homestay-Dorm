@@ -228,10 +228,14 @@ export interface ProfileDto {
   avatar_url?: string;
   created_at?: string;
   renting_room_name?: string;
+  has_contract_history?: boolean;
+  stay_status?: 'new' | 'pending_payment' | 'active' | 'recently_checked_out' | 'available';
+  can_request_checkout?: boolean;
+  member_since?: string;
   [key: string]: any; // Allow arbitrary fields from child tables (nhan_vien, khach_hang)
 }
 
-export async function getRentingRoomName(userId: string): Promise<string | undefined> {
+async function getLegacyDepositIdsByCustomerCccd(userId: string): Promise<string[]> {
   try {
     const { data: customer, error: customerErr } = await supabase
       .from('customers')
@@ -240,7 +244,7 @@ export async function getRentingRoomName(userId: string): Promise<string | undef
       .maybeSingle();
 
     if (customerErr || !customer || !customer.cccd) {
-      return undefined;
+      return [];
     }
 
     const { data: regs, error: regsErr } = await supabase
@@ -249,35 +253,106 @@ export async function getRentingRoomName(userId: string): Promise<string | undef
       .eq('cccd', customer.cccd);
 
     if (regsErr || !regs || regs.length === 0) {
-      return undefined;
+      return [];
     }
     const regIds = regs.map((r: any) => r.id);
 
     const { data: deposits, error: depErr } = await supabase
       .from('deposit_requests')
-      .select('id, room_id')
+      .select('id')
       .in('registration_id', regIds);
 
     if (depErr || !deposits || deposits.length === 0) {
-      return undefined;
+      return [];
     }
-    const depIds = deposits.map((d: any) => d.id);
 
-    const { data: activeContracts, error: contractErr } = await supabase
+    return deposits.map((d: any) => d.id).filter(Boolean);
+  } catch (err) {
+    console.error('Error resolving legacy deposit ids:', err);
+    return [];
+  }
+}
+
+async function getVisibleContractsForCustomer(userId: string, status?: string): Promise<any[]> {
+  const contractsById = new Map<string, any>();
+
+  const { data: links, error: linkErr } = await supabase
+    .from('contract_customers')
+    .select('contract_id')
+    .eq('customer_user_id', userId);
+
+  if (linkErr) {
+    console.error('Error resolving customer contract links:', linkErr);
+  }
+
+  const linkedContractIds = Array.from(new Set((links || [])
+    .map((link: any) => link.contract_id)
+    .filter(Boolean)));
+
+  if (linkedContractIds.length > 0) {
+    let query = supabase
       .from('contracts')
-      .select('deposit_id')
-      .eq('status', 'active')
-      .in('deposit_id', depIds);
+      .select('id, deposit_id, status, created_date, start_date, end_date')
+      .in('id', linkedContractIds);
 
-    if (contractErr || !activeContracts || activeContracts.length === 0) {
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data: linkedContracts, error: contractErr } = await query;
+    if (contractErr) {
+      console.error('Error resolving linked customer contracts:', contractErr);
+    }
+
+    for (const contract of linkedContracts || []) {
+      if (contract?.id) contractsById.set(contract.id, contract);
+    }
+  }
+
+  const legacyDepositIds = await getLegacyDepositIdsByCustomerCccd(userId);
+  if (legacyDepositIds.length > 0) {
+    let query = supabase
+      .from('contracts')
+      .select('id, deposit_id, status, created_date, start_date, end_date')
+      .in('deposit_id', legacyDepositIds);
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data: legacyContracts, error: legacyContractErr } = await query;
+    if (legacyContractErr) {
+      console.error('Error resolving legacy customer contracts:', legacyContractErr);
+    }
+
+    for (const contract of legacyContracts || []) {
+      if (contract?.id) contractsById.set(contract.id, contract);
+    }
+  }
+
+  return Array.from(contractsById.values());
+}
+
+export async function getRentingRoomName(userId: string): Promise<string | undefined> {
+  try {
+    const activeContracts = await getVisibleContractsForCustomer(userId, 'active');
+    const activeDepositIds = activeContracts
+      .map((contract: any) => contract.deposit_id)
+      .filter(Boolean);
+
+    if (activeDepositIds.length === 0) {
       return undefined;
     }
 
-    const activeDep = deposits.find((d: any) => 
-      activeContracts.some((ac: any) => ac.deposit_id === d.id)
-    );
+    const { data: activeDep, error: depErr } = await supabase
+      .from('deposit_requests')
+      .select('room_id')
+      .in('id', activeDepositIds)
+      .not('room_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
 
-    if (!activeDep || !activeDep.room_id) {
+    if (depErr || !activeDep?.room_id) {
       return undefined;
     }
 
@@ -300,49 +375,123 @@ export async function getRentingRoomName(userId: string): Promise<string | undef
 
 export async function hasContractHistory(userId: string): Promise<boolean> {
   try {
-    const { data: customer, error: customerErr } = await supabase
-      .from('customers')
-      .select('cccd')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (customerErr || !customer || !customer.cccd) {
-      return false;
-    }
-
-    const { data: regs, error: regsErr } = await supabase
-      .from('rental_registrations')
-      .select('id')
-      .eq('cccd', customer.cccd);
-
-    if (regsErr || !regs || regs.length === 0) {
-      return false;
-    }
-    const regIds = regs.map((r: any) => r.id);
-
-    const { data: deposits, error: depErr } = await supabase
-      .from('deposit_requests')
-      .select('id')
-      .in('registration_id', regIds);
-
-    if (depErr || !deposits || deposits.length === 0) {
-      return false;
-    }
-    const depIds = deposits.map((d: any) => d.id);
-
-    const { count, error: contractErr } = await supabase
-      .from('contracts')
-      .select('*', { count: 'exact', head: true })
-      .in('deposit_id', depIds);
-
-    if (contractErr || count === null) {
-      return false;
-    }
-
-    return count > 0;
+    const contracts = await getVisibleContractsForCustomer(userId);
+    return contracts.length > 0;
   } catch (err) {
     console.error('Error checking contract history:', err);
     return false;
+  }
+}
+
+export async function canRequestCheckout(userId: string): Promise<boolean> {
+  try {
+    const { data: links, error: linkErr } = await supabase
+      .from('contract_customers')
+      .select('contract_id, is_representative')
+      .eq('customer_user_id', userId)
+      .eq('is_representative', true);
+
+    if (linkErr) {
+      console.error('Error resolving representative contract links:', linkErr);
+      return false;
+    }
+
+    const representativeContractIds = Array.from(new Set((links || [])
+      .map((link: any) => link.contract_id)
+      .filter(Boolean)));
+
+    if (representativeContractIds.length === 0) {
+      return false;
+    }
+
+    const { data: contracts, error: contractErr } = await supabase
+      .from('contracts')
+      .select('id, status')
+      .in('id', representativeContractIds)
+      .in('status', ['active', 'expired']);
+
+    if (contractErr) {
+      console.error('Error resolving representative checkout contracts:', contractErr);
+      return false;
+    }
+
+    return (contracts || []).length > 0;
+  } catch (err) {
+    console.error('Error checking checkout permission:', err);
+    return false;
+  }
+}
+
+export type CustomerStayStatus = 'new' | 'pending_payment' | 'active' | 'recently_checked_out' | 'available';
+
+function toDateOnlyTime(value?: string | null): number | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function isWithinDaysFromToday(value?: string | null, days = 2): boolean {
+  const dateTime = toDateOnlyTime(value);
+  if (dateTime === null) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((today.getTime() - dateTime) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 && diffDays <= days;
+}
+
+async function getLatestCompletedCheckoutDate(contractIds: string[]): Promise<string | null> {
+  if (contractIds.length === 0) return null;
+
+  const { data, error } = await supabase
+    .from('checkouts')
+    .select('request_date, status')
+    .in('contract_id', contractIds)
+    .eq('status', 'completed');
+
+  if (error) {
+    console.error('Error resolving latest completed checkout date:', error);
+    return null;
+  }
+
+  return (data || [])
+    .map((checkout: any) => checkout.request_date)
+    .filter(Boolean)
+    .sort()
+    .pop() || null;
+}
+
+export async function getCustomerStayStatus(userId: string): Promise<CustomerStayStatus> {
+  try {
+    const contracts = await getVisibleContractsForCustomer(userId);
+    if (contracts.length === 0) return 'new';
+
+    if (contracts.some((contract: any) => contract.status === 'active')) {
+      return 'active';
+    }
+
+    if (contracts.some((contract: any) => contract.status === 'pending_payment')) {
+      return 'pending_payment';
+    }
+
+    const terminalContracts = contracts.filter((contract: any) =>
+      contract.status === 'terminated' || contract.status === 'expired'
+    );
+    const terminalContractIds = terminalContracts.map((contract: any) => contract.id).filter(Boolean);
+    const latestCheckoutDate = await getLatestCompletedCheckoutDate(terminalContractIds);
+    const latestEndDate = terminalContracts
+      .map((contract: any) => contract.end_date)
+      .filter(Boolean)
+      .sort()
+      .pop() || null;
+
+    return isWithinDaysFromToday(latestCheckoutDate || latestEndDate, 2)
+      ? 'recently_checked_out'
+      : 'available';
+  } catch (err) {
+    console.error('Error resolving customer stay status:', err);
+    return 'new';
   }
 }
 
@@ -410,6 +559,9 @@ export const profileRepo = {
             ...profile,
             renting_room_name: undefined,
             has_contract_history: false,
+            stay_status: 'new',
+            can_request_checkout: false,
+            member_since: profile.created_at,
             type: 'customer'
           };
         } else {
@@ -419,6 +571,9 @@ export const profileRepo = {
             ...newCustomer,
             renting_room_name: undefined,
             has_contract_history: false,
+            stay_status: 'new',
+            can_request_checkout: false,
+            member_since: profile.created_at,
             type: 'customer'
           };
         }
@@ -427,11 +582,16 @@ export const profileRepo = {
       if (customer) {
         const rentingRoomName = await getRentingRoomName(id);
         const hasHistory = await hasContractHistory(id);
+        const stayStatus = await getCustomerStayStatus(id);
+        const checkoutAllowed = await canRequestCheckout(id);
         return {
           ...profile,
           ...customer,
           renting_room_name: rentingRoomName,
           has_contract_history: hasHistory,
+          stay_status: stayStatus,
+          can_request_checkout: checkoutAllowed,
+          member_since: profile.created_at,
           type: 'customer'
         };
       }

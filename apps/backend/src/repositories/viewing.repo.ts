@@ -63,6 +63,49 @@ export const viewingRepo = {
   },
 
   /**
+   * Lay danh sach lich hen xem phong theo danh sach phieu dang ky.
+   * Dung cho luong nhom: moi thanh vien trong rental_registration_members duoc xem chung lich,
+   * nhung quyen thao tac van do service quyet dinh theo nguoi dai dien.
+   */
+  getSchedulesByRegistrationIds: async (registrationIds: string[]) => {
+    if (!registrationIds || registrationIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('viewing_schedules')
+      .select(`
+        *,
+        employees!staff_id (
+          id,
+          full_name,
+          phone
+        ),
+        rental_registrations!inner (
+          id,
+          cccd,
+          status
+        ),
+        rooms!inner (
+          id,
+          name,
+          room_type,
+          image_url,
+          branches!inner (
+            id,
+            name,
+            address
+          )
+        )
+      `)
+      .in('registration_id', registrationIds)
+      .order('scheduled_time', { ascending: false });
+
+    if (error) {
+      throw new Error(`[ViewingRepo] Loi khi lay lich xem phong theo phieu dang ky: ${error.message}`);
+    }
+    return data || [];
+  },
+
+  /**
    * Lay danh sach lich hen phu trach boi mot nhan vien Sale.
    */
   getSchedulesByStaff: async (staffId: string) => {

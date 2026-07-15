@@ -5,12 +5,14 @@ export const checkinInvoiceRepo = {
    * Lay danh sach hoa don nhan phong tu table invoices.
    */
   getCheckinInvoices: async () => {
-    // 1. Fetch invoices of type 'monthly' and without water_record_id (meaning check-in invoice)
+    // 1. Fetch check-in invoices. New rows use invoice_type 'checkin'; legacy rows used
+    // invoice_type 'monthly' with no water period and a contract_id.
     const { data: invoices, error } = await supabase
       .from('invoices')
       .select('*')
-      .eq('invoice_type', 'monthly')
-      .is('water_record_id', null);
+      .in('invoice_type', ['checkin', 'monthly'])
+      .is('water_record_id', null)
+      .not('contract_id', 'is', null);
 
     if (error) {
       throw new Error(`[CheckinInvoiceRepo] Loi khi lay hoa don nhan phong: ${error.message}`);
@@ -115,7 +117,7 @@ export const checkinInvoiceRepo = {
       .from('invoices')
       .insert({
         ...invoiceData,
-        invoice_type: 'monthly'
+        invoice_type: 'checkin'
       })
       .select()
       .single();

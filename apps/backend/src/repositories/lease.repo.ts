@@ -39,6 +39,25 @@ export const leaseRepo = {
   },
 
   /**
+   * Lay danh sach don dang ky theo id. Dung cho thanh vien nhom xem duoc
+   * phieu dang ky ma minh co trong rental_registration_members.
+   */
+  getRegistrationsByIds: async (registrationIds: string[]) => {
+    if (!registrationIds || registrationIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('rental_registrations')
+      .select('*')
+      .in('id', registrationIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`[LeaseRepo] Loi khi lay don dang ky thue theo id: ${error.message}`);
+    }
+    return data || [];
+  },
+
+  /**
    * Lay chi tiet mot don dang ky thue kem theo thong tin ho so khach hang.
    */
   getRegistrationById: async (id: string) => {

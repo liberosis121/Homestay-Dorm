@@ -41,17 +41,21 @@ export const contractRepo = {
   findByCustomerUserIdIncludingGroup: async (userId: string) => {
     const { data: links } = await supabase
       .from('contract_customers')
-      .select('contract_id')
+      .select('contract_id, is_representative')
       .eq('customer_user_id', userId);
     const contractIds = Array.from(new Set((links || []).map((l: any) => l.contract_id)));
     if (contractIds.length === 0) return [];
 
     const contracts = (await contractRepo.findByIds(contractIds)) || [];
+    const representativeByContract = new Map(
+      (links || []).map((link: any) => [link.contract_id, link.is_representative === true])
+    );
 
     // Gan giuong THUC SU cua hop dong (contract_beds) vao deposit_requests long:
     // HD le -> 1 giuong, HD nhom -> N, HD nguyen phong -> 0.
     const bedsByContract = await getBedsByContractIds(contractIds);
     for (const c of contracts) {
+      (c as any).is_representative = representativeByContract.get(c.id) === true;
       const dep = c.deposit_requests;
       if (!dep) continue;
       const beds = bedsByContract[c.id] || [];
