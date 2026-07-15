@@ -4,6 +4,7 @@
 
 import { viewingRepo } from '../repositories/viewing.repo';
 import { leaseRepo } from '../repositories/lease.repo';
+import { registrationMemberRepo } from '../repositories/registration-member.repo';
 import { getStaffByUserId, getCustomerByUserId } from '../repositories/profile.repo';
 import { roomRepo } from '../repositories/room.repo';
 import { generateNextId } from '../utils/id-generator';
@@ -168,7 +169,36 @@ export const viewingService = {
     if (!customer) {
       throw new Error('Không tìm thấy thông tin khách hàng.');
     }
-    return await viewingRepo.getSchedulesByCustomer(customer.cccd);
+    const [ownRegistrations, memberships] = await Promise.all([
+      leaseRepo.getRegistrationsByCustomer(customer.cccd),
+      registrationMemberRepo.getRegistrationIdsByUser(userId),
+    ]);
+
+    const registrationIds = Array.from(new Set([
+      ...(ownRegistrations || []).map((reg: any) => reg.id).filter(Boolean),
+      ...(memberships || []).map((member) => member.registration_id).filter(Boolean),
+    ]));
+
+    const representativeByRegistration = new Map<string, boolean>();
+    for (const reg of ownRegistrations || []) {
+      representativeByRegistration.set((reg as any).id, true);
+    }
+    for (const member of memberships || []) {
+      representativeByRegistration.set(
+        member.registration_id,
+        representativeByRegistration.get(member.registration_id) || member.is_representative === true
+      );
+    }
+
+    const schedules = await viewingRepo.getSchedulesByRegistrationIds(registrationIds);
+    return schedules.map((schedule: any) => {
+      const canManage = representativeByRegistration.get(schedule.registration_id) === true;
+      return {
+        ...schedule,
+        is_representative: canManage,
+        can_manage: canManage,
+      };
+    });
   },
 
   getStaffSchedules: async (staffUserId: string) => {

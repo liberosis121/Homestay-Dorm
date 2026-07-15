@@ -451,7 +451,38 @@ export const leaseService = {
     if (!customer) {
       throw new Error('Không tìm thấy thông tin khách hàng.');
     }
-    return await leaseRepo.getRegistrationsByCustomer(customer.cccd);
+    const [ownRegistrations, memberships] = await Promise.all([
+      leaseRepo.getRegistrationsByCustomer(customer.cccd),
+      registrationMemberRepo.getRegistrationIdsByUser(userId),
+    ]);
+
+    const ownRegistrationIds = new Set((ownRegistrations || []).map((reg: any) => reg.id));
+    const memberRegistrationIds = memberships
+      .map((member) => member.registration_id)
+      .filter((id) => !ownRegistrationIds.has(id));
+
+    const memberRegistrations = await leaseRepo.getRegistrationsByIds(memberRegistrationIds);
+    const representativeByRegistration = new Map<string, boolean>();
+    for (const reg of ownRegistrations || []) {
+      representativeByRegistration.set((reg as any).id, true);
+    }
+    for (const member of memberships || []) {
+      representativeByRegistration.set(
+        member.registration_id,
+        representativeByRegistration.get(member.registration_id) || member.is_representative === true
+      );
+    }
+
+    return [...(ownRegistrations || []), ...(memberRegistrations || [])]
+      .map((registration: any) => {
+        const canManage = representativeByRegistration.get(registration.id) === true;
+        return {
+          ...registration,
+          is_representative: canManage,
+          can_manage: canManage,
+        };
+      })
+      .sort((a: any, b: any) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
   },
 
   /**

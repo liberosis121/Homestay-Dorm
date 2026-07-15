@@ -115,6 +115,12 @@ export const checkoutService = {
       throw new Error('Hợp đồng không hợp lệ hoặc không thuộc quyền sở hữu của bạn.');
     }
 
+    if ((contract as any).is_representative !== true) {
+      const err = new Error('Chi nguoi dai dien trong hop dong nhom moi duoc dang ky tra phong.');
+      (err as any).status = 403;
+      throw err;
+    }
+
     // 2. Prepare JSON note with request submission timestamp
     const noteJson = JSON.stringify({
       reason: reqData.reason,
@@ -140,6 +146,13 @@ export const checkoutService = {
     const checkout = checkouts.find(ch => ch.id === requestId);
     if (!checkout) {
       throw new Error('Yêu cầu trả phòng không hợp lệ hoặc không thuộc quyền sở hữu của bạn.');
+    }
+
+    const checkoutContract = contracts.find(c => c.id === checkout.contract_id);
+    if ((checkoutContract as any)?.is_representative !== true) {
+      const err = new Error('Chi nguoi dai dien trong hop dong nhom moi duoc huy yeu cau tra phong.');
+      (err as any).status = 403;
+      throw err;
     }
 
     if (checkout.status !== 'pending' && checkout.status !== 'rejected') {

@@ -11,7 +11,8 @@ import { computeMonthlyDueDate, computeCheckinDueDate } from '../utils/invoice-d
  * va co gan hop dong. Day la quy uoc san co cua he thong (xem sale-contract.repo.findAll).
  */
 function isCheckinInvoice(inv: { invoice_type?: string | null; water_record_id?: number | null; contract_id?: string | null }): boolean {
-  return inv.invoice_type === 'monthly' && !inv.water_record_id && !!inv.contract_id;
+  return inv.invoice_type === 'checkin'
+    || (inv.invoice_type === 'monthly' && !inv.water_record_id && !!inv.contract_id);
 }
 
 function parseInvoiceNote(note?: string | null): Record<string, any> {
@@ -22,6 +23,20 @@ function parseInvoiceNote(note?: string | null): Record<string, any> {
   } catch {
     return {};
   }
+}
+
+async function isContractRepresentative(contractId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('contract_customers')
+    .select('is_representative')
+    .eq('contract_id', contractId)
+    .eq('customer_user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[invoiceService] Khong the kiem tra quyen thanh toan hop dong: ${error.message}`);
+  }
+  return data?.is_representative === true;
 }
 
 /**
@@ -102,6 +117,25 @@ export const invoiceService = {
       ...(contracts || []).map((c: any) => c.deposit_id).filter(Boolean),
       ...customerDeposits.map((d: any) => d.id).filter(Boolean),
     ]));
+    const depositCanPay = new Map(
+      customerDeposits.map((d: any) => [d.id, d.can_pay !== false])
+    );
+    const contractCanPay = new Map<string, boolean>();
+    if (contractIds.length > 0) {
+      const { data: contractLinks, error: linkErr } = await supabase
+        .from('contract_customers')
+        .select('contract_id, is_representative')
+        .eq('customer_user_id', userId)
+        .in('contract_id', contractIds);
+
+      if (linkErr) {
+        throw new Error(`[invoiceService] Khong the kiem tra quyen thanh toan hop dong: ${linkErr.message}`);
+      }
+
+      for (const link of contractLinks || []) {
+        contractCanPay.set((link as any).contract_id, (link as any).is_representative === true);
+      }
+    }
 
     // 2. Query checkouts associated with contracts
     const { data: checkouts } = contractIds.length > 0
@@ -147,7 +181,9 @@ export const invoiceService = {
         && invoiceNote.source === 'group_residency_partial';
       const isDeposit = inv.invoice_type === 'deposit' && inv.deposit_id !== null;
       const isRefund = (inv.invoice_type === 'refund' && inv.reconciliation_id !== null) || isGroupResidencyPartialRefund;
-      const isMonthly = inv.invoice_type === 'monthly' || inv.invoice_type === 'checkin';
+      const isCheckin = isCheckinInvoice(inv);
+      const isMonthly = inv.invoice_type === 'monthly' && !isCheckin;
+      const isRentInvoice = isMonthly || isCheckin;
       const isService = inv.invoice_type === 'service' || (inv.invoice_type === 'deposit' && inv.deposit_id === null);
       const isIncidentalCost = inv.invoice_type === 'liquidation'
         || (inv.invoice_type === 'refund' && inv.reconciliation_id === null && !isGroupResidencyPartialRefund);
@@ -167,7 +203,7 @@ export const invoiceService = {
       const billingPeriod = `Tháng ${month < 10 ? '0' + month : month}/${year}`;
 
       // Invoice Type mapping
-      let type: 'monthly' | 'service' | 'incidental' | 'deposit' | 'refund' = 'incidental';
+      let type: 'checkin' | 'monthly' | 'service' | 'incidental' | 'deposit' | 'refund' = 'incidental';
       let typeName = 'Hóa đơn phát sinh';
 
       if (isDeposit) {
@@ -176,6 +212,9 @@ export const invoiceService = {
       } else if (isRefund) {
         type = 'refund';
         typeName = 'Hoàn cọc';
+      } else if (isCheckin) {
+        type = 'checkin';
+        typeName = 'Hóa đơn nhận phòng';
       } else if (isMonthly) {
         type = 'monthly';
         typeName = 'Hóa đơn định kỳ';
@@ -185,7 +224,7 @@ export const invoiceService = {
       }
 
       // Room rent calculation
-      const roomPrice = isMonthly && inv.contracts ? inv.contracts.rent_price : 0;
+      const roomPrice = isRentInvoice && inv.contracts ? inv.contracts.rent_price : 0;
 
       // Electricity details
       let electricityPrice = 0;
@@ -208,7 +247,7 @@ export const invoiceService = {
       // Service Details
       let servicePrice = 0;
       let serviceDetails = '';
-      if (isMonthly && serviceRegs && serviceRegs.length > 0) {
+      if (isRentInvoice && serviceRegs && serviceRegs.length > 0) {
         // Sum all registered services for this contract
         const matchingRegs = serviceRegs.filter((r: any) => r.contract_id === inv.contract_id);
         if (matchingRegs.length > 0) {
@@ -263,6 +302,14 @@ export const invoiceService = {
         }
       }
 
+      let canPay = !isRefund;
+      if (canPay && isDeposit && inv.deposit_id) {
+        canPay = depositCanPay.get(inv.deposit_id) ?? true;
+      }
+      if (canPay && inv.contract_id) {
+        canPay = contractCanPay.get(inv.contract_id) ?? true;
+      }
+
       return {
         id: inv.id,
         deposit_id: inv.deposit_id || undefined,
@@ -288,7 +335,7 @@ export const invoiceService = {
         status,
         paidAt: inv.payment_time || undefined,
         isCredit: isRefund,
-        canPay: !isRefund,
+        canPay,
         refundRecipientUserId: isGroupResidencyPartialRefund ? invoiceNote.recipient_user_id || undefined : undefined,
         refundRecipientRole: isGroupResidencyPartialRefund ? 'representative' : undefined
       };
@@ -381,6 +428,12 @@ export const invoiceService = {
     }
     if (!inv) {
       throw new Error('Hoa don khong ton tai.');
+    }
+    if (actorRole !== 'accountant' && (inv as any).contract_id) {
+      const canPayContractInvoice = await isContractRepresentative((inv as any).contract_id, userId);
+      if (!canPayContractInvoice) {
+        throw new Error('Chi nguoi dai dien moi duoc thanh toan hoa don cua hop dong nhom nay.');
+      }
     }
     if ((inv as any).status === 'paid') {
       return { success: true, paidAt: (inv as any).payment_time || paymentTime, alreadyPaid: true };

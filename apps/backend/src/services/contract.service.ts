@@ -104,6 +104,8 @@ export const contractService = {
         duration: `${totalMonths} tháng`,
         status: c.status,
         statusLabel,
+        isRepresentative: (c as any).is_representative === true,
+        canRequestCheckout: (c as any).is_representative === true && (c.status === 'active' || c.status === 'expired'),
         // Room
         branch: branch.name || 'N/A',
         roomCode: room.name || 'N/A',

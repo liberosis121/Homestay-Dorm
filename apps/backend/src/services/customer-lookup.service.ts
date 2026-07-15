@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { getVisibleCustomerUserIdsForContract } from '../utils/customer-contract-visibility';
 
 export const customerLookupService = {
   /**
@@ -28,11 +29,41 @@ export const customerLookupService = {
     }
 
     const customerCccds = customersList.map(c => c.cccd).filter(Boolean);
+    const customerUserIds = customersList.map(c => c.user_id).filter(Boolean);
+    const cccdByUserId = new Map((customersList || []).map((c: any) => [c.user_id, c.cccd]));
+    const userIdByCccd = new Map((customersList || []).map((c: any) => [c.cccd, c.user_id]));
 
-    // 2. Lay tat ca dang ky thue (rental_registrations)
-    const { data: registrations } = customerCccds.length > 0
+    // 2. Lay tat ca dang ky thue (dai dien theo CCCD + thanh vien nhom theo bang membership)
+    const { data: ownRegistrations } = customerCccds.length > 0
       ? await supabase.from('rental_registrations').select('*').in('cccd', customerCccds)
       : { data: [] as any[] };
+
+    const { data: memberships } = customerUserIds.length > 0
+      ? await supabase
+          .from('rental_registration_members')
+          .select('registration_id, customer_user_id')
+          .in('customer_user_id', customerUserIds)
+      : { data: [] as any[] };
+
+    const memberRegistrationIds = Array.from(new Set((memberships || []).map((m: any) => m.registration_id).filter(Boolean)));
+    const { data: memberRegistrations } = memberRegistrationIds.length > 0
+      ? await supabase.from('rental_registrations').select('*').in('id', memberRegistrationIds)
+      : { data: [] as any[] };
+
+    const registrationById = new Map<string, any>();
+    [...(ownRegistrations || []), ...(memberRegistrations || [])].forEach((r: any) => registrationById.set(r.id, r));
+    const registrations = Array.from(registrationById.values());
+
+    const cccdsByRegistrationId = new Map<string, Set<string>>();
+    for (const r of registrations || []) {
+      if (!cccdsByRegistrationId.has(r.id)) cccdsByRegistrationId.set(r.id, new Set());
+      if (r.cccd) cccdsByRegistrationId.get(r.id)!.add(r.cccd);
+    }
+    for (const m of memberships || []) {
+      const cccd = cccdByUserId.get(m.customer_user_id);
+      if (!cccdsByRegistrationId.has(m.registration_id)) cccdsByRegistrationId.set(m.registration_id, new Set());
+      if (cccd) cccdsByRegistrationId.get(m.registration_id)!.add(cccd);
+    }
 
     const registrationIds = (registrations || []).map(r => r.id).filter(Boolean);
 
@@ -81,14 +112,32 @@ export const customerLookupService = {
           .in('deposit_id', resolvedDepositIds)
       : { data: [] as any[] };
 
+    const { data: contractCustomerLinks } = contracts && contracts.length > 0
+      ? await supabase
+          .from('contract_customers')
+          .select('contract_id, customer_user_id')
+          .in('contract_id', contracts.map((c: any) => c.id))
+      : { data: [] as any[] };
+
     // Map contracts theo CCCD
     const contractMap = new Map<string, any[]>();
     if (contracts && deposits && registrations) {
       contracts.forEach((c: any) => {
         const dep = deposits.find(d => d.id === c.deposit_id);
         const reg = dep ? registrations.find(r => r.id === dep.registration_id) : null;
-        const cccd = reg?.cccd;
-        if (cccd) {
+        const userIds = getVisibleCustomerUserIdsForContract(
+          c.id,
+          contractCustomerLinks || [],
+          reg ? userIdByCccd.get(reg.cccd) as string | undefined : undefined
+        );
+        const cccds = userIds
+          .map((userId) => cccdByUserId.get(userId))
+          .filter(Boolean) as string[];
+        const visibleCccds = cccds.length > 0
+          ? cccds
+          : Array.from(cccdsByRegistrationId.get(reg?.id || '') || []) as string[];
+
+        for (const cccd of visibleCccds) {
           if (!contractMap.has(cccd)) {
             contractMap.set(cccd, []);
           }
@@ -102,8 +151,8 @@ export const customerLookupService = {
     if (deposits && registrations) {
       deposits.forEach((d: any) => {
         const reg = registrations.find(r => r.id === d.registration_id);
-        if (reg) {
-          const cccd = reg.cccd;
+        const cccds = Array.from(cccdsByRegistrationId.get(reg?.id || '') || []) as string[];
+        for (const cccd of cccds) {
           if (!depositMap.has(cccd)) {
             depositMap.set(cccd, []);
           }
@@ -117,8 +166,8 @@ export const customerLookupService = {
     if (viewings && registrations) {
       viewings.forEach((v: any) => {
         const reg = registrations.find(r => r.id === v.registration_id);
-        if (reg) {
-          const cccd = reg.cccd;
+        const cccds = Array.from(cccdsByRegistrationId.get(reg?.id || '') || []) as string[];
+        for (const cccd of cccds) {
           if (!viewingMap.has(cccd)) {
             viewingMap.set(cccd, []);
           }
