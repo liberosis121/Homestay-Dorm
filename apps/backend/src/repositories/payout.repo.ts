@@ -17,8 +17,15 @@ export const payoutRepo = {
 
     if (!invoices || invoices.length === 0) return [];
 
+    // 1b. Filter out stale refund invoices created by manager checkout (amount=0, no reconciliation)
+    // These are placeholder invoices that should not appear in the payout list.
+    const validInvoices = invoices.filter(i =>
+      i.reconciliation_id || i.deposit_id || (Number(i.amount) !== 0)
+    );
+    if (validInvoices.length === 0) return [];
+
     // 2. Fetch related refund reconciliations
-    const recIds = invoices.map(i => i.reconciliation_id).filter(Boolean);
+    const recIds = validInvoices.map(i => i.reconciliation_id).filter(Boolean);
     const { data: reconciliations } = recIds.length > 0
       ? await supabase.from('refund_reconciliations').select('*').in('id', recIds)
       : { data: [] as any[] };
@@ -30,7 +37,7 @@ export const payoutRepo = {
       : { data: [] as any[] };
 
     // 4. Fetch related contracts
-    const directContractIds = invoices.map(i => i.contract_id).filter(Boolean);
+    const directContractIds = validInvoices.map(i => i.contract_id).filter(Boolean);
     const checkoutContractIds = (checkouts || []).map(ch => ch.contract_id).filter(Boolean);
     const allContractIds = Array.from(new Set([...directContractIds, ...checkoutContractIds]));
 
@@ -41,7 +48,7 @@ export const payoutRepo = {
     // 5. Resolve rooms and branches
     // Gom deposit_id tu contract LAN tu chinh hoa don (truong hop hoan coc chua ky HD gan thang deposit_id).
     const contractDepositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
-    const invoiceDepositIds = invoices.map(i => i.deposit_id).filter(Boolean);
+    const invoiceDepositIds = validInvoices.map(i => i.deposit_id).filter(Boolean);
     const depositIds = Array.from(new Set([...contractDepositIds, ...invoiceDepositIds]));
     const { data: depositReqs } = depositIds.length > 0
       ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
@@ -69,7 +76,7 @@ export const payoutRepo = {
       : { data: [] as any[] };
 
     // 7. Map in-memory
-    const result = invoices.map(inv => {
+    const result = validInvoices.map(inv => {
       const rec = (reconciliations || []).find(r => r.id === inv.reconciliation_id);
       let mappedRec = null;
 
@@ -213,11 +220,11 @@ export const payoutRepo = {
     // Truong hop HOAN COC CHUA KY HD: hoa don gan thang deposit_id, khong co reconciliation/checkout/contract.
     // Chi can danh dau da chi + giai phong giuong da giu cho (neu con).
     if (!invoice.reconciliation_id && invoice.deposit_id) {
-      const { data: depositReq } = await supabase
-        .from('deposit_requests')
+      // Resolve beds via deposit_beds junction table (bed_id column was removed from deposit_requests)
+      const { data: depositBeds } = await supabase
+        .from('deposit_beds')
         .select('bed_id')
-        .eq('id', invoice.deposit_id)
-        .maybeSingle();
+        .eq('deposit_id', invoice.deposit_id);
 
       const { data: paidInv, error: payErr } = await supabase
         .from('invoices')
@@ -233,8 +240,9 @@ export const payoutRepo = {
         throw new Error(`[PayoutRepo] Loi khi cap nhat hoa don hoan coc (chua ky HD): ${payErr.message}`);
       }
 
-      if (depositReq?.bed_id) {
-        await supabase.from('beds').update({ status: 'available' }).eq('id', depositReq.bed_id);
+      if (depositBeds && depositBeds.length > 0) {
+        const bedIds = depositBeds.map((db: any) => db.bed_id);
+        await supabase.from('beds').update({ status: 'available' }).in('id', bedIds);
       }
 
       return { ...paidInv, payout_status: 'completed' };
@@ -282,12 +290,19 @@ export const payoutRepo = {
     if (contract?.deposit_id) {
       const { data: depositReq } = await supabase
         .from('deposit_requests')
-        .select('room_id, bed_id')
+        .select('room_id')
         .eq('id', contract.deposit_id)
         .maybeSingle();
       if (depositReq) {
         roomId = depositReq.room_id;
-        bedId = depositReq.bed_id;
+      }
+      // Resolve beds via deposit_beds junction table
+      const { data: depositBeds } = await supabase
+        .from('deposit_beds')
+        .select('bed_id')
+        .eq('deposit_id', contract.deposit_id);
+      if (depositBeds && depositBeds.length > 0) {
+        bedId = depositBeds[0].bed_id;
       }
     }
 

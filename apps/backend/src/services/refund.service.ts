@@ -172,6 +172,16 @@ export const refundService = {
       throw duplicateError;
     }
 
+    // Xoa cac hoa don refund "rac" (amount=0, reconciliation_id=null) tu buoc Manager tao truoc do,
+    // de tranh trung lap o trang Chi tien khi ke toan tao hoa don doi soat moi.
+    await supabase
+      .from('invoices')
+      .delete()
+      .eq('invoice_type', 'refund')
+      .eq('contract_id', data.contractId)
+      .is('reconciliation_id', null)
+      .eq('amount', 0);
+
     const reconciliationId = 'REF-' + Math.floor(100000 + Math.random() * 900000);
     const reconciliationData = {
       id: reconciliationId,

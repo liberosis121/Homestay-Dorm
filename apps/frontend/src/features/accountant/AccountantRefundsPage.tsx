@@ -6,6 +6,12 @@ import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import CustomSelect from '../../components/ui/CustomSelect';
 
+// Unified deduction reason constants — used for both saving and reading
+const REASON_UTILITY = 'Điện nước';
+const REASON_DAMAGE = 'Hư hỏng tài sản';
+const REASON_CLEANING = 'Phí vệ sinh';
+const REASON_VIOLATION = 'Phạt vi phạm';
+
 type LiveRefundRecord = RefundRecord & {
   checkout_id?: string;
   contract_id?: string;
@@ -101,7 +107,7 @@ export default function AccountantRefundsPage() {
           const customer_name = contract.profiles?.full_name || 'Khách hàng';
 
           const damage_deductions = (rec.deductions || [])
-            .filter((d: any) => d.reason !== 'Điện nước' && d.reason !== 'Phí vệ sinh' && d.reason !== 'Phạt vi phạm' && d.reason !== 'Khấu trừ')
+            .filter((d: any) => d.reason !== REASON_UTILITY && d.reason !== REASON_CLEANING && d.reason !== REASON_VIOLATION)
             .map((d: any) => ({
               item: d.reason,
               amount: Number(d.amount) || 0,
@@ -110,13 +116,13 @@ export default function AccountantRefundsPage() {
             }));
 
           const debt_deductions = (rec.deductions || [])
-            .find((d: any) => d.reason === 'Điện nước' || d.reason?.toLowerCase().includes('điện nước'))?.amount || 0;
+            .find((d: any) => d.reason === REASON_UTILITY)?.amount || 0;
 
           const cleaning_fee = (rec.deductions || [])
-            .find((d: any) => d.reason === 'Phí vệ sinh' || d.reason?.toLowerCase().includes('vệ sinh'))?.amount || 0;
+            .find((d: any) => d.reason === REASON_CLEANING)?.amount || 0;
 
           const violation_penalty = (rec.deductions || [])
-            .find((d: any) => d.reason === 'Phạt vi phạm' || d.reason?.toLowerCase().includes('phạt'))?.amount || 0;
+            .find((d: any) => d.reason === REASON_VIOLATION)?.amount || 0;
 
           return {
             id: rec.id,
@@ -281,16 +287,16 @@ export default function AccountantRefundsPage() {
 
     const deductionsList = [];
     if (numElec > 0) {
-      deductionsList.push({ reason: 'Trừ điện nước / công nợ cũ', amount: numElec });
+      deductionsList.push({ reason: REASON_UTILITY, amount: numElec });
     }
     if (numDamage > 0) {
-      deductionsList.push({ reason: 'Trừ hư hỏng tài sản', amount: numDamage });
+      deductionsList.push({ reason: REASON_DAMAGE, amount: numDamage });
     }
     if (numClean > 0) {
-      deductionsList.push({ reason: 'Phí vệ sinh trả phòng', amount: numClean });
+      deductionsList.push({ reason: REASON_CLEANING, amount: numClean });
     }
     if (numViolation > 0) {
-      deductionsList.push({ reason: 'Khoản phạt hủy hợp đồng / vi phạm', amount: numViolation });
+      deductionsList.push({ reason: REASON_VIOLATION, amount: numViolation });
     }
 
     try {
