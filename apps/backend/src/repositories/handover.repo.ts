@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { getBedsByDepositIds } from '../utils/deposit-beds';
 
 export interface AssetHandoverDto {
   id: string;
@@ -70,20 +71,15 @@ export const handoverRepo = {
     const roomIds = Array.from(
       new Set((deposits || []).map((d: any) => d.room_id).filter(Boolean))
     );
-    // Coc theo GIUONG: bien ban ban giao hien them ten giuong duoc ban giao.
-    const bedIds = Array.from(
-      new Set((deposits || []).map((d: any) => d.bed_id).filter(Boolean))
-    );
+    // Giuong ban giao lay tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+    const bedsByDeposit = await getBedsByDepositIds((deposits || []).map((d: any) => d.id));
 
-    const [{ data: registrations }, { data: rooms }, { data: beds }] = await Promise.all([
+    const [{ data: registrations }, { data: rooms }] = await Promise.all([
       registrationIds.length > 0
         ? supabase.from('rental_registrations').select('id, cccd').in('id', registrationIds)
         : Promise.resolve({ data: [] as any[] }),
       roomIds.length > 0
         ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
-        : Promise.resolve({ data: [] as any[] }),
-      bedIds.length > 0
-        ? supabase.from('beds').select('id, name').in('id', bedIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
@@ -101,7 +97,7 @@ export const handoverRepo = {
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
       const customer = customers?.find(c => c.cccd === reg.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
-      const bed = beds?.find(b => b.id === dep.bed_id) || null;
+      const depBeds = bedsByDeposit[dep.id] || [];
 
       // Filter details for this handover
       const hDetails = details?.filter(d => d.handover_id === h.id) || [];
@@ -128,8 +124,8 @@ export const handoverRepo = {
         customer_name: customer.full_name || 'Khách thuê',
         room_id: dep.room_id || '',
         room_name: room.name || 'Phòng',
-        bed_id: dep.bed_id || '',
-        bed_name: bed ? bed.name : '',
+        bed_id: depBeds.length === 1 ? depBeds[0].id : '',
+        bed_name: depBeds.map(b => b.name).join(', '),
         branch_id: room.branch_id || '',
         handover_date: h.handover_time ? h.handover_time.slice(0, 10) : new Date().toISOString().slice(0, 10),
         checklist,

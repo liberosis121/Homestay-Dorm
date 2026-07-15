@@ -20,32 +20,14 @@ async function activateResourcesAfterContract(depositId: string) {
   if (depErr) throw depErr;
   if (!dep) throw new Error('Không tìm thấy phiếu cọc tương ứng để kích hoạt tài nguyên thuê.');
 
-  // Cọc nhóm: lấy danh sách giường từ bảng nối (rỗng nếu là cọc 1 giường / nguyên phòng).
+  // Giường giữ chỗ từ bảng nối deposit_beds (cọc lẻ = 1, cọc nhóm = N, nguyên phòng = 0).
   const { data: depBeds, error: dbErr } = await supabase
     .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
   if (dbErr) throw dbErr;
   const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
 
-  if (dep.bed_id) {
-    // Cọc theo giường → giường 'occupied'
-    const { error: bedErr } = await supabase
-      .from('beds').update({ status: 'occupied' }).eq('id', dep.bed_id);
-    if (bedErr) throw bedErr;
-
-    // Sau khi cập nhật, nếu phòng không còn giường 'available' nào → phòng 'occupied'
-    if (dep.room_id) {
-      const { data: roomBeds, error: rbErr } = await supabase
-        .from('beds').select('status').eq('room_id', dep.room_id);
-      if (rbErr) throw rbErr;
-      const stillAvailable = (roomBeds || []).some((b) => b.status === 'available');
-      if (!stillAvailable) {
-        const { error: roomErr } = await supabase
-          .from('rooms').update({ status: 'occupied' }).eq('id', dep.room_id);
-        if (roomErr) throw roomErr;
-      }
-    }
-  } else if (groupBedIds.length > 0) {
-    // Cọc nhóm N giường → tất cả giường của nhóm 'occupied'
+  if (groupBedIds.length > 0) {
+    // Cọc theo giường (lẻ hoặc nhóm) → các giường 'occupied'
     const { error: bedErr } = await supabase
       .from('beds').update({ status: 'occupied' }).in('id', groupBedIds);
     if (bedErr) throw bedErr;
@@ -94,17 +76,19 @@ async function releaseResourcesAfterContract(depositId: string) {
   if (depErr) throw depErr;
   if (!dep) return;
 
-  // Cọc nhóm: lấy danh sách giường từ bảng nối (rỗng nếu là cọc 1 giường / nguyên phòng).
+  // Giường giữ chỗ từ bảng nối deposit_beds (cọc lẻ = 1, cọc nhóm = N, nguyên phòng = 0).
   const { data: depBeds, error: dbErr } = await supabase
     .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
   if (dbErr) throw dbErr;
   const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
 
-  if (dep.bed_id) {
+  if (groupBedIds.length > 0) {
+    // Cọc theo giường (lẻ hoặc nhóm) → nhả các giường.
     const { error: bedErr } = await supabase
-      .from('beds').update({ status: 'available' }).eq('id', dep.bed_id);
+      .from('beds').update({ status: 'available' }).in('id', groupBedIds);
     if (bedErr) throw bedErr;
 
+    // Phòng còn giường trống → 'available'.
     if (dep.room_id) {
       const { data: roomBeds, error: rbErr } = await supabase
         .from('beds').select('status').eq('room_id', dep.room_id);
@@ -116,17 +100,6 @@ async function releaseResourcesAfterContract(depositId: string) {
           .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
         if (roomErr) throw roomErr;
       }
-    }
-  } else if (groupBedIds.length > 0) {
-    // Cọc nhóm N giường → nhả tất cả giường của nhóm.
-    const { error: bedErr } = await supabase
-      .from('beds').update({ status: 'available' }).in('id', groupBedIds);
-    if (bedErr) throw bedErr;
-
-    if (dep.room_id) {
-      const { error: roomErr } = await supabase
-        .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
-      if (roomErr) throw roomErr;
     }
   } else if (dep.room_id) {
     const { error: roomErr } = await supabase
@@ -223,7 +196,6 @@ export const managerContractRepo = {
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
       const customer = customers?.find(c => c.cccd === reg.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
-      const bed = beds?.find(b => b.id === dep.bed_id) || {};
       const branch = branches?.find(b => b.id === room.branch_id) || {};
       const manager = staffList?.find(s => s.id === branch.manager_id) || {};
       const saleStaff = staffList?.find(s => s.id === reg.staff_id) || {};
@@ -231,8 +203,8 @@ export const managerContractRepo = {
       const groupBedNames = groupBedIds
         .map((id) => (beds?.find((b) => b.id === id) as any)?.name)
         .filter(Boolean);
-      const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
-      const bedName = dep.bed_id ? (bed.name || dep.bed_id || '') : groupBedNames.join(', ');
+      const depositType = groupBedIds.length === 0 ? 'room' : (groupBedIds.length === 1 ? 'bed' : 'group');
+      const bedName = groupBedNames.join(', ');
       const tenants = (membersByReg[dep.registration_id] || [])
         .map((m) => {
           const c = (customers?.find((cu) => (cu as any).user_id === m.customer_user_id) || {}) as any;
@@ -330,7 +302,6 @@ export const managerContractRepo = {
     const reg = registrations?.find(r => r.id === dep.registration_id) || {};
     const customer = customers?.find(c => c.cccd === reg.cccd) || {};
     const room = rooms?.find(r => r.id === dep.room_id) || {};
-    const bed = beds?.find(b => b.id === dep.bed_id) || {};
     const branch = branches?.find(b => b.id === room.branch_id) || {};
     const manager = staffList?.find(s => s.id === branch.manager_id) || {};
     const saleStaff = staffList?.find(s => s.id === reg.staff_id) || {};
@@ -340,8 +311,8 @@ export const managerContractRepo = {
     const groupBedNames = groupBedIds
       .map((id: string) => (beds?.find((b) => b.id === id) as any)?.name)
       .filter(Boolean);
-    const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
-    const bedName = dep.bed_id ? (bed.name || dep.bed_id || '') : groupBedNames.join(', ');
+    const depositType = groupBedIds.length === 0 ? 'room' : (groupBedIds.length === 1 ? 'bed' : 'group');
+    const bedName = groupBedNames.join(', ');
     const tenants = (members || [])
       .filter((m: any) => m.registration_id === dep.registration_id)
       .map((m: any) => {

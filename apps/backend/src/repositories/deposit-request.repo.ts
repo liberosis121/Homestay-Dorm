@@ -4,6 +4,28 @@
  */
 
 import { supabase } from '../utils/supabase';
+import { getBedsByDepositIds, singleBedIdFromBeds } from '../utils/deposit-beds';
+
+/**
+ * Gan thong tin giuong (tu bang noi deposit_beds) vao cac ban ghi deposit_requests
+ * de giu tuong thich shape sau khi bo cot deposit_requests.bed_id:
+ *   - bed_id : chi coc 1 giuong le moi co (nhom / nguyen phong = null)
+ *   - beds   : object giuong dau tien {id, name} (tuong thich cho doc `.beds.name`)
+ *   - bed_names : ten tat ca giuong (le = 1, nhom = N, nguyen phong = [])
+ */
+async function attachBedsInfo<T extends { id: string }>(rows: T[]): Promise<T[]> {
+  if (!rows || rows.length === 0) return rows;
+  const bedsByDeposit = await getBedsByDepositIds(rows.map((r) => r.id));
+  return rows.map((r) => {
+    const beds = bedsByDeposit[r.id] || [];
+    return {
+      ...r,
+      bed_id: singleBedIdFromBeds(beds),
+      beds: beds.length > 0 ? { id: beds[0].id, name: beds[0].name } : null,
+      bed_names: beds.map((b) => b.name)
+    } as T;
+  });
+}
 
 export const depositRequestRepo = {
   /**
@@ -44,10 +66,6 @@ export const depositRequestRepo = {
             id,
             name
           )
-        ),
-        beds!bed_id (
-          id,
-          name
         )
       `)
       .eq('rental_registrations.cccd', cccd)
@@ -84,10 +102,6 @@ export const depositRequestRepo = {
             id,
             name
           )
-        ),
-        beds!bed_id (
-          id,
-          name
         )
       `)
       .in('registration_id', registrationIds)
@@ -118,8 +132,7 @@ export const depositRequestRepo = {
             )
           )
         ),
-        rooms (*),
-        beds!bed_id (*)
+        rooms (*)
       `)
       .eq('id', id)
       .single();
@@ -128,7 +141,8 @@ export const depositRequestRepo = {
       if (error.code === 'PGRST116') return null;
       throw new Error(`[DepositRequestRepo] Loi khi lay chi tiet phieu dat coc id=${id}: ${error.message}`);
     }
-    return data;
+    if (!data) return data;
+    return (await attachBedsInfo([data as any]))[0];
   },
 
   /**
@@ -153,10 +167,6 @@ export const depositRequestRepo = {
         rooms (
           id,
           name
-        ),
-        beds!bed_id (
-          id,
-          name
         )
       `)
       .order('created_at', { ascending: false });
@@ -172,7 +182,7 @@ export const depositRequestRepo = {
     if (error) {
       throw new Error(`[DepositRequestRepo] Loi khi lay danh sach phieu dat coc: ${error.message}`);
     }
-    return data;
+    return await attachBedsInfo((data as any[]) || []);
   },
 
   /**

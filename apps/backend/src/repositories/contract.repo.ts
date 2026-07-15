@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { registrationMemberRepo } from './registration-member.repo';
+import { getBedsByDepositIds, singleBedIdFromBeds } from '../utils/deposit-beds';
 
 export const contractRepo = {
   findByUserId: async (userId: string) => {
@@ -14,7 +15,6 @@ export const contractRepo = {
             *,
             branches!inner (*)
           ),
-          beds!bed_id (*),
           rental_registrations!inner (
             *,
             customers!cccd!inner (*)
@@ -47,7 +47,6 @@ export const contractRepo = {
             *,
             branches!inner (*)
           ),
-          beds!bed_id (*),
           rental_registrations!inner (
             *,
             customers!cccd!inner (*)
@@ -75,7 +74,23 @@ export const contractRepo = {
     for (const contract of [...(representativeContracts || []), ...(memberContracts || [])]) {
       contractsById.set(contract.id, contract);
     }
+    const contracts = Array.from(contractsById.values());
 
-    return Array.from(contractsById.values());
+    // Gan thong tin giuong (tu bang noi deposit_beds) vao deposit_requests long
+    // de giu tuong thich sau khi bo cot bed_id: coc le -> 1 giuong, nhom -> N, nguyen phong -> 0.
+    const depositIds = contracts
+      .map((c: any) => c.deposit_requests?.id)
+      .filter(Boolean);
+    const bedsByDeposit = await getBedsByDepositIds(depositIds);
+    for (const c of contracts) {
+      const dep = c.deposit_requests;
+      if (!dep) continue;
+      const beds = bedsByDeposit[dep.id] || [];
+      dep.bed_id = singleBedIdFromBeds(beds);
+      dep.beds = beds.length > 0 ? { id: beds[0].id, name: beds[0].name } : null;
+      dep.bed_names = beds.map((b) => b.name);
+    }
+
+    return contracts;
   }
 };

@@ -6,7 +6,6 @@ const CONTRACT_SELECT = `
   deposit_requests (
     *,
     rooms ( *, branches (*) ),
-    beds!bed_id (*),
     rental_registrations ( *, customers!cccd (*) )
   )
 `;
