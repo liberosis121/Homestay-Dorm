@@ -19,9 +19,9 @@ const STATUS_CFG: Record<ManagerContract['status'], { label: string; bg: string;
 };
 
 const DEPOSIT_TYPE_CONFIG = {
-  group: { label: 'NhÃ³m giÆ°á»ng', icon: 'groups', bg: T.primaryLight, text: T.primary },
-  room: { label: 'Cả phòng', icon: 'meeting_room', bg: T.blueBg, text: T.blue },
-  bed: { label: 'Giường lẻ', icon: 'bed', bg: T.sageBg, text: T.sage },
+  group: { label: 'Thuê nhóm', icon: 'groups', bg: T.primaryLight, text: T.primary },
+  room: { label: 'Thuê cá nhân', icon: 'person', bg: T.blueBg, text: T.blue },
+  bed: { label: 'Thuê cá nhân', icon: 'person', bg: T.sageBg, text: T.sage },
 };
 
 export default function ManagerContractsPage() {
@@ -385,13 +385,13 @@ export default function ManagerContractsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: '11%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '15%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
               <col style={{ width: '10%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '11%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>

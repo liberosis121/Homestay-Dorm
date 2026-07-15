@@ -231,8 +231,10 @@ export const managerContractRepo = {
       const groupBedNames = groupBedIds
         .map((id) => (beds?.find((b) => b.id === id) as any)?.name)
         .filter(Boolean);
-      const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
-      const bedName = dep.bed_id ? (bed.name || dep.bed_id || '') : groupBedNames.join(', ');
+      const tenantCount = (membersByReg[dep.registration_id] || []).length;
+      const isGroup = tenantCount > 1 || (reg.occupants_count && reg.occupants_count > 1);
+      const depositType = isGroup ? 'group' : (groupBedNames.length > 0 ? 'bed' : 'room');
+      const bedName = groupBedNames.join(', ');
       const tenants = (membersByReg[dep.registration_id] || [])
         .map((m) => {
           const c = (customers?.find((cu) => (cu as any).user_id === m.customer_user_id) || {}) as any;
@@ -340,8 +342,12 @@ export const managerContractRepo = {
     const groupBedNames = groupBedIds
       .map((id: string) => (beds?.find((b) => b.id === id) as any)?.name)
       .filter(Boolean);
-    const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
-    const bedName = dep.bed_id ? (bed.name || dep.bed_id || '') : groupBedNames.join(', ');
+    
+    const tenantCount = (members || []).filter((m: any) => m.registration_id === dep.registration_id).length;
+    const isGroup = tenantCount > 1 || (reg.occupants_count && reg.occupants_count > 1);
+    const depositType = isGroup ? 'group' : (groupBedNames.length > 0 ? 'bed' : 'room');
+    const bedName = groupBedNames.join(', ');
+
     const tenants = (members || [])
       .filter((m: any) => m.registration_id === dep.registration_id)
       .map((m: any) => {
