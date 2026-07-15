@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { getBedIdsByDepositId } from '../utils/deposit-beds';
+import { getBedIdsByContractId } from '../utils/contract-beds';
 
 export const payoutRepo = {
   /**
@@ -286,8 +287,8 @@ export const payoutRepo = {
       if (depositReq) {
         roomId = depositReq.room_id;
       }
-      // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
-      bedIds = await getBedIdsByDepositId(contract.deposit_id);
+      // Giuong THUC SU cua hop dong (contract_beds) — nha khi ket thuc hop dong.
+      bedIds = await getBedIdsByContractId(contract.id);
     }
 
     // 2. Cap nhat status hoa don hoan coc sang paid

@@ -3,7 +3,7 @@ import { residencyService } from './residency.service';
 import { handoverRepo } from '../repositories/handover.repo';
 import { supabase } from '../utils/supabase';
 import { CONTRACT_STATUS } from '../types/constants';
-import { getBedsByDepositIds } from '../utils/deposit-beds';
+import { getBedsByContractIds } from '../utils/contract-beds';
 import crypto from 'crypto';
 
 export const managerContractService = {
@@ -113,8 +113,8 @@ export const managerContractService = {
       ? await supabase.from('branches').select('id, name').in('id', branchIds)
       : { data: [] as any[] };
 
-    // Giường giữ chỗ từ bảng nối deposit_beds (cọc lẻ = 1, cọc nhóm = N, nguyên phòng = 0).
-    const bedsByDeposit = await getBedsByDepositIds((deposits || []).map(d => d.id));
+    // Giường THỰC SỰ của hợp đồng (ảnh chụp contract_beds): HD lẻ = 1, nhóm = N, nguyên phòng = 0.
+    const bedsByContract = await getBedsByContractIds(allContractIds);
 
     // Fetch customers
     const regIds = (deposits || []).map(dr => dr.registration_id).filter(Boolean);
@@ -155,7 +155,7 @@ export const managerContractService = {
       if (managerBranchId && room.branch_id !== managerBranchId) return null;
 
       const branch = (branches || []).find(b => b.id === room.branch_id);
-      const depBeds = bedsByDeposit[dep.id] || [];
+      const depBeds = bedsByContract[contract.id] || [];
       const reg = (regs || []).find(rg => rg.id === dep.registration_id);
       const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
 
@@ -192,7 +192,7 @@ export const managerContractService = {
       if (managerBranchId && room.branch_id !== managerBranchId) return null;
 
       const branch = (branches || []).find(b => b.id === room.branch_id);
-      const depBeds = bedsByDeposit[dep.id] || [];
+      const depBeds = bedsByContract[contract.id] || [];
       const reg = (regs || []).find(rg => rg.id === dep.registration_id);
       const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
 

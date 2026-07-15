@@ -307,14 +307,24 @@ router.patch('/residency/:id/status', async (req, res) => {
   }
 });
 
-// TH3: chốt nhóm sau kiểm tra lưu trú — loại thành viên rớt + nhả giường, phần còn lại đi tiếp.
+// TH3: chốt nhóm sau kiểm tra lưu trú — hoàn cọc 1 phần cho đại diện, nhả giường người rớt,
+// phần còn lại (người đạt) đi tiếp. Nếu đại diện gốc rớt → cần new_representative_user_id.
 router.post('/residency/finalize', async (req, res) => {
   try {
-    const { deposit_id } = req.body;
+    const { deposit_id, new_representative_user_id } = req.body;
     if (!deposit_id) return sendError(res, null, 'Thiếu deposit_id.', 400);
-    const data = await residencyService.finalizeGroupResidency(deposit_id);
+    const data = await residencyService.finalizeGroupResidency(deposit_id, new_representative_user_id);
     sendSuccess(res, data, 'Chốt nhóm lưu trú thành công');
-  } catch (err) {
+  } catch (err: any) {
+    // Đại diện rớt mà chưa chọn người thay → 409 kèm danh sách ứng viên để FE hiện ô chọn.
+    if (err?.code === 'REPRESENTATIVE_REJECTED') {
+      return res.status(409).json({
+        success: false,
+        message: err.message,
+        code: err.code,
+        candidates: err.candidates || []
+      });
+    }
     sendError(res, err);
   }
 });

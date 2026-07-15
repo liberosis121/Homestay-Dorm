@@ -1,5 +1,5 @@
 import { supabase } from '../utils/supabase';
-import { getBedsByDepositIds } from '../utils/deposit-beds';
+import { getBedsByContractIds } from '../utils/contract-beds';
 
 export interface AssetHandoverDto {
   id: string;
@@ -71,8 +71,8 @@ export const handoverRepo = {
     const roomIds = Array.from(
       new Set((deposits || []).map((d: any) => d.room_id).filter(Boolean))
     );
-    // Giuong ban giao lay tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
-    const bedsByDeposit = await getBedsByDepositIds((deposits || []).map((d: any) => d.id));
+    // Giuong ban giao lay tu ANH CHUP hop dong (contract_beds): HD le = 1, nhom = N, nguyen phong = 0.
+    const bedsByContract = await getBedsByContractIds(handoverContractIds);
 
     const [{ data: registrations }, { data: rooms }] = await Promise.all([
       registrationIds.length > 0
@@ -97,7 +97,7 @@ export const handoverRepo = {
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
       const customer = customers?.find(c => c.cccd === reg.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
-      const depBeds = bedsByDeposit[dep.id] || [];
+      const depBeds = bedsByContract[h.contract_id] || [];
 
       // Filter details for this handover
       const hDetails = details?.filter(d => d.handover_id === h.id) || [];

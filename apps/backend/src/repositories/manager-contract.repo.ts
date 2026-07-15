@@ -2,109 +2,177 @@ import { randomUUID } from 'crypto';
 import { supabase } from '../utils/supabase';
 
 /**
- * Kích hoạt tài nguyên sau khi lập hợp đồng (khách chính thức thuê):
- *  - Cọc theo giường: giường → 'occupied'; phòng → 'occupied' nếu hết giường trống.
- *  - Cọc theo phòng nguyên: phòng → 'occupied'.
- *  - Đơn đăng ký thuê → 'completed'.
- * Bám theo schema thật: rooms.status & beds.status chỉ dùng 'available'/'occupied'
- * (không có cột current_occupants, không dùng 'partial'/'full').
+ * Xác định THÀNH PHẦN THỰC SỰ của hợp đồng từ phiếu cọc:
+ *  - Thành viên ĐẠT điều kiện lưu trú (tiếp tục ký); thành viên rớt bị loại khỏi hợp đồng.
+ *  - Giường hợp đồng = đúng số thành viên đạt (chọn từ giường đã giữ chỗ; giường thừa sẽ nhả).
+ * Hồ sơ đăng ký gốc (deposit_beds, rental_registration_members) GIỮ NGUYÊN (lịch sử).
  */
-async function activateResourcesAfterContract(depositId: string) {
-  if (!depositId) return;
+async function resolveContractComposition(depositId: string): Promise<{
+  registrationId: string | null;
+  roomId: string | null;
+  approvedUserIds: string[];
+  representativeUserId: string | null;
+  chosenBedIds: string[];
+  reservedBedIds: string[];
+  monthlyRent: number;
+}> {
+  const { data: dep } = await supabase
+    .from('deposit_requests').select('registration_id, room_id, deposit_amount').eq('id', depositId).maybeSingle();
+  if (!dep) throw new Error('Không tìm thấy phiếu cọc tương ứng để lập hợp đồng.');
 
-  const { data: dep, error: depErr } = await supabase
-    .from('deposit_requests')
-    .select('*')
-    .eq('id', depositId)
-    .maybeSingle();
-  if (depErr) throw depErr;
-  if (!dep) throw new Error('Không tìm thấy phiếu cọc tương ứng để kích hoạt tài nguyên thuê.');
+  // Roster: thành viên nhóm (kèm is_representative). Fallback dữ liệu cũ: người đại diện trên phiếu.
+  const { data: members } = await supabase
+    .from('rental_registration_members')
+    .select('customer_user_id, is_representative')
+    .eq('registration_id', dep.registration_id);
 
-  // Giường giữ chỗ từ bảng nối deposit_beds (cọc lẻ = 1, cọc nhóm = N, nguyên phòng = 0).
-  const { data: depBeds, error: dbErr } = await supabase
-    .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
-  if (dbErr) throw dbErr;
-  const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
-
-  if (groupBedIds.length > 0) {
-    // Cọc theo giường (lẻ hoặc nhóm) → các giường 'occupied'
-    const { error: bedErr } = await supabase
-      .from('beds').update({ status: 'occupied' }).in('id', groupBedIds);
-    if (bedErr) throw bedErr;
-
-    // Nếu phòng không còn giường 'available' nào → phòng 'occupied'
-    if (dep.room_id) {
-      const { data: roomBeds, error: rbErr } = await supabase
-        .from('beds').select('status').eq('room_id', dep.room_id);
-      if (rbErr) throw rbErr;
-      const stillAvailable = (roomBeds || []).some((b) => b.status === 'available');
-      if (!stillAvailable) {
-        const { error: roomErr } = await supabase
-          .from('rooms').update({ status: 'occupied' }).eq('id', dep.room_id);
-        if (roomErr) throw roomErr;
-      }
+  let roster: Array<{ user_id: string; cccd: string; is_representative: boolean }> = [];
+  if (members && members.length > 0) {
+    const userIds = members.map((m: any) => m.customer_user_id);
+    const { data: custs } = await supabase.from('customers').select('user_id, cccd').in('user_id', userIds);
+    const cccdByUser = new Map((custs || []).map((c: any) => [c.user_id, c.cccd]));
+    roster = members.map((m: any) => ({
+      user_id: m.customer_user_id,
+      cccd: cccdByUser.get(m.customer_user_id) || '',
+      is_representative: !!m.is_representative
+    }));
+  } else {
+    const { data: reg } = await supabase
+      .from('rental_registrations').select('cccd').eq('id', dep.registration_id).maybeSingle();
+    if (reg?.cccd) {
+      const { data: c } = await supabase.from('customers').select('user_id, cccd').eq('cccd', reg.cccd).maybeSingle();
+      if (c?.user_id) roster = [{ user_id: c.user_id, cccd: c.cccd, is_representative: true }];
     }
-  } else if (dep.room_id) {
-    // Cọc theo phòng nguyên → phòng 'occupied'
-    const { error: roomErr } = await supabase
-      .from('rooms').update({ status: 'occupied' }).eq('id', dep.room_id);
-    if (roomErr) throw roomErr;
   }
 
-  // Đơn đăng ký thuê → 'completed'
-  if (dep.registration_id) {
-    const { error: regErr } = await supabase
-      .from('rental_registrations').update({ status: 'completed' }).eq('id', dep.registration_id);
-    if (regErr) throw regErr;
+  // Giữ lại thành viên ĐẠT điều kiện lưu trú. Nếu KHÔNG có dữ liệu residency (cọc lẻ/luồng không
+  // yêu cầu) → coi như tất cả tiếp tục.
+  const cccds = roster.map((r) => r.cccd).filter(Boolean);
+  const { data: residency } = cccds.length > 0
+    ? await supabase.from('residency_info').select('cccd, check_result').is('contract_id', null).in('cccd', cccds)
+    : { data: [] as any[] };
+  const approvedCccds = new Set(
+    (residency || []).filter((r: any) => r.check_result === 'approved').map((r: any) => r.cccd)
+  );
+  const hasResidency = (residency || []).length > 0;
+  const approved = hasResidency ? roster.filter((r) => approvedCccds.has(r.cccd)) : roster;
+
+  // Đại diện: ưu tiên người đạt có is_representative; nếu không còn → người đạt đầu tiên.
+  const representativeUserId =
+    approved.find((r) => r.is_representative)?.user_id || approved[0]?.user_id || null;
+
+  // Giường đã giữ chỗ (thứ tự ổn định theo bed_id — đồng bộ với finalizeGroupResidency).
+  const { data: depBeds } = await supabase
+    .from('deposit_beds').select('bed_id').eq('deposit_id', depositId).order('bed_id', { ascending: true });
+  const reservedBedIds = (depBeds || []).map((r: any) => r.bed_id);
+  const chosenBedIds = reservedBedIds.slice(0, approved.length);
+
+  // Tiền thuê tháng của hợp đồng = tổng giá các giường thực sự (nguyên phòng: 0 → dùng giá gửi lên).
+  let monthlyRent = 0;
+  if (chosenBedIds.length > 0) {
+    const { data: beds } = await supabase.from('beds').select('id, price').in('id', chosenBedIds);
+    monthlyRent = (beds || []).reduce((s: number, b: any) => s + (Number(b.price) || 0), 0);
+  }
+
+  return {
+    registrationId: dep.registration_id || null,
+    roomId: dep.room_id || null,
+    approvedUserIds: approved.map((r) => r.user_id),
+    representativeUserId,
+    chosenBedIds,
+    reservedBedIds,
+    monthlyRent
+  };
+}
+
+/**
+ * Ghi ẢNH CHỤP hợp đồng (contract_beds + contract_customers) và kích hoạt tài nguyên:
+ *  - Giường hợp đồng → 'occupied'; giường đã giữ chỗ nhưng KHÔNG vào hợp đồng → 'available'.
+ *  - Phòng → 'occupied' nếu hết giường trống; đơn đăng ký → 'completed'.
+ */
+async function persistContractSnapshotAndActivate(
+  contractId: string,
+  comp: Awaited<ReturnType<typeof resolveContractComposition>>
+) {
+  // 1. contract_customers (kèm cờ đại diện)
+  if (comp.approvedUserIds.length > 0) {
+    const rows = comp.approvedUserIds.map((uid) => ({
+      contract_id: contractId,
+      customer_user_id: uid,
+      is_representative: uid === comp.representativeUserId
+    }));
+    const { error } = await supabase.from('contract_customers').insert(rows);
+    if (error) throw new Error(`[ContractRepo] Loi khi luu khach cua hop dong: ${error.message}`);
+  }
+
+  // 2. contract_beds
+  if (comp.chosenBedIds.length > 0) {
+    const rows = comp.chosenBedIds.map((bedId) => ({ contract_id: contractId, bed_id: bedId }));
+    const { error } = await supabase.from('contract_beds').insert(rows);
+    if (error) throw new Error(`[ContractRepo] Loi khi luu giuong cua hop dong: ${error.message}`);
+  }
+
+  // 3. Giường hợp đồng → occupied
+  if (comp.chosenBedIds.length > 0) {
+    const { error } = await supabase.from('beds').update({ status: 'occupied' }).in('id', comp.chosenBedIds);
+    if (error) throw error;
+  }
+
+  // 4. Giường đã giữ chỗ nhưng không vào hợp đồng → available (vd 2 giường của người rớt ở TH3)
+  const releasedBedIds = comp.reservedBedIds.filter((id) => !comp.chosenBedIds.includes(id));
+  if (releasedBedIds.length > 0) {
+    const { error } = await supabase.from('beds').update({ status: 'available' }).in('id', releasedBedIds);
+    if (error) throw error;
+  }
+
+  // 5. Phòng: cọc giường → occupied khi hết giường trống; cọc nguyên phòng → occupied.
+  if (comp.roomId) {
+    if (comp.chosenBedIds.length > 0) {
+      const { data: roomBeds } = await supabase.from('beds').select('status').eq('room_id', comp.roomId);
+      const stillAvailable = (roomBeds || []).some((b: any) => b.status === 'available');
+      if (!stillAvailable) {
+        await supabase.from('rooms').update({ status: 'occupied' }).eq('id', comp.roomId);
+      }
+    } else {
+      await supabase.from('rooms').update({ status: 'occupied' }).eq('id', comp.roomId);
+    }
+  }
+
+  // 6. Đơn đăng ký thuê → 'completed'
+  if (comp.registrationId) {
+    await supabase.from('rental_registrations').update({ status: 'completed' }).eq('id', comp.registrationId);
   }
 }
 
 /**
- * Nhả tài nguyên khi hợp đồng kết thúc/thanh lý:
- *  - Cọc theo giường: giường -> 'available'; phòng -> 'available' nếu có giường trống.
- *  - Cọc theo phòng nguyên: phòng -> 'available'.
- * Bám theo schema thật: rooms.status & beds.status chỉ dùng 'available'/'occupied'.
+ * Nhả tài nguyên khi hợp đồng kết thúc/thanh lý — theo GIƯỜNG THỰC SỰ của hợp đồng (contract_beds):
+ *  - HĐ theo giường: giường -> 'available'; phòng -> 'available' nếu có giường trống.
+ *  - HĐ nguyên phòng: phòng -> 'available'.
  */
-async function releaseResourcesAfterContract(depositId: string) {
-  if (!depositId) return;
+async function releaseResourcesAfterContract(contractId: string, depositId: string) {
+  const { data: cbeds } = await supabase
+    .from('contract_beds').select('bed_id').eq('contract_id', contractId);
+  const bedIds = (cbeds || []).map((r: any) => r.bed_id);
 
-  const { data: dep, error: depErr } = await supabase
-    .from('deposit_requests')
-    .select('*')
-    .eq('id', depositId)
-    .maybeSingle();
-  if (depErr) throw depErr;
-  if (!dep) return;
+  const { data: dep } = await supabase
+    .from('deposit_requests').select('room_id').eq('id', depositId).maybeSingle();
+  const roomId = dep?.room_id || null;
 
-  // Giường giữ chỗ từ bảng nối deposit_beds (cọc lẻ = 1, cọc nhóm = N, nguyên phòng = 0).
-  const { data: depBeds, error: dbErr } = await supabase
-    .from('deposit_beds').select('bed_id').eq('deposit_id', depositId);
-  if (dbErr) throw dbErr;
-  const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
-
-  if (groupBedIds.length > 0) {
-    // Cọc theo giường (lẻ hoặc nhóm) → nhả các giường.
+  if (bedIds.length > 0) {
     const { error: bedErr } = await supabase
-      .from('beds').update({ status: 'available' }).in('id', groupBedIds);
+      .from('beds').update({ status: 'available' }).in('id', bedIds);
     if (bedErr) throw bedErr;
 
-    // Phòng còn giường trống → 'available'.
-    if (dep.room_id) {
-      const { data: roomBeds, error: rbErr } = await supabase
-        .from('beds').select('status').eq('room_id', dep.room_id);
-      if (rbErr) throw rbErr;
-
-      const hasAvailableBed = (roomBeds || []).some((b) => b.status === 'available');
+    if (roomId) {
+      const { data: roomBeds } = await supabase
+        .from('beds').select('status').eq('room_id', roomId);
+      const hasAvailableBed = (roomBeds || []).some((b: any) => b.status === 'available');
       if (hasAvailableBed) {
-        const { error: roomErr } = await supabase
-          .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
-        if (roomErr) throw roomErr;
+        await supabase.from('rooms').update({ status: 'available' }).eq('id', roomId);
       }
     }
-  } else if (dep.room_id) {
-    const { error: roomErr } = await supabase
-      .from('rooms').update({ status: 'available' }).eq('id', dep.room_id);
-    if (roomErr) throw roomErr;
+  } else if (roomId) {
+    await supabase.from('rooms').update({ status: 'available' }).eq('id', roomId);
   }
 }
 
@@ -167,8 +235,8 @@ export const managerContractRepo = {
       { data: beds },
       { data: branches },
       { data: staffList },
-      { data: depBeds },
-      { data: members }
+      { data: contractBeds },
+      { data: contractCustomers }
     ] = await Promise.all([
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
@@ -177,35 +245,45 @@ export const managerContractRepo = {
       supabase.from('beds').select('*'),
       supabase.from('branches').select('*'),
       supabase.from('employees').select('*'),
-      supabase.from('deposit_beds').select('deposit_id, bed_id'),
-      supabase.from('rental_registration_members').select('registration_id, customer_user_id, is_representative')
+      supabase.from('contract_beds').select('contract_id, bed_id'),
+      supabase.from('contract_customers').select('contract_id, customer_user_id, is_representative')
     ]);
 
-    const groupBedIdsByDeposit: Record<string, string[]> = {};
-    for (const row of depBeds || []) {
-      (groupBedIdsByDeposit[(row as any).deposit_id] ||= []).push((row as any).bed_id);
+    // Giường/khách THỰC SỰ của từng hợp đồng (ảnh chụp) — thay vì suy từ phiếu cọc.
+    const bedIdsByContract: Record<string, string[]> = {};
+    for (const row of contractBeds || []) {
+      (bedIdsByContract[(row as any).contract_id] ||= []).push((row as any).bed_id);
     }
-    const membersByReg: Record<string, Array<{ customer_user_id: string; is_representative: boolean }>> = {};
-    for (const row of members || []) {
-      (membersByReg[(row as any).registration_id] ||= []).push(row as any);
+    const customersByContract: Record<string, Array<{ customer_user_id: string; is_representative: boolean }>> = {};
+    for (const row of contractCustomers || []) {
+      (customersByContract[(row as any).contract_id] ||= []).push(row as any);
     }
 
     // 3. Resolve relations
     let result = contracts.map(contract => {
       const dep = deposits?.find(d => d.id === contract.deposit_id) || {};
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
-      const customer = customers?.find(c => c.cccd === reg.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
       const branch = branches?.find(b => b.id === room.branch_id) || {};
       const manager = staffList?.find(s => s.id === branch.manager_id) || {};
       const saleStaff = staffList?.find(s => s.id === reg.staff_id) || {};
-      const groupBedIds = groupBedIdsByDeposit[dep.id] || [];
-      const groupBedNames = groupBedIds
-        .map((id) => (beds?.find((b) => b.id === id) as any)?.name)
-        .filter(Boolean);
-      const depositType = groupBedIds.length === 0 ? 'room' : (groupBedIds.length === 1 ? 'bed' : 'group');
-      const bedName = groupBedNames.join(', ');
-      const tenants = (membersByReg[dep.registration_id] || [])
+      const contractCusts = customersByContract[contract.id] || [];
+      const repLink = contractCusts.find((m) => m.is_representative) || contractCusts[0];
+      // Khách đại diện của HĐ (có thể là đại diện MỚI nếu đại diện gốc rớt cư trú).
+      const customer = customers?.find((c) => (c as any).user_id === repLink?.customer_user_id)
+        || customers?.find(c => c.cccd === reg.cccd) || {};
+      const contractBedIds = bedIdsByContract[contract.id] || [];
+      const contractBedList = contractBedIds
+        .map((id) => beds?.find((b) => b.id === id))
+        .filter(Boolean) as any[];
+      const bedNames = contractBedList.map((b) => b.name).filter(Boolean);
+      const depositType = contractBedIds.length === 0 ? 'room' : (contractBedIds.length === 1 ? 'bed' : 'group');
+      const bedName = bedNames.join(', ');
+      // Cọc của HĐ = tổng giá giường thực sự × 2 tháng (nguyên phòng: dùng cọc gốc của phiếu).
+      const contractDeposit = contractBedList.length > 0
+        ? contractBedList.reduce((s, b) => s + (Number(b.price) || 0), 0) * 2
+        : (Number(dep.deposit_amount) || 0);
+      const tenants = contractCusts
         .map((m) => {
           const c = (customers?.find((cu) => (cu as any).user_id === m.customer_user_id) || {}) as any;
           return {
@@ -220,11 +298,11 @@ export const managerContractRepo = {
       return {
         id: contract.id,
         contract_code: contract.contract_code,
-        customer_id: customer.user_id || '',
-        customer_name: customer.full_name || 'Khách thuê',
-        customer_phone: customer.phone || '',
-        customer_cccd: customer.cccd || '',
-        customer_address: customer.address || '',
+        customer_id: (customer as any).user_id || '',
+        customer_name: (customer as any).full_name || 'Khách thuê',
+        customer_phone: (customer as any).phone || '',
+        customer_cccd: (customer as any).cccd || '',
+        customer_address: (customer as any).address || '',
         room_id: dep.room_id || '',
         room_name: room.name || dep.room_id || 'Chưa xếp',
         deposit_type: depositType,
@@ -232,7 +310,7 @@ export const managerContractRepo = {
         branch_name: branch.name || 'Chi nhánh',
         branch_id: room.branch_id || '',
         rent_amount: Number(contract.rent_price) || Number(room.price) || 0,
-        deposit_amount: Number(dep.deposit_amount) || 0,
+        deposit_amount: contractDeposit,
         service_fee: 50000,
         start_date: contract.start_date,
         end_date: contract.end_date,
@@ -284,8 +362,8 @@ export const managerContractRepo = {
       { data: beds },
       { data: branches },
       { data: staffList },
-      { data: depBeds },
-      { data: members }
+      { data: contractBeds },
+      { data: contractCustomers }
     ] = await Promise.all([
       supabase.from('deposit_requests').select('*'),
       supabase.from('rental_registrations').select('*'),
@@ -294,27 +372,34 @@ export const managerContractRepo = {
       supabase.from('beds').select('*'),
       supabase.from('branches').select('*'),
       supabase.from('employees').select('*'),
-      supabase.from('deposit_beds').select('deposit_id, bed_id'),
-      supabase.from('rental_registration_members').select('registration_id, customer_user_id, is_representative')
+      supabase.from('contract_beds').select('contract_id, bed_id'),
+      supabase.from('contract_customers').select('contract_id, customer_user_id, is_representative')
     ]);
 
     const dep = deposits?.find(d => d.id === contract.deposit_id) || {};
     const reg = registrations?.find(r => r.id === dep.registration_id) || {};
-    const customer = customers?.find(c => c.cccd === reg.cccd) || {};
     const room = rooms?.find(r => r.id === dep.room_id) || {};
     const branch = branches?.find(b => b.id === room.branch_id) || {};
     const manager = staffList?.find(s => s.id === branch.manager_id) || {};
     const saleStaff = staffList?.find(s => s.id === reg.staff_id) || {};
-    const groupBedIds = (depBeds || [])
-      .filter((row: any) => row.deposit_id === dep.id)
+    // Giường/khách THỰC SỰ của hợp đồng (ảnh chụp contract_beds/contract_customers).
+    const contractCusts = ((contractCustomers as any[]) || []).filter((m: any) => m.contract_id === contract.id);
+    const repLink = contractCusts.find((m: any) => m.is_representative) || contractCusts[0];
+    const customer = customers?.find((c) => (c as any).user_id === repLink?.customer_user_id)
+      || customers?.find(c => c.cccd === reg.cccd) || {};
+    const contractBedIds = ((contractBeds as any[]) || [])
+      .filter((row: any) => row.contract_id === contract.id)
       .map((row: any) => row.bed_id);
-    const groupBedNames = groupBedIds
-      .map((id: string) => (beds?.find((b) => b.id === id) as any)?.name)
-      .filter(Boolean);
-    const depositType = groupBedIds.length === 0 ? 'room' : (groupBedIds.length === 1 ? 'bed' : 'group');
-    const bedName = groupBedNames.join(', ');
-    const tenants = (members || [])
-      .filter((m: any) => m.registration_id === dep.registration_id)
+    const contractBedList = contractBedIds
+      .map((id: string) => beds?.find((b) => b.id === id))
+      .filter(Boolean) as any[];
+    const bedNames = contractBedList.map((b) => b.name).filter(Boolean);
+    const depositType = contractBedIds.length === 0 ? 'room' : (contractBedIds.length === 1 ? 'bed' : 'group');
+    const bedName = bedNames.join(', ');
+    const contractDeposit = contractBedList.length > 0
+      ? contractBedList.reduce((s, b) => s + (Number(b.price) || 0), 0) * 2
+      : (Number(dep.deposit_amount) || 0);
+    const tenants = contractCusts
       .map((m: any) => {
         const c = (customers?.find((cu) => (cu as any).user_id === m.customer_user_id) || {}) as any;
         return {
@@ -324,23 +409,23 @@ export const managerContractRepo = {
           role: m.is_representative ? 'representative' : 'member'
         };
       })
-      .sort((a, b) => (a.role === 'representative' ? -1 : 1) - (b.role === 'representative' ? -1 : 1));
+      .sort((a: any, b: any) => (a.role === 'representative' ? -1 : 1) - (b.role === 'representative' ? -1 : 1));
 
     return {
       id: contract.id,
       contract_code: contract.contract_code,
-      customer_id: customer.user_id || '',
-      customer_name: customer.full_name || 'Khách thuê',
-      customer_phone: customer.phone || '',
-      customer_cccd: customer.cccd || '',
-      customer_address: customer.address || '',
+      customer_id: (customer as any).user_id || '',
+      customer_name: (customer as any).full_name || 'Khách thuê',
+      customer_phone: (customer as any).phone || '',
+      customer_cccd: (customer as any).cccd || '',
+      customer_address: (customer as any).address || '',
       room_id: dep.room_id || '',
       room_name: room.name || dep.room_id || 'Chưa xếp',
       deposit_type: depositType,
       bed_name: bedName,
       branch_name: branch.name || 'Chi nhánh',
       rent_amount: Number(contract.rent_price) || Number(room.price) || 0,
-      deposit_amount: Number(dep.deposit_amount) || 0,
+      deposit_amount: contractDeposit,
       service_fee: 50000,
       start_date: contract.start_date,
       end_date: contract.end_date,
@@ -373,6 +458,14 @@ export const managerContractRepo = {
     if (!contract.staff_id) {
       throw new Error('Thiếu nhân viên phụ trách (staff_id) khi tạo hợp đồng.');
     }
+    const depositId = contract.deposit_code || contract.deposit_id;
+
+    // Xác định thành phần THỰC SỰ của hợp đồng (thành viên đạt + giường tương ứng, đại diện).
+    const comp = await resolveContractComposition(depositId);
+    if (comp.approvedUserIds.length === 0) {
+      throw new Error('Không có thành viên nào đạt điều kiện lưu trú để lập hợp đồng.');
+    }
+
     const dbContract = {
       // contracts.id là UUID → phải sinh UUID hợp lệ (trước đây dùng chuỗi 'CON-xxxx' gây lỗi kiểu dữ liệu).
       id: contract.id || randomUUID(),
@@ -380,11 +473,12 @@ export const managerContractRepo = {
       created_date: new Date().toISOString().slice(0, 10),
       start_date: contract.start_date,
       end_date: contract.end_date,
-      rent_price: contract.rent_amount,
+      // Tiền thuê = tổng giá giường THỰC SỰ của hợp đồng (cọc giường); nguyên phòng dùng giá gửi lên.
+      rent_price: comp.chosenBedIds.length > 0 ? comp.monthlyRent : (contract.rent_amount || 0),
       contract_type: contract.contract_type,
       payment_cycle: contract.payment_cycle,
       status: contract.status || 'active',
-      deposit_id: contract.deposit_code || contract.deposit_id,
+      deposit_id: depositId,
       staff_id: contract.staff_id
     };
 
@@ -395,14 +489,13 @@ export const managerContractRepo = {
       .single();
     if (error) throw error;
 
-    // Kích hoạt tài nguyên (giường/phòng → occupied, đơn → completed).
-    // Nếu lỗi → rollback HĐ vừa tạo để tránh trạng thái không nhất quán.
+    // Ghi ảnh chụp hợp đồng + kích hoạt tài nguyên. Lỗi → rollback HĐ (contract_beds/customers
+    // tự xóa theo CASCADE) để tránh trạng thái không nhất quán.
     try {
-      await activateResourcesAfterContract(dbContract.deposit_id);
+      await persistContractSnapshotAndActivate(data.id, comp);
       // Gan cu tru tien-hop-dong vao HD moi CHI khi kich hoat tai nguyen da thanh cong.
-      await attachResidencyToContract(dbContract.deposit_id, data.id);
+      await attachResidencyToContract(depositId, data.id);
     } catch (sideErr) {
-      // Rollback: go lien ket cu tru vua gan (tranh tro toi HD sap bi xoa) roi xoa HD.
       await supabase.from('residency_info').update({ contract_id: null }).eq('contract_id', data.id);
       await supabase.from('contracts').delete().eq('id', data.id);
       throw sideErr;
@@ -432,7 +525,7 @@ export const managerContractRepo = {
     if (error) throw error;
 
     if (updates.status === 'terminated' || updates.status === 'expired') {
-      await releaseResourcesAfterContract(data.deposit_id);
+      await releaseResourcesAfterContract(id, data.deposit_id);
     }
 
     return data;

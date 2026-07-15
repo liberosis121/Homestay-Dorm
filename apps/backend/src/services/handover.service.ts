@@ -1,6 +1,6 @@
 import { handoverRepo, AssetHandoverDto, HandoverDetailDto } from '../repositories/handover.repo';
 import { supabase } from '../utils/supabase';
-import { getBedIdsByDepositId } from '../utils/deposit-beds';
+import { getBedIdsByContractId } from '../utils/contract-beds';
 
 export const handoverService = {
   getHandovers: async (filters?: { contract_id?: string }, managerId?: string) => {
@@ -54,9 +54,9 @@ export const handoverService = {
             .maybeSingle()
         : { data: null };
 
-      // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
-      const bedIds = dep?.id ? await getBedIdsByDepositId(dep.id) : [];
-      // Chi coc 1 giuong le moi gan bed_id cu the vao tai san; nhom/nguyen phong de o muc phong.
+      // Giuong THUC SU cua hop dong (contract_beds): HD le = 1, nhom = N, nguyen phong = 0.
+      const bedIds = await getBedIdsByContractId(handover.contract_id);
+      // Chi HD 1 giuong le moi gan bed_id cu the vao tai san; nhom/nguyen phong de o muc phong.
       const singleBedId = bedIds.length === 1 ? bedIds[0] : null;
 
       // Lay kem branch_id: tai san duoc gan theo ca chi nhanh / phong / giuong.
