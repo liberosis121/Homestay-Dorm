@@ -233,7 +233,13 @@ export default function DepositHistoryPage() {
                 <span className="text-sm text-on-surface-variant">Số tiền cọc</span>
                 <span className="text-sm font-bold text-primary">{request.deposit_amount.toLocaleString('vi-VN')} VNĐ</span>
               </div>
-              {request.bed_names && request.bed_names.length > 0 && (
+              {request.bed_names && request.bed_names.length === 1 && (
+                <div className="flex justify-between items-center py-2.5 border-b border-outline-variant/30">
+                  <span className="text-sm text-on-surface-variant">Giường</span>
+                  <span className="text-sm font-bold text-on-surface text-right">{request.bed_names.join(', ')}</span>
+                </div>
+              )}
+              {request.bed_names && request.bed_names.length > 1 && (
                 <div className="flex justify-between items-center py-2.5 border-b border-outline-variant/30">
                   <span className="text-sm text-on-surface-variant">Giường nhóm ({request.bed_names.length})</span>
                   <span className="text-sm font-bold text-on-surface text-right">{request.bed_names.join(', ')}</span>

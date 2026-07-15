@@ -49,6 +49,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
         return 'Dịch vụ';
       case 'incidental':
         return 'Phát sinh';
+      case 'refund':
+        return 'Hoàn cọc';
     }
   };
 
@@ -62,6 +64,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
         return 'border-[#d1c4b9] bg-[#faf2ec] text-[#6f583c]';
       case 'incidental':
         return 'border-[#d8cbb8] bg-[#f4f1ec] text-[#7a6b5b]';
+      case 'refund':
+        return 'border-status-success/20 bg-status-success/10 text-status-success';
     }
   };
 
@@ -107,6 +111,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
             ) : (
               invoices.map((invoice) => {
                 const isSelected = invoice.id === selectedId;
+                const canPay = invoice.canPay !== false && !invoice.isCredit;
                 return (
                   <tr
                     key={invoice.id}
@@ -138,7 +143,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                       {getStatusBadge(invoice.status)}
                     </td>
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                      <div className={`flex items-center gap-2 ${invoice.status === 'paid' ? 'justify-center' : 'justify-start pl-2'}`}>
+                      <div className={`flex items-center gap-2 ${invoice.status === 'paid' || !canPay ? 'justify-center' : 'justify-start pl-2'}`}>
                         <button
                           onClick={() => onSelect(invoice.id)}
                           className="p-2 text-secondary hover:bg-secondary-container/40 hover:text-primary rounded-lg transition-all cursor-pointer active:scale-90"
@@ -146,7 +151,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {invoice.status !== 'paid' && invoice.status !== 'pending' && (
+                        {canPay && invoice.status !== 'paid' && invoice.status !== 'pending' && (
                           <button
                             onClick={() => onPay(invoice.id)}
                             className="bg-primary hover:bg-[#253228] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer hover:shadow-md"

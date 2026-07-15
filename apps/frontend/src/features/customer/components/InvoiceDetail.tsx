@@ -17,7 +17,17 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
     );
   }
 
+  const canPay = invoice.canPay !== false && !invoice.isCredit;
+
   const getStatusAlert = () => {
+    if (invoice.isCredit) {
+      return (
+        <div className="flex items-center gap-2 p-3 bg-status-success/10 border border-status-success/20 rounded-xl text-status-success text-xs font-semibold">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>Khoản này là tiền hoàn cọc cho khách hàng, không phải hóa đơn cần thanh toán.</span>
+        </div>
+      );
+    }
     switch (invoice.status) {
       case 'paid':
         return (
@@ -133,7 +143,12 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
             </span>
           </div>
 
-          {invoice.status === 'paid' ? (
+          {invoice.isCredit ? (
+            <div className="w-full py-3 text-center border-2 border-status-success/30 text-status-success font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-success/5 cursor-default">
+              <CheckCircle2 className="w-5 h-5" />
+              KHOẢN HOÀN CỌC
+            </div>
+          ) : invoice.status === 'paid' ? (
             <div className="w-full py-3 text-center border-2 border-status-success/30 text-status-success font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-success/5 cursor-default">
               <CheckCircle2 className="w-5 h-5" />
               ĐÃ THANH TOÁN
@@ -143,7 +158,7 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
               <Info className="w-5 h-5" />
               CHỜ XÁC NHẬN
             </div>
-          ) : (
+          ) : canPay ? (
             <button
               onClick={() => onPay(invoice.id)}
               className="w-full py-3.5 bg-primary hover:bg-[#253228] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-primary/10 hover:shadow-lg cursor-pointer"
@@ -151,6 +166,10 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
               <CreditCard className="w-5 h-5" />
               THANH TOÁN NGAY
             </button>
+          ) : (
+            <div className="w-full py-3 text-center border-2 border-outline-variant/30 text-on-surface-variant font-bold rounded-xl flex items-center justify-center gap-1.5 bg-surface-container-low cursor-default">
+              KHÔNG CẦN THANH TOÁN
+            </div>
           )}
         </div>
       </div>

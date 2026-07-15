@@ -6,7 +6,7 @@ export interface Invoice {
   billingPeriod: string; // e.g. "Tháng 10/2024"
   month: number;
   year: number;
-  type: 'monthly' | 'service' | 'incidental' | 'deposit';
+  type: 'monthly' | 'service' | 'incidental' | 'deposit' | 'refund';
   typeName: string; // "Hóa đơn định kỳ", "Hóa đơn dịch vụ", "Hóa đơn phát sinh"
   roomPrice: number;
   electricityPrice: number;
@@ -19,6 +19,10 @@ export interface Invoice {
   dueDate: string; // YYYY-MM-DD
   status: 'paid' | 'unpaid' | 'overdue' | 'pending';
   paidAt?: string;
+  isCredit?: boolean;
+  canPay?: boolean;
+  refundRecipientUserId?: string;
+  refundRecipientRole?: 'representative';
 }
 
 interface InvoiceState {
