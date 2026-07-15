@@ -55,12 +55,15 @@ export const handoverRepo = {
       new Set((contracts || []).map((c: any) => c.deposit_id).filter(Boolean))
     );
 
-    const [{ data: assets }, { data: deposits }] = await Promise.all([
+    const [{ data: assets }, { data: deposits }, { data: depBeds }] = await Promise.all([
       serialNumbers.length > 0
         ? supabase.from('assets').select('serial_number, name').in('serial_number', serialNumbers)
         : Promise.resolve({ data: [] as any[] }),
       depositIds.length > 0
         ? supabase.from('deposit_requests').select('*').in('id', depositIds)
+        : Promise.resolve({ data: [] as any[] }),
+      depositIds.length > 0
+        ? supabase.from('deposit_beds').select('deposit_id, bed_id').in('deposit_id', depositIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
@@ -70,17 +73,17 @@ export const handoverRepo = {
     const roomIds = Array.from(
       new Set((deposits || []).map((d: any) => d.room_id).filter(Boolean))
     );
-    // Coc theo GIUONG: bien ban ban giao hien them ten giuong duoc ban giao.
+    // Coc theo GIUONG hoac NHOM: lay danh sach bed_id tu bang deposit_beds
     const bedIds = Array.from(
-      new Set((deposits || []).map((d: any) => d.bed_id).filter(Boolean))
+      new Set((depBeds || []).map((db: any) => db.bed_id).filter(Boolean))
     );
 
     const [{ data: registrations }, { data: rooms }, { data: beds }] = await Promise.all([
       registrationIds.length > 0
-        ? supabase.from('rental_registrations').select('id, cccd').in('id', registrationIds)
+        ? supabase.from('rental_registrations').select('id, cccd, occupants_count').in('id', registrationIds)
         : Promise.resolve({ data: [] as any[] }),
       roomIds.length > 0
-        ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
+        ? supabase.from('rooms').select('id, name, branch_id, max_occupants').in('id', roomIds)
         : Promise.resolve({ data: [] as any[] }),
       bedIds.length > 0
         ? supabase.from('beds').select('id, name').in('id', bedIds)
@@ -101,7 +104,14 @@ export const handoverRepo = {
       const reg = registrations?.find(r => r.id === dep.registration_id) || {};
       const customer = customers?.find(c => c.cccd === reg.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
-      const bed = beds?.find(b => b.id === dep.bed_id) || null;
+      
+      const relatedBeds = depBeds?.filter(db => db.deposit_id === dep.id) || [];
+      const relatedBedIds = relatedBeds.map(db => db.bed_id);
+      const matchedBeds = beds?.filter(b => relatedBedIds.includes(b.id)) || [];
+      
+      const isSingleBed = matchedBeds.length === 1;
+      const primaryBedId = matchedBeds.length > 0 ? matchedBeds.map(b => b.id).join(',') : '';
+      const primaryBedName = matchedBeds.map(b => b.name).join(', ');
 
       // Filter details for this handover
       const hDetails = details?.filter(d => d.handover_id === h.id) || [];
@@ -128,8 +138,8 @@ export const handoverRepo = {
         customer_name: customer.full_name || 'Khách thuê',
         room_id: dep.room_id || '',
         room_name: room.name || 'Phòng',
-        bed_id: dep.bed_id || '',
-        bed_name: bed ? bed.name : '',
+        bed_id: primaryBedId,
+        bed_name: primaryBedName,
         branch_id: room.branch_id || '',
         handover_date: h.handover_time ? h.handover_time.slice(0, 10) : new Date().toISOString().slice(0, 10),
         checklist,
@@ -138,6 +148,7 @@ export const handoverRepo = {
         signature_ip: '192.168.1.1',
         signature_timestamp: h.handover_time,
         status,
+        is_group_full_room: (reg.occupants_count || 1) > 1 && (reg.occupants_count || 1) >= (room.max_occupants || 1),
         created_at: h.handover_time || new Date().toISOString(),
         note: h.note || ''
       };

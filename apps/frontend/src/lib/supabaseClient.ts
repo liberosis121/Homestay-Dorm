@@ -344,6 +344,7 @@ export interface AssetHandover {
   room_name: string;
   bed_id?: string;
   bed_name?: string;
+  is_group_full_room?: boolean;
   handover_date: string;
   checklist: { item: string; serial_number: string; condition: string; note?: string; checked: boolean; compensation?: number }[];
   customer_signed: boolean;
