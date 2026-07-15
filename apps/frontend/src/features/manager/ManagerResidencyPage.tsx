@@ -52,6 +52,10 @@ export default function ManagerResidencyPage() {
   const [confirmingGroup, setConfirmingGroup] = useState(false);
   const [showRejectedWarningModal, setShowRejectedWarningModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // TH3 đổi đại diện: khi đại diện gốc rớt, backend trả 409 kèm danh sách ứng viên (người đạt).
+  const [repCandidates, setRepCandidates] = useState<Array<{ user_id: string; name: string }>>([]);
+  const [showRepPicker, setShowRepPicker] = useState(false);
+  const [chosenRepUserId, setChosenRepUserId] = useState<string | null>(null);
   
   const isReadOnly = selectedMember?.status === 'approved' || selectedMember?.status === 'rejected';
 
@@ -311,7 +315,7 @@ export default function ManagerResidencyPage() {
     await guard(() => doConfirmGroup());
   };
 
-  const doConfirmGroup = async () => {
+  const doConfirmGroup = async (newRepUserId?: string) => {
     if (!selectedGroup) return;
     try {
       const headers = await getAuthHeaders();
@@ -333,13 +337,30 @@ export default function ManagerResidencyPage() {
         });
       }));
 
-      // 1b. TH3: loại thành viên rớt khỏi phiếu cọc + nhả giường tương ứng.
-      //     No-op nếu không ai rớt (TH1). Chạy sau khi đã set trạng thái cư trú ở trên.
-      await fetch(`${API_BASE}/residency/finalize`, {
+      // 1b. TH3: chốt nhóm — hoàn cọc 1 phần cho đại diện + nhả giường người rớt (no-op nếu TH1).
+      //     Nếu ĐẠI DIỆN gốc rớt và chưa chọn người thay → 409, hiện ô chọn đại diện mới.
+      const finalizeRes = await fetch(`${API_BASE}/residency/finalize`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ deposit_id: selectedGroup.deposit_ref })
+        body: JSON.stringify({
+          deposit_id: selectedGroup.deposit_ref,
+          new_representative_user_id: newRepUserId
+        })
       });
+      if (finalizeRes.status === 409) {
+        const body = await finalizeRes.json().catch(() => ({} as any));
+        if (body?.code === 'REPRESENTATIVE_REJECTED') {
+          const candIds: string[] = body.candidates || [];
+          const cands = candIds
+            .map((uid) => selectedGroup.members.find((mm) => mm.customer_id === uid))
+            .filter(Boolean)
+            .map((mm) => ({ user_id: (mm as ResidencyCheck).customer_id, name: (mm as ResidencyCheck).customer_name }));
+          setRepCandidates(cands);
+          setChosenRepUserId(cands[0]?.user_id ?? null);
+          setShowRepPicker(true);
+          return; // chờ manager chọn đại diện mới rồi gọi lại doConfirmGroup(uid)
+        }
+      }
 
       // 2. Update deposit status to 'paid' (approved)
       await fetch(`${API_BASE}/deposits/${selectedGroup.deposit_ref}/status`, {
@@ -354,6 +375,7 @@ export default function ManagerResidencyPage() {
       // 3. Refresh data
       await fetchResidencyChecks();
 
+      setShowRepPicker(false);
       setConfirmingGroup(false);
       setShowRejectedWarningModal(false);
       setSelectedGroup(null);
@@ -1021,6 +1043,50 @@ export default function ManagerResidencyPage() {
                 disabled={eligibleMembers.length === 0 || isSubmitting}
                 style={{ flex: 1.5, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: eligibleMembers.length === 0 ? 0.5 : 1 }}>
                 Tiếp tục lập hợp đồng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TH3 — Đại diện nhóm rớt cư trú: chọn đại diện MỚI trong số thành viên còn lại (đã đạt) */}
+      {showRepPicker && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
+          <div style={{ background: T.surface, borderRadius: 16, padding: 24, maxWidth: 440, width: '100%', border: `1px solid ${T.border}` }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 6 }}>
+              <span className="material-symbols-outlined" style={{ color: T.amber }}>manage_accounts</span>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: T.text }}>Chọn đại diện nhóm mới</h3>
+            </div>
+            <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 14 }}>
+              Người đại diện cũ không đạt điều kiện lưu trú. Vui lòng chọn một đại diện mới trong số
+              thành viên còn lại — đây sẽ là người đứng tên hợp đồng và nhận tiền hoàn cọc.
+            </p>
+            <div className="space-y-2" style={{ marginBottom: 18 }}>
+              {repCandidates.map((c) => (
+                <label key={c.user_id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 12, cursor: 'pointer',
+                    border: `1.5px solid ${chosenRepUserId === c.user_id ? T.sage : T.border}`,
+                    background: chosenRepUserId === c.user_id ? T.sageBg : T.surface }}>
+                  <input type="radio" name="new-rep" checked={chosenRepUserId === c.user_id}
+                    onChange={() => setChosenRepUserId(c.user_id)} />
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: T.text }}>{c.name}</span>
+                </label>
+              ))}
+              {repCandidates.length === 0 && (
+                <p style={{ fontSize: 12.5, color: T.red, fontStyle: 'italic' }}>Không có thành viên đạt điều kiện để làm đại diện.</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowRepPicker(false); setChosenRepUserId(null); }}
+                style={{ flex: 1, background: T.primaryLight, color: T.primary, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Hủy
+              </button>
+              <button
+                onClick={() => { if (chosenRepUserId) guard(() => doConfirmGroup(chosenRepUserId)); }}
+                disabled={!chosenRepUserId || isSubmitting}
+                style={{ flex: 1.5, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !chosenRepUserId ? 0.5 : 1 }}>
+                Xác nhận & tiếp tục
               </button>
             </div>
           </div>
