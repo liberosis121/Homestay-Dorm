@@ -112,10 +112,15 @@ export const managerContractService = {
       ? await supabase.from('branches').select('id, name').in('id', branchIds)
       : { data: [] as any[] };
 
+    // Fetch deposit_beds
+    const { data: depBeds } = depositIds.length > 0
+      ? await supabase.from('deposit_beds').select('*').in('deposit_id', depositIds)
+      : { data: [] as any[] };
+
     // Fetch beds
-    const bedIds = (deposits || []).map(d => d.bed_id).filter(Boolean);
+    const bedIds = Array.from(new Set((depBeds || []).map((db: any) => db.bed_id).filter(Boolean)));
     const { data: beds } = bedIds.length > 0
-      ? await supabase.from('beds').select('id, name').in('id', bedIds)
+      ? await supabase.from('beds').select('id, name').in('id', bedIds as string[])
       : { data: [] as any[] };
 
     // Fetch customers
@@ -157,9 +162,14 @@ export const managerContractService = {
       if (managerBranchId && room.branch_id !== managerBranchId) return null;
 
       const branch = (branches || []).find(b => b.id === room.branch_id);
-      const bed = (beds || []).find(b => b.id === dep.bed_id);
       const reg = (regs || []).find(rg => rg.id === dep.registration_id);
       const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
+
+      const relatedBeds = (depBeds || []).filter((db: any) => db.deposit_id === dep.id);
+      const matchedBeds = (beds || []).filter(b => relatedBeds.some((rb: any) => rb.bed_id === b.id));
+      const primaryBedId = matchedBeds.map(b => b.id).join(',');
+      const primaryBedName = matchedBeds.map(b => b.name).join(', ');
+      const isGroupFullRoom = (reg && reg.occupants_count > 1) && matchedBeds.length === 0;
 
       return {
         id: checkout.id,
@@ -173,8 +183,9 @@ export const managerContractService = {
         customer_phone: customer?.phone || '',
         room_id: room.id,
         room_name: room.name,
-        bed_id: dep.bed_id || '',
-        bed_name: bed ? bed.name : '',
+        bed_id: primaryBedId,
+        bed_name: primaryBedName,
+        is_group_full_room: isGroupFullRoom,
         branch_id: room.branch_id,
         branch_name: branch?.name || 'Chi nhánh',
         deposit_amount: dep.deposit_amount || contract.rent_price || 0,
@@ -194,9 +205,14 @@ export const managerContractService = {
       if (managerBranchId && room.branch_id !== managerBranchId) return null;
 
       const branch = (branches || []).find(b => b.id === room.branch_id);
-      const bed = (beds || []).find(b => b.id === dep.bed_id);
       const reg = (regs || []).find(rg => rg.id === dep.registration_id);
       const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
+
+      const relatedBeds = (depBeds || []).filter((db: any) => db.deposit_id === dep.id);
+      const matchedBeds = (beds || []).filter(b => relatedBeds.some((rb: any) => rb.bed_id === b.id));
+      const primaryBedId = matchedBeds.map(b => b.id).join(',');
+      const primaryBedName = matchedBeds.map(b => b.name).join(', ');
+      const isGroupFullRoom = (reg && reg.occupants_count > 1) && matchedBeds.length === 0;
 
       return {
         id: contract.id,
@@ -210,8 +226,9 @@ export const managerContractService = {
         customer_phone: customer?.phone || '',
         room_id: room.id,
         room_name: room.name,
-        bed_id: dep.bed_id || '',
-        bed_name: bed ? bed.name : '',
+        bed_id: primaryBedId,
+        bed_name: primaryBedName,
+        is_group_full_room: isGroupFullRoom,
         branch_id: room.branch_id,
         branch_name: branch?.name || 'Chi nhánh',
         deposit_amount: dep.deposit_amount || contract.rent_price || 0,
