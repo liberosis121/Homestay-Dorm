@@ -371,7 +371,7 @@ export const residencyService = {
   finalizeGroupResidency: async (depositId: string) => {
     const { data: dep } = await supabase
       .from('deposit_requests')
-      .select('id, registration_id, bed_id, deposit_amount, occupants_count, staff_id')
+      .select('id, registration_id, deposit_amount, occupants_count, staff_id')
       .eq('id', depositId)
       .maybeSingle();
     if (!dep) throw new Error('Không tìm thấy phiếu cọc.');

@@ -3,6 +3,7 @@ import { residencyService } from './residency.service';
 import { handoverRepo } from '../repositories/handover.repo';
 import { supabase } from '../utils/supabase';
 import { CONTRACT_STATUS } from '../types/constants';
+import { getBedsByDepositIds } from '../utils/deposit-beds';
 import crypto from 'crypto';
 
 export const managerContractService = {
@@ -112,11 +113,8 @@ export const managerContractService = {
       ? await supabase.from('branches').select('id, name').in('id', branchIds)
       : { data: [] as any[] };
 
-    // Fetch beds
-    const bedIds = (deposits || []).map(d => d.bed_id).filter(Boolean);
-    const { data: beds } = bedIds.length > 0
-      ? await supabase.from('beds').select('id, name').in('id', bedIds)
-      : { data: [] as any[] };
+    // Giường giữ chỗ từ bảng nối deposit_beds (cọc lẻ = 1, cọc nhóm = N, nguyên phòng = 0).
+    const bedsByDeposit = await getBedsByDepositIds((deposits || []).map(d => d.id));
 
     // Fetch customers
     const regIds = (deposits || []).map(dr => dr.registration_id).filter(Boolean);
@@ -157,7 +155,7 @@ export const managerContractService = {
       if (managerBranchId && room.branch_id !== managerBranchId) return null;
 
       const branch = (branches || []).find(b => b.id === room.branch_id);
-      const bed = (beds || []).find(b => b.id === dep.bed_id);
+      const depBeds = bedsByDeposit[dep.id] || [];
       const reg = (regs || []).find(rg => rg.id === dep.registration_id);
       const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
 
@@ -173,8 +171,8 @@ export const managerContractService = {
         customer_phone: customer?.phone || '',
         room_id: room.id,
         room_name: room.name,
-        bed_id: dep.bed_id || '',
-        bed_name: bed ? bed.name : '',
+        bed_id: depBeds.length === 1 ? depBeds[0].id : '',
+        bed_name: depBeds.map(b => b.name).join(', '),
         branch_id: room.branch_id,
         branch_name: branch?.name || 'Chi nhánh',
         deposit_amount: dep.deposit_amount || contract.rent_price || 0,
@@ -194,7 +192,7 @@ export const managerContractService = {
       if (managerBranchId && room.branch_id !== managerBranchId) return null;
 
       const branch = (branches || []).find(b => b.id === room.branch_id);
-      const bed = (beds || []).find(b => b.id === dep.bed_id);
+      const depBeds = bedsByDeposit[dep.id] || [];
       const reg = (regs || []).find(rg => rg.id === dep.registration_id);
       const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
 
@@ -210,8 +208,8 @@ export const managerContractService = {
         customer_phone: customer?.phone || '',
         room_id: room.id,
         room_name: room.name,
-        bed_id: dep.bed_id || '',
-        bed_name: bed ? bed.name : '',
+        bed_id: depBeds.length === 1 ? depBeds[0].id : '',
+        bed_name: depBeds.map(b => b.name).join(', '),
         branch_id: room.branch_id,
         branch_name: branch?.name || 'Chi nhánh',
         deposit_amount: dep.deposit_amount || contract.rent_price || 0,

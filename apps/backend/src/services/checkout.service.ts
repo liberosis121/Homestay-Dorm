@@ -19,7 +19,8 @@ export const checkoutService = {
       const contract = contracts.find(c => c.id === ch.contract_id);
       const depReq = contract?.deposit_requests || {} as any;
       const room = depReq.rooms || {};
-      const bed = depReq.beds || {};
+      // Ten giuong tu bang noi deposit_beds (contract.repo da gan vao depReq.bed_names).
+      const bedNames: string[] = Array.isArray(depReq.bed_names) ? depReq.bed_names : [];
       const branch = room.branches || {};
 
       // Parse the JSON note
@@ -75,7 +76,7 @@ export const checkoutService = {
         customerName: contract?.deposit_requests?.rental_registrations?.customer_name || 'Khách hàng',
         branchName: branch.name || 'N/A',
         roomName: `Phòng ${room.name || 'N/A'} (${room.room_type === 'dorm' ? 'Dormitory' : room.room_type || 'N/A'})`,
-        bedName: `Giường ${bed.name || 'N/A'}`,
+        bedName: bedNames.length > 0 ? `Giường ${bedNames.join(', ')}` : 'Nguyên phòng',
         contractId: contract?.contract_code || ch.contract_id,
         expectedDate: ch.request_date,
         reason: parsedNote.reason,

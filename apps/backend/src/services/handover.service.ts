@@ -1,5 +1,6 @@
 import { handoverRepo, AssetHandoverDto, HandoverDetailDto } from '../repositories/handover.repo';
 import { supabase } from '../utils/supabase';
+import { getBedIdsByDepositId } from '../utils/deposit-beds';
 
 export const handoverService = {
   getHandovers: async (filters?: { contract_id?: string }, managerId?: string) => {
@@ -48,10 +49,15 @@ export const handoverService = {
       const { data: dep } = contract?.deposit_id
         ? await supabase
             .from('deposit_requests')
-            .select('id, room_id, bed_id')
+            .select('id, room_id')
             .eq('id', contract.deposit_id)
             .maybeSingle()
         : { data: null };
+
+      // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+      const bedIds = dep?.id ? await getBedIdsByDepositId(dep.id) : [];
+      // Chi coc 1 giuong le moi gan bed_id cu the vao tai san; nhom/nguyen phong de o muc phong.
+      const singleBedId = bedIds.length === 1 ? bedIds[0] : null;
 
       // Lay kem branch_id: tai san duoc gan theo ca chi nhanh / phong / giuong.
       const { data: room } = dep?.room_id
@@ -77,8 +83,8 @@ export const handoverService = {
             room_id: room.id,
             status: 'in_use',
           };
-          // Coc theo GIUONG thi gan them bed_id; coc ca PHONG thi de nguyen bed_id cu.
-          if (dep?.bed_id) assetUpdates.bed_id = dep.bed_id;
+          // Coc 1 GIUONG le thi gan them bed_id; coc nhom / ca PHONG thi de o muc phong.
+          if (singleBedId) assetUpdates.bed_id = singleBedId;
 
           const { error: assetErr } = await supabase
             .from('assets')
@@ -102,11 +108,11 @@ export const handoverService = {
           throw new Error(`[HandoverService] Loi khi cap nhat trang thai phong: ${roomErr.message}`);
         }
 
-        if (dep?.bed_id) {
+        if (bedIds.length > 0) {
           const { error: bedErr } = await supabase
             .from('beds')
             .update({ status: 'occupied' })
-            .eq('id', dep.bed_id);
+            .in('id', bedIds);
           if (bedErr) {
             throw new Error(`[HandoverService] Loi khi cap nhat trang thai giuong: ${bedErr.message}`);
           }
