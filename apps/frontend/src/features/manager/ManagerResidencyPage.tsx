@@ -611,7 +611,7 @@ export default function ManagerResidencyPage() {
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Kiểm tra điều kiện lưu trú</p>
                   </div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 22, fontWeight: 800, color: T.text }}>{selectedGroup.room_name}</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {formatShortId(selectedGroup.deposit_ref, 'deposit')} , {selectedGroup.members.length} thành viên</p>
+                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {formatShortId(selectedGroup.deposit_ref, 'deposit')}, {selectedGroup.members.length} thành viên</p>
                 </div>
                 <button onClick={() => { setSelectedGroup(null); setSelectedMember(null); }}
                   style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -941,7 +941,7 @@ export default function ManagerResidencyPage() {
                   <button onClick={() => setSelectedMember(null)}
                     style={{ width: '100%', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, color: T.textMuted, cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
                     className="hover:bg-gray-200 active:scale-[0.98]">
-                    ← Quay lại danh sách nhóm
+                    ← Quay lại danh sách
                   </button>
                 </div>
               )}
