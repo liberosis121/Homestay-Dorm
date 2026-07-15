@@ -6,7 +6,7 @@ export interface Invoice {
   billingPeriod: string; // e.g. "Tháng 10/2024"
   month: number;
   year: number;
-  type: 'monthly' | 'service' | 'incidental' | 'deposit' | 'refund';
+  type: 'checkin' | 'monthly' | 'service' | 'incidental' | 'deposit' | 'refund';
   typeName: string; // "Hóa đơn định kỳ", "Hóa đơn dịch vụ", "Hóa đơn phát sinh"
   roomPrice: number;
   electricityPrice: number;

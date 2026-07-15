@@ -25,9 +25,13 @@ export interface UserProfile {
   full_name?: string;
   phone?: string;
   avatar_url?: string;
+  created_at?: string;
   // Trường phụ dùng trong UI (từ mock cũ — giữ lại để không break component khác)
   renting_room_name?: string;
   has_contract_history?: boolean;
+  stay_status?: 'new' | 'pending_payment' | 'active' | 'recently_checked_out' | 'available';
+  can_request_checkout?: boolean;
+  member_since?: string;
   branch_name?: string;
 }
 
@@ -89,8 +93,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         full_name: u.full_name,
         phone: u.phone,
         avatar_url: u.avatar_url,
+        created_at: u.created_at,
         renting_room_name: u.renting_room_name,
         has_contract_history: u.has_contract_history,
+        stay_status: u.stay_status,
+        can_request_checkout: u.can_request_checkout,
+        member_since: u.member_since,
         branch_name: u.branch_name,
       };
       localStorage.setItem('user_profile', JSON.stringify(userProfile));
