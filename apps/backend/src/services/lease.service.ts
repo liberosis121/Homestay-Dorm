@@ -9,6 +9,8 @@ import { roomRepo } from '../repositories/room.repo';
 import { getCustomerByUserId, getStaffByUserId, getCustomerByCccd } from '../repositories/profile.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX } from '../types/constants';
+import { getStaffBranchId } from '../utils/branch-scope';
+import { supabase } from '../utils/supabase';
 
 /**
  * Cac truong ho so phap ly bat buoc phai co truoc khi khach hang duoc thue phong.
@@ -455,8 +457,25 @@ export const leaseService = {
   /**
    * Sale lay tat ca don dang ky thue theo bo loc.
    */
-  getRegistrationsForStaff: async (filters: { status?: string; staff_id?: string; cccd?: string }) => {
-    return await leaseRepo.getAllRegistrations(filters);
+  getRegistrationsForStaff: async (
+    filters: { status?: string; staff_id?: string; cccd?: string },
+    staffUserId?: string
+  ) => {
+    let branchName: string | undefined;
+    if (staffUserId) {
+      const branchId = await getStaffBranchId(staffUserId);
+      if (branchId) {
+        const { data: branch } = await supabase
+          .from('branches')
+          .select('name')
+          .eq('id', branchId)
+          .maybeSingle();
+        if (branch) {
+          branchName = branch.name;
+        }
+      }
+    }
+    return await leaseRepo.getAllRegistrations(filters, branchName);
   },
 
   /**

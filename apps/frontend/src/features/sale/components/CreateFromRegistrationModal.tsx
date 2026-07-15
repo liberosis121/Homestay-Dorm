@@ -232,7 +232,25 @@ export default function CreateFromRegistrationModal({
 }: Props) {
   const { user } = useAuthStore();
   const isSale = user?.role === 'sale';
+
+  const userBranchId = useMemo(() => {
+    if (!user?.branch_name) return '';
+    const matchedBranch = branches.find(
+      (b) => b.name.toLowerCase() === user.branch_name!.toLowerCase()
+    );
+    return matchedBranch ? matchedBranch.id : '';
+  }, [user, branches]);
+
   const [registrations, setRegistrations] = useState<RentalRegistration[]>([]);
+
+  const filteredRegistrations = useMemo(() => {
+    return registrations.filter((reg) => {
+      if (isSale && user?.branch_name) {
+        return reg.preferred_branch_name?.toLowerCase() === user.branch_name.toLowerCase();
+      }
+      return true;
+    });
+  }, [registrations, isSale, user?.branch_name]);
   const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(true);
   const [selectedRegistration, setSelectedRegistration] = useState<RentalRegistration | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<SaleRoom | null>(null);
@@ -309,6 +327,7 @@ export default function CreateFromRegistrationModal({
     return rooms
       .filter((room) => {
         if (excludeRoomId && room.id === excludeRoomId) return false;
+        if (isSale && userBranchId && room.branch_id !== userBranchId) return false;
         if (filters.branchId && room.branch_id !== filters.branchId) return false;
         if (filters.roomType && normalizeType(room.room_type) !== normalizeType(filters.roomType)) return false;
         if (filters.capacity && (room.capacity || 0) < Number(filters.capacity)) return false;
@@ -319,7 +338,7 @@ export default function CreateFromRegistrationModal({
         return !amenityFilters.some((item) => !(room.amenities || []).includes(item));
       })
       .sort((a, b) => matchInfo(b, selectedRegistration).score - matchInfo(a, selectedRegistration).score);
-  }, [rooms, selectedRegistration, filters, amenityFilters, excludeRoomId]);
+  }, [rooms, selectedRegistration, filters, amenityFilters, excludeRoomId, isSale, userBranchId]);
 
   const selectRegistration = (registration: RentalRegistration) => {
     setSelectedRegistration(registration);
@@ -347,9 +366,12 @@ export default function CreateFromRegistrationModal({
     if (!initialRegistrationId || selectedRegistration) return;
     const initial = registrations.find((registration) => registration.id === initialRegistrationId);
     if (initial) {
+      if (isSale && user?.branch_name && initial.preferred_branch_name?.toLowerCase() !== user.branch_name.toLowerCase()) {
+        return;
+      }
       selectRegistration(initial);
     }
-  }, [initialRegistrationId, registrations, selectedRegistration]);
+  }, [initialRegistrationId, registrations, selectedRegistration, isSale, user?.branch_name]);
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
@@ -437,7 +459,7 @@ export default function CreateFromRegistrationModal({
                 </button>
               </div>
             ) : (
-              <RegistrationPicker registrations={registrations} onSelect={selectRegistration} />
+              <RegistrationPicker registrations={filteredRegistrations} onSelect={selectRegistration} />
             )}
           </div>
         ) : (

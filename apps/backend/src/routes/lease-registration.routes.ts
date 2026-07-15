@@ -135,7 +135,7 @@ router.get('/', requireAuth, requireRole(USER_ROLE.SALE, USER_ROLE.MANAGER), asy
       cccd: req.query.cccd as string
     };
 
-    const result = await leaseService.getRegistrationsForStaff(filters);
+    const result = await leaseService.getRegistrationsForStaff(filters, req.user!.id);
     return sendSuccess(res, result, 'Lấy tất cả đơn đăng ký thuê thành công!');
   } catch (error: any) {
     return sendError(res, error, error.message || 'Lỗi khi lấy danh sách đơn đăng ký thuê.');

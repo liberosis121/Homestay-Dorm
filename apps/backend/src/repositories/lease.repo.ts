@@ -62,7 +62,10 @@ export const leaseRepo = {
    * Lay tat ca don dang ky thue, ho tro loc theo trang thai, nhan vien phu trach hoac CCCD khach hang.
    * Dung cho nhan vien Sale xem danh sach de xu ly.
    */
-  getAllRegistrations: async (filters: { status?: string; staff_id?: string; cccd?: string }) => {
+  getAllRegistrations: async (
+    filters: { status?: string; staff_id?: string; cccd?: string },
+    branchName?: string
+  ) => {
     let query = supabase
       .from('rental_registrations')
       .select(`
@@ -83,6 +86,9 @@ export const leaseRepo = {
     }
     if (filters.cccd) {
       query = query.eq('cccd', filters.cccd);
+    }
+    if (branchName) {
+      query = query.eq('preferred_area', branchName);
     }
 
     const { data, error } = await query;
