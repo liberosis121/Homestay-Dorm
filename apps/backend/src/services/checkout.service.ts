@@ -54,7 +54,9 @@ export const checkoutService = {
       let frontendStatus: string = 'submitted';
       if (ch.status === 'pending') frontendStatus = 'submitted';
       else if (ch.status === 'inventory_checking') frontendStatus = 'inventory_checking';
+      else if (ch.status === 'inspected') frontendStatus = 'accounting_matching';
       else if (ch.status === 'accounting_matching') frontendStatus = 'accounting_matching';
+      else if (ch.status === 'reconciled') frontendStatus = 'refunding';
       else if (ch.status === 'refunding') frontendStatus = 'refunding';
       else if (ch.status === 'completed') frontendStatus = 'completed';
       else if (ch.status === 'rejected') frontendStatus = 'rejected';
