@@ -1,6 +1,28 @@
 import { randomUUID } from 'crypto';
 import { supabase } from '../utils/supabase';
 
+type ResidencyDecisionRow = {
+  id?: number | null;
+  cccd?: string | null;
+  check_result?: string | null;
+  contract_id?: string | null;
+  created_at?: string | null;
+};
+
+function latestPreContractResidencyByCccd(rows: ResidencyDecisionRow[] | null | undefined) {
+  const latest = new Map<string, ResidencyDecisionRow>();
+  for (const row of rows || []) {
+    if (!row.cccd || row.contract_id != null) continue;
+    const prev = latest.get(row.cccd);
+    const rowTime = row.created_at ? new Date(row.created_at).getTime() : 0;
+    const prevTime = prev?.created_at ? new Date(prev.created_at).getTime() : 0;
+    if (!prev || rowTime > prevTime || (rowTime === prevTime && Number(row.id || 0) > Number(prev.id || 0))) {
+      latest.set(row.cccd, row);
+    }
+  }
+  return latest;
+}
+
 /**
  * Xác định THÀNH PHẦN THỰC SỰ của hợp đồng từ phiếu cọc:
  *  - Thành viên ĐẠT điều kiện lưu trú (tiếp tục ký); thành viên rớt bị loại khỏi hợp đồng.
@@ -49,12 +71,13 @@ async function resolveContractComposition(depositId: string): Promise<{
   // yêu cầu) → coi như tất cả tiếp tục.
   const cccds = roster.map((r) => r.cccd).filter(Boolean);
   const { data: residency } = cccds.length > 0
-    ? await supabase.from('residency_info').select('cccd, check_result').is('contract_id', null).in('cccd', cccds)
+    ? await supabase.from('residency_info').select('id, cccd, check_result, contract_id, created_at').is('contract_id', null).in('cccd', cccds)
     : { data: [] as any[] };
+  const latestPre = latestPreContractResidencyByCccd(residency || []);
   const approvedCccds = new Set(
-    (residency || []).filter((r: any) => r.check_result === 'approved').map((r: any) => r.cccd)
+    Array.from(latestPre.values()).filter((r: any) => r.check_result === 'approved').map((r: any) => r.cccd)
   );
-  const hasResidency = (residency || []).length > 0;
+  const hasResidency = latestPre.size > 0;
   const approved = hasResidency ? roster.filter((r) => approvedCccds.has(r.cccd)) : roster;
 
   // Đại diện: ưu tiên người đạt có is_representative; nếu không còn → người đạt đầu tiên.

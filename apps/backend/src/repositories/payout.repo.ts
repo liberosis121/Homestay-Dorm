@@ -2,6 +2,16 @@ import { supabase } from '../utils/supabase';
 import { getBedIdsByDepositId } from '../utils/deposit-beds';
 import { getBedIdsByContractId } from '../utils/contract-beds';
 
+function parseInvoiceNote(note?: string | null): Record<string, any> {
+  if (!note) return {};
+  try {
+    const parsed = JSON.parse(note);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export const payoutRepo = {
   /**
    * Lay danh sach cac phieu chi tien (Hóa đơn hoàn cọc - type 'refund') tu table invoices.
@@ -222,8 +232,8 @@ export const payoutRepo = {
     // Truong hop HOAN COC CHUA KY HD: hoa don gan thang deposit_id, khong co reconciliation/checkout/contract.
     // Chi can danh dau da chi + giai phong giuong da giu cho (neu con).
     if (!invoice.reconciliation_id && invoice.deposit_id) {
-      // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
-      const reservedBedIds = await getBedIdsByDepositId(invoice.deposit_id);
+      const invoiceNote = parseInvoiceNote(invoice.note);
+      const isGroupResidencyPartialRefund = invoiceNote.source === 'group_residency_partial';
 
       const { data: paidInv, error: payErr } = await supabase
         .from('invoices')
@@ -239,8 +249,13 @@ export const payoutRepo = {
         throw new Error(`[PayoutRepo] Loi khi cap nhat hoa don hoan coc (chua ky HD): ${payErr.message}`);
       }
 
-      if (reservedBedIds.length > 0) {
-        await supabase.from('beds').update({ status: 'available' }).in('id', reservedBedIds);
+      // Hoan coc mot phan TH3 chi tra tien cho thanh vien bi loai; giuong con lai
+      // van nam trong hop dong sap lap, nen khong duoc nha toan bo deposit_beds.
+      if (!isGroupResidencyPartialRefund) {
+        const reservedBedIds = await getBedIdsByDepositId(invoice.deposit_id);
+        if (reservedBedIds.length > 0) {
+          await supabase.from('beds').update({ status: 'available' }).in('id', reservedBedIds);
+        }
       }
 
       return { ...paidInv, payout_status: 'completed' };

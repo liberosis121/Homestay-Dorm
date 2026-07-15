@@ -5,6 +5,28 @@ import { calculateRemovedGroupDepositRefund } from '../utils/group-refund';
 import { GROUP_RESIDENCY_REFUND_RATE } from '../types/constants';
 import { supabase } from '../utils/supabase';
 
+type ResidencyDecisionRow = {
+  id?: number | null;
+  cccd?: string | null;
+  check_result?: string | null;
+  contract_id?: string | null;
+  created_at?: string | null;
+};
+
+function latestPreContractResidencyByCccd(rows: ResidencyDecisionRow[] | null | undefined) {
+  const latest = new Map<string, ResidencyDecisionRow>();
+  for (const row of rows || []) {
+    if (!row.cccd || row.contract_id != null) continue;
+    const prev = latest.get(row.cccd);
+    const rowTime = row.created_at ? new Date(row.created_at).getTime() : 0;
+    const prevTime = prev?.created_at ? new Date(prev.created_at).getTime() : 0;
+    if (!prev || rowTime > prevTime || (rowTime === prevTime && Number(row.id || 0) > Number(prev.id || 0))) {
+      latest.set(row.cccd, row);
+    }
+  }
+  return latest;
+}
+
 // ============================================================
 // CHUAN HOA QUOC TICH
 // ============================================================
@@ -355,11 +377,11 @@ export const residencyService = {
     if (cccds.length === 0) return false;
     const { data: residency } = await supabase
       .from('residency_info')
-      .select('cccd, check_result, contract_id')
+      .select('id, cccd, check_result, contract_id, created_at')
       .in('cccd', cccds);
-    const pre = (residency || []).filter((r: any) => r.contract_id == null);
-    const isApproved = (c: string) => pre.some((r: any) => r.cccd === c && r.check_result === 'approved');
-    const isRejected = (c: string) => pre.some((r: any) => r.cccd === c && r.check_result === 'rejected');
+    const latestPre = latestPreContractResidencyByCccd(residency || []);
+    const isApproved = (c: string) => latestPre.get(c)?.check_result === 'approved';
+    const isRejected = (c: string) => latestPre.get(c)?.check_result === 'rejected';
     const allDecided = cccds.every((c) => isApproved(c) || isRejected(c));
     const anyApproved = cccds.some(isApproved);
     return allDecided && anyApproved;
@@ -396,9 +418,10 @@ export const residencyService = {
     const cccds = (custs || []).map((c: any) => c.cccd);
 
     const { data: residency } = await supabase
-      .from('residency_info').select('cccd, check_result, contract_id').in('cccd', cccds);
+      .from('residency_info').select('id, cccd, check_result, contract_id, created_at').in('cccd', cccds);
+    const latestPre = latestPreContractResidencyByCccd(residency || []);
     const isRejected = (cccd: string) =>
-      (residency || []).some((r: any) => r.cccd === cccd && r.contract_id == null && r.check_result === 'rejected');
+      latestPre.get(cccd)?.check_result === 'rejected';
 
     const rejectedUserIds = userIds.filter((uid: string) => isRejected(cccdByUser.get(uid) as string));
     if (rejectedUserIds.length === 0) return { outcome: 'all_approved' };

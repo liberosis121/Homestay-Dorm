@@ -55,11 +55,11 @@ export const managerDepositService = {
             .select('registration_id, customer_user_id, is_representative')
             .in('registration_id', regIds)
         : Promise.resolve({ data: [] as any[] }),
-      supabase.from('residency_info').select('cccd, check_result, contract_id')
+      supabase.from('residency_info').select('cccd, check_result, contract_id').is('contract_id', null)
     ]);
     // Cccd da DAT dieu kien luu tru (ban ghi tien-hop-dong) + map user_id -> cccd.
     const approvedResidencyCccds = new Set(
-      (residencyRes.data || []).filter((r: any) => r.check_result === 'approved').map((r: any) => r.cccd)
+      (residencyRes.data || []).filter((r: any) => r.contract_id == null && r.check_result === 'approved').map((r: any) => r.cccd)
     );
     const cccdByUserId = new Map((customers || []).map((c: any) => [c.user_id, c.cccd]));
     const groupBedIdsByDeposit: Record<string, string[]> = {};
