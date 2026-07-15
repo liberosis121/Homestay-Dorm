@@ -265,7 +265,9 @@ export default function CustomDatePicker({
   const hasBgOverride = /\bbg-/.test(triggerCls);
   const hasBorderOverride = /\bborder-/.test(triggerCls);
   const hasRoundedOverride = /\brounded-/.test(triggerCls);
-  const hasPaddingOverride = /\bp[xy]?-/.test(triggerCls);
+  const hasPlOverride = /\bpl-/.test(triggerCls);
+  const hasPrOverride = /\bpr-/.test(triggerCls);
+  const hasPyOverride = /\bpy-/.test(triggerCls) || (/\bp-/.test(triggerCls) && !/\bpx-/.test(triggerCls) && !/\bpl-/.test(triggerCls) && !/\bpr-/.test(triggerCls));
 
   const defaultBg = hasError
     ? 'bg-red-50/50'
@@ -292,7 +294,11 @@ export default function CustomDatePicker({
           : 'border-[#d1c4b9] hover:border-[#6f583c]';
 
   const defaultRounded = hasRoundedOverride ? '' : 'rounded-full';
-  const defaultPadding = hasPaddingOverride ? '' : `py-3.5 pl-12 ${value && !disabled ? 'pr-10' : 'pr-5'}`;
+  
+  const defaultPl = hasPlOverride ? '' : 'pl-12';
+  const defaultPr = hasPrOverride ? '' : (value && !disabled ? 'pr-10' : 'pr-5');
+  const defaultPy = hasPyOverride ? '' : 'py-3.5';
+  const defaultPadding = `${defaultPy} ${defaultPl} ${defaultPr}`;
 
   const iconClass = isSurface ? 'text-on-surface-variant' : 'text-[#9d8879]';
   const valueClass = isSurface ? 'text-on-surface font-body-md' : 'text-[#1e1b17] font-medium';

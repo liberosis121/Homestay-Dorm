@@ -55,7 +55,7 @@ const viewingTimeOptions = [
 const today = new Date().toISOString().split('T')[0];
 const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px-5 text-sm font-body-md shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface hover:border-primary/40 disabled:bg-[#f6f5f1] disabled:text-on-surface-variant/70 disabled:cursor-not-allowed disabled:border-[#e3e2de]';
 const selectTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
-const datePickerTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 px-5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
+const datePickerTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 pl-12 pr-5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
 
 const BLOCKING_REGISTRATION_STATUSES = new Set(['pending_schedule', 'scheduled', 'deposited']);
 const REGISTRATION_STATUS_LABELS: Record<string, string> = {
