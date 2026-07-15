@@ -34,6 +34,7 @@ const YEAR_OPTIONS = [
 const INVOICE_TYPE_OPTIONS = [
   { value: 'Tất cả', label: 'Tất cả loại' },
   { value: 'deposit', label: 'Đặt cọc' },
+  { value: 'checkin', label: 'Nhận phòng' },
   { value: 'monthly', label: 'Định kỳ' },
   { value: 'service', label: 'Dịch vụ' },
   { value: 'incidental', label: 'Phát sinh' },

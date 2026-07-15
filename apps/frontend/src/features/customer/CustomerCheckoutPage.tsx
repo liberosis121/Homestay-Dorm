@@ -133,7 +133,10 @@ export const CustomerCheckoutPage: React.FC = () => {
   }
 
   // Lọc danh sách hợp đồng hợp lệ để trả phòng
-  const eligibleContracts = contractsList.filter(c => c.status === 'active' || c.status === 'expired');
+  const hasCheckoutStatusContract = contractsList.some(c => c.status === 'active' || c.status === 'expired');
+  const eligibleContracts = contractsList.filter(c =>
+    c.canRequestCheckout === true && (c.status === 'active' || c.status === 'expired')
+  );
 
   const selectedContract =
     eligibleContracts.find(c => c.id === stateContractId) ||
@@ -357,7 +360,9 @@ export const CustomerCheckoutPage: React.FC = () => {
             </h2>
             <div className="bg-surface-container-lowest rounded-24 border border-outline-variant/40 shadow-sm p-6">
               <p className="text-sm text-error font-medium bg-error-container/30 border border-error/20 p-4 rounded-xl">
-                Bạn không có hợp đồng nào đang hoạt động để đăng ký trả phòng.
+                {hasCheckoutStatusContract
+                  ? 'Chỉ người đại diện của hợp đồng nhóm mới được đăng ký trả phòng.'
+                  : 'Bạn không có hợp đồng nào đang hoạt động để đăng ký trả phòng.'}
               </p>
             </div>
           </div>

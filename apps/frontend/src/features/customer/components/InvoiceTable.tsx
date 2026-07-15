@@ -43,6 +43,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
     switch (type) {
       case 'deposit':
         return 'Đặt cọc';
+      case 'checkin':
+        return 'Nhận phòng';
       case 'monthly':
         return 'Định kỳ';
       case 'service':
@@ -58,6 +60,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
     switch (type) {
       case 'deposit':
         return 'border-[#b9792b]/20 bg-[#faf2e8] text-[#8a5a18]';
+      case 'checkin':
+        return 'border-[#4a6549]/20 bg-[#eff3ef] text-[#4a6549]';
       case 'monthly':
         return 'border-primary/15 bg-primary/10 text-primary';
       case 'service':
