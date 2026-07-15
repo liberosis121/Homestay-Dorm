@@ -150,10 +150,13 @@ export const invoiceService = {
       const billingPeriod = `Tháng ${month < 10 ? '0' + month : month}/${year}`;
 
       // Invoice Type mapping
-      let type: 'monthly' | 'service' | 'incidental' = 'incidental';
+      let type: 'monthly' | 'service' | 'incidental' | 'deposit' = 'incidental';
       let typeName = 'Hóa đơn phát sinh';
 
-      if (isMonthly) {
+      if (isDeposit) {
+        type = 'deposit';
+        typeName = 'Hóa đơn đặt cọc';
+      } else if (isMonthly) {
         type = 'monthly';
         typeName = 'Hóa đơn định kỳ';
       } else if (isService) {

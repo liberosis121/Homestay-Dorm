@@ -232,7 +232,6 @@ export const customerDepositService = {
     const newRecord = {
       id: nextId,
       registration_id: data.registration_id,
-      bed_id: null,
       room_id: roomId,
       deposit_amount: depositAmount,
       deposit_time: new Date().toISOString(),

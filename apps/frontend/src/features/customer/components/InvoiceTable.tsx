@@ -41,6 +41,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
 
   const getInvoiceTypeLabel = (type: Invoice['type']) => {
     switch (type) {
+      case 'deposit':
+        return 'Đặt cọc';
       case 'monthly':
         return 'Định kỳ';
       case 'service':
@@ -52,6 +54,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
 
   const getInvoiceTypeBadgeClass = (type: Invoice['type']) => {
     switch (type) {
+      case 'deposit':
+        return 'border-[#b9792b]/20 bg-[#faf2e8] text-[#8a5a18]';
       case 'monthly':
         return 'border-primary/15 bg-primary/10 text-primary';
       case 'service':
