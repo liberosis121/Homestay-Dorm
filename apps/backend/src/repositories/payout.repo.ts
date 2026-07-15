@@ -19,8 +19,15 @@ export const payoutRepo = {
 
     if (!invoices || invoices.length === 0) return [];
 
+    // 1b. Filter out stale refund invoices created by manager checkout (amount=0, no reconciliation)
+    // These are placeholder invoices that should not appear in the payout list.
+    const validInvoices = invoices.filter(i =>
+      i.reconciliation_id || i.deposit_id || (Number(i.amount) !== 0)
+    );
+    if (validInvoices.length === 0) return [];
+
     // 2. Fetch related refund reconciliations
-    const recIds = invoices.map(i => i.reconciliation_id).filter(Boolean);
+    const recIds = validInvoices.map(i => i.reconciliation_id).filter(Boolean);
     const { data: reconciliations } = recIds.length > 0
       ? await supabase.from('refund_reconciliations').select('*').in('id', recIds)
       : { data: [] as any[] };
@@ -32,7 +39,7 @@ export const payoutRepo = {
       : { data: [] as any[] };
 
     // 4. Fetch related contracts
-    const directContractIds = invoices.map(i => i.contract_id).filter(Boolean);
+    const directContractIds = validInvoices.map(i => i.contract_id).filter(Boolean);
     const checkoutContractIds = (checkouts || []).map(ch => ch.contract_id).filter(Boolean);
     const allContractIds = Array.from(new Set([...directContractIds, ...checkoutContractIds]));
 
@@ -43,7 +50,7 @@ export const payoutRepo = {
     // 5. Resolve rooms and branches
     // Gom deposit_id tu contract LAN tu chinh hoa don (truong hop hoan coc chua ky HD gan thang deposit_id).
     const contractDepositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
-    const invoiceDepositIds = invoices.map(i => i.deposit_id).filter(Boolean);
+    const invoiceDepositIds = validInvoices.map(i => i.deposit_id).filter(Boolean);
     const depositIds = Array.from(new Set([...contractDepositIds, ...invoiceDepositIds]));
     const { data: depositReqs } = depositIds.length > 0
       ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
@@ -71,7 +78,7 @@ export const payoutRepo = {
       : { data: [] as any[] };
 
     // 7. Map in-memory
-    const result = invoices.map(inv => {
+    const result = validInvoices.map(inv => {
       const rec = (reconciliations || []).find(r => r.id === inv.reconciliation_id);
       let mappedRec = null;
 

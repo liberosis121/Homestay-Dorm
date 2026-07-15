@@ -186,7 +186,7 @@ export default function AccountantCheckinPage() {
         deposit_ref: selectedDeposit.id,
         services,
         total: totalCost,
-        status: 'pending',
+        status: 'unpaid',
         created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
       };
 
@@ -680,10 +680,12 @@ export default function AccountantCheckinPage() {
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
                       inv.status === 'pending' ? 'bg-[#FAF2E8] text-[#B9792B]' :
+                      inv.status === 'unpaid' ? 'bg-[#F8EAE8] text-[#A94F4F]' :
                       'bg-[#ECE6DE] text-[#8A7563]'
                     }`}>
                       {inv.status === 'paid' ? 'Đã thu' :
-                       inv.status === 'pending' ? 'Chờ TT' : 'Bản nháp'}
+                       inv.status === 'pending' ? 'Chờ xác nhận' :
+                       inv.status === 'unpaid' ? 'Chờ TT' : 'Bản nháp'}
                     </span>
                   </td>
                   <td className="p-4">

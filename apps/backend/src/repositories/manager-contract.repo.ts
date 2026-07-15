@@ -277,7 +277,10 @@ export const managerContractRepo = {
         .map((id) => beds?.find((b) => b.id === id))
         .filter(Boolean) as any[];
       const bedNames = contractBedList.map((b) => b.name).filter(Boolean);
-      const depositType = contractBedIds.length === 0 ? 'room' : (contractBedIds.length === 1 ? 'bed' : 'group');
+      // HĐ 0 giường: nhóm thuê nguyên phòng (nhiều khách) = 'group'; 1 khách = 'room'.
+      const depositType = contractBedIds.length === 0
+        ? (contractCusts.length > 1 ? 'group' : 'room')
+        : (contractBedIds.length === 1 ? 'bed' : 'group');
       const bedName = bedNames.join(', ');
       // Cọc của HĐ = tổng giá giường thực sự × 2 tháng (nguyên phòng: dùng cọc gốc của phiếu).
       const contractDeposit = contractBedList.length > 0
@@ -394,7 +397,10 @@ export const managerContractRepo = {
       .map((id: string) => beds?.find((b) => b.id === id))
       .filter(Boolean) as any[];
     const bedNames = contractBedList.map((b) => b.name).filter(Boolean);
-    const depositType = contractBedIds.length === 0 ? 'room' : (contractBedIds.length === 1 ? 'bed' : 'group');
+    // HĐ 0 giường: nhóm thuê nguyên phòng (nhiều khách) = 'group'; 1 khách = 'room'.
+    const depositType = contractBedIds.length === 0
+      ? (contractCusts.length > 1 ? 'group' : 'room')
+      : (contractBedIds.length === 1 ? 'bed' : 'group');
     const bedName = bedNames.join(', ');
     const contractDeposit = contractBedList.length > 0
       ? contractBedList.reduce((s, b) => s + (Number(b.price) || 0), 0) * 2

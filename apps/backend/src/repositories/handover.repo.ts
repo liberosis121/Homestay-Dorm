@@ -76,10 +76,10 @@ export const handoverRepo = {
 
     const [{ data: registrations }, { data: rooms }] = await Promise.all([
       registrationIds.length > 0
-        ? supabase.from('rental_registrations').select('id, cccd').in('id', registrationIds)
+        ? supabase.from('rental_registrations').select('id, cccd, occupants_count').in('id', registrationIds)
         : Promise.resolve({ data: [] as any[] }),
       roomIds.length > 0
-        ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
+        ? supabase.from('rooms').select('id, name, branch_id, max_occupants').in('id', roomIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
@@ -124,7 +124,7 @@ export const handoverRepo = {
         customer_name: customer.full_name || 'Khách thuê',
         room_id: dep.room_id || '',
         room_name: room.name || 'Phòng',
-        bed_id: depBeds.length === 1 ? depBeds[0].id : '',
+        bed_id: depBeds.map(b => b.id).join(','),
         bed_name: depBeds.map(b => b.name).join(', '),
         branch_id: room.branch_id || '',
         handover_date: h.handover_time ? h.handover_time.slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -134,6 +134,7 @@ export const handoverRepo = {
         signature_ip: '192.168.1.1',
         signature_timestamp: h.handover_time,
         status,
+        is_group_full_room: (reg.occupants_count || 1) > 1 && (reg.occupants_count || 1) >= (room.max_occupants || 1),
         created_at: h.handover_time || new Date().toISOString(),
         note: h.note || ''
       };

@@ -45,7 +45,7 @@ export const checkinInvoiceService = {
     const invoiceData = {
       id: invoiceId,
       amount: data.amount,
-      status: 'pending',
+      status: 'unpaid',
       invoice_type: 'monthly',
       payment_method: data.paymentMethod || 'transfer',
       payment_time: null,
