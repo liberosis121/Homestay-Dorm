@@ -472,6 +472,13 @@ export const residencyService = {
       }
     });
 
+    // Tien coc GOC cua phan nguoi rot (truoc khi giu lai phi phat) = tong gia giuong nha × 2 thang;
+    // fallback chia deu theo so nguoi. Dung cho ke toan hien thi "Tien coc ban dau" cua phieu chi.
+    const removedOriginalDeposit = Math.round(
+      removedBedPrices.reduce((sum, price) => sum + Math.max(Number(price) || 0, 0) * 2, 0)
+      || ((Number(dep.deposit_amount) || 0) / (userIds.length || 1)) * rejectedUserIds.length
+    );
+
     let createdRefundInvoiceId: string | null = null;
     if (refundAmount > 0 && !existingPartialRefund) {
       const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
@@ -493,6 +500,7 @@ export const residencyService = {
             remaining_count: remainingCount,
             released_bed_ids: releasedBedIds,
             refund_rate: GROUP_RESIDENCY_REFUND_RATE,
+            original_deposit: removedOriginalDeposit,
             recipient_user_id: representativeUserId,
             reason: 'Hoan coc cho dai dien do loai thanh vien khong dat luu tru'
           })

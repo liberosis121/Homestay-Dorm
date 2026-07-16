@@ -65,6 +65,7 @@ export interface EligibleDepositTenant {
   phone: string;
   email: string;
   role: 'representative' | 'member';
+  residency_status?: 'approved' | 'rejected' | 'pending';
 }
 
 export interface EligibleDeposit {
@@ -112,24 +113,33 @@ export const fetchEligibleDepositsApi = async (): Promise<EligibleDeposit[]> => 
     .filter((d) => !contractedDepositIds.has(d.id) && d.residency_approved === true)
     .map((d): EligibleDeposit => {
       const room = roomById.get(d.room_id) || {};
+      // Nhóm có người rớt: chỉ lập HĐ với người ĐẠT. Dùng thành phần HĐ thực tế (contract_*) do
+      // backend tính (số người / giường / tiền cọc / tiền thuê của phần đạt), lọc bỏ người rớt.
+      const allTenants: EligibleDepositTenant[] = Array.isArray(d.tenants) ? d.tenants : [];
+      const contractTenants = allTenants.some((t) => t.residency_status === 'rejected')
+        ? allTenants.filter((t) => t.residency_status !== 'rejected')
+        : allTenants;
+      const contractBedNames = Array.isArray(d.contract_bed_names) && d.contract_bed_names.length > 0
+        ? d.contract_bed_names
+        : (Array.isArray(d.bed_names) ? d.bed_names : (d.bed_name ? [d.bed_name] : []));
       return {
         id: d.id,
         customer_id: d.customer_id || '',
         customer_name: d.customer_name || 'Khách hàng',
         customer_phone: d.customer_phone || '',
-        amount: Number(d.amount) || 0,
+        amount: Number(d.contract_deposit_amount ?? d.amount) || 0,
         deposit_date: d.deposit_date || d.created_at || '',
         room_id: d.room_id || '',
         room_name: d.room_name || room.name || d.room_id || '',
         deposit_type: d.deposit_type || 'room',
-        bed_name: d.bed_name || '',
-        bed_names: Array.isArray(d.bed_names) ? d.bed_names : (d.bed_name ? [d.bed_name] : []),
-        occupants_count: Number(d.occupants_count) || 1,
+        bed_name: contractBedNames[0] || d.bed_name || '',
+        bed_names: contractBedNames,
+        occupants_count: Number(d.contract_occupants_count ?? d.occupants_count) || 1,
         room_capacity: d.room_capacity ?? room.capacity,
-        tenants: Array.isArray(d.tenants) ? d.tenants : [],
+        tenants: contractTenants,
         room_type: room.room_type || '',
         branch_name: room.branches?.name || '',
-        room_monthly_rent: Number(d.monthly_rent) || Number(room.price) || 0,
+        room_monthly_rent: Number(d.contract_monthly_rent ?? d.monthly_rent) || Number(room.price) || 0,
       };
     });
 };

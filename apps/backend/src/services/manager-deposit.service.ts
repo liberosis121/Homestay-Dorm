@@ -61,6 +61,13 @@ export const managerDepositService = {
     const approvedResidencyCccds = new Set(
       (residencyRes.data || []).filter((r: any) => r.contract_id == null && r.check_result === 'approved').map((r: any) => r.cccd)
     );
+    // Cccd DA CO QUYET DINH cu tru (dat HOAC rot) — dung de xet du dieu kien lap HD cho nhom
+    // co nguoi rot (TH3): con it nhat 1 nguoi dat + moi nguoi da duoc quyet dinh (khong con pending).
+    const decidedResidencyCccds = new Set(
+      (residencyRes.data || [])
+        .filter((r: any) => r.contract_id == null && (r.check_result === 'approved' || r.check_result === 'rejected'))
+        .map((r: any) => r.cccd)
+    );
     const cccdByUserId = new Map((customers || []).map((c: any) => [c.user_id, c.cccd]));
     const groupBedIdsByDeposit: Record<string, string[]> = {};
     for (const r of (depBedsRes.data || [])) {
@@ -118,6 +125,11 @@ export const managerDepositService = {
           roomPrice: Number((room as any).price) || 0
         });
 
+        // Trang thai cu tru tung nguoi (dat/rot/cho) — sale dung de chi lap HD voi nguoi DAT.
+        const residencyStatusOf = (cccd: string): 'approved' | 'rejected' | 'pending' =>
+          approvedResidencyCccds.has(cccd) ? 'approved'
+            : (decidedResidencyCccds.has(cccd) ? 'rejected' : 'pending');
+
         // Thanh vien nhom (tu rental_registration_members → customers da fetch).
         const regMembers = membersByReg[dep.registration_id] || [];
         const tenants = regMembers
@@ -128,18 +140,46 @@ export const managerDepositService = {
               cccd: c.cccd || '',
               phone: c.phone || '',
               email: c.email || '',
-              role: m.is_representative ? 'representative' : 'member'
+              role: m.is_representative ? 'representative' : 'member',
+              residency_status: residencyStatusOf(c.cccd || '')
             };
           })
           // Trưởng nhóm hiển thị trước.
           .sort((a, b) => (a.role === 'representative' ? -1 : 1) - (b.role === 'representative' ? -1 : 1));
 
-        // Da dat dieu kien luu tru chua: MOI nguoi o hien tai deu co ban ghi cu tru 'approved'.
+        // THANH PHAN HOP DONG THUC TE khi nhom co nguoi rot (TH3): chi giu nguoi DAT + so giuong
+        // tuong ung (chon giuong dau theo bed_id, nha giuong cuoi) — dong bo voi resolveContractComposition
+        // (manager-contract.repo) va finalizeGroupResidency. Nho vay man hinh Sale lap HD hien dung
+        // so nguoi / giuong / tien coc / tien thue cua phan se thuc su vao hop dong.
+        const approvedTenantCount = tenants.filter((t) => t.residency_status === 'approved').length;
+        const hasRejectedOccupant = tenants.some((t) => t.residency_status === 'rejected');
+        const isPartialGroup = depositType === 'group' && hasRejectedOccupant && approvedTenantCount > 0;
+        const contractBedIds = isPartialGroup
+          ? [...groupBedIds].sort().slice(0, approvedTenantCount)
+          : groupBedIds;
+        const contractBedNames = contractBedIds
+          .map((id) => (beds?.find((b) => b.id === id) as any)?.name)
+          .filter(Boolean);
+        const contractBedPrices = contractBedIds
+          .map((id) => Number((beds?.find((b) => b.id === id) as any)?.price) || 0);
+        const contractBedRentSum = contractBedPrices.reduce((s, p) => s + p, 0);
+        const contractMonthlyRent = contractBedRentSum > 0 ? contractBedRentSum : monthlyRent;
+        const contractDepositAmount = depositType === 'group'
+          ? (contractBedRentSum > 0 ? contractBedRentSum * 2 : (Number(dep.deposit_amount) || 0))
+          : (Number(dep.deposit_amount) || 0);
+        const contractOccupantsCount = isPartialGroup
+          ? approvedTenantCount
+          : ((registration as any).occupants_count || (depositType === 'group' ? bedNames.length : 1));
+
+        // Du dieu kien lap HD chua: MOI nguoi o hien tai deu da co QUYET DINH cu tru (dat HOAC rot,
+        // khong con pending) VA con it nhat 1 nguoi DAT. Nhom co nguoi rot (TH3) van du dieu kien lap
+        // HD voi phan nguoi dat — dong bo voi residencyService.isDepositResidencyApproved (gate lap HD).
         const occupantCccds: string[] = regMembers.length > 0
           ? regMembers.map((m) => cccdByUserId.get(m.customer_user_id)).filter(Boolean) as string[]
           : ((registration as any).cccd ? [(registration as any).cccd] : []);
         const residencyApproved = occupantCccds.length > 0
-          && occupantCccds.every((c) => approvedResidencyCccds.has(c));
+          && occupantCccds.every((c) => decidedResidencyCccds.has(c))
+          && occupantCccds.some((c) => approvedResidencyCccds.has(c));
 
         return {
           id: dep.id,
@@ -158,6 +198,12 @@ export const managerDepositService = {
           residency_approved: residencyApproved,
           amount: Number(dep.deposit_amount) || 0,
           monthly_rent: monthlyRent,
+          // Thanh phan HD thuc te (chi nguoi dat) — Sale dung khi lap HD nhom co nguoi rot.
+          contract_bed_names: contractBedNames,
+          contract_monthly_rent: contractMonthlyRent,
+          contract_deposit_amount: contractDepositAmount,
+          contract_occupants_count: contractOccupantsCount,
+          has_rejected_occupant: hasRejectedOccupant,
           deposit_date: dep.deposit_time || dep.created_at,
           bill_image_url: (invoice as any).evidence_url || '',
           bank_name: (invoice as any).payment_method === 'transfer' ? 'Chuyển khoản' : ((invoice as any).payment_method || 'Tiền mặt'),

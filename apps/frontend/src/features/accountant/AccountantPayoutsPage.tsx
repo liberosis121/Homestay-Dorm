@@ -102,7 +102,9 @@ export default function AccountantPayoutsPage() {
             status: normalizePayoutStatus(p.status || p.payout_status),
             paid_at: p.payment_time,
             created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
-            is_liquidated: contract.status === 'terminated'
+            is_liquidated: contract.status === 'terminated',
+            deposit_original: p.deposit_original !== undefined ? Number(p.deposit_original) : undefined,
+            is_group_partial_refund: p.is_group_partial_refund === true
           };
         });
 
@@ -197,7 +199,9 @@ export default function AccountantPayoutsPage() {
           status: normalizePayoutStatus(p.status || p.payout_status),
           paid_at: p.payment_time,
           created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
-          is_liquidated: contract.status === 'terminated'
+          is_liquidated: contract.status === 'terminated',
+          deposit_original: p.deposit_original !== undefined ? Number(p.deposit_original) : undefined,
+          is_group_partial_refund: p.is_group_partial_refund === true
         };
       });
 
@@ -514,9 +518,14 @@ export default function AccountantPayoutsPage() {
                 <div className="bg-[#fbf9f8] p-4 border border-[#d1c4b9] rounded-lg space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-[#5e5f5d]">Tiền cọc ban đầu:</span>
-                    <span className=" font-medium text-[#1b1c1c]">{((matchedRefund ? matchedRefund.deposit_original : 2000000)).toLocaleString('vi-VN')} ₫</span>
+                    <span className=" font-medium text-[#1b1c1c]">{(matchedRefund?.deposit_original ?? activePayout.deposit_original ?? 0).toLocaleString('vi-VN')} ₫</span>
                   </div>
-                  {matchedRefund && matchedRefund.type === 'cancellation' ? (
+                  {activePayout.is_group_partial_refund ? (
+                    <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                      <span>Khấu trừ phí phạt lưu trú (20%):</span>
+                      <span className=" font-medium">-{Math.max((activePayout.deposit_original ?? 0) - Math.abs(activePayout.amount), 0).toLocaleString('vi-VN')} ₫</span>
+                    </div>
+                  ) : matchedRefund && matchedRefund.type === 'cancellation' ? (
                     <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
                       <span>Khấu trừ phạt hủy cọc / hợp đồng (20%):</span>
                       <span className=" font-medium">-{matchedRefund.total_deductions.toLocaleString('vi-VN')} ₫</span>
@@ -659,17 +668,23 @@ export default function AccountantPayoutsPage() {
               </button>
 
               <div className="border-t border-[#d1c4b9] pt-3">
-                <p className="text-[10px] text-[#5e5f5d] mb-1.5 text-center font-semibold">Chỉ khả dụng sau khi hoàn tất chi tiền hoàn cọc</p>
+                <p className="text-[10px] text-[#5e5f5d] mb-1.5 text-center font-semibold">
+                  {activePayout.is_group_partial_refund
+                    ? 'Hoàn cọc cho thành viên rớt lưu trú — nhóm chưa lập hợp đồng nên không có bước thanh lý'
+                    : 'Chỉ khả dụng sau khi hoàn tất chi tiền hoàn cọc'}
+                </p>
                 <button
                   onClick={handleLiquidation}
-                  disabled={activePayout.status !== 'completed' || activePayout.is_liquidated}
+                  disabled={activePayout.is_group_partial_refund || activePayout.status !== 'completed' || activePayout.is_liquidated}
                   className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm border transition ${
-                    (activePayout.status !== 'completed' || activePayout.is_liquidated)
+                    (activePayout.is_group_partial_refund || activePayout.status !== 'completed' || activePayout.is_liquidated)
                       ? 'border-[#d1c4b9] text-[#7f756c] bg-[#e4e2e1] cursor-not-allowed opacity-55'
                       : 'border-[#5a462d] text-[#5a462d] bg-transparent hover:bg-[#5a462d] hover:text-white'
                   }`}
                 >
-                  {activePayout.is_liquidated ? 'Đã thanh lý hợp đồng' : 'Thanh lý hợp đồng'}
+                  {activePayout.is_group_partial_refund
+                    ? 'Không áp dụng thanh lý hợp đồng'
+                    : activePayout.is_liquidated ? 'Đã thanh lý hợp đồng' : 'Thanh lý hợp đồng'}
                 </button>
               </div>
             </div>

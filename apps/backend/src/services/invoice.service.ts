@@ -171,8 +171,22 @@ export const invoiceService = {
         .in('contract_id', contractIds)
       : { data: [] as any[] };
 
+    // 6b. Hoa don HOAN COC MOT PHAN (TH3) chi thuoc ve NGUOI DAI DIEN nhom (recipient_user_id).
+    // Tuy moi thanh vien deu "nhin thay" phieu coc nhom, chi dai dien moi NHAN khoan hoan coc nay,
+    // nen an no khoi ho so cua cac thanh vien con lai (ke ca nguoi rot dieu kien luu tru).
+    const visibleInvoices = rawInvoices.filter((inv: DbInvoice) => {
+      const note = parseInvoiceNote(inv.note);
+      const isGroupPartialRefund =
+        inv.invoice_type === 'refund'
+        && inv.reconciliation_id === null
+        && inv.deposit_id !== null
+        && note.source === 'group_residency_partial';
+      if (!isGroupPartialRefund) return true;
+      return note.recipient_user_id === userId;
+    });
+
     // 7. Map database records to frontend Invoice structures
-    return rawInvoices.map((inv: DbInvoice) => {
+    return visibleInvoices.map((inv: DbInvoice) => {
       const invoiceNote = parseInvoiceNote(inv.note);
       const isGroupResidencyPartialRefund =
         inv.invoice_type === 'refund'
