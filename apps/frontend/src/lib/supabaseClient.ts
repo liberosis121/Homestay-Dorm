@@ -284,6 +284,8 @@ export interface PayoutRecord {
   deposit_original?: number;
   /** Phieu hoan coc mot phan cho nguoi rot dieu kien luu tru (chua co hop dong -> khong thanh ly HD). */
   is_group_partial_refund?: boolean;
+  /** Hoan coc GAN voi hop dong (doi soat checkout). false = hoan coc do huy phieu coc / nhom -> khong co buoc thanh ly HD. */
+  has_contract?: boolean;
 }
 
 // ─── Manager Phase Interfaces ────────────────────────────────────────────────

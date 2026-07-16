@@ -15,6 +15,58 @@ const normalizePayoutStatus = (status?: string): PayoutRecord['status'] => {
   return 'pending';
 };
 
+// Map 1 phieu chi (invoice refund) tu API -> PayoutRecord. Dung CHUNG cho ca luc tai lan luc refresh
+// sau khi xac nhan chi, tranh lech logic khien mat "Ma doi soat" o cac dong khac.
+const mapLivePayout = (p: any): PayoutRecord => {
+  const rec = p.refund_reconciliations || {};
+  const checkout = rec.checkouts || {};
+  const contract = checkout.contracts || {};
+  const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
+  return {
+    id: p.id,
+    refund_id: rec.id || p.reconciliation_id || p.contract_id || '',
+    customer_id: contract.customer_id || p.contract_id || '',
+    customer_name,
+    bank_account: p.account_details || '',
+    bank_name: '',
+    account_holder: customer_name.toUpperCase(),
+    // Uu tien final_refund (giu dau am/duong) tu doi soat, vi invoices.amount luon luu tri tuyet doi.
+    amount: Number(rec.final_refund ?? p.amount ?? 0),
+    payment_method: p.payment_method || p.payout_method || 'transfer',
+    status: normalizePayoutStatus(p.status || p.payout_status),
+    paid_at: p.payment_time,
+    created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
+    is_liquidated: contract.status === 'terminated',
+    deposit_original: p.deposit_original !== undefined ? Number(p.deposit_original) : undefined,
+    is_group_partial_refund: p.is_group_partial_refund === true,
+    // Chi hoan coc GAN HOP DONG (co doi soat checkout hoac contract_id) moi co buoc "Thanh ly hop dong".
+    // Hoan coc do huy phieu coc (chua ky HD) / nhom -> khong co hop dong -> khong duoc thanh ly.
+    has_contract: !!(rec.id || p.contract_id)
+  };
+};
+
+const mapLiveRefund = (rec: any): RefundRecord => {
+  const checkout = rec.checkouts || {};
+  const contract = checkout.contracts || {};
+  return {
+    id: rec.id,
+    customer_id: contract.customer_id || '',
+    customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
+    room_id: contract.rooms?.id || contract.room_id || '',
+    room_name: contract.rooms?.name || 'Phòng',
+    checkout_date: checkout.request_date || rec.reconciliation_date || '',
+    deposit_original: Number(rec.original_deposit || 0),
+    damage_deductions: [],
+    debt_deductions: 0,
+    status: rec.status === 'paid' ? 'paid' : 'confirmed',
+    created_at: rec.reconciliation_date || new Date().toISOString(),
+    type: 'checkout' as const,
+    refund_amount: Number(rec.final_refund || 0),
+    total_deductions: Number(rec.total_deductions || 0),
+    deductions: rec.deductions || []
+  };
+};
+
 export default function AccountantPayoutsPage() {
   const { user } = useAuthStore();
   const { isSubmitting, guard } = useSubmitLock();
@@ -82,56 +134,8 @@ export default function AccountantPayoutsPage() {
           accountantService.fetchRefundReconciliations(email)
         ]);
 
-        const mappedPayouts = (livePayouts || []).map((p: any) => {
-          const rec = p.refund_reconciliations || {};
-          const checkout = rec.checkouts || {};
-          const contract = checkout.contracts || {};
-          const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
-          return {
-            id: p.id,
-            refund_id: rec.id || p.reconciliation_id || p.contract_id || '',
-            customer_id: contract.customer_id || p.contract_id || '',
-            customer_name,
-            bank_account: p.account_details || '',
-            bank_name: '',
-            account_holder: customer_name.toUpperCase(),
-            // Uu tien final_refund (giu dau am/duong dung ban chat) tu doi soat, vi invoices.amount
-            // luon duoc luu tri tuyet doi (Math.abs) o nhanh "khach no them tien" trong refund.service.ts.
-            amount: Number(rec.final_refund ?? p.amount ?? 0),
-            payment_method: p.payment_method || p.payout_method || 'transfer',
-            status: normalizePayoutStatus(p.status || p.payout_status),
-            paid_at: p.payment_time,
-            created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
-            is_liquidated: contract.status === 'terminated',
-            deposit_original: p.deposit_original !== undefined ? Number(p.deposit_original) : undefined,
-            is_group_partial_refund: p.is_group_partial_refund === true
-          };
-        });
-
-        const mappedRefunds = (liveRefunds || []).map((rec: any) => {
-          const checkout = rec.checkouts || {};
-          const contract = checkout.contracts || {};
-          return {
-            id: rec.id,
-            customer_id: contract.customer_id || '',
-            customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
-            room_id: contract.rooms?.id || contract.room_id || '',
-            room_name: contract.rooms?.name || 'Phòng',
-            checkout_date: checkout.request_date || rec.reconciliation_date || '',
-            deposit_original: Number(rec.original_deposit || 0),
-            damage_deductions: [],
-            debt_deductions: 0,
-            status: rec.status === 'paid' ? 'paid' : 'confirmed',
-            created_at: rec.reconciliation_date || new Date().toISOString(),
-            type: 'checkout' as const,
-            refund_amount: Number(rec.final_refund || 0),
-            total_deductions: Number(rec.total_deductions || 0),
-            deductions: rec.deductions || []
-          };
-        });
-
-        setPayouts(mappedPayouts);
-        setRefunds(mappedRefunds);
+        setPayouts((livePayouts || []).map(mapLivePayout));
+        setRefunds((liveRefunds || []).map(mapLiveRefund));
       } catch (err) {
         console.warn('[AccountantPayouts] Failed to fetch live data, falling back to mock:', err);
         const db = getMockDB();
@@ -177,58 +181,13 @@ export default function AccountantPayoutsPage() {
         alert('Xác nhận xử lý thu thêm tiền thành công!');
       }
 
-      // Refresh list
+      // Refresh list — dùng CHUNG mapLivePayout/mapLiveRefund với lúc tải để không lệch logic
+      // (trước đây map ở đây thiếu fallback contract_id → mất "Mã đối soát" các dòng khác sau khi chi).
       const livePayouts = await accountantService.fetchPayouts(email);
       const liveRefunds = await accountantService.fetchRefundReconciliations(email);
 
-      const mappedPayouts = (livePayouts || []).map((p: any) => {
-        const rec = p.refund_reconciliations || {};
-        const checkout = rec.checkouts || {};
-        const contract = checkout.contracts || {};
-        const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
-        return {
-          id: p.id,
-          refund_id: rec.id || p.reconciliation_id,
-          customer_id: contract.customer_id || '',
-          customer_name,
-          bank_account: p.account_details || '',
-          bank_name: '',
-          account_holder: customer_name.toUpperCase(),
-          amount: Number(rec.final_refund ?? p.amount ?? 0),
-          payment_method: p.payment_method || p.payout_method || 'transfer',
-          status: normalizePayoutStatus(p.status || p.payout_status),
-          paid_at: p.payment_time,
-          created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
-          is_liquidated: contract.status === 'terminated',
-          deposit_original: p.deposit_original !== undefined ? Number(p.deposit_original) : undefined,
-          is_group_partial_refund: p.is_group_partial_refund === true
-        };
-      });
-
-      const mappedRefunds = (liveRefunds || []).map((rec: any) => {
-        const checkout = rec.checkouts || {};
-        const contract = checkout.contracts || {};
-        return {
-          id: rec.id,
-          customer_id: contract.customer_id || '',
-          customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
-          room_id: contract.rooms?.id || contract.room_id || '',
-          room_name: contract.rooms?.name || 'Phòng',
-          checkout_date: checkout.request_date || rec.reconciliation_date || '',
-          deposit_original: Number(rec.original_deposit || 0),
-          damage_deductions: [],
-          debt_deductions: 0,
-          status: rec.status === 'paid' ? 'paid' : 'confirmed',
-          created_at: rec.reconciliation_date || new Date().toISOString(),
-          type: 'checkout' as const,
-          refund_amount: Number(rec.final_refund || 0),
-          total_deductions: Number(rec.total_deductions || 0),
-          deductions: rec.deductions || []
-        };
-      });
-
-      setPayouts(mappedPayouts);
-      setRefunds(mappedRefunds);
+      setPayouts((livePayouts || []).map(mapLivePayout));
+      setRefunds((liveRefunds || []).map(mapLiveRefund));
     } catch (err: any) {
       console.warn('[AccountantPayouts] Live API failed, falling back to mock:', err);
       const db = getMockDB();
@@ -324,6 +283,11 @@ export default function AccountantPayoutsPage() {
 
   const handleLiquidation = () => {
     if (!activePayout) return;
+    // Guard: hoàn cọc không gắn hợp đồng (hủy phiếu cọc / nhóm rớt) thì không có gì để thanh lý.
+    if (activePayout.has_contract === false || activePayout.is_group_partial_refund === true) {
+      alert('Khoản hoàn cọc này không gắn với hợp đồng thuê nên không có bước thanh lý hợp đồng.');
+      return;
+    }
     alert(`Đã hoàn tất thanh lý hợp đồng thuê cho khách hàng ${activePayout.customer_name}. Hợp đồng chính thức đóng lại!`);
     setPayouts(prev => prev.map(p => p.id === activePayout.id ? { ...p, is_liquidated: true } : p));
   };
@@ -668,24 +632,36 @@ export default function AccountantPayoutsPage() {
               </button>
 
               <div className="border-t border-[#d1c4b9] pt-3">
-                <p className="text-[10px] text-[#5e5f5d] mb-1.5 text-center font-semibold">
-                  {activePayout.is_group_partial_refund
-                    ? 'Hoàn cọc cho thành viên rớt lưu trú — nhóm chưa lập hợp đồng nên không có bước thanh lý'
-                    : 'Chỉ khả dụng sau khi hoàn tất chi tiền hoàn cọc'}
-                </p>
-                <button
-                  onClick={handleLiquidation}
-                  disabled={activePayout.is_group_partial_refund || activePayout.status !== 'completed' || activePayout.is_liquidated}
-                  className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm border transition ${
-                    (activePayout.is_group_partial_refund || activePayout.status !== 'completed' || activePayout.is_liquidated)
-                      ? 'border-[#d1c4b9] text-[#7f756c] bg-[#e4e2e1] cursor-not-allowed opacity-55'
-                      : 'border-[#5a462d] text-[#5a462d] bg-transparent hover:bg-[#5a462d] hover:text-white'
-                  }`}
-                >
-                  {activePayout.is_group_partial_refund
-                    ? 'Không áp dụng thanh lý hợp đồng'
-                    : activePayout.is_liquidated ? 'Đã thanh lý hợp đồng' : 'Thanh lý hợp đồng'}
-                </button>
+                {(() => {
+                  // Hoàn cọc KHÔNG gắn hợp đồng (hủy phiếu cọc chưa ký HĐ / nhóm rớt lưu trú) → KHÔNG có
+                  // bước thanh lý hợp đồng. Chặn nút kể cả sau khi đã chi tiền hoàn cọc.
+                  const noLiquidation = activePayout.has_contract === false || activePayout.is_group_partial_refund === true;
+                  const liquidationDisabled = noLiquidation || activePayout.status !== 'completed' || activePayout.is_liquidated;
+                  return (
+                    <>
+                      <p className="text-[10px] text-[#5e5f5d] mb-1.5 text-center font-semibold">
+                        {noLiquidation
+                          ? (activePayout.is_group_partial_refund
+                              ? 'Hoàn cọc cho thành viên rớt lưu trú — nhóm chưa lập hợp đồng nên không có bước thanh lý'
+                              : 'Hoàn cọc do hủy phiếu cọc (chưa lập hợp đồng) nên không có bước thanh lý hợp đồng')
+                          : 'Chỉ khả dụng sau khi hoàn tất chi tiền hoàn cọc'}
+                      </p>
+                      <button
+                        onClick={handleLiquidation}
+                        disabled={liquidationDisabled}
+                        className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm border transition ${
+                          liquidationDisabled
+                            ? 'border-[#d1c4b9] text-[#7f756c] bg-[#e4e2e1] cursor-not-allowed opacity-55'
+                            : 'border-[#5a462d] text-[#5a462d] bg-transparent hover:bg-[#5a462d] hover:text-white'
+                        }`}
+                      >
+                        {noLiquidation
+                          ? 'Không áp dụng thanh lý hợp đồng'
+                          : activePayout.is_liquidated ? 'Đã thanh lý hợp đồng' : 'Thanh lý hợp đồng'}
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
