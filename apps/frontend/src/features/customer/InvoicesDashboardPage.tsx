@@ -158,6 +158,13 @@ export default function InvoicesDashboardPage() {
   };
 
   const handlePayAction = (invoiceId: string) => {
+    // Hóa đơn ĐẶT CỌC dùng luồng nộp minh chứng chờ Quản lý duyệt (giống nút ở Lịch sử đặt cọc),
+    // KHÔNG dùng trang thanh toán tức thời — vì cọc phải chờ duyệt rồi Kế toán mới xác nhận đã thu.
+    const inv = invoices.find((i) => i.id === invoiceId);
+    if (inv?.type === 'deposit') {
+      navigate('/customer/deposit', { state: { depositId: inv.deposit_id, from: '/customer/invoices' } });
+      return;
+    }
     navigate(`/customer/payment/${invoiceId}`);
   };
 
