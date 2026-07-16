@@ -247,9 +247,27 @@ export default function ProfilePage() {
   
   const [activeTab, setActiveTab] = useState<'profile' | 'residency' | 'settings'>('profile');
   
-  const isRenting = !!user?.renting_room_name;
-  const isOldCustomer = !isRenting && !!user?.has_contract_history;
-  const isNewCustomer = !isRenting && !user?.has_contract_history;
+  const stayStatus = user?.stay_status || (user?.renting_room_name ? 'active' : (user?.has_contract_history ? 'available' : 'new'));
+  const isRenting = stayStatus === 'active' && !!user?.renting_room_name;
+  const isPendingPayment = stayStatus === 'pending_payment';
+  const isRecentlyCheckedOut = stayStatus === 'recently_checked_out';
+  const isAvailableAfterCheckout = stayStatus === 'available';
+  const isNewCustomer = stayStatus === 'new' || stayStatus === 'available';
+  const canViewHousingHistory = !!user?.has_contract_history || isPendingPayment || isRecentlyCheckedOut;
+  const memberSinceLabel = (() => {
+    const raw = user?.member_since || user?.created_at;
+    if (!raw) return '--/----';
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return '--/----';
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  })();
+  const roomStatusLabel = isRenting
+    ? (user?.renting_room_name || 'Đang thuê')
+    : isPendingPayment
+      ? 'Chờ thanh toán nhận phòng'
+      : isRecentlyCheckedOut
+        ? 'Đã trả phòng'
+        : 'Chưa đăng ký';
 
   // ── Profile Form State ────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
@@ -472,14 +490,16 @@ export default function ProfilePage() {
                     <Link to="/customer/services" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Zap className="w-5 h-5" /> Dịch vụ của tôi
                     </Link>
-                    <Link to="/customer/checkout-request" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <ClipboardList className="w-5 h-5" /> Đăng ký trả phòng
-                    </Link>
+                    {user?.can_request_checkout === true && (
+                      <Link to="/customer/checkout-request" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                        <ClipboardList className="w-5 h-5" /> Đăng ký trả phòng
+                      </Link>
+                    )}
                     <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
                       <Compass className="w-5 h-5" /> Tìm phòng khác
                     </Link>
                   </>
-                ) : isOldCustomer ? (
+                ) : canViewHousingHistory ? (
                   <>
                     <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Compass className="w-5 h-5" /> Tra cứu &amp; Thuê phòng
@@ -627,9 +647,9 @@ export default function ProfilePage() {
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
                         {isNewCustomer ? (
                           <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                            Khách hàng mới
+                            {isAvailableAfterCheckout ? 'Chưa đăng ký phòng' : 'Khách hàng mới'}
                           </span>
-                        ) : isOldCustomer ? (
+                        ) : isRecentlyCheckedOut ? (
                           <>
                             <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
                               Cựu thành viên
@@ -638,11 +658,17 @@ export default function ProfilePage() {
                               Đã trả phòng
                             </span>
                           </>
-                        ) : (
+                        ) : isPendingPayment ? (
                           <>
                             <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                              Sinh viên
+                              Chờ nhận phòng
                             </span>
+                            <span className="inline-flex items-center rounded-full border border-status-warning/20 bg-status-warning/10 px-2.5 py-1 text-[11px] font-semibold text-status-warning">
+                              Chờ thanh toán nhận phòng
+                            </span>
+                          </>
+                        ) : (
+                          <>
                             <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
                               {user?.renting_room_name}
                             </span>
@@ -654,13 +680,13 @@ export default function ProfilePage() {
                         <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
                           <span className="text-on-surface-variant font-label-md">Thành viên từ:</span>
                           <span className="font-semibold text-on-surface">
-                            {isNewCustomer ? '06/2026' : isOldCustomer ? '09/2024' : '05/2023'}
+                            {memberSinceLabel}
                           </span>
                         </div>
                         <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
                           <span className="text-on-surface-variant font-label-md">Phòng lưu trú:</span>
-                          <span className={`font-semibold ${isNewCustomer || isOldCustomer ? 'text-error' : 'text-primary'}`}>
-                            {isNewCustomer ? 'Chưa đăng ký' : isOldCustomer ? 'Đã trả phòng' : (user?.renting_room_name ? (user.renting_room_name.includes('101') ? 'Standard Dorm' : 'Premium Eco') : 'Premium Eco')}
+                          <span className={`font-semibold ${!isRenting ? 'text-error' : 'text-primary'}`}>
+                            {roomStatusLabel}
                           </span>
                         </div>
                       </div>

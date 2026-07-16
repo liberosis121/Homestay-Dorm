@@ -6,7 +6,6 @@ const CONTRACT_SELECT = `
   deposit_requests (
     *,
     rooms ( *, branches (*) ),
-    beds!deposit_beds (*),
     rental_registrations ( *, customers!cccd (*) )
   )
 `;
@@ -29,7 +28,7 @@ export const saleContractRepo = {
       .from('invoices')
       .select('contract_id, status')
       .in('contract_id', contractIds)
-      .eq('invoice_type', 'monthly')
+      .in('invoice_type', ['checkin', 'monthly'])
       .is('water_record_id', null);
 
     const paidByContract: Record<string, boolean> = {};

@@ -243,8 +243,10 @@ function DashboardLayout() {
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
-        const isRenting = !!user.renting_room_name;
-        const isOldCustomer = !isRenting && !!user.has_contract_history;
+        const stayStatus = user.stay_status || (user.renting_room_name ? 'active' : (user.has_contract_history ? 'available' : 'new'));
+        const isRenting = stayStatus === 'active' && !!user.renting_room_name;
+        const canViewHousingHistory = !!user.has_contract_history || stayStatus === 'pending_payment' || stayStatus === 'recently_checked_out';
+        const canRequestCheckout = user.can_request_checkout === true;
         if (isRenting) {
           return [
             { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
@@ -252,9 +254,9 @@ function DashboardLayout() {
             { path: '/customer/services', label: 'Dịch vụ của tôi', icon: Zap },
             { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
             { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
-            { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
+            ...(canRequestCheckout ? [{ path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }] : [])
           ];
-        } else if (isOldCustomer) {
+        } else if (canViewHousingHistory) {
           return [
             { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
             { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },

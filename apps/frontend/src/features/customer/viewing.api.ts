@@ -27,6 +27,8 @@ export interface ViewingSchedule {
   result?: string;
   note?: string;
   pendingConfirmationActor?: 'customer' | 'staff';
+  is_representative?: boolean;
+  can_manage?: boolean;
 }
 
 const getPendingConfirmationActor = (note?: string): 'customer' | 'staff' => {
@@ -115,6 +117,8 @@ const mapViewingResponse = (v: any): ViewingSchedule => {
     result: v.result || undefined,
     note: v.note || undefined,
     pendingConfirmationActor: status === 'pending' ? getPendingConfirmationActor(v.note) : undefined,
+    is_representative: v.is_representative,
+    can_manage: v.can_manage,
   };
 };
 

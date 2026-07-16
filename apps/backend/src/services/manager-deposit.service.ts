@@ -55,11 +55,11 @@ export const managerDepositService = {
             .select('registration_id, customer_user_id, is_representative')
             .in('registration_id', regIds)
         : Promise.resolve({ data: [] as any[] }),
-      supabase.from('residency_info').select('cccd, check_result, contract_id')
+      supabase.from('residency_info').select('cccd, check_result, contract_id').is('contract_id', null)
     ]);
     // Cccd da DAT dieu kien luu tru (ban ghi tien-hop-dong) + map user_id -> cccd.
     const approvedResidencyCccds = new Set(
-      (residencyRes.data || []).filter((r: any) => r.check_result === 'approved').map((r: any) => r.cccd)
+      (residencyRes.data || []).filter((r: any) => r.contract_id == null && r.check_result === 'approved').map((r: any) => r.cccd)
     );
     const cccdByUserId = new Map((customers || []).map((c: any) => [c.user_id, c.cccd]));
     const groupBedIdsByDeposit: Record<string, string[]> = {};
@@ -89,7 +89,6 @@ export const managerDepositService = {
     const result_all = deposits.map(dep => {
         const invoice = invoices?.find(i => i.deposit_id === dep.id) ?? {};
         const room = rooms?.find(r => r.id === dep.room_id) ?? {};
-        const bed = beds?.find(b => b.id === dep.bed_id) ?? {};
         const registration = registrations?.find(r => r.id === dep.registration_id) ?? {};
         const customer = customers?.find(c => c.cccd === registration.cccd) ?? {};
 
@@ -106,18 +105,14 @@ export const managerDepositService = {
           frontendStatus = 'pending';
         }
 
-        // Giuong thue: coc le = 1 giuong (bed_id); coc nhom = N giuong (deposit_beds).
+        // Giuong thue tu bang noi deposit_beds: coc le = 1, coc nhom = N, nguyen phong = 0.
         const groupBedIds = groupBedIdsByDeposit[dep.id] || [];
-        const groupBedNames = groupBedIds
+        const bedNames: string[] = groupBedIds
           .map((id) => (beds?.find((b) => b.id === id) as any)?.name)
           .filter(Boolean);
-        const bedNames: string[] = dep.bed_id
-          ? ((bed as any).name ? [(bed as any).name] : [])
-          : groupBedNames;
-        const depositType = dep.bed_id ? 'bed' : (groupBedNames.length > 0 ? 'group' : 'room');
-        const currentBedPrices = dep.bed_id
-          ? [Number((bed as any).price) || 0]
-          : groupBedIds.map((id) => Number((beds?.find((b) => b.id === id) as any)?.price) || 0);
+        const depositType = groupBedIds.length === 0 ? 'room' : (groupBedIds.length === 1 ? 'bed' : 'group');
+        const currentBedPrices = groupBedIds
+          .map((id) => Number((beds?.find((b) => b.id === id) as any)?.price) || 0);
         const monthlyRent = calculateCurrentDepositMonthlyRent({
           bedPrices: currentBedPrices,
           roomPrice: Number((room as any).price) || 0
@@ -155,7 +150,7 @@ export const managerDepositService = {
           room_name: (room as any).name || dep.room_id || 'Phòng',
           branch_id: (room as any).branch_id || '',
           deposit_type: depositType,
-          bed_name: bedNames[0] || dep.bed_id || '',
+          bed_name: bedNames[0] || '',
           bed_names: bedNames,
           occupants_count: (registration as any).occupants_count || (depositType === 'group' ? bedNames.length : 1),
           room_capacity: (room as any).capacity,
@@ -244,40 +239,19 @@ export const managerDepositService = {
         .maybeSingle();
       
       if (dep) {
-        // Coc nhom: lay danh sach giuong tu bang noi (rong neu la coc 1 giuong / nguyen phong)
+        // Giuong da giu cho tu bang noi (coc le = 1, coc nhom = N, nguyen phong = 0).
         const { data: depBeds } = await supabase
           .from('deposit_beds')
           .select('bed_id')
           .eq('deposit_id', id);
-        const groupBedIds = (depBeds || []).map((r: any) => r.bed_id);
+        const bedIds = (depBeds || []).map((r: any) => r.bed_id);
 
-        if (dep.bed_id) {
-          // Release 1 giuong le
+        if (bedIds.length > 0) {
+          // Release cac giuong da giu cho (le hoac nhom)
           await supabase
             .from('beds')
             .update({ status: 'available' })
-            .eq('id', dep.bed_id);
-
-          // Re-evaluate room status: if room has any available beds, set room status to 'available'
-          if (dep.room_id) {
-            const { data: roomBeds } = await supabase
-              .from('beds')
-              .select('status')
-              .eq('room_id', dep.room_id);
-            const hasAvailableBed = (roomBeds || []).some(b => b.status === 'available');
-            if (hasAvailableBed) {
-              await supabase
-                .from('rooms')
-                .update({ status: 'available' })
-                .eq('id', dep.room_id);
-            }
-          }
-        } else if (groupBedIds.length > 0) {
-          // Release N giuong cua nhom
-          await supabase
-            .from('beds')
-            .update({ status: 'available' })
-            .in('id', groupBedIds);
+            .in('id', bedIds);
 
           // Phong con giuong trong → 'available'
           if (dep.room_id) {

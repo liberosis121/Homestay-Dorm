@@ -268,6 +268,7 @@ const AppointmentCard = ({
   const [confirmingDeposit, setConfirmingDeposit] = useState(false);
   const [depositError, setDepositError] = useState('');
   const isUpcoming = schedule.status === 'pending' || schedule.status === 'confirmed';
+  const canManageSchedule = schedule.can_manage !== false;
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -351,7 +352,7 @@ const AppointmentCard = ({
         <Timeline step={schedule.timeline_step} status={schedule.status} />
 
         {/* Reschedule inline form */}
-        {reschedulingId === schedule.id && (
+        {canManageSchedule && reschedulingId === schedule.id && (
           <div className="mb-4 p-4 rounded-[16px] bg-primary-fixed/20 border border-primary/20 space-y-3">
             <p className="text-sm font-semibold text-primary">Chọn thời gian mới</p>
             <div className="grid grid-cols-2 gap-3">
@@ -412,7 +413,7 @@ const AppointmentCard = ({
         )}
 
         {/* Action buttons — only for upcoming */}
-        {isUpcoming && (
+        {isUpcoming && canManageSchedule && (
           <div className="flex gap-2 flex-wrap">
             {schedule.status === 'pending' && schedule.pendingConfirmationActor !== 'staff' && (
               <button
@@ -479,7 +480,17 @@ const AppointmentCard = ({
                   </div>
                 </div>
               );
-            })() : confirmingDeposit ? (
+            })() : !canManageSchedule ? (
+              <div className="p-4 rounded-[16px] bg-surface-container-low border border-outline-variant flex items-start gap-3">
+                <CreditCard className="w-5 h-5 shrink-0 mt-0.5 text-on-surface-variant" />
+                <div>
+                  <p className="text-sm font-semibold text-on-surface">Chờ người đại diện đặt cọc</p>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Bạn là thành viên nhóm nên chỉ có thể theo dõi lịch và trạng thái đặt cọc. Người đại diện sẽ thực hiện thao tác đặt cọc/thanh toán.
+                  </p>
+                </div>
+              </div>
+            ) : confirmingDeposit ? (
               <div className="p-4 rounded-[16px] bg-[#f7f4ef] border border-[#d8c8b4]">
                 <p className="text-sm font-semibold text-primary">Bạn muốn gửi yêu cầu đặt cọc phòng này?</p>
                 <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">

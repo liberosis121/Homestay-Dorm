@@ -1,5 +1,4 @@
 import { contractRepo } from '../repositories/contract.repo';
-import { supabase } from '../utils/supabase';
 import { CONTRACT_TEMPLATES } from '../config/contract-templates';
 
 interface DbContract {
@@ -70,41 +69,19 @@ export const contractService = {
 
     const rawContracts = await contractRepo.findByCustomerUserIdIncludingGroup(userId) as unknown as DbContract[];
 
-    // Bo sung ten cac giuong cho HOP DONG NHOM (deposit.bed_id null) tu bang noi deposit_beds.
-    const groupDepositIds = rawContracts
-      .map((c: any) => c.deposit_requests)
-      .filter((d: any) => d && !d.bed_id)
-      .map((d: any) => d.id);
-    const bedNamesByDeposit: Record<string, string[]> = {};
-    if (groupDepositIds.length > 0) {
-      const { data: depBeds } = await supabase
-        .from('deposit_beds')
-        .select('deposit_id, bed_id')
-        .in('deposit_id', groupDepositIds);
-      const allBedIds = (depBeds || []).map((r: any) => r.bed_id);
-      const { data: bedsRows } = allBedIds.length > 0
-        ? await supabase.from('beds').select('id, name').in('id', allBedIds)
-        : { data: [] as any[] };
-      const bedNameById = new Map((bedsRows || []).map((b: any) => [b.id, b.name]));
-      for (const row of depBeds || []) {
-        const nm = bedNameById.get((row as any).bed_id);
-        if (!nm) continue;
-        (bedNamesByDeposit[(row as any).deposit_id] ||= []).push(nm);
-      }
-    }
-
     // Map database results to frontend ContractData interface format
     return rawContracts.map((c: DbContract) => {
       const depReq = c.deposit_requests || {} as any;
       const room = depReq.rooms || {};
-      const bed = depReq.beds || {};
       const branch = room.branches || {};
-      // HD nhom: hien thi danh sach N giuong; HD le: 1 giuong theo bed_id.
-      const groupBedNames = bedNamesByDeposit[depReq.id];
-      const bedLabel = (groupBedNames && groupBedNames.length > 0)
-        ? groupBedNames.join(', ')
-        : (bed.name || 'N/A');
+      // Ten giuong lay tu bang noi deposit_beds (contract.repo da gan vao depReq.bed_names):
+      // coc le = 1 giuong, coc nhom = N giuong, coc nguyen phong = 0.
+      const bedNames: string[] = Array.isArray(depReq.bed_names) ? depReq.bed_names : [];
+      const bedLabel = bedNames.length > 0 ? bedNames.join(', ') : 'N/A';
       const staff: { full_name?: string; phone?: string } = c.employees || {};
+      const depositAmount = bedNames.length > 0
+        ? Number(c.rent_price || 0) * 2
+        : Number(depReq.deposit_amount || c.rent_price || 0);
 
       const totalMonths = calculateMonthsDifference(c.start_date, c.end_date);
       const monthsPassed = calculateMonthsDifference(c.start_date, new Date().toISOString().split('T')[0]);
@@ -127,6 +104,8 @@ export const contractService = {
         duration: `${totalMonths} tháng`,
         status: c.status,
         statusLabel,
+        isRepresentative: (c as any).is_representative === true,
+        canRequestCheckout: (c as any).is_representative === true && (c.status === 'active' || c.status === 'expired'),
         // Room
         branch: branch.name || 'N/A',
         roomCode: room.name || 'N/A',
@@ -135,7 +114,7 @@ export const contractService = {
         roomImage: room.image_url || CONTRACT_TEMPLATES.defaultRoomImage,
         // Finance
         rentPrice: c.rent_price,
-        depositAmount: depReq.deposit_amount || c.rent_price,
+        depositAmount,
         serviceFee: CONTRACT_TEMPLATES.serviceFee,
         // Terms
         terms: CONTRACT_TEMPLATES.getTermsTemplate(bedLabel, room.name || 'N/A', branch.name || 'N/A'),

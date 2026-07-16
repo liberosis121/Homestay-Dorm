@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { getBedsByDepositIds, singleBedIdFromBeds } from '../utils/deposit-beds';
 
 export const refundRepo = {
   /**
@@ -49,6 +50,9 @@ export const refundRepo = {
       ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
       : { data: [] as any[] };
 
+    // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+    const bedsByDeposit = await getBedsByDepositIds((depositReqs || []).map(dr => dr.id));
+
     // 4. Fetch rooms
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
@@ -88,7 +92,7 @@ export const refundRepo = {
           ...contract,
           deposit_amount: req?.deposit_amount || contract.rent_price || 0,
           room_id: req?.room_id || '',
-          bed_id: req?.bed_id || '',
+          bed_id: (req ? singleBedIdFromBeds(bedsByDeposit[req.id]) : null) || '',
           customer_name: customer?.full_name || 'Khách hàng',
           customer_phone: customer?.phone || '',
           rooms: room ? {
@@ -282,6 +286,9 @@ export const refundRepo = {
       ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
       : { data: [] as any[] };
 
+    // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+    const bedsByDeposit = await getBedsByDepositIds((depositReqs || []).map(dr => dr.id));
+
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
       ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
@@ -321,7 +328,7 @@ export const refundRepo = {
             ...contract,
             deposit_amount: depReq?.deposit_amount || contract.rent_price || 0,
             room_id: depReq?.room_id || '',
-            bed_id: depReq?.bed_id || '',
+            bed_id: (depReq ? singleBedIdFromBeds(bedsByDeposit[depReq.id]) : null) || '',
             customer_name: customer?.full_name || 'Khách hàng',
             rooms: room ? {
               id: room.id,

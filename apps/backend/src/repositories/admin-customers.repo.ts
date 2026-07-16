@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { getVisibleCustomerUserIdsForContract } from '../utils/customer-contract-visibility';
 
 export interface DbCustomerAdmin {
   id: string;
@@ -82,6 +83,12 @@ export const adminCustomersRepo = {
 
     if (cErr) throw cErr;
 
+    const { data: contractCustomerLinks, error: ccErr } = await supabase
+      .from('contract_customers')
+      .select('contract_id, customer_user_id');
+
+    if (ccErr) throw ccErr;
+
     // Create user_id -> room_name and contract maps
     const rentingMap = new Map<string, string>();
     const userContractsMap = new Map<string, string[]>(); // userId -> contractIds
@@ -93,28 +100,28 @@ export const adminCustomersRepo = {
       for (const c of allContracts) {
         const depReq = c.deposit_requests as any;
         if (depReq && depReq.rental_registrations) {
-          const kh = depReq.rental_registrations.customers;
-          if (kh && kh.user_id) {
-            const userId = kh.user_id;
+          const representative = depReq.rental_registrations.customers;
+          const visibleUserIds = getVisibleCustomerUserIdsForContract(
+            c.id,
+            contractCustomerLinks || [],
+            representative?.user_id
+          );
 
-            // Active renting room
+          if (depReq.rooms) {
+            contractToRoomMap.set(c.id, depReq.rooms.name);
+            depositToRoomMap.set(depReq.id, depReq.rooms.name);
+          }
+
+          for (const userId of visibleUserIds) {
             if (c.status === 'active' && depReq.rooms) {
               rentingMap.set(userId, depReq.rooms.name);
             }
 
-            // Group contracts
             if (!userContractsMap.has(userId)) userContractsMap.set(userId, []);
             userContractsMap.get(userId)!.push(c.id);
 
-            // Group deposit requests
             if (!userDepositsMap.has(userId)) userDepositsMap.set(userId, []);
             userDepositsMap.get(userId)!.push(depReq.id);
-
-            // Room maps
-            if (depReq.rooms) {
-              contractToRoomMap.set(c.id, depReq.rooms.name);
-              depositToRoomMap.set(depReq.id, depReq.rooms.name);
-            }
           }
         }
       }

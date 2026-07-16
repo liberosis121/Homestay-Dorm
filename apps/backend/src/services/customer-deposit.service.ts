@@ -11,19 +11,15 @@ import { roomRepo } from '../repositories/room.repo';
 import { generateNextId } from '../utils/id-generator';
 import { REGISTRATION_STATUS, ID_PREFIX, DEPOSIT_STATUS, BED_STATUS, ROOM_STATUS, DEPOSIT_PAYMENT_DEADLINE_HOURS } from '../types/constants';
 import { supabase } from '../utils/supabase';
+import { getBedsByDepositIds } from '../utils/deposit-beds';
 
 /**
  * Nha (tra ve 'available') cac giuong ma mot phieu coc dang giu cho.
- *  - Coc 1 giuong le: nha dung giuong o deposit_requests.bed_id.
- *  - Coc NHOM: nha tat ca giuong liet ke o bang noi deposit_beds.
- * (Coc nguyen phong bed_id=NULL + khong deposit_beds: khong xu ly o day, giu nguyen
- *  hanh vi cu — phong duoc nha o cho goi rieng.)
+ * Mo hinh n-n: MOI giuong giu cho deu nam trong bang noi deposit_beds
+ *  (coc le = 1 giuong, coc nhom = N giuong). Coc nguyen phong khong co dong nao
+ *  -> khong nha giuong o day (phong duoc nha o cho goi rieng).
  */
-async function releaseReservedBeds(deposit: { id: string; bed_id?: string | null }) {
-  if (deposit.bed_id) {
-    await roomRepo.updateBedStatus(deposit.bed_id, BED_STATUS.AVAILABLE);
-    return;
-  }
+async function releaseReservedBeds(deposit: { id: string }) {
   const bedIds = await depositRequestRepo.getBedIdsByDeposit(deposit.id);
   for (const bedId of bedIds) {
     await roomRepo.updateBedStatus(bedId, BED_STATUS.AVAILABLE);
@@ -99,14 +95,15 @@ export const customerDepositService = {
 
     // 4. Kiem tra xem khach hang da co yeu cau dat coc nao dang cho xu ly (pending) khong de tranh spam
     const existingDeposits = await depositRequestRepo.getDepositsByCustomer(customer.cccd);
-    const hasPendingDeposit = existingDeposits.some((d) => d.status === DEPOSIT_STATUS.PENDING);
+    const hasPendingDeposit = existingDeposits.some(
+      (d) => d.status === DEPOSIT_STATUS.PENDING || d.status === DEPOSIT_STATUS.INVOICE_CREATED
+    );
     if (hasPendingDeposit) {
       throw new Error('Ban dang co mot yeu cau dat coc dang cho xu ly. Khong the tao them yeu cau dat coc moi.');
     }
 
-    // 5. Tinh toan tien coc (2 thang tien thue * so giuong thue) va thoi han thanh toan (24 gio)
-    const occupantsCount = registration.occupants_count || 1;
-    const depositAmount = bed.price * 2 * occupantsCount;
+    // 5. Tinh toan tien coc giuong le = 2 thang tien thue cua dung giuong da chon.
+    const depositAmount = bed.price * 2;
 
     const paymentDeadline = new Date();
     paymentDeadline.setHours(paymentDeadline.getHours() + DEPOSIT_PAYMENT_DEADLINE_HOURS);
@@ -114,11 +111,10 @@ export const customerDepositService = {
     // 6. Tu dong sinh ID duy nhat cho phieu dat coc (PDC-XXX)
     const nextId = await generateNextId(ID_PREFIX.DEPOSIT_REQUEST, 'deposit_requests');
 
-    // 7. Ghep du lieu phieu dat coc moi
+    // 7. Ghep du lieu phieu dat coc moi (khong con cot bed_id — giuong luu o bang noi deposit_beds)
     const newRecord = {
       id: nextId,
       registration_id: data.registration_id,
-      bed_id: data.bed_id,
       room_id: bed.room_id,
       deposit_amount: depositAmount,
       deposit_time: new Date().toISOString(),
@@ -129,6 +125,9 @@ export const customerDepositService = {
 
     // Luu phieu dat coc vao database
     const savedDeposit = await depositRequestRepo.createDepositRequest(newRecord);
+
+    // Ghi giuong da giu cho vao bang noi (mo hinh n-n: coc 1 giuong le = 1 dong).
+    await depositRequestRepo.createDepositBeds([{ deposit_id: nextId, bed_id: data.bed_id }]);
 
     // Cap nhat trang thai giuong sang deposited (da dat coc)
     await roomRepo.updateBedStatus(data.bed_id, BED_STATUS.DEPOSITED);
@@ -234,7 +233,6 @@ export const customerDepositService = {
     const newRecord = {
       id: nextId,
       registration_id: data.registration_id,
-      bed_id: null,
       room_id: roomId,
       deposit_amount: depositAmount,
       deposit_time: new Date().toISOString(),
@@ -340,33 +338,21 @@ export const customerDepositService = {
     }
     const deposits = Array.from(byId.values());
 
-    // Bo sung ten cac giuong cho phieu coc NHOM (bed_id null) tu bang noi deposit_beds.
-    const bedNamesByDeposit: Record<string, string[]> = {};
-    const groupDepositIds = deposits.filter((d) => !d.bed_id).map((d) => d.id);
-    if (groupDepositIds.length > 0) {
-      const { data: depBeds } = await supabase
-        .from('deposit_beds')
-        .select('deposit_id, bed_id')
-        .in('deposit_id', groupDepositIds);
-      const allBedIds = (depBeds || []).map((r: any) => r.bed_id);
-      const { data: bedsRows } = allBedIds.length > 0
-        ? await supabase.from('beds').select('id, name').in('id', allBedIds)
-        : { data: [] as any[] };
-      const bedNameById = new Map((bedsRows || []).map((b: any) => [b.id, b.name]));
-      for (const row of depBeds || []) {
-        const nm = bedNameById.get((row as any).bed_id);
-        if (!nm) continue;
-        (bedNamesByDeposit[(row as any).deposit_id] ||= []).push(nm);
-      }
-    }
+    // Danh sach giuong (tu bang noi deposit_beds) cho MOI phieu: le = 1, nhom = N, nguyen phong = 0.
+    const bedsByDeposit = await getBedsByDepositIds(deposits.map((d) => d.id));
 
     // Danh dau quyen: chi NGUOI DAI DIEN (cccd trung) moi duoc thanh toan.
-    return deposits.map((d) => ({
-      ...d,
-      is_representative: d.rental_registrations?.cccd === customer.cccd,
-      can_pay: d.rental_registrations?.cccd === customer.cccd,
-      bed_names: bedNamesByDeposit[d.id] || (d.beds?.name ? [d.beds.name] : [])
-    }));
+    return deposits.map((d) => {
+      const beds = bedsByDeposit[d.id] || [];
+      return {
+        ...d,
+        // bed_id chi con y nghia voi coc 1 giuong le (giu tuong thich cho FE).
+        bed_id: beds.length === 1 ? beds[0].id : null,
+        is_representative: d.rental_registrations?.cccd === customer.cccd,
+        can_pay: d.rental_registrations?.cccd === customer.cccd,
+        bed_names: beds.map((b) => b.name)
+      };
+    });
   },
 
   /**
@@ -406,7 +392,6 @@ export const customerDepositService = {
       .select(`
         id,
         registration_id,
-        bed_id,
         rental_registrations (
           staff_id
         )

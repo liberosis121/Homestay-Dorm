@@ -1,4 +1,16 @@
 import { supabase } from '../utils/supabase';
+import { getBedIdsByDepositId } from '../utils/deposit-beds';
+import { getBedIdsByContractId } from '../utils/contract-beds';
+
+function parseInvoiceNote(note?: string | null): Record<string, any> {
+  if (!note) return {};
+  try {
+    const parsed = JSON.parse(note);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 export const payoutRepo = {
   /**
@@ -220,11 +232,8 @@ export const payoutRepo = {
     // Truong hop HOAN COC CHUA KY HD: hoa don gan thang deposit_id, khong co reconciliation/checkout/contract.
     // Chi can danh dau da chi + giai phong giuong da giu cho (neu con).
     if (!invoice.reconciliation_id && invoice.deposit_id) {
-      // Resolve beds via deposit_beds junction table (bed_id column was removed from deposit_requests)
-      const { data: depositBeds } = await supabase
-        .from('deposit_beds')
-        .select('bed_id')
-        .eq('deposit_id', invoice.deposit_id);
+      const invoiceNote = parseInvoiceNote(invoice.note);
+      const isGroupResidencyPartialRefund = invoiceNote.source === 'group_residency_partial';
 
       const { data: paidInv, error: payErr } = await supabase
         .from('invoices')
@@ -240,9 +249,13 @@ export const payoutRepo = {
         throw new Error(`[PayoutRepo] Loi khi cap nhat hoa don hoan coc (chua ky HD): ${payErr.message}`);
       }
 
-      if (depositBeds && depositBeds.length > 0) {
-        const bedIds = depositBeds.map((db: any) => db.bed_id);
-        await supabase.from('beds').update({ status: 'available' }).in('id', bedIds);
+      // Hoan coc mot phan TH3 chi tra tien cho thanh vien bi loai; giuong con lai
+      // van nam trong hop dong sap lap, nen khong duoc nha toan bo deposit_beds.
+      if (!isGroupResidencyPartialRefund) {
+        const reservedBedIds = await getBedIdsByDepositId(invoice.deposit_id);
+        if (reservedBedIds.length > 0) {
+          await supabase.from('beds').update({ status: 'available' }).in('id', reservedBedIds);
+        }
       }
 
       return { ...paidInv, payout_status: 'completed' };
@@ -285,7 +298,7 @@ export const payoutRepo = {
 
     const contractId = contract?.id;
     let roomId = null;
-    let bedId = null;
+    let bedIds: string[] = [];
 
     if (contract?.deposit_id) {
       const { data: depositReq } = await supabase
@@ -296,14 +309,8 @@ export const payoutRepo = {
       if (depositReq) {
         roomId = depositReq.room_id;
       }
-      // Resolve beds via deposit_beds junction table
-      const { data: depositBeds } = await supabase
-        .from('deposit_beds')
-        .select('bed_id')
-        .eq('deposit_id', contract.deposit_id);
-      if (depositBeds && depositBeds.length > 0) {
-        bedId = depositBeds[0].bed_id;
-      }
+      // Giuong THUC SU cua hop dong (contract_beds) — nha khi ket thuc hop dong.
+      bedIds = await getBedIdsByContractId(contract.id);
     }
 
     // 2. Cap nhat status hoa don hoan coc sang paid
@@ -353,14 +360,14 @@ export const payoutRepo = {
     }
 
     // 4. Cap nhat giuong hoac phong sang available
-    if (bedId) {
+    if (bedIds.length > 0) {
       const { error: bedError } = await supabase
         .from('beds')
         .update({ status: 'available' })
-        .eq('id', bedId);
+        .in('id', bedIds);
 
       if (bedError) {
-        console.error(`[PayoutRepo] Loi khi cap nhat trang thai giuong ID=${bedId}: ${bedError.message}`);
+        console.error(`[PayoutRepo] Loi khi cap nhat trang thai giuong: ${bedError.message}`);
       }
     }
 
@@ -381,7 +388,7 @@ export const payoutRepo = {
       reconciliation_id: rec.id,
       contract_id: contractId,
       room_id: roomId,
-      bed_id: bedId
+      bed_id: bedIds.length === 1 ? bedIds[0] : null
     };
   }
 };

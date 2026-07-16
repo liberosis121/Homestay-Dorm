@@ -13,6 +13,7 @@ export interface DbInvoice {
   water_record_id: number | null;
   reconciliation_id: string | null;
   staff_id: string | null;
+  note?: string | null;
   created_at?: string | null;
   /** Han thanh toan chot luc lap hoa don. Null voi cac hoa don cu tao truoc khi co cot nay. */
   due_date?: string | null;

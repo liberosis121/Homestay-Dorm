@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { getBedsByDepositIds } from '../utils/deposit-beds';
 
 export const depositInvoiceRepo = {
   /**
@@ -27,18 +28,18 @@ export const depositInvoiceRepo = {
 
     // Giai quyet quan he in-memory de bao dam khong bi loi schema relationship cache
     const roomIds = requestsWithoutInvoice.map(r => r.room_id).filter(Boolean);
-    const bedIds = requestsWithoutInvoice.map(r => r.bed_id).filter(Boolean);
     const regIds = requestsWithoutInvoice.map(r => r.registration_id).filter(Boolean);
 
+    // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+    const bedsByDeposit = await getBedsByDepositIds(requestsWithoutInvoice.map(r => r.id));
+
     // Fetch song song các bang lien quan
-    const [roomsRes, bedsRes, regsRes] = await Promise.all([
+    const [roomsRes, regsRes] = await Promise.all([
       roomIds.length > 0 ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds) : { data: [] },
-      bedIds.length > 0 ? supabase.from('beds').select('id, name').in('id', bedIds) : { data: [] },
       regIds.length > 0 ? supabase.from('rental_registrations').select('id, cccd').in('id', regIds) : { data: [] }
     ]);
 
     const rooms = roomsRes.data || [];
-    const beds = bedsRes.data || [];
     const regs = regsRes.data || [];
 
     // Lay branches cho phong
@@ -57,7 +58,7 @@ export const depositInvoiceRepo = {
     return requestsWithoutInvoice.map(r => {
       const room = rooms.find(rm => rm.id === r.room_id);
       const branch = room ? (branches || []).find(b => b.id === room.branch_id) : null;
-      const bed = beds.find(bd => bd.id === r.bed_id);
+      const depBeds = bedsByDeposit[r.id] || [];
       const reg = regs.find(rg => rg.id === r.registration_id);
       const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
 
@@ -86,10 +87,11 @@ export const depositInvoiceRepo = {
             name: branch.name
           } : null
         } : null,
-        beds: bed ? {
-          id: bed.id,
-          name: bed.name
-        } : null
+        beds: depBeds.length > 0 ? {
+          id: depBeds[0].id,
+          name: depBeds[0].name
+        } : null,
+        bed_names: depBeds.map(b => b.name)
       };
     });
   },
@@ -115,15 +117,15 @@ export const depositInvoiceRepo = {
       : { data: [] as any[] };
 
     const roomIds = (requests || []).map(r => r.room_id).filter(Boolean);
-    const bedIds = (requests || []).map(r => r.bed_id).filter(Boolean);
 
-    const [roomsRes, bedsRes] = await Promise.all([
-      roomIds.length > 0 ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds) : { data: [] },
-      bedIds.length > 0 ? supabase.from('beds').select('id, name').in('id', bedIds) : { data: [] }
+    // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+    const bedsByDeposit = await getBedsByDepositIds((requests || []).map(r => r.id));
+
+    const [roomsRes] = await Promise.all([
+      roomIds.length > 0 ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds) : { data: [] }
     ]);
 
     const rooms = roomsRes.data || [];
-    const beds = bedsRes.data || [];
 
     const branchIds = rooms.map(r => r.branch_id).filter(Boolean);
     const { data: branches } = branchIds.length > 0
@@ -147,7 +149,7 @@ export const depositInvoiceRepo = {
       if (req) {
         const room = rooms.find(rm => rm.id === req.room_id);
         const branch = room ? (branches || []).find(b => b.id === room.branch_id) : null;
-        const bed = beds.find(bd => bd.id === req.bed_id);
+        const depBeds = bedsByDeposit[req.id] || [];
         const reg = (regs || []).find(rg => rg.id === req.registration_id);
         const customer = reg ? (customers || []).find(c => c.cccd === reg.cccd) : null;
 
@@ -162,10 +164,11 @@ export const depositInvoiceRepo = {
               name: branch.name
             } : null
           } : null,
-          beds: bed ? {
-            id: bed.id,
-            name: bed.name
+          beds: depBeds.length > 0 ? {
+            id: depBeds[0].id,
+            name: depBeds[0].name
           } : null,
+          bed_names: depBeds.map(b => b.name),
           customer_name: customer?.full_name || 'Khách hàng',
           customer_phone: customer?.phone || ''
         };

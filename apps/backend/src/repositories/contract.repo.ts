@@ -1,8 +1,12 @@
 import { supabase } from '../utils/supabase';
-import { registrationMemberRepo } from './registration-member.repo';
+import { getBedsByContractIds, singleBedId } from '../utils/contract-beds';
 
 export const contractRepo = {
-  findByUserId: async (userId: string) => {
+  /**
+   * Lay hop dong theo danh sach id (kem thong tin phong/chi nhanh/phieu coc long nhau).
+   */
+  findByIds: async (contractIds: string[]) => {
+    if (!contractIds || contractIds.length === 0) return [];
     const { data, error } = await supabase
       .from('contracts')
       .select(`
@@ -14,14 +18,13 @@ export const contractRepo = {
             *,
             branches!inner (*)
           ),
-          beds!deposit_beds (*),
           rental_registrations!inner (
             *,
             customers!cccd!inner (*)
           )
         )
       `)
-      .eq('deposit_requests.rental_registrations.customers.user_id', userId);
+      .in('id', contractIds);
 
     if (error) {
       throw error;
@@ -30,52 +33,37 @@ export const contractRepo = {
   },
 
   /**
-   * Lay hop dong theo danh sach ma phieu dang ky (registration_id).
-   * Dung de thanh vien nhom xem duoc hop dong cua phieu ma minh tham gia.
-   * Cung shape join voi findByUserId.
+   * Lay tat ca hop dong ma mot khach hang la NGUOI KY THUC SU (co trong contract_customers).
+   * Nho vay chi nguoi thuc su ky hop dong (dai dien + thanh vien con lai) moi thay hop dong;
+   * thanh vien rot dieu kien luu tru (khong vao hop dong) se khong thay.
+   * Gan giuong THUC SU cua hop dong (contract_beds) vao deposit_requests long de tuong thich shape.
    */
-  findByRegistrationIds: async (registrationIds: string[]) => {
-    if (!registrationIds || registrationIds.length === 0) return [];
-    const { data, error } = await supabase
-      .from('contracts')
-      .select(`
-        *,
-        employees (*),
-        deposit_requests!inner (
-          *,
-          rooms!inner (
-            *,
-            branches!inner (*)
-          ),
-          beds!deposit_beds (*),
-          rental_registrations!inner (
-            *,
-            customers!cccd!inner (*)
-          )
-        )
-      `)
-      .in('deposit_requests.registration_id', registrationIds);
-
-    if (error) {
-      throw error;
-    }
-    return data;
-  },
-
   findByCustomerUserIdIncludingGroup: async (userId: string) => {
-    const memberships = await registrationMemberRepo.getRegistrationIdsByUser(userId);
-    const memberRegIds = memberships.map((m) => m.registration_id);
+    const { data: links } = await supabase
+      .from('contract_customers')
+      .select('contract_id, is_representative')
+      .eq('customer_user_id', userId);
+    const contractIds = Array.from(new Set((links || []).map((l: any) => l.contract_id)));
+    if (contractIds.length === 0) return [];
 
-    const [representativeContracts, memberContracts] = await Promise.all([
-      contractRepo.findByUserId(userId),
-      contractRepo.findByRegistrationIds(memberRegIds)
-    ]);
+    const contracts = (await contractRepo.findByIds(contractIds)) || [];
+    const representativeByContract = new Map(
+      (links || []).map((link: any) => [link.contract_id, link.is_representative === true])
+    );
 
-    const contractsById = new Map<string, any>();
-    for (const contract of [...(representativeContracts || []), ...(memberContracts || [])]) {
-      contractsById.set(contract.id, contract);
+    // Gan giuong THUC SU cua hop dong (contract_beds) vao deposit_requests long:
+    // HD le -> 1 giuong, HD nhom -> N, HD nguyen phong -> 0.
+    const bedsByContract = await getBedsByContractIds(contractIds);
+    for (const c of contracts) {
+      (c as any).is_representative = representativeByContract.get(c.id) === true;
+      const dep = c.deposit_requests;
+      if (!dep) continue;
+      const beds = bedsByContract[c.id] || [];
+      dep.bed_id = singleBedId(beds);
+      dep.beds = beds.length > 0 ? { id: beds[0].id, name: beds[0].name } : null;
+      dep.bed_names = beds.map((b) => b.name);
     }
 
-    return Array.from(contractsById.values());
+    return contracts;
   }
 };

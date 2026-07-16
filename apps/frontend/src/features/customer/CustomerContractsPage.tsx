@@ -18,6 +18,8 @@ export interface ContractData {
   duration: string;
   status: 'pending_payment' | 'active' | 'expired' | 'terminated';
   statusLabel: string;
+  isRepresentative?: boolean;
+  canRequestCheckout?: boolean;
   // Room
   branch: string;
   roomCode: string;
@@ -521,7 +523,7 @@ export default function CustomerContractsPage() {
                 <Printer className="w-4 h-4" />
                 In bản hợp đồng
               </button>
-              {contract.status === 'active' && (
+              {contract.canRequestCheckout === true && (
                 <button
                   onClick={() => navigate('/customer/checkout-request', { state: { contractId: contract.id } })}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#b87d4b] hover:bg-[#9c663b] text-white font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer shadow-sm"

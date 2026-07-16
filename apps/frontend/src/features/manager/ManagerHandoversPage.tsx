@@ -563,7 +563,9 @@ export default function ManagerHandoversPage() {
                         <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                           <div className="flex flex-col gap-0.5">
                             <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{rec.room_name}</span>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>{rec.bed_id ? rec.bed_name : 'Full phòng'}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>
+                              {rec.bed_id ? rec.bed_name : (rec.is_group_full_room ? 'Full phòng' : 'Nguyên phòng')}
+                            </span>
                           </div>
                         </td>
                         <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', fontWeight: 600 }}>{rec.handover_date}</td>
@@ -664,7 +666,9 @@ export default function ManagerHandoversPage() {
                         <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                           <div className="flex flex-col gap-0.5">
                             <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{ch.room_name}</span>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>{ch.bed_id ? ch.bed_name : 'Full phòng'}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>
+                              {ch.bed_id ? ch.bed_name : (ch.is_group_full_room ? 'Full phòng' : 'Nguyên phòng')}
+                            </span>
                           </div>
                         </td>
                         <td style={{ padding: '13px 16px' }}>
@@ -879,7 +883,7 @@ export default function ManagerHandoversPage() {
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Phòng:</span>
                       <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
-                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name || ''} - ${selectedCheckout.room_name || ''}` : `Full phòng ${(selectedCheckout.room_name || '').replace('Phòng ', '')}`}
+                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name || ''} - ${selectedCheckout.room_name || ''}` : `${selectedCheckout.is_group_full_room ? 'Full phòng' : 'Nguyên phòng'} ${(selectedCheckout.room_name || '').replace('Phòng ', '')}`}
                       </p>
                     </div>
                     <div>
@@ -1177,7 +1181,7 @@ export default function ManagerHandoversPage() {
                     <div>
                       <span style={{ fontSize: 12, color: T.textMuted }}>Phòng:</span>
                       <p style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
-                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name} - ${selectedCheckout.room_name}` : `Full phòng ${selectedCheckout.room_name.replace('Phòng ', '')}`}
+                        {selectedCheckout.bed_id ? `${selectedCheckout.bed_name} - ${selectedCheckout.room_name}` : `${selectedCheckout.is_group_full_room ? 'Full phòng' : 'Nguyên phòng'} ${selectedCheckout.room_name.replace('Phòng ', '')}`}
                       </p>
                     </div>
                     <div>

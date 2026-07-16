@@ -130,11 +130,15 @@ export const authService = {
 
     let rentingRoomName: string | undefined = undefined;
     let hasContractHistory = false;
+    let stayStatus: profileRepo.CustomerStayStatus | undefined = undefined;
+    let canRequestCheckout = false;
     let branchName: string | undefined = undefined;
 
     if (profile.role === USER_ROLE.CUSTOMER) {
       rentingRoomName = await profileRepo.getRentingRoomName(data.user.id);
       hasContractHistory = await profileRepo.hasContractHistory(data.user.id);
+      stayStatus = await profileRepo.getCustomerStayStatus(data.user.id);
+      canRequestCheckout = await profileRepo.canRequestCheckout(data.user.id);
     } else {
       // Load branch name for employees
       const { data: employee } = await supabase
@@ -165,8 +169,12 @@ export const authService = {
         phone: profile.phone,
         role: profile.role,
         avatar_url: profile.avatar_url,
+        created_at: profile.created_at,
         renting_room_name: rentingRoomName,
         has_contract_history: hasContractHistory,
+        stay_status: stayStatus,
+        can_request_checkout: canRequestCheckout,
+        member_since: profile.created_at,
         branch_name: branchName,
       },
     };
@@ -224,8 +232,17 @@ export const authService = {
           customerDetails = newCustomer;
         }
       }
+      const rentingRoomName = await profileRepo.getRentingRoomName(userId);
+      const hasContractHistory = await profileRepo.hasContractHistory(userId);
+      const stayStatus = await profileRepo.getCustomerStayStatus(userId);
+      const canRequestCheckout = await profileRepo.canRequestCheckout(userId);
       return {
         ...profile,
+        renting_room_name: rentingRoomName,
+        has_contract_history: hasContractHistory,
+        stay_status: stayStatus,
+        can_request_checkout: canRequestCheckout,
+        member_since: profile.created_at,
         details: customerDetails,
       };
     } else if ([USER_ROLE.SALE, USER_ROLE.MANAGER, USER_ROLE.ACCOUNTANT].includes(profile.role as any)) {

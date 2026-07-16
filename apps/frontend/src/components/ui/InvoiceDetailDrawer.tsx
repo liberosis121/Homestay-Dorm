@@ -3,7 +3,7 @@ import { X, Printer, Check } from 'lucide-react';
 export interface InvoiceDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  invoiceType: 'deposit' | 'checkin' | 'monthly' | 'service' | 'liquidation';
+  invoiceType: 'deposit' | 'checkin' | 'monthly' | 'service' | 'liquidation' | 'refund';
   invoiceData: any;
   onConfirmPayment?: (id: string) => void;
 }
