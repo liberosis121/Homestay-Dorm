@@ -460,8 +460,8 @@ export default function AdminAssetsPage() {
                   </td>
                 </tr>
               ) : paginatedAssets.map((a, i) => {
-                const si = STATUS_ASSET[a.status];
-                const cat = CAT_LABEL[a.category];
+                const si = STATUS_ASSET[a.status] || { label: a.status || 'Không rõ', cls: 'bg-gray-100 text-gray-700' };
+                const cat = CAT_LABEL[a.category] || { label: a.category || 'Khác', icon: 'category' };
                 return (
                   <tr key={a.id}
                     className="group transition-colors"
