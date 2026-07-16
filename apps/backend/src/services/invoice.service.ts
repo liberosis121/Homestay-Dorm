@@ -316,6 +316,11 @@ export const invoiceService = {
       let status: 'paid' | 'pending' | 'unpaid' | 'overdue' = 'unpaid';
       if (inv.status === 'paid') {
         status = 'paid';
+      } else if (isDeposit && inv.payment_time) {
+        // Hóa đơn cọc ĐÃ THU tiền (có payment_time) thì luôn là "Đã thanh toán", KỂ CẢ khi phiếu cọc
+        // bị hủy sau đó do rớt điều kiện lưu trú (lúc đó invoices.status có thể bị đánh 'rejected').
+        // Tiền cọc đã thu được hoàn lại qua phiếu HOÀN CỌC riêng, không đưa hóa đơn cọc về diện phải trả.
+        status = 'paid';
       } else if (inv.status === 'pending') {
         status = 'pending';
       } else {

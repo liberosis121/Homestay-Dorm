@@ -271,11 +271,16 @@ export const managerDepositService = {
         .eq('deposit_id', id)
         .eq('invoice_type', 'deposit');
     } else if (newStatus === 'rejected') {
+      // CHỈ từ chối hóa đơn cọc CHƯA thu (khách chưa thanh toán / minh chứng bị từ chối).
+      // KHÔNG lật hóa đơn cọc ĐÃ THU ('paid') về 'rejected' — vì khi phiếu cọc bị hủy do rớt điều
+      // kiện lưu trú, tiền cọc đã thu sẽ được xử lý qua phiếu HOÀN CỌC riêng; hóa đơn cọc phải giữ
+      // nguyên trạng thái "Đã thanh toán".
       await supabase
         .from('invoices')
         .update({ status: 'rejected', note: reviewNote })
         .eq('deposit_id', id)
-        .eq('invoice_type', 'deposit');
+        .eq('invoice_type', 'deposit')
+        .neq('status', 'paid');
 
       // Release reserved bed/room resources
       const { data: dep } = await supabase
