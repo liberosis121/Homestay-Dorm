@@ -82,6 +82,22 @@ export async function getCustomersByContractIds(
   return result;
 }
 
+/**
+ * COC THUC TE cua hop dong = tong gia giuong THUC SU cua HD × 2 thang.
+ * Nguyen phong (0 giuong contract_beds) -> dung coc goc cua phieu (fallbackDeposit).
+ *
+ * QUAN TRONG (TH3 nhom co nguoi rot): phai dung giuong CUA HOP DONG (contract_beds),
+ * KHONG dung deposit_requests.deposit_amount — vi cai sau la coc cua CA NHOM goc (gom
+ * ca phan nguoi rot da duoc hoan coc), se lam buoc doi soat/thanh ly hoan thua tien.
+ */
+export function contractDepositFromBeds(
+  beds: Array<{ price: number }> | undefined | null,
+  fallbackDeposit: number
+): number {
+  const bedRentSum = (beds || []).reduce((sum, b) => sum + (Number(b.price) || 0), 0);
+  return bedRentSum > 0 ? bedRentSum * 2 : (Number(fallbackDeposit) || 0);
+}
+
 /** bed_id dai dien theo ngu nghia cu (coc/HD 1 giuong le -> id; nhom / nguyen phong -> null). */
 export function singleBedId(beds: Array<{ id: string }> | undefined | null): string | null {
   return beds && beds.length === 1 ? beds[0].id : null;
