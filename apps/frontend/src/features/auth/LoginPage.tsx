@@ -48,7 +48,7 @@ export default function LoginPage() {
     window.location.href = oauthUrl;
   };
 
-  const fillCredential = (presetEmail: string, presetPassword = '123456') => {
+  const fillCredential = (presetEmail: string, presetPassword = '12345678') => {
     setEmail(presetEmail);
     setPassword(presetPassword);
   };
