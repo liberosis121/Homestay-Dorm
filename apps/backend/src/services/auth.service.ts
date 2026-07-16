@@ -5,9 +5,10 @@ import { USER_ROLE } from '../types/constants';
 import { sendOtpEmail } from '../utils/email.helper';
 
 // Helper de tao client auth rieng cho tung request, tranh o nhiem session len client singleton dung chung
+// Dung ANON KEY (khong phai SERVICE_ROLE) de signIn/signUp hoat dong dung voi Supabase auth flow
 const getAuthClient = () => createClient(
   process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   {
     auth: {
       persistSession: false,
@@ -188,12 +189,10 @@ export const authService = {
    * @param token - Token hiện tại của user để verify đăng xuất
    */
   logout: async (token: string) => {
-    // Thu hồi session hiện tại trên Supabase qua client tam thoi
-    const authClient = getAuthClient();
-    const { error } = await authClient.auth.signOut();
-    if (error) {
-      throw new Error(`Đăng xuất thất bại: ${error.message}`);
-    }
+    // Voi JWT stateless, logout phia server chi can bao client xoa token.
+    // Khong goi authClient.auth.signOut() vi client nay khong co session
+    // (persistSession: false) nen se trigger global signout va xoa auth state sai.
+    // Frontend co trach nhiem xoa access_token va refresh_token khoi localStorage.
     return { success: true };
   },
 
