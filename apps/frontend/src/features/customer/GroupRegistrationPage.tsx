@@ -8,17 +8,17 @@ import { useGroupRegistrationStore } from './store/useGroupRegistrationStore';
 import { CheckCircle, ChevronLeft, ChevronRight, Info, Plus, Trash2, Users } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import { getRoomDetailApi } from '../rooms/rooms.api';
+import { createGroupLeaseRegistrationApi } from './lease.api';
+import { fetchProfile } from './services/profile.service';
 
+// Form nhóm chỉ cần thông tin định danh + xác thực; các thuộc tính pháp lý khác
+// (ngày sinh, giới tính, quốc tịch, địa chỉ, ngày/nơi cấp CCCD) backend suy ra từ
+// hồ sơ tài khoản của thành viên (tra theo CCCD), không bắt nhập lại.
 const memberSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
-  phone: z.string().min(10, 'Số điện thoại không hợp lệ'),
   cccd: z.string().min(12, 'CCCD phải có 12 số').max(12, 'CCCD phải có 12 số'),
-  issueDate: z.string().min(1, 'Vui lòng chọn ngày cấp'),
-  issuePlace: z.string().min(1, 'Vui lòng nhập nơi cấp'),
-  dob: z.string().min(1, 'Vui lòng chọn ngày sinh'),
-  gender: z.enum(['male', 'female', 'other']),
-  nationality: z.string().min(1, 'Vui lòng nhập quốc tịch'),
-  permanentAddress: z.string().min(1, 'Vui lòng nhập địa chỉ thường trú'),
+  phone: z.string().min(10, 'Số điện thoại không hợp lệ'),
 });
 
 const groupSchema = z.object({
@@ -28,7 +28,20 @@ const groupSchema = z.object({
 const rentalInfoSchema = z.object({
   leaseTerm: z.string().min(1, 'Vui lòng chọn thời hạn thuê'),
   moveInDate: z.string().min(1, 'Vui lòng chọn ngày chuyển vào'),
+  preferredViewingDate: z.string().min(1, 'Vui lòng chọn ngày có thể xem phòng'),
+  preferredViewingTime: z.string().min(1, 'Vui lòng chọn khung giờ rảnh'),
+  viewingTimeNote: z.string().optional(),
 });
+
+const viewingTimeOptions = [
+  { value: '08:00-10:00', label: '08:00 - 10:00' },
+  { value: '10:00-12:00', label: '10:00 - 12:00' },
+  { value: '13:30-15:30', label: '13:30 - 15:30' },
+  { value: '15:30-17:30', label: '15:30 - 17:30' },
+  { value: 'flexible', label: 'Linh hoạt theo Sale' },
+];
+
+const today = new Date().toISOString().split('T')[0];
 
 export const GroupRegistrationPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,8 +54,10 @@ export const GroupRegistrationPage: React.FC = () => {
   const [capacity, setCapacity] = useState<number>(0);
   const [availableBeds, setAvailableBeds] = useState<number>(0);
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
-  const [genderType, setGenderType] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roomDetail, setRoomDetail] = useState<any>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
 
   useEffect(() => {
     if (!user) {
@@ -55,33 +70,62 @@ export const GroupRegistrationPage: React.FC = () => {
       return;
     }
 
-    const state = location.state as { roomId?: string, roomName?: string, capacity?: number, availableBeds?: number, selectedBedsNames?: string[], genderType?: string };
+    // Kiểm tra tính đầy đủ của hồ sơ
+    fetchProfile()
+      .then((data) => {
+        setProfileData(data);
+        const phone = data.phone || '';
+        const details = data.details || {};
+        const cccd = details.cccd || '';
+        const dob = details.dob || '';
+        const gender = details.gender || '';
+        const nationality = details.nationality || '';
+        const issueDate = details.cccd_issue_date || '';
+        const issuePlace = details.cccd_issue_place || '';
+        const address = details.address || '';
+
+        const complete = (
+          phone.trim() !== '' &&
+          cccd.trim() !== '' &&
+          dob.trim() !== '' &&
+          gender.trim() !== '' &&
+          nationality.trim() !== '' &&
+          issueDate.trim() !== '' &&
+          issuePlace.trim() !== '' &&
+          address.trim() !== ''
+        );
+        setIsProfileComplete(complete);
+      })
+      .catch((err) => {
+        console.error('Lỗi khi kiểm tra hồ sơ cá nhân:', err);
+        setIsProfileComplete(false);
+      });
+
+    const state = location.state as { roomId?: string, roomName?: string, capacity?: number, availableBeds?: number, selectedBedsNames?: string[] };
     if (state?.roomId) {
       setRoomName(state.roomName || 'Phòng không xác định');
       setCapacity(state.capacity || 4);
       setAvailableBeds(state.availableBeds || 4);
       setSelectedBeds(state.selectedBedsNames || []);
-      setGenderType(state.genderType || '');
+
+      // Load room details
+      getRoomDetailApi(state.roomId)
+        .then((detail) => setRoomDetail(detail))
+        .catch((err) => console.error('Lỗi khi tải chi tiết phòng:', err));
     } else {
       navigate('/rooms');
     }
   }, [user, navigate, location]);
 
   type GroupSchemaType = z.infer<typeof groupSchema>;
-  const { register: registerGroup, setValue: setGroupValue, watch: watchGroup, control, handleSubmit: handleGroup, formState: { errors: errorsGroup } } = useForm<GroupSchemaType>({
+  const { register: registerGroup, setValue: setGroupValue, control, handleSubmit: handleGroup, formState: { errors: errorsGroup } } = useForm<GroupSchemaType>({
     resolver: zodResolver(groupSchema),
     defaultValues: {
       members: (draftData.members && draftData.members.length > 0) ? draftData.members as any : [
-        { 
-          fullName: user?.full_name || '', 
-          phone: user?.phone || '', 
+        {
+          fullName: user?.full_name || '',
           cccd: '',
-          issueDate: '',
-          issuePlace: '',
-          dob: '',
-          gender: 'male',
-          nationality: 'Việt Nam',
-          permanentAddress: ''
+          phone: user?.phone || '',
         }
       ]
     }
@@ -92,12 +136,29 @@ export const GroupRegistrationPage: React.FC = () => {
     name: 'members'
   });
 
+  // Tự động điền thông tin người đại diện (thành viên đầu tiên) từ hồ sơ tài khoản đang đăng nhập.
+  // Chỉ prefill khi chưa có bản nháp (tránh ghi đè khi người dùng quay lại bước 1).
+  useEffect(() => {
+    if (!profileData) return;
+    if (draftData.members && draftData.members.length > 0) return;
+
+    const details = profileData.details || {};
+
+    setGroupValue('members.0.fullName', profileData.full_name || details.full_name || '');
+    setGroupValue('members.0.cccd', details.cccd || '');
+    setGroupValue('members.0.phone', profileData.phone || details.phone || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileData]);
+
   type RentalInfoType = z.infer<typeof rentalInfoSchema>;
   const { setValue: setRentalValue, watch: watchRental, handleSubmit: handleRental, formState: { errors: errorsRental } } = useForm<RentalInfoType>({
     resolver: zodResolver(rentalInfoSchema),
     defaultValues: {
       leaseTerm: draftData.leaseTerm || '6',
       moveInDate: draftData.moveInDate || '',
+      preferredViewingDate: draftData.preferredViewingDate || '',
+      preferredViewingTime: draftData.preferredViewingTime || 'flexible',
+      viewingTimeNote: draftData.viewingTimeNote || '',
     }
   });
 
@@ -124,14 +185,8 @@ export const GroupRegistrationPage: React.FC = () => {
       return;
     }
 
-    if (genderType && genderType !== 'unisex') {
-      const invalidGenderMember = membersWithRep.find((m: any) => m.gender !== genderType);
-      if (invalidGenderMember) {
-        alert(`Phòng này dành cho ${genderType === 'female' ? 'Nữ' : 'Nam'}. Giới tính của thành viên "${invalidGenderMember.fullName}" không phù hợp.`);
-        return;
-      }
-    }
-
+    // Ràng buộc giới tính phòng được backend kiểm tra khi gửi phiếu (dựa trên hồ sơ
+    // tài khoản từng thành viên) — không cần trường giới tính trong form nữa.
     setDraftData({ members: membersWithRep });
     setCurrentStep(2);
   };
@@ -141,12 +196,51 @@ export const GroupRegistrationPage: React.FC = () => {
     setCurrentStep(3);
   };
 
-  const handleSubmitFinal = () => {
+  const handleSubmitFinal = async () => {
+    if (!roomDetail || !user) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const preferredArea = roomDetail.branches?.name || 'Chi nhánh mặc định';
+      const preferredRoomType = roomDetail.room_type || 'Dorm';
+      const preferredPrice = Number(roomDetail.price) || 0; // cột preferred_price là numeric (VND)
+      const viewingTimeLabel = viewingTimeOptions.find(t => t.value === draftData.preferredViewingTime)?.label || draftData.preferredViewingTime || 'Linh hoạt theo Sale';
+      const roomInterestNote = [
+        `Phòng quan tâm: ${roomDetail.name}`,
+        `Đăng ký nhóm ${draftData.members.length} người`,
+        selectedBeds.length > 0 ? `Giường quan tâm: ${selectedBeds.join(', ')}` : '',
+      ].filter(Boolean).join(' | ');
+
+      await createGroupLeaseRegistrationApi({
+        members: draftData.members.map((m) => ({
+          fullName: m.fullName,
+          cccd: m.cccd,
+          phone: m.phone
+        })),
+        room_id: roomDetail.id,
+        preferred_area: preferredArea,
+        preferred_room_type: preferredRoomType,
+        preferred_price: preferredPrice,
+        viewing_preference: `${draftData.preferredViewingDate} (${viewingTimeLabel})`,
+        expected_move_in_date: draftData.moveInDate || '',
+        rental_duration: `${draftData.leaseTerm || '6'} tháng`,
+        // Danh sách thành viên được lưu chuẩn ở bảng n-n; other_criteria chỉ giữ meta phòng/giường.
+        other_criteria: JSON.stringify({
+          isGroup: true,
+          roomId: roomDetail.id,
+          roomName: roomDetail.name,
+          beds: selectedBeds,
+          displayNote: roomInterestNote,
+          viewingTimeNote: draftData.viewingTimeNote || ''
+        })
+      });
+
       setCurrentStep(4);
-    }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi gửi đơn đăng ký thuê nhóm');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFinish = () => {
@@ -159,6 +253,42 @@ export const GroupRegistrationPage: React.FC = () => {
     { num: 2, title: 'Thuê phòng' },
     { num: 3, title: 'Xác nhận' }
   ];
+
+  if (isProfileComplete === null) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-3">
+          <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+          <p className="font-body-md text-sm text-on-surface-variant">Đang kiểm tra hồ sơ cá nhân...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isProfileComplete === false) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-6 bg-surface theme-customer">
+        <div className="w-full max-w-lg bg-white dark:bg-surface-container-highest/80 border border-glass-stroke shadow-2xl rounded-[32px] p-8 md:p-10 text-center flex flex-col items-center gap-6 moss-shadow">
+          <div className="w-20 h-20 bg-amber-50 dark:bg-amber-950/30 rounded-full flex items-center justify-center text-amber-500 shadow-lg shadow-amber-500/10">
+            <span className="material-symbols-outlined text-4xl">warning</span>
+          </div>
+          <div className="space-y-3">
+            <h2 className="font-headline-lg text-2xl font-bold text-on-surface">Cập nhật hồ sơ cá nhân</h2>
+            <p className="font-body-md text-on-surface-variant leading-relaxed text-sm text-justify">
+              Bạn cần điền đầy đủ các thông tin cá nhân bắt buộc bao gồm: <strong>Số điện thoại, Số CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày cấp và Nơi cấp CCCD, Địa chỉ thường trú</strong> trong hồ sơ cá nhân của mình trước khi thực hiện chức năng đăng ký thuê phòng.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-full h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-all shadow-lg shadow-primary/10 mt-2 cursor-pointer group"
+          >
+            Cập nhật hồ sơ cá nhân
+            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9F8F4] pt-24 pb-12">
@@ -216,7 +346,10 @@ export const GroupRegistrationPage: React.FC = () => {
               
               <div className="bg-blue-50 text-blue-800 p-4 rounded-[12px] mb-6 flex items-start">
                 <Info size={20} className="text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                <p className="text-sm">Thành viên đầu tiên trong danh sách sẽ là <strong>người đại diện nhóm</strong> để ký hợp đồng và nhận hóa đơn thanh toán hàng tháng.</p>
+                <div className="text-sm space-y-1">
+                  <p>Thành viên đầu tiên trong danh sách là <strong>người đại diện nhóm</strong> (tài khoản đang đăng nhập) để ký hợp đồng và nhận hóa đơn hàng tháng.</p>
+                  <p>Mỗi thành viên <strong>phải đã có tài khoản và cập nhật đầy đủ hồ sơ cá nhân</strong>. Hệ thống sẽ đối chiếu <strong>họ tên, CCCD và số điện thoại</strong> bạn nhập với hồ sơ của tài khoản đó; nếu không khớp sẽ không thể đăng ký.</p>
+                </div>
               </div>
 
               <div className="space-y-6 mb-6">
@@ -239,16 +372,11 @@ export const GroupRegistrationPage: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
                         <input {...registerGroup(`members.${index}.fullName` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="Nguyễn Văn A" />
                         {errorsGroup.members?.[index]?.fullName && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.fullName?.message}</p>}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                        <input {...registerGroup(`members.${index}.phone` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="090..." />
-                        {errorsGroup.members?.[index]?.phone && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.phone?.message}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Số CCCD</label>
@@ -256,53 +384,9 @@ export const GroupRegistrationPage: React.FC = () => {
                         {errorsGroup.members?.[index]?.cccd && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.cccd?.message}</p>}
                       </div>
                       <div>
-                        <CustomDatePicker
-                          label="Ngày sinh"
-                          value={watchGroup(`members.${index}.dob` as const) || ''}
-                          onChange={(val) => setGroupValue(`members.${index}.dob` as const, val, { shouldValidate: true })}
-                          placeholder="Chọn ngày sinh"
-                          error={errorsGroup.members?.[index]?.dob?.message}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
-                        <CustomSelect
-                          value={watchGroup(`members.${index}.gender` as const)}
-                          onChange={(val) => setGroupValue(`members.${index}.gender` as const, val as any)}
-                          options={[
-                            { value: 'male', label: 'Nam' },
-                            { value: 'female', label: 'Nữ' },
-                            { value: 'other', label: 'Khác' }
-                          ]}
-                          triggerClassName="w-full border-gray-200 focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] py-2.5 text-sm font-normal text-gray-900"
-                        />
-                        {errorsGroup.members?.[index]?.gender && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.gender?.message}</p>}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Quốc tịch</label>
-                        <input {...registerGroup(`members.${index}.nationality` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="Việt Nam" />
-                        {errorsGroup.members?.[index]?.nationality && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.nationality?.message}</p>}
-                      </div>
-                      <div>
-                        <CustomDatePicker
-                          label="Ngày cấp CCCD"
-                          value={watchGroup(`members.${index}.issueDate` as const) || ''}
-                          onChange={(val) => setGroupValue(`members.${index}.issueDate` as const, val, { shouldValidate: true })}
-                          placeholder="Chọn ngày cấp"
-                          error={errorsGroup.members?.[index]?.issueDate?.message}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nơi cấp CCCD</label>
-                        <input {...registerGroup(`members.${index}.issuePlace` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="Cục CSQLHC về TTXH" />
-                        {errorsGroup.members?.[index]?.issuePlace && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.issuePlace?.message}</p>}
-                      </div>
-                      <div className="lg:col-span-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ thường trú</label>
-                        <input {...registerGroup(`members.${index}.permanentAddress` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="123 Đường A..." />
-                        {errorsGroup.members?.[index]?.permanentAddress && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.permanentAddress?.message}</p>}
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                        <input {...registerGroup(`members.${index}.phone` as const)} className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm" placeholder="090..." />
+                        {errorsGroup.members?.[index]?.phone && <p className="text-red-500 text-xs mt-1">{errorsGroup.members[index]?.phone?.message}</p>}
                       </div>
                     </div>
                   </div>
@@ -312,16 +396,10 @@ export const GroupRegistrationPage: React.FC = () => {
               {fields.length < availableBeds && (
                 <button 
                   type="button" 
-                  onClick={() => append({ 
-                    fullName: '', 
-                    phone: '', 
+                  onClick={() => append({
+                    fullName: '',
                     cccd: '',
-                    issueDate: '',
-                    issuePlace: '',
-                    dob: '',
-                    gender: 'male',
-                    nationality: 'Việt Nam',
-                    permanentAddress: ''
+                    phone: ''
                   })}
                   className="w-full py-4 border-2 border-dashed border-gray-300 rounded-[16px] text-gray-600 font-medium hover:border-[#8BA888] hover:text-[#8BA888] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                 >
@@ -377,6 +455,39 @@ export const GroupRegistrationPage: React.FC = () => {
                     })()}
                   />
                 </div>
+
+                <div>
+                  <CustomDatePicker
+                    label="Ngày có thể đến xem phòng"
+                    value={watchRental('preferredViewingDate') || ''}
+                    onChange={(val) => setRentalValue('preferredViewingDate', val, { shouldValidate: true })}
+                    placeholder="Chọn ngày xem"
+                    error={errorsRental.preferredViewingDate?.message as string}
+                    required
+                    min={today}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Khung giờ rảnh</label>
+                  <CustomSelect
+                    value={watchRental('preferredViewingTime')}
+                    onChange={(val) => setRentalValue('preferredViewingTime', val, { shouldValidate: true })}
+                    options={viewingTimeOptions}
+                    triggerClassName="w-full border-gray-200 focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] py-3 text-base font-normal text-gray-900"
+                  />
+                  {errorsRental.preferredViewingTime && <p className="text-red-500 text-sm mt-1">{errorsRental.preferredViewingTime.message as string}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú thời gian</label>
+                  <input
+                    value={watchRental('viewingTimeNote') || ''}
+                    onChange={(e) => setRentalValue('viewingTimeNote', e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8BA888]/50 focus:border-[#8BA888] text-sm"
+                    placeholder="Ví dụ: nhóm chỉ rảnh sau 16:00 hoặc cuối tuần"
+                  />
+                </div>
               </div>
 
               <div className="mt-8 flex justify-between">
@@ -427,6 +538,10 @@ export const GroupRegistrationPage: React.FC = () => {
                     <div className="font-medium">{draftData.leaseTerm} Tháng</div>
                     <div className="text-gray-500">Ngày chuyển vào:</div>
                     <div className="font-medium">{draftData.moveInDate}</div>
+                    <div className="text-gray-500">Ngày xem phòng:</div>
+                    <div className="font-medium">{draftData.preferredViewingDate}</div>
+                    <div className="text-gray-500">Khung giờ rảnh:</div>
+                    <div className="font-medium">{viewingTimeOptions.find(t => t.value === draftData.preferredViewingTime)?.label || draftData.preferredViewingTime}</div>
                   </div>
                 </div>
               </div>

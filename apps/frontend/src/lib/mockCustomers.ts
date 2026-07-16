@@ -48,8 +48,21 @@ export interface Customer {
   }>;
   contracts: Array<{
     id: string;
+    contractCode?: string;
     period: string;
     status: 'active' | 'expired' | 'pending';
+    rawStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    signDate?: string;
+    roomName?: string;
+    roomType?: string;
+    branchName?: string;
+    rentPrice?: number;
+    depositAmount?: number;
+    depositId?: string;
+    contractType?: string;
+    paymentCycle?: string;
   }>;
   recentActivities: Array<{
     icon: string;
@@ -62,8 +75,8 @@ export interface Customer {
 
 export const MOCK_CUSTOMERS: Customer[] = [
   {
-    id: '1',
-    code: 'TE-99201',
+    id: 'c3a8f1d2',
+    code: 'c3a8f1d2',
     fullName: 'Nguyễn Hoàng Nam',
     full_name: 'Nguyễn Hoàng Nam',
     email: 'nam.nh92@gmail.com',
@@ -105,8 +118,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách hàng quan tâm đến các căn hộ hướng Đông và có ban công rộng. Ưu tiên các dự án cao tầng gần trung tâm.'
   },
   {
-    id: '2',
-    code: 'TE-88402',
+    id: 'b2e5c947',
+    code: 'b2e5c947',
     fullName: 'Trần Thị Mai Anh',
     full_name: 'Trần Thị Mai Anh',
     email: 'maianh.tran@gmail.com',
@@ -143,8 +156,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách yêu cầu phòng yên tĩnh để làm việc, không quá gần thang máy.'
   },
   {
-    id: '3',
-    code: 'TE-66103',
+    id: 'a7d4f830',
+    code: 'a7d4f830',
     fullName: 'Lê Văn Hải',
     full_name: 'Lê Văn Hải',
     email: 'haile88@yahoo.com',
@@ -179,8 +192,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Đã hoàn tất thanh lý hợp đồng đúng hạn, không có công nợ tồn đọng.'
   },
   {
-    id: '4',
-    code: 'TE-99004',
+    id: 'e1b6c392',
+    code: 'e1b6c392',
     fullName: 'Phạm Minh Tuấn',
     full_name: 'Phạm Minh Tuấn',
     email: 'tuan.pham@outlook.com',
@@ -216,8 +229,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách VIP, hỗ trợ dọn phòng định kỳ 2 lần/tuần. Yêu cầu bảo mật thông tin tối đa.'
   },
   {
-    id: '5',
-    code: 'TE-11005',
+    id: 'd9a3f516',
+    code: 'd9a3f516',
     fullName: 'Vũ Thu Thảo',
     full_name: 'Vũ Thu Thảo',
     email: 'thaovu96@gmail.com',
@@ -250,8 +263,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Yêu cầu phòng có ban công hướng thoáng mát, nhiều ánh sáng tự nhiên để trồng cây cảnh.'
   },
   {
-    id: '6',
-    code: 'TE-99306',
+    id: 'f4c7b281',
+    code: 'f4c7b281',
     fullName: 'Hoàng Đức Kiên',
     full_name: 'Hoàng Đức Kiên',
     email: 'kienhoang@gmail.com',
@@ -287,8 +300,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Luôn đóng tiền phòng trước thời hạn 5 ngày. Khách thuê rất uy tín.'
   },
   {
-    id: '7',
-    code: 'TE-55307',
+    id: 'c8d2e104',
+    code: 'c8d2e104',
     fullName: 'Đỗ Kim Chi',
     full_name: 'Đỗ Kim Chi',
     email: 'chido.kim@gmail.com',
@@ -321,8 +334,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Đã rút hồ sơ đăng ký do thay đổi kế hoạch làm việc tại Hà Nội.'
   },
   {
-    id: '8',
-    code: 'TE-22008',
+    id: 'b5a9f763',
+    code: 'b5a9f763',
     fullName: 'Bùi Anh Dũng',
     full_name: 'Bùi Anh Dũng',
     email: 'dungbui87@gmail.com',
@@ -360,8 +373,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Gia đình có con nhỏ, yêu cầu ban công có lưới an toàn và khu vực yên tĩnh ít tiếng ồn.'
   },
   {
-    id: '9',
-    code: 'TE-99409',
+    id: 'a2c6d418',
+    code: 'a2c6d418',
     fullName: 'Ngô Phương Linh',
     full_name: 'Ngô Phương Linh',
     email: 'linhngo94@gmail.com',
@@ -396,8 +409,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Ưu tiên vị trí có chỗ đỗ xe ô tô gần lối vào hầm.'
   },
   {
-    id: '10',
-    code: 'TE-44110',
+    id: 'e8b1f935',
+    code: 'e8b1f935',
     fullName: 'Dương Quốc Bảo',
     full_name: 'Dương Quốc Bảo',
     email: 'baoduong91@gmail.com',
@@ -432,8 +445,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Đã hoàn cọc đầy đủ. Hồ sơ khách thuê rất tốt, văn minh lịch sự.'
   },
   {
-    id: '11',
-    code: 'TE-12011',
+    id: 'd6c4a720',
+    code: 'd6c4a720',
     fullName: 'Phan Thanh Hà',
     full_name: 'Phan Thanh Hà',
     email: 'haphan97@gmail.com',
@@ -466,8 +479,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách cần phòng có bàn làm việc đủ rộng và đường truyền Internet tốc độ cao ổn định.'
   },
   {
-    id: '12',
-    code: 'TE-99612',
+    id: 'f2a8b349',
+    code: 'f2a8b349',
     fullName: 'Đặng Minh Triết',
     full_name: 'Đặng Minh Triết',
     email: 'trietdang99@gmail.com',
@@ -502,8 +515,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Rất giữ gìn vệ sinh phòng. Thích tone phòng tối màu ấm áp.'
   },
   {
-    id: '13',
-    code: 'TE-12113',
+    id: 'c1e5d896',
+    code: 'c1e5d896',
     fullName: 'Lý Quỳnh Trang',
     full_name: 'Lý Quỳnh Trang',
     email: 'trangly96@gmail.com',
@@ -534,8 +547,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Yêu cầu phòng có không gian thiết kế độc đáo và ban công thoáng đãng.'
   },
   {
-    id: '14',
-    code: 'TE-66214',
+    id: 'b9f3a274',
+    code: 'b9f3a274',
     fullName: 'Trịnh Tiến Đạt',
     full_name: 'Trịnh Tiến Đạt',
     email: 'dattrinh85@gmail.com',
@@ -570,8 +583,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Đã hoàn trả đầy đủ tiền cọc 35 triệu. Không phát sinh hư hại tài sản trong thời gian thuê.'
   },
   {
-    id: '15',
-    code: 'TE-99815',
+    id: 'a4c8e531',
+    code: 'a4c8e531',
     fullName: 'Võ Thị Ngọc Bích',
     full_name: 'Võ Thị Ngọc Bích',
     email: 'bichvo99@gmail.com',
@@ -608,8 +621,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
   },
   // ─── 10 NEW MOCK CUSTOMERS (CONNECTED DATA) ─────────────────────────────────
   {
-    id: '16',
-    code: 'TE-22016',
+    id: 'e7d2b918',
+    code: 'e7d2b918',
     fullName: 'Đặng Hoàng Long',
     full_name: 'Đặng Hoàng Long',
     email: 'long.dh@gmail.com',
@@ -647,8 +660,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách hàng có tính kỷ luật cao, luôn giữ gìn vệ sinh chung tốt.'
   },
   {
-    id: '17',
-    code: 'TE-33017',
+    id: 'd3f6a145',
+    code: 'd3f6a145',
     fullName: 'Nguyễn Thùy Chi',
     full_name: 'Nguyễn Thùy Chi',
     email: 'thuychi.nguyen@yahoo.com',
@@ -683,8 +696,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Lịch sử thanh toán cực kỳ sạch sẽ, không có bất kỳ khiếu nại nào.'
   },
   {
-    id: '18',
-    code: 'TE-44018',
+    id: 'f9b4c762',
+    code: 'f9b4c762',
     fullName: 'Lâm Thế Vinh',
     full_name: 'Lâm Thế Vinh',
     email: 'vinhlt96@gmail.com',
@@ -720,8 +733,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách hàng thân thiện, hay hỗ trợ các bạn cùng phòng.'
   },
   {
-    id: '19',
-    code: 'TE-55019',
+    id: 'c5a1e283',
+    code: 'c5a1e283',
     fullName: 'Phạm Bảo Trân',
     full_name: 'Phạm Bảo Trân',
     email: 'tranpb@outlook.com',
@@ -754,8 +767,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách yêu cầu chỗ đậu ô tô rộng rãi và có thang máy thuận tiện.'
   },
   {
-    id: '20',
-    code: 'TE-66020',
+    id: 'b8d7f490',
+    code: 'b8d7f490',
     fullName: 'Trần Tuấn Kiệt',
     full_name: 'Trần Tuấn Kiệt',
     email: 'kiettran.arch@gmail.com',
@@ -791,7 +804,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
   },
   {
     id: 'u-5',
-    code: 'TE-00101',
+    code: 'a6e3c158',
     fullName: 'Lê Lâm Trí Đức',
     full_name: 'Lê Lâm Trí Đức (Khách hàng)',
     email: 'customer@gmail.com',
@@ -830,7 +843,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
   },
   {
     id: 'u-6',
-    code: 'TE-00102',
+    code: 'f1b9d274',
     fullName: 'Nguyễn Văn Nam',
     full_name: 'Nguyễn Văn Nam (Khách mới)',
     email: 'newcustomer@gmail.com',
@@ -865,8 +878,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Tài khoản chính dùng để chạy demo các chức năng của khách mới chưa thuê.'
   },
   {
-    id: '23',
-    code: 'TE-77023',
+    id: 'c4f7a593',
+    code: 'c4f7a593',
     fullName: 'Vũ Minh Triết',
     full_name: 'Vũ Minh Triết',
     email: 'trietvu.design@gmail.com',
@@ -901,8 +914,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Thích tự bài trí nội thất phòng, yêu cầu giữ nguyên hiện trạng ban đầu.'
   },
   {
-    id: '24',
-    code: 'TE-88024',
+    id: 'b3e1c826',
+    code: 'b3e1c826',
     fullName: 'Hoàng Thị Thanh Vân',
     full_name: 'Hoàng Thị Thanh Vân',
     email: 'vanhoang.dentist@gmail.com',
@@ -937,8 +950,8 @@ export const MOCK_CUSTOMERS: Customer[] = [
     importantNote: 'Khách VIP ở chi nhánh Phú Nhuận. Yêu cầu dịch vụ giặt là 2 lần/tuần.'
   },
   {
-    id: '25',
-    code: 'TE-99025',
+    id: 'a9d5f347',
+    code: 'a9d5f347',
     fullName: 'Đỗ Hữu Phước',
     full_name: 'Đỗ Hữu Phước',
     email: 'phuocdo.dev@gmail.com',

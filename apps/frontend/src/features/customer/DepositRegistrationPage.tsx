@@ -1,37 +1,123 @@
-import React, { useRef } from 'react';
-import { useDepositStore, DepositStatus } from './store/useDepositStore';
-import { CheckCircle2, Copy, UploadCloud, Clock, QrCode, CreditCard, Wallet, FileText, Check } from 'lucide-react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CheckCircle2, Copy, UploadCloud, Clock, QrCode, CreditCard, Wallet, FileText, Check, ArrowLeft, X } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { getMyDepositsApi, DepositRequest } from './deposit.api';
+import { fetchMyInvoices, submitDepositPaymentApi } from './services/invoice.service';
+import { fetchProfile } from './services/profile.service';
+
+export type DepositStatus = 'pending' | 'submitted' | 'approved' | 'rejected' | 'expired';
 
 const statusMap: Record<DepositStatus, { label: string; desc: string }> = {
-  pending: { label: 'Đang chờ thanh toán', desc: 'Cập nhật lúc 09:30, 29/09/2024' },
-  submitted: { label: 'Đã nộp minh chứng', desc: 'Chờ ban quản lý xác nhận' },
-  approved: { label: 'Hoàn tất', desc: 'Thanh toán thành công' },
-  rejected: { label: 'Từ chối', desc: 'Vui lòng kiểm tra lại minh chứng' },
-  expired: { label: 'Hết hạn', desc: 'Yêu cầu đã bị hủy' },
+  pending: { label: 'Đang chờ thanh toán', desc: 'Vui lòng thực hiện chuyển khoản thanh toán cọc' },
+  submitted: { label: 'Đã nộp minh chứng', desc: 'Đang chờ Quản lý duyệt giao dịch' },
+  approved: { label: 'Hoàn tất', desc: 'Đặt cọc thành công' },
+  rejected: { label: 'Từ chối', desc: 'Minh chứng giao dịch không hợp lệ' },
+  expired: { label: 'Hết hạn', desc: 'Yêu cầu đặt cọc đã hết hạn hoặc bị hủy' },
 };
 
 export default function DepositRegistrationPage() {
-  const {
-    status,
-    depositInfo,
-    paymentMethod,
-    proofImage,
-    setStatus,
-    setPaymentMethod,
-    setProofImage,
-    submitDeposit,
-  } = useDepositStore();
-
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [copiedText, setCopiedText] = React.useState<'stk' | 'ndck' | null>(null);
+
+  const [depositRequest, setDepositRequest] = useState<DepositRequest | null>(location.state?.depositRequest || null);
+  const [isLoading, setIsLoading] = useState(!depositRequest);
+  const [paymentMethod, setPaymentMethod] = useState<'qr' | 'card' | 'wallet'>('qr');
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [copiedText, setCopiedText] = useState<'stk' | 'ndck' | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localStatus, setLocalStatus] = useState<DepositStatus | null>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    // Kiểm tra tính đầy đủ của hồ sơ
+    fetchProfile()
+      .then((data) => {
+        const phone = data.phone || '';
+        const details = data.details || {};
+        const cccd = details.cccd || '';
+        const dob = details.dob || '';
+        const gender = details.gender || '';
+        const nationality = details.nationality || '';
+        const issueDate = details.cccd_issue_date || '';
+        const issuePlace = details.cccd_issue_place || '';
+        const address = details.address || '';
+
+        const complete = (
+          phone.trim() !== '' &&
+          cccd.trim() !== '' &&
+          dob.trim() !== '' &&
+          gender.trim() !== '' &&
+          nationality.trim() !== '' &&
+          issueDate.trim() !== '' &&
+          issuePlace.trim() !== '' &&
+          address.trim() !== ''
+        );
+        setIsProfileComplete(complete);
+      })
+      .catch((err) => {
+        console.error('Lỗi khi kiểm tra hồ sơ cá nhân:', err);
+        setIsProfileComplete(false);
+      });
+
+    if (!depositRequest) {
+      setIsLoading(true);
+      getMyDepositsApi()
+        .then((deposits) => {
+          const found = deposits.find(d => d.status === 'invoice_created') || deposits[0];
+          if (found) {
+            setDepositRequest(found);
+          } else {
+            navigate('/customer/deposit-history');
+          }
+        })
+        .catch(() => navigate('/customer/deposit-history'))
+        .finally(() => setIsLoading(false));
+    }
+  }, [depositRequest, user, navigate]);
+
+  const status = useMemo((): DepositStatus => {
+    if (localStatus) return localStatus;
+    if (!depositRequest) return 'pending';
+    if (depositRequest.status === 'paid') return 'approved';
+    if (depositRequest.status === 'pending_payment') return 'submitted';
+    if (depositRequest.status === 'rejected') return 'rejected';
+    if (depositRequest.status === 'cancelled') return 'expired';
+    return 'pending';
+  }, [depositRequest, localStatus]);
+
+  const depositInfo = useMemo(() => {
+    if (!depositRequest) return null;
+    return {
+      roomId: depositRequest.room_id,
+      roomName: depositRequest.room_name,
+      roomType: depositRequest.room_name.includes('Studio') 
+        ? 'Phòng Studio' 
+        : depositRequest.room_name.includes('Twin') 
+          ? 'Phòng Twin' 
+          : 'Phòng KTX / Dorm',
+      bedNames: (depositRequest.bed_names && depositRequest.bed_names.length > 0)
+        ? depositRequest.bed_names
+        : (depositRequest.bed_id ? [`Giường ID: ${depositRequest.bed_id.substring(0, 6).toUpperCase()}`] : ['Giường']),
+      branch: depositRequest.branch_name,
+      checkInDate: depositRequest.expected_move_in_date,
+      depositAmount: depositRequest.deposit_amount,
+      deadline: depositRequest.payment_deadline,
+    };
+  }, [depositRequest]);
 
   const copyToClipboard = (text: string, type: 'stk' | 'ndck') => {
     navigator.clipboard.writeText(text);
     setCopiedText(type);
     setTimeout(() => setCopiedText(null), 2000);
   };
-
-  if (!depositInfo) return <div>Loading...</div>;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,8 +130,41 @@ export default function DepositRegistrationPage() {
     }
   };
 
-  const handleDemoStatus = (newStatus: DepositStatus) => {
-    setStatus(newStatus);
+  const submitDeposit = async () => {
+    if (!depositRequest || !user?.email) return;
+    if (depositRequest.can_pay === false) {
+      alert('Bạn là thành viên nhóm. Chỉ người đại diện mới thanh toán được hóa đơn cọc này.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const invoices = await fetchMyInvoices(user.email);
+      const invoice = invoices.find((inv: any) => 
+        inv.deposit_id === depositRequest.id
+      );
+      
+      if (!invoice?.id) {
+        alert('Không tìm thấy hóa đơn đặt cọc tương ứng. Vui lòng tải lại trang hoặc liên hệ Kế toán để kiểm tra hóa đơn.');
+        return;
+      }
+
+      const invoiceId = invoice.id;
+      const methodLabel = paymentMethod === 'card' ? 'Thẻ tín dụng' : paymentMethod === 'wallet' ? 'Ví điện tử' : 'Chuyển khoản ngân hàng';
+
+      await submitDepositPaymentApi(user.email, invoiceId, methodLabel, proofImage || 'customer-confirmed-transfer');
+
+      setLocalStatus('submitted');
+      alert('Đã gửi minh chứng thanh toán cọc. Kế toán sẽ kiểm tra và xác nhận thu tiền.');
+      
+      setTimeout(() => {
+        navigate('/customer/deposit-history');
+      }, 2000);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi thực hiện thanh toán cọc.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const steps: DepositStatus[] = ['pending', 'submitted', 'approved'];
@@ -73,22 +192,61 @@ export default function DepositRegistrationPage() {
     return 'future';
   };
 
-  return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-      {/* Demo Toolbar */}
-      <div className="flex justify-end mb-6">
-        <select 
-          className="text-sm p-2 border border-outline-variant rounded-lg bg-surface font-label-md text-primary focus:outline-none"
-          value={status}
-          onChange={(e) => handleDemoStatus(e.target.value as DepositStatus)}
-        >
-          <option value="pending">Demo Mode: Pending</option>
-          <option value="submitted">Demo Mode: Submitted</option>
-          <option value="approved">Demo Mode: Approved</option>
-          <option value="rejected">Demo Mode: Rejected</option>
-          <option value="expired">Demo Mode: Expired</option>
-        </select>
+  if (isProfileComplete === null) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-3">
+          <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+          <p className="font-body-md text-sm text-on-surface-variant">Đang kiểm tra hồ sơ cá nhân...</p>
+        </div>
       </div>
+    );
+  }
+
+  if (isProfileComplete === false) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-6 bg-surface theme-customer">
+        <div className="w-full max-w-lg bg-white dark:bg-surface-container-highest/80 border border-glass-stroke shadow-2xl rounded-[32px] p-8 md:p-10 text-center flex flex-col items-center gap-6 moss-shadow">
+          <div className="w-20 h-20 bg-amber-50 dark:bg-amber-950/30 rounded-full flex items-center justify-center text-amber-500 shadow-lg shadow-amber-500/10">
+            <span className="material-symbols-outlined text-4xl">warning</span>
+          </div>
+          <div className="space-y-3">
+            <h2 className="font-headline-lg text-2xl font-bold text-on-surface">Cập nhật hồ sơ cá nhân</h2>
+            <p className="font-body-md text-on-surface-variant leading-relaxed text-sm text-justify">
+              Bạn cần điền đầy đủ các thông tin cá nhân bắt buộc bao gồm: <strong>Số điện thoại, Số CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày cấp và Nơi cấp CCCD, Địa chỉ thường trú</strong> trong hồ sơ cá nhân của mình trước khi thực hiện thanh toán đặt cọc phòng.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-full h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-all shadow-lg shadow-primary/10 mt-2 cursor-pointer group"
+          >
+            Cập nhật hồ sơ cá nhân
+            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !depositInfo || !depositRequest) {
+    return (
+      <div className="max-w-[1280px] mx-auto px-4 py-32 flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin đặt cọc...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-[1280px] mx-auto px-4 md:px-10 theme-customer">
+      <button
+        type="button"
+        onClick={() => navigate('/customer/deposit-history')}
+        className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3.5 py-2 text-sm font-semibold text-primary/80 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary active:scale-[0.98] cursor-pointer"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Lịch sử đặt cọc
+      </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pb-20">
         
@@ -97,7 +255,7 @@ export default function DepositRegistrationPage() {
           
           {/* Header section */}
           <div>
-            <h1 className="text-3xl font-bold font-headline-lg text-primary mb-2">Đăng ký đặt cọc</h1>
+            <h1 className="text-3xl font-bold font-headline-lg text-primary mb-2">Thanh toán đặt cọc</h1>
             <p className="text-on-surface-variant font-body-md text-[15px]">
               Vui lòng hoàn tất thanh toán để giữ chỗ phòng của bạn.
             </p>
@@ -134,7 +292,6 @@ export default function DepositRegistrationPage() {
                 
                 {/* QR Code Graphic */}
                 <div className="relative w-48 h-48 rounded-xl bg-gradient-to-br from-[#1b3b3a] to-[#2c524b] flex items-center justify-center flex-shrink-0 p-3 shadow-inner">
-                  {/* Mock QR image encoding dynamic deposit amount and description */}
                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`STK: 1029384756 | Ngan hang: Vietcombank | Chu TK: HOMESTAY DORM CO. | So tien: ${depositInfo.depositAmount} VNĐ | Noi dung: HS DORM ${depositInfo.roomName.replace(/\s+/g, '')} DC`)}&color=2c524b&bgcolor=ffffff`} alt="QR Code" className="w-full h-full object-cover rounded-lg border-4 border-white shadow-md mix-blend-screen" />
                   <div className="absolute -bottom-3 -right-3 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-white">
                     <Check className="w-4 h-4 text-white" />
@@ -236,7 +393,7 @@ export default function DepositRegistrationPage() {
                     onClick={() => setProofImage(null)}
                     className="absolute top-2 right-2 w-8 h-8 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
                   >
-                    <span className="material-symbols-outlined text-lg">close</span>
+                    <X className="w-4 h-4 text-white" />
                   </button>
                 </div>
                 <button 
@@ -250,23 +407,15 @@ export default function DepositRegistrationPage() {
 
             <div className="pt-4 flex justify-end">
               <button
-                onClick={() => {
-                  if (!proofImage && status === 'pending') {
-                    alert('Vui lòng tải ảnh minh chứng lên trước khi xác nhận!');
-                    return;
-                  }
-                  if (status === 'pending') {
-                    submitDeposit();
-                  }
-                }}
-                disabled={!proofImage && status === 'pending'}
+                onClick={submitDeposit}
+                disabled={(!proofImage && status === 'pending') || isSubmitting || status === 'approved' || depositRequest.can_pay === false}
                 className={`px-8 py-3.5 rounded-full font-label-md font-bold text-[15px] shadow-md transition-all ${
-                  (proofImage || status !== 'pending') 
+                  ((proofImage && status === 'pending') && !isSubmitting)
                     ? 'bg-primary text-white hover:bg-[#253228] hover:shadow-lg hover:-translate-y-0.5' 
                     : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed opacity-70'
                 }`}
               >
-                {status === 'pending' ? 'Xác nhận đã thanh toán' : 'Đã gửi xác nhận'}
+                {isSubmitting ? 'Đang gửi...' : status === 'pending' ? 'Xác nhận đã thanh toán' : 'Đã hoàn tất thanh toán'}
               </button>
             </div>
           </div>
@@ -284,7 +433,7 @@ export default function DepositRegistrationPage() {
             </h3>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/15 border border-white/10 rounded-full backdrop-blur-sm text-sm font-label-md">
               <Clock className="w-4 h-4 text-white/90" />
-              <span>Hết hạn trong <strong className="font-bold">23:54:04</strong></span>
+              <span>Thời hạn thanh toán: <strong className="font-bold">{new Date(depositInfo.deadline).toLocaleDateString('vi-VN')}</strong></span>
             </div>
           </div>
 
@@ -304,7 +453,7 @@ export default function DepositRegistrationPage() {
             {/* Info */}
             <div className="p-6 space-y-5">
               <h4 className="font-headline-md text-lg font-bold text-on-surface">
-                {depositInfo.roomName} - {depositInfo.bedNames.join(', ')}
+                {depositInfo.roomName}
               </h4>
               
               <div className="grid grid-cols-2 gap-4">
@@ -313,19 +462,19 @@ export default function DepositRegistrationPage() {
                   <p className="font-label-md text-sm font-semibold text-on-surface">{depositInfo.branch}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-on-surface-variant font-medium mb-0.5">Loại phòng</p>
-                  <p className="font-label-md text-sm font-semibold text-on-surface">{depositInfo.roomType}</p>
+                  <p className="text-xs text-on-surface-variant font-medium mb-0.5">Loại giường/phòng</p>
+                  <p className="font-label-md text-sm font-semibold text-on-surface">{depositInfo.bedNames.join(', ')}</p>
                 </div>
               </div>
               
               <div className="border-t border-outline-variant/20 pt-4">
-                <p className="text-xs text-on-surface-variant font-medium mb-0.5">Thời hạn thuê</p>
-                <p className="font-label-md text-sm font-semibold text-on-surface">12 tháng (từ {new Date(depositInfo.checkInDate).toLocaleDateString('vi-VN')})</p>
+                <p className="text-xs text-on-surface-variant font-medium mb-0.5">Ngày dự kiến nhận phòng</p>
+                <p className="font-label-md text-sm font-semibold text-on-surface">{new Date(depositInfo.checkInDate).toLocaleDateString('vi-VN')}</p>
               </div>
 
               <div className="flex items-center gap-2 pt-2 text-status-success">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span className="font-label-md text-sm font-semibold">Đã áp dụng ưu đãi Green Living</span>
+                <span className="font-label-md text-sm font-semibold">Bảo lưu vị trí phòng 24 giờ sau duyệt</span>
               </div>
             </div>
           </div>
@@ -359,7 +508,7 @@ export default function DepositRegistrationPage() {
                     stepIcon = <Check className="w-4.5 h-4.5" />;
                     if (step === 'pending') {
                       stepLabel = 'Đăng ký đặt cọc';
-                      stepDesc = 'Đã hoàn thành';
+                      stepDesc = 'Đã gửi yêu cầu';
                     }
                     break;
                   case 'active':

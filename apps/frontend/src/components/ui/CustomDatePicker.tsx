@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import FormLabel from './FormLabel';
 
@@ -22,7 +22,7 @@ export default function CustomDatePicker({
   onChange,
   min,
   max,
-  placeholder = 'Chọn ngày',
+  placeholder = 'Chọn ngày (DD/MM/YYYY)',
   label,
   required = false,
   disabled = false,
@@ -34,6 +34,17 @@ export default function CustomDatePicker({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Convert YYYY-MM-DD to DD/MM/YYYY for display
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
+  // State local for keyboard typing
+  const [inputValue, setInputValue] = useState(formatDateDisplay(value) || '');
+
   // Parse local date safely to avoid timezone shift
   const getTodayLocalStr = () => {
     const d = new Date();
@@ -44,7 +55,7 @@ export default function CustomDatePicker({
   };
 
   const todayStr = getTodayLocalStr();
-  
+
   // Parse YYYY-MM-DD safely
   const parseLocalStr = (str: string) => {
     if (!str) return null;
@@ -58,7 +69,7 @@ export default function CustomDatePicker({
   };
 
   const parsedVal = parseLocalStr(value);
-  
+
   const [currentMonth, setCurrentMonth] = useState(parsedVal ? parsedVal.month : new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(parsedVal ? parsedVal.year : new Date().getFullYear());
 
@@ -73,6 +84,7 @@ export default function CustomDatePicker({
   }, []);
 
   useEffect(() => {
+    setInputValue(formatDateDisplay(value) || '');
     if (value) {
       const p = parseLocalStr(value);
       if (p) {
@@ -82,18 +94,19 @@ export default function CustomDatePicker({
     }
   }, [value]);
 
-  const formatDateDisplay = (dateStr: string) => {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  };
-
   const monthNames = [
     'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4',
     'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8',
     'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
   ];
+
+  // Year range from 1900 to currentYear + 15
+  const startYear = 1900;
+  const endYear = new Date().getFullYear() + 15;
+  const yearsRange: number[] = [];
+  for (let y = endYear; y >= startYear; y--) {
+    yearsRange.push(y);
+  }
 
   const getDaysInMonth = (month: number, year: number) => {
     return new Date(year, month + 1, 0).getDate();
@@ -104,8 +117,8 @@ export default function CustomDatePicker({
   };
 
   const daysInMonth = getDaysInMonth(currentMonth, currentYear);
-  const firstDay = getFirstDayOfMonth(currentMonth, currentYear); 
-  
+  const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+
   const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
 
   const daysGrid: ({ dayNum: number; dateStr: string; isCurrentMonth: boolean })[] = [];
@@ -181,6 +194,7 @@ export default function CustomDatePicker({
     if (e) e.stopPropagation();
     if (disabled) return;
     onChange('');
+    setInputValue('');
     setIsOpen(false);
   };
 
@@ -190,15 +204,70 @@ export default function CustomDatePicker({
     return false;
   };
 
+  // Keyboard typing input handler
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+
+    // If input is cleared
+    if (!val) {
+      setInputValue('');
+      onChange('');
+      return;
+    }
+
+    // Only allow numbers and slashes
+    val = val.replace(/[^0-9/]/g, '');
+
+    // Auto add slash when typing forward
+    const isAdding = val.length > inputValue.length;
+    if (isAdding) {
+      if (val.length === 2 && !val.includes('/')) {
+        val = val + '/';
+      } else if (val.length === 5 && val.split('/').length - 1 === 1) {
+        val = val + '/';
+      }
+    }
+
+    // Limit to 10 characters
+    if (val.length > 10) {
+      val = val.slice(0, 10);
+    }
+
+    setInputValue(val);
+
+    // Validate and parse when length is 10
+    if (val.length === 10) {
+      const parts = val.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+
+        const maxDays = new Date(year, month, 0).getDate();
+        if (year >= 1900 && year <= endYear && month >= 1 && month <= 12 && day >= 1 && day <= maxDays) {
+          const isoVal = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          if (!isDateDisabled(isoVal)) {
+            onChange(isoVal);
+            setCurrentMonth(month - 1);
+            setCurrentYear(year);
+          }
+        }
+      }
+    }
+  };
+
   const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
   const hasError = !!error;
   const isSurface = variant === 'surface';
 
   // Check custom class overrides
-  const hasBgOverride = triggerClassName && /\bbg-/.test(triggerClassName);
-  const hasBorderOverride = triggerClassName && /\bborder-/.test(triggerClassName);
-  const hasRoundedOverride = triggerClassName && /\brounded-/.test(triggerClassName);
-  const hasPaddingOverride = triggerClassName && /\bp[xy]?-/.test(triggerClassName);
+  const triggerCls = triggerClassName || '';
+  const hasBgOverride = /\bbg-/.test(triggerCls);
+  const hasBorderOverride = /\bborder-/.test(triggerCls);
+  const hasRoundedOverride = /\brounded-/.test(triggerCls);
+  const hasPlOverride = /\bpl-/.test(triggerCls);
+  const hasPrOverride = /\bpr-/.test(triggerCls);
+  const hasPyOverride = /\bpy-/.test(triggerCls) || (/\bp-/.test(triggerCls) && !/\bpx-/.test(triggerCls) && !/\bpl-/.test(triggerCls) && !/\bpr-/.test(triggerCls));
 
   const defaultBg = hasError
     ? 'bg-red-50/50'
@@ -225,32 +294,32 @@ export default function CustomDatePicker({
           : 'border-[#d1c4b9] hover:border-[#6f583c]';
 
   const defaultRounded = hasRoundedOverride ? '' : 'rounded-full';
-  const defaultPadding = hasPaddingOverride ? '' : `py-3.5 pl-5 ${value && !disabled ? 'pr-10' : 'pr-5'}`;
+  
+  const defaultPl = hasPlOverride ? '' : 'pl-12';
+  const defaultPr = hasPrOverride ? '' : (value && !disabled ? 'pr-10' : 'pr-5');
+  const defaultPy = hasPyOverride ? '' : 'py-3.5';
+  const defaultPadding = `${defaultPy} ${defaultPl} ${defaultPr}`;
 
   const iconClass = isSurface ? 'text-on-surface-variant' : 'text-[#9d8879]';
   const valueClass = isSurface ? 'text-on-surface font-body-md' : 'text-[#1e1b17] font-medium';
-  const placeholderClass = isSurface ? 'text-on-surface-variant' : 'text-[#b5a89c]';
 
   return (
     <div className={`relative space-y-1.5 ${className}`} ref={containerRef}>
       {/* Label and Required Indicator */}
       <FormLabel label={label || ''} required={required} />
 
-      {/* Input Display Area */}
-      <div className="relative">
-        <button
-          type="button"
+      {/* Input Display Area with text typing support */}
+      <div className="relative flex items-center">
+        <CalendarDays className={`absolute left-4 w-4 h-4 pointer-events-none z-10 ${iconClass}`} />
+        <input
+          type="text"
           disabled={disabled}
-          onClick={() => !disabled && setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between text-left border text-sm transition-all focus:outline-none select-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${defaultBg} ${defaultBorder} ${defaultRounded} ${defaultPadding} ${triggerClassName}`}
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            <CalendarDays className={`w-4 h-4 shrink-0 ${iconClass}`} />
-            <span className={`min-w-0 whitespace-nowrap ${value ? valueClass : placeholderClass}`}>
-              {formatDateDisplay(value) || placeholder}
-            </span>
-          </div>
-        </button>
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => !disabled && setIsOpen(true)}
+          placeholder={placeholder}
+          className={`w-full text-left border text-sm transition-all focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${defaultBg} ${defaultBorder} ${defaultRounded} ${defaultPadding} ${triggerCls} ${valueClass}`}
+        />
 
         {value && !disabled && (
           <button
@@ -273,7 +342,7 @@ export default function CustomDatePicker({
       {/* Calendar Dropdown */}
       {isOpen && !disabled && (
         <div className="absolute mt-2 w-72 bg-white border border-[#d1c4b9] rounded-2xl shadow-xl z-[9999] p-4 animate-in fade-in slide-in-from-top-2 duration-150">
-          {/* Header Month/Year Selector */}
+          {/* Header Month/Year Selector with dropdown selects */}
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
@@ -282,9 +351,30 @@ export default function CustomDatePicker({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="font-bold text-sm text-[#1e1b17]">
-              {monthNames[currentMonth]}, {currentYear}
-            </span>
+
+            {/* Select month and year dropdowns for rapid navigation */}
+            <div className="flex items-center gap-1 font-bold text-sm text-[#1e1b17]">
+              <select
+                value={currentMonth}
+                onChange={(e) => setCurrentMonth(parseInt(e.target.value, 10))}
+                className="bg-transparent border-none text-sm font-bold text-[#1e1b17] focus:outline-none cursor-pointer hover:text-[#6f583c] pr-1 py-0.5"
+              >
+                {monthNames.map((m, idx) => (
+                  <option key={idx} value={idx}>{m}</option>
+                ))}
+              </select>
+
+              <select
+                value={currentYear}
+                onChange={(e) => setCurrentYear(parseInt(e.target.value, 10))}
+                className="bg-transparent border-none text-sm font-bold text-[#1e1b17] focus:outline-none cursor-pointer hover:text-[#6f583c] py-0.5"
+              >
+                {yearsRange.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+
             <button
               type="button"
               onClick={handleNextMonth}
@@ -311,7 +401,7 @@ export default function CustomDatePicker({
               const isDisabled = isDateDisabled(dateStr);
 
               let btnClass = "w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center mx-auto transition-all duration-150 cursor-pointer active:scale-90 ";
-              
+
               if (isDisabled) {
                 btnClass += "text-gray-300 cursor-not-allowed ";
               } else if (isSelected) {

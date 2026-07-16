@@ -18,6 +18,7 @@ interface CustomSelectProps {
   pill?: boolean;
   theme?: 'default' | 'accountant' | 'sale';
   disabled?: boolean;
+  hideArrow?: boolean;
 }
 
 export default function CustomSelect({
@@ -32,6 +33,7 @@ export default function CustomSelect({
   pill = false,
   theme = 'default',
   disabled = false,
+  hideArrow = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,8 +49,8 @@ export default function CustomSelect({
   });
 
   // Find active option label
-  const activeOption = normalizedOptions.find((opt) => opt.value === value);
-  const displayLabel = activeOption ? activeOption.label : placeholder || value || '';
+  const activeOption = normalizedOptions.find((opt) => opt.value === value || (value !== '' && opt.value.toLowerCase() === value?.toLowerCase()));
+  const displayLabel = (value === '' && placeholder) ? placeholder : (activeOption ? activeOption.label : placeholder || value || '');
 
   // Calculate coordinates when dropdown opens
   useEffect(() => {
@@ -64,7 +66,22 @@ export default function CustomSelect({
       updateCoords();
 
       window.addEventListener('resize', updateCoords);
-      const handleScroll = () => setIsOpen(false);
+      const handleScroll = (event: Event) => {
+        if (
+          dropdownRef.current &&
+          (dropdownRef.current === event.target || dropdownRef.current.contains(event.target as Node))
+        ) {
+          return;
+        }
+        if (
+          containerRef.current &&
+          (containerRef.current === event.target || containerRef.current.contains(event.target as Node))
+        ) {
+          updateCoords();
+          return;
+        }
+        setIsOpen(false);
+      };
       window.addEventListener('scroll', handleScroll, true);
 
       return () => {
@@ -96,6 +113,7 @@ export default function CustomSelect({
   };
 
   const handleToggle = () => {
+    if (disabled) return;
     if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setCoords({
@@ -131,11 +149,12 @@ export default function CustomSelect({
       <button
         type="button"
         onClick={handleToggle}
+        disabled={disabled}
         className={`w-full flex items-center justify-between bg-white border ${borderClass} px-4 py-2.5 outline-none transition-all cursor-pointer font-label-md text-on-surface text-sm ${
           pill ? 'rounded-[24px]' : 'rounded-[12px]'
         } ${
           isOpen ? focusRingClass : hoverBorderClass
-        } disabled:cursor-not-allowed disabled:opacity-60 ${triggerClassName}`}
+        } disabled:cursor-not-allowed disabled:bg-[#f6f5f1] disabled:text-on-surface-variant/70 disabled:border-[#e3e2de] disabled:opacity-100 ${triggerClassName}`}
       >
         <div className="flex items-center gap-2 truncate">
           {icon && (
@@ -145,13 +164,15 @@ export default function CustomSelect({
           )}
           <span className="truncate">{displayLabel}</span>
         </div>
-        <span
-          className={`material-symbols-outlined text-[#737970] text-[20px] transition-transform duration-200 shrink-0 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        >
-          expand_more
-        </span>
+        {!hideArrow && (
+          <span
+            className={`material-symbols-outlined text-[#737970] text-[20px] transition-transform duration-200 shrink-0 ${
+              isOpen ? 'rotate-180' : ''
+            }`}
+          >
+            expand_more
+          </span>
+        )}
       </button>
 
       {/* Dropdown Menu (Rendered via Portal to body) */}
@@ -170,7 +191,7 @@ export default function CustomSelect({
             <div className="px-4 py-2 text-xs text-on-surface-variant italic">Không có lựa chọn</div>
           ) : (
             normalizedOptions.map((opt) => {
-              const isSelected = opt.value === value;
+              const isSelected = opt.value === value || (value !== '' && opt.value.toLowerCase() === value?.toLowerCase());
               const itemActiveStyle = isSale
                 ? 'bg-[#E8E1D3] text-[#5E503F] font-bold'
                 : isAccountant 

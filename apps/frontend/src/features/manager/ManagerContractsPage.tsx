@@ -1,5 +1,8 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useState, useMemo } from 'react';
-import { getMockDB, saveMockDB, ManagerContract, Room, Profile, Bed, TenantMember } from '../../lib/supabaseClient';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { ManagerContract } from '../../lib/supabaseClient';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -10,41 +13,116 @@ const T = {
 };
 
 const STATUS_CFG: Record<ManagerContract['status'], { label: string; bg: string; text: string; icon: string }> = {
-  active:     { label: 'Đang hiệu lực', bg: T.sageBg,  text: T.sage,  icon: 'verified' },
-  expired:    { label: 'Đã hết hạn',    bg: T.primaryLight, text: T.textMuted, icon: 'schedule' },
-  terminated: { label: 'Đã thanh lý',   bg: T.redBg,   text: T.red,   icon: 'cancel' },
+  active: { label: 'Đang hiệu lực', bg: T.sageBg, text: T.sage, icon: 'verified' },
+  expired: { label: 'Đã hết hạn', bg: T.primaryLight, text: T.textMuted, icon: 'schedule' },
+  terminated: { label: 'Đã thanh lý', bg: T.redBg, text: T.red, icon: 'cancel' },
 };
 
 const DEPOSIT_TYPE_CONFIG = {
-  room: { label: 'Cả phòng', icon: 'meeting_room', bg: T.blueBg, text: T.blue },
-  bed:  { label: 'Giường lẻ', icon: 'bed',          bg: T.sageBg, text: T.sage },
+  group: { label: 'Thuê nhóm', icon: 'groups', bg: T.primaryLight, text: T.primary },
+  room: { label: 'Thuê cá nhân', icon: 'person', bg: T.blueBg, text: T.blue },
+  bed: { label: 'Thuê cá nhân', icon: 'person', bg: T.sageBg, text: T.sage },
 };
 
 export default function ManagerContractsPage() {
+  const { isSubmitting, guard } = useSubmitLock();
   const [contracts, setContracts] = useState<ManagerContract[]>([]);
   const [selected, setSelected] = useState<ManagerContract | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
-  
+
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ManagerContract>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const db = getMockDB();
-    // Default contracts fallback if not exists in localstorage
-    if (!db.contracts) {
-      db.contracts = generateDefaultContracts();
-      saveMockDB(db);
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    // Auth that cua kyen: uu tien gui access_token Supabase ma authStore luu sau khi login.
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      };
     }
-    setContracts(db.contracts || []);
-    setTimeout(() => setIsLoading(false), 300);
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchContracts = async () => {
+    setIsLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/contracts`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        setContracts(result.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching contracts:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContracts();
   }, []);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -133,84 +211,47 @@ export default function ManagerContractsPage() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave = () => {
+  // Khoa chong double-click: tranh gui trung cap nhat hop dong.
+  const handleSave = async () => {
+    await guard(() => doSave());
+  };
+
+  const doSave = async () => {
     if (!selected || !validateForm()) return;
 
-    const db = getMockDB();
-    const updatedStatus = editForm.status!;
-    const previousStatus = selected.status;
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/contracts/${selected.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(editForm)
+      });
+      const result = await res.json();
+      if (result.success) {
+        const previousStatus = selected.status;
+        const updatedStatus = editForm.status!;
+        let syncMessage = '';
+        if ((updatedStatus === 'terminated' || updatedStatus === 'expired') && previousStatus === 'active') {
+          syncMessage = ' và đã tự động cập nhật sơ đồ phòng & giải phóng vị trí';
+        }
 
-    // 1. Update contract details
-    const updatedContracts = db.contracts.map((c: ManagerContract) => 
-      c.id === selected.id ? { ...c, ...editForm } : c
-    );
-    db.contracts = updatedContracts;
+        // Fetch refreshed list to align with backend joins
+        await fetchContracts();
 
-    let syncMessage = '';
-
-    // 2. Perform synchronization if status changes to terminated or expired
-    if ((updatedStatus === 'terminated' || updatedStatus === 'expired') && previousStatus === 'active') {
-      // Release room/bed
-      if (db.rooms) {
-        db.rooms = db.rooms.map((r: Room) => {
-          if (r.id === selected.room_id) {
-            if (selected.deposit_type === 'room') {
-              return { ...r, status: 'available', current_occupants: 0 };
-            } else {
-              // Bed level lease - decrement occupants
-              const nextOccupants = Math.max(0, r.current_occupants - 1);
-              return { ...r, current_occupants: nextOccupants, status: nextOccupants === 0 ? 'available' : 'partial' };
-            }
-          }
-          return r;
-        });
+        setIsEditing(false);
+        setDrawerOpen(false);
+        showToast(`Cập nhật hợp đồng ${selected.contract_code} thành công${syncMessage}!`);
+      } else {
+        showToast(result.message || 'Cập nhật thất bại', 'error');
       }
-
-      // Update specific bed status to 'available'
-      if (selected.deposit_type === 'bed' && selected.bed_name && db.beds) {
-        db.beds = db.beds.map((b: Bed) => {
-          if (b.room_id === selected.room_id && b.name === selected.bed_name) {
-            return { ...b, status: 'available' };
-          }
-          return b;
-        });
-      }
-
-      // Remove renting room name in customer profile
-      if (db.profiles) {
-        db.profiles = db.profiles.map((p: Profile) => {
-          if (p.id === selected.customer_id) {
-            return { ...p, renting_room_name: undefined };
-          }
-          return p;
-        });
-      }
-
-      // Also update matching records in MOCK_CUSTOMERS if any
-      if (db.customers) {
-        db.customers = db.customers.map((c: any) => {
-          if (c.id === selected.customer_id) {
-            return { ...c, renting_room_name: undefined };
-          }
-          return c;
-        });
-      }
-
-      syncMessage = ' và đã tự động cập nhật sơ đồ phòng & giải phóng vị trí';
+    } catch (err) {
+      console.error('Error saving contract:', err);
+      showToast('Lỗi kết nối máy chủ', 'error');
     }
-
-    saveMockDB(db);
-    setContracts(updatedContracts);
-    
-    // Refresh selected state
-    const freshSelected = updatedContracts.find((c: ManagerContract) => c.id === selected.id);
-    setSelected(freshSelected || null);
-    setIsEditing(false);
-    showToast(`Cập nhật hợp đồng ${selected.contract_code} thành công${syncMessage}!`);
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="space-y-5 animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="space-y-5 animate-fade-in-up">
       {/* ── Toast Notification ── */}
       {toast && (
         <div style={{
@@ -280,7 +321,7 @@ export default function ManagerContractsPage() {
       {/* ── Filter & Search Bar ── */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: '14px 18px', boxShadow: '0 2px 8px rgba(111,88,60,0.02)' }}
         className="flex flex-wrap items-center gap-3">
-        
+
         {/* Search input */}
         <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 220 }}>
           <span className="material-symbols-outlined"
@@ -343,15 +384,14 @@ export default function ManagerContractsPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '12%' }} /> {/* Mã hợp đồng */}
-              <col style={{ width: '16%' }} /> {/* Khách hàng */}
-              <col style={{ width: '15%' }} /> {/* Phòng / Giường */}
-              <col style={{ width: '11%' }} /> {/* Loại thuê */}
-              <col style={{ width: '13%' }} /> {/* Tiền thuê / tháng */}
-              <col style={{ width: '12%' }} /> {/* Tiền đặt cọc */}
-              <col style={{ width: '11%' }} /> {/* Thời hạn */}
-              <col style={{ width: '12%' }} /> {/* Trạng thái */}
-              <col style={{ width: '8%' }} />  {/* Action */}
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
@@ -360,7 +400,7 @@ export default function ManagerContractsPage() {
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                 }}>Mã hợp đồng</th>
-                {['Khách hàng', 'Phòng / Giường', 'Loại thuê', 'Tiền thuê / tháng', 'Tiền đặt cọc', 'Thời hạn', 'Trạng thái'].map(h => (
+                {['Khách hàng', 'Phòng / Giường', 'Loại thuê', 'Tiền thuê / tháng', 'Thời hạn', 'Trạng thái'].map(h => (
                   <th key={h} style={{
                     padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                     color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -371,7 +411,7 @@ export default function ManagerContractsPage() {
                   padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                }}></th>
+                }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -381,7 +421,7 @@ export default function ManagerContractsPage() {
                     <td style={{ padding: '14px 16px 14px 24px' }}>
                       <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 80 }} className="animate-pulse" />
                     </td>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} style={{ padding: '14px 16px' }}>
                         <div style={{ height: 14, background: '#eee', borderRadius: 6, width: 60 }} className="animate-pulse" />
                       </td>
@@ -401,16 +441,16 @@ export default function ManagerContractsPage() {
               ) : filteredContracts.map(c => {
                 const statusMeta = STATUS_CFG[c.status] || STATUS_CFG.active;
                 const typeCfg = DEPOSIT_TYPE_CONFIG[c.deposit_type];
-                
+
                 return (
                   <tr key={c.id}
                     onClick={() => handleOpenDrawer(c)}
                     style={{ borderBottom: `1px solid ${T.border}`, transition: 'background 0.15s', cursor: 'pointer' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150">
-                    
+
                     {/* Mã hợp đồng */}
-                    <td style={{ padding: '13px 16px 13px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                      {c.contract_code}
+                    <td style={{ padding: '13px 16px 13px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
+                      {formatShortId(c.id, 'contract')}
                     </td>
 
                     {/* Khách hàng */}
@@ -444,14 +484,10 @@ export default function ManagerContractsPage() {
                     </td>
 
                     {/* Tiền thuê */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.text, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
                       {c.rent_amount.toLocaleString('vi-VN')}đ
                     </td>
 
-                    {/* Tiền cọc */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                      {c.deposit_amount.toLocaleString('vi-VN')}đ
-                    </td>
 
                     {/* Thời hạn */}
                     <td style={{ padding: '13px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>
@@ -479,7 +515,7 @@ export default function ManagerContractsPage() {
                         borderRadius: 9999, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: T.primary, cursor: 'pointer', whiteSpace: 'nowrap',
                         transition: 'all 0.15s ease-in-out'
                       }}
-                      className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
+                        className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
                     </td>
                   </tr>
                 );
@@ -512,7 +548,7 @@ export default function ManagerContractsPage() {
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hợp đồng thuê phòng</p>
                   </div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>
-                    Mã hợp đồng: {selected.contract_code}
+                    Mã hợp đồng: {formatShortId(selected.id, 'contract')}
                   </h3>
                   <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Chi nhánh: {selected.branch_name}</p>
                 </div>
@@ -551,7 +587,7 @@ export default function ManagerContractsPage() {
 
             {/* Drawer Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
-              
+
               {!isEditing ? (
                 // ─── CHẾ ĐỘ XEM CHI TIẾT ───
                 <>
@@ -609,7 +645,7 @@ export default function ManagerContractsPage() {
                     </h4>
                     <div className="space-y-3">
                       {[
-                        { label: 'Mã đặt cọc liên kết', val: selected.deposit_code || 'Không có' },
+                        { label: 'Mã đặt cọc liên kết', val: selected.deposit_code ? formatShortId(selected.deposit_code, 'deposit') : 'Không có' },
                         { label: 'Nhân viên kinh doanh lập', val: selected.sale_staff_name || 'Không xác định' },
                         { label: 'Loại hợp đồng', val: selected.contract_type === 'long_term' ? 'Dài hạn' : 'Ngắn hạn' },
                         { label: 'Kỳ thanh toán', val: selected.payment_cycle === '1_month' ? '1 tháng' : selected.payment_cycle === '3_months' ? '3 tháng' : '6 tháng' },
@@ -643,7 +679,7 @@ export default function ManagerContractsPage() {
                             {selected.tenants.map((tenant, idx) => (
                               <tr key={idx} style={{ borderBottom: idx < selected.tenants!.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                                 <td style={{ padding: '12px', fontWeight: 700, color: T.text }}>{tenant.name}</td>
-                                <td style={{ padding: '12px', color: T.textMuted, fontFamily: 'monospace' }}>{tenant.cccd}</td>
+                                <td style={{ padding: '12px', color: T.textMuted, fontFamily: "'Lexend', sans-serif" }}>{tenant.cccd}</td>
                                 <td style={{ padding: '12px', color: T.textMuted }}>{tenant.phone}</td>
                                 <td style={{ padding: '12px', textAlign: 'center' }}>
                                   <span style={{
@@ -681,31 +717,13 @@ export default function ManagerContractsPage() {
                       ].map((row, i) => (
                         <div key={i} className="flex justify-between items-center gap-4">
                           <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
-                          <span style={{ fontSize: row.primary ? 15 : 13, fontWeight: 800, color: row.color || T.text, fontFamily: 'monospace' }}>{row.val}</span>
+                          <span style={{ fontSize: row.primary ? 15 : 13, fontWeight: 800, color: row.color || T.text, fontFamily: "'Lexend', sans-serif" }}>{row.val}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Legal Policies */}
-                  <div className="space-y-4">
-                    <h4 style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Các điều khoản hợp đồng & Quy định</h4>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Điều khoản chung:</p>
-                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.terms}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Quy định thanh toán:</p>
-                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.payment_policy}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, marginBottom: 6 }}>Chính sách thanh lý & hoàn cọc:</p>
-                        <p style={{ fontSize: 12.5, color: T.text, background: T.primaryLight, padding: 12, borderRadius: 12, lineHeight: 1.6, border: `1px solid ${T.border}` }}>{selected.termination_policy}</p>
-                      </div>
-                    </div>
-                  </div>
+
                 </>
               ) : (
                 // ─── CHẾ ĐỘ CHỈNH SỬA (FORM EDIT) ───
@@ -779,38 +797,24 @@ export default function ManagerContractsPage() {
                   {/* Dates Row */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                        Ngày hiệu lực
-                      </label>
-                      <input
-                        type="date"
-                        value={editForm.start_date}
-                        onChange={e => handleInputChange('start_date', e.target.value)}
-                        style={{
-                          width: '100%', border: `1.5px solid ${errors.start_date ? T.red : T.border}`,
-                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
-                          background: errors.start_date ? T.redBg : T.surface, transition: 'all 0.15s'
-                        }}
-                        className={errors.start_date ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
+                      <CustomDatePicker
+                        label="Ngày hiệu lực"
+                        value={editForm.start_date || ''}
+                        onChange={val => handleInputChange('start_date', val)}
+                        error={errors.start_date}
+                        variant="surface"
+                        triggerClassName="border-2 rounded-xl text-xs py-2 px-3 bg-white"
                       />
-                      {errors.start_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.start_date}</p>}
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                        Ngày kết thúc
-                      </label>
-                      <input
-                        type="date"
-                        value={editForm.end_date}
-                        onChange={e => handleInputChange('end_date', e.target.value)}
-                        style={{
-                          width: '100%', border: `1.5px solid ${errors.end_date ? T.red : T.border}`,
-                          borderRadius: 12, padding: '9px 12px', fontSize: 13, color: T.text, outline: 'none',
-                          background: errors.end_date ? T.redBg : T.surface, transition: 'all 0.15s'
-                        }}
-                        className={errors.end_date ? "focus:border-red-400 focus:ring-1 focus:ring-red-400" : "focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"}
+                      <CustomDatePicker
+                        label="Ngày kết thúc"
+                        value={editForm.end_date || ''}
+                        onChange={val => handleInputChange('end_date', val)}
+                        error={errors.end_date}
+                        variant="surface"
+                        triggerClassName="border-2 rounded-xl text-xs py-2 px-3 bg-white"
                       />
-                      {errors.end_date && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.end_date}</p>}
                     </div>
                   </div>
 
@@ -870,60 +874,6 @@ export default function ManagerContractsPage() {
                     />
                     {errors.service_fee && <p style={{ color: T.red, fontSize: 11, marginTop: 4, fontWeight: 600 }}>{errors.service_fee}</p>}
                   </div>
-
-                  {/* Textarea terms */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                      Điều khoản chung của hợp đồng
-                    </label>
-                    <textarea
-                      value={editForm.terms}
-                      onChange={e => handleInputChange('terms', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%', border: `1.5px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
-                        background: T.surface, transition: 'all 0.15s'
-                      }}
-                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
-                    />
-                  </div>
-
-                  {/* Textarea payments */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                      Quy định đóng tiền & thanh toán
-                    </label>
-                    <textarea
-                      value={editForm.payment_policy}
-                      onChange={e => handleInputChange('payment_policy', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
-                        background: T.surface, transition: 'all 0.15s'
-                      }}
-                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
-                    />
-                  </div>
-
-                  {/* Textarea termination */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                      Quy định trả phòng & thanh lý cọc
-                    </label>
-                    <textarea
-                      value={editForm.termination_policy}
-                      onChange={e => handleInputChange('termination_policy', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%', border: `1px solid ${T.border}`, borderRadius: 12,
-                        padding: 10, fontSize: 12.5, color: T.text, outline: 'none', resize: 'none',
-                        background: T.surface, transition: 'all 0.15s'
-                      }}
-                      className="focus:border-[#5C4632] focus:ring-1 focus:ring-[#5C4632]"
-                    />
-                  </div>
                 </div>
               )}
             </div>
@@ -947,7 +897,7 @@ export default function ManagerContractsPage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={handleSave}
+                  <button onClick={handleSave} disabled={isSubmitting}
                     style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s ease-in-out' }}
                     className="hover:opacity-90 active:scale-[0.98]">
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>save</span>
@@ -969,121 +919,4 @@ export default function ManagerContractsPage() {
   );
 }
 
-// ─── Default seed data generator fallback ───
-function generateDefaultContracts(): ManagerContract[] {
-  const names = [
-    'Nguyễn Hoàng Nam', 'Trần Thị Mai Anh', 'Lê Văn Phúc', 'Phạm Thị Hương',
-    'Hoàng Minh Tuấn', 'Đinh Thị Lan', 'Vũ Quang Huy', 'Bùi Thị Thanh Hoa',
-    'Ngô Văn Tâm', 'Lý Thu Ngân', 'Đặng Quốc Hưng', 'Trương Minh Khoa'
-  ];
-  const rooms = [
-    { id: 'r-1', name: 'Phòng 101 (Nam)', price: 1500000 },
-    { id: 'r-2', name: 'Phòng 102 (Nữ)', price: 2000000 },
-    { id: 'r-3', name: 'Phòng 201 (Nam)', price: 900000 },
-    { id: 'r-4', name: 'Phòng 202 (Nữ)', price: 1200000 },
-    { id: 'r-5', name: 'Phòng 103 (Nam)', price: 1600000 },
-    { id: 'r-6', name: 'Phòng 203 (Nữ)', price: 2500005 }
-  ];
-  const statuses: ManagerContract['status'][] = ['active', 'active', 'expired', 'terminated', 'active', 'expired', 'active', 'terminated', 'active', 'active', 'expired', 'active'];
-  const bedNames = ['Giường A1', 'Giường A2', 'Giường G1', 'Giường G2', 'Giường B1', 'Giường B2'];
 
-  const roomDetailsMap: Record<string, { floor: number; type: string }> = {
-    'r-1': { floor: 1, type: 'Dorm' },
-    'r-2': { floor: 1, type: 'Studio' },
-    'r-3': { floor: 2, type: 'Dorm' },
-    'r-4': { floor: 2, type: 'Twin' },
-    'r-5': { floor: 1, type: 'Dorm' },
-    'r-6': { floor: 2, type: 'Studio' }
-  };
-
-  const list: ManagerContract[] = [];
-  for (let i = 0; i < names.length; i++) {
-    const name = names[i];
-    const room = rooms[i % rooms.length];
-    const isBed = i % 2 === 0;
-    const status = statuses[i];
-    
-    const startYear = status === 'expired' || status === 'terminated' ? 2024 : 2025;
-    const endYear = startYear + 1;
-    const startDate = `${startYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
-    const endDate = `${endYear}-${String((i % 12) + 1).padStart(2, '0')}-05`;
-
-    let tenantsList: TenantMember[] | undefined = undefined;
-    const selfPhone = `090${(i * 1357924) % 9000000 + 1000000}`;
-    const selfCccd = `079203${String(100000 + i * 1234).padStart(6, '0')}`;
-
-    if (name === 'Ngô Văn Tâm') {
-      tenantsList = [
-        {
-          name: 'Ngô Văn Tâm',
-          cccd: selfCccd,
-          phone: selfPhone,
-          role: 'representative'
-        },
-        {
-          name: 'Lê Hoàng Long',
-          cccd: '079203112233',
-          phone: '0912445566',
-          role: 'member'
-        },
-        {
-          name: 'Trần Minh Quân',
-          cccd: '079203445566',
-          phone: '0987334455',
-          role: 'member'
-        }
-      ];
-    } else if (name === 'Nguyễn Hoàng Nam') {
-      tenantsList = [
-        {
-          name: 'Nguyễn Hoàng Nam',
-          cccd: selfCccd,
-          phone: selfPhone,
-          role: 'representative'
-        },
-        {
-          name: 'Phan Văn Đức',
-          cccd: '079203778899',
-          phone: '0909112233',
-          role: 'member'
-        }
-      ];
-    }
-
-    list.push({
-      id: `CON-${7000 + i}`,
-      contract_code: `HD-2026-${String(100 + i)}`,
-      customer_id: `u-mock-cust-${200 + i}`,
-      customer_name: name,
-      customer_phone: selfPhone,
-      customer_cccd: selfCccd,
-      customer_address: `Số ${i * 12 + 1} Đường Lê Lợi, Quận ${i % 3 + 1}, TP.HCM`,
-      room_id: room.id,
-      room_name: room.name,
-      deposit_type: isBed ? 'bed' : 'room',
-      bed_name: isBed ? bedNames[i % bedNames.length] : undefined,
-      branch_name: i % 2 === 0 ? 'Chi nhánh Quận 1' : 'Chi nhánh Thủ Đức (Khu ĐHQG)',
-      rent_amount: room.price,
-      deposit_amount: room.price * 2,
-      service_fee: 150000 + (i % 3) * 50000,
-      start_date: startDate,
-      end_date: endDate,
-      duration: '12 tháng',
-      status: status,
-      terms: `Bên A đồng ý cho bên B thuê 01 vị trí ${isBed ? `giường (${bedNames[i % bedNames.length]})` : 'phòng'} tại ${room.name}. Tài sản bàn giao bao gồm các trang thiết bị cơ bản phục vụ sinh hoạt cá nhân.`,
-      payment_policy: `Tiền thuê đóng định kỳ vào từ ngày 01 đến ngày 05 hàng tháng. Chậm thanh toán quá 3 ngày sẽ chịu phạt theo quy định.`,
-      termination_policy: `Bên B cần báo trước 30 ngày nếu có ý định trả phòng trước hạn. Hoàn trả phòng sạch sẽ, bàn giao đầy đủ trang thiết bị như ban đầu để nhận lại tiền đặt cọc.`,
-      manager_name: 'Trần Kim Yến',
-      manager_phone: '0907654321',
-      created_at: new Date(startYear, i % 12, 5).toISOString(),
-      deposit_code: `DEP-${1000 + i}`,
-      sale_staff_name: ['Nguyễn Thị Trúc Hằng', 'Phan Thanh Tùng', 'Vũ Thị Hạnh'][i % 3],
-      payment_cycle: ['1_month', '3_months', '6_months'][i % 3] as '1_month' | '3_months' | '6_months',
-      contract_type: i % 2 === 0 ? 'long_term' : 'short_term',
-      room_type: roomDetailsMap[room.id]?.type || 'Dorm',
-      floor_number: roomDetailsMap[room.id]?.floor || 1,
-      tenants: tenantsList
-    });
-  }
-  return list;
-}

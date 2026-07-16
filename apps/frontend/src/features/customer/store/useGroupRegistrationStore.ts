@@ -6,18 +6,15 @@ export interface GroupMember {
   phone: string;
   cccd: string;
   isRepresentative?: boolean;
-  issueDate?: string;
-  issuePlace?: string;
-  dob?: string;
-  gender?: 'male' | 'female' | 'other';
-  nationality?: string;
-  permanentAddress?: string;
 }
 
 export interface GroupDraftData {
   members: GroupMember[];
   leaseTerm?: string;
   moveInDate?: string;
+  preferredViewingDate?: string;
+  preferredViewingTime?: string;
+  viewingTimeNote?: string;
 }
 
 interface GroupRegistrationStore {

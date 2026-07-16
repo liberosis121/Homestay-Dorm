@@ -1,10 +1,9 @@
 import { X, Printer, Check } from 'lucide-react';
-import { getMockDB, Room } from '../../lib/supabaseClient';
 
 export interface InvoiceDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  invoiceType: 'deposit' | 'checkin' | 'monthly' | 'service' | 'liquidation';
+  invoiceType: 'deposit' | 'checkin' | 'monthly' | 'service' | 'liquidation' | 'refund';
   invoiceData: any;
   onConfirmPayment?: (id: string) => void;
 }
@@ -22,27 +21,13 @@ export default function InvoiceDetailDrawer({
     window.print();
   };
 
-  // Load room details if room_id is present
-  let roomDetails: Room | undefined = undefined;
-  if (invoiceData && invoiceData.room_id) {
-    try {
-      const db = getMockDB();
-      roomDetails = db.rooms?.find((r: any) => r.id === invoiceData.room_id);
-    } catch (e) {
-      console.error("Failed to load room details", e);
-    }
-  }
-
-  // Load deposit details if deposit_ref is present
-  let depositDetails: any = undefined;
-  if (invoiceData && invoiceData.deposit_ref) {
-    try {
-      const db = getMockDB();
-      depositDetails = db.deposit_invoices?.find((d: any) => d.id === invoiceData.deposit_ref);
-    } catch (e) {
-      console.error("Failed to load deposit details", e);
-    }
-  }
+  // Định dạng ngày lập hóa đơn: chấp nhận cả ISO thô lẫn chuỗi "YYYY-MM-DD HH:mm" đã format sẵn.
+  const formatInvoiceDate = (val: any) => {
+    if (!val) return '---';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toLocaleDateString('vi-VN');
+  };
 
   // Status badge style helper
   const getStatusBadge = (status: string) => {
@@ -54,10 +39,16 @@ export default function InvoiceDetailDrawer({
             Đã thanh toán
           </span>
         );
-      case 'pending':
+      case 'unpaid':
         return (
           <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF6F0] text-[#B9792B] border border-[#E7DED2]">
             Chờ thanh toán
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FAF6F0] text-[#B9792B] border border-[#E7DED2]">
+            Chờ xác nhận
           </span>
         );
       case 'overdue':
@@ -81,8 +72,18 @@ export default function InvoiceDetailDrawer({
     }
   };
 
+  // DB có 2 kiểu giá trị cho payment_method: enum tiếng Anh ('transfer'/'cash') do code hiện tại ghi,
+  // và nhãn tiếng Việt viết thẳng (vd 'Chuyển khoản') do dữ liệu seed cũ ghi. Chuẩn hóa cả 2 dạng,
+  // và không đoán bừa 'Tiền mặt' khi dữ liệu thật sự chưa có (null).
+  const formatPaymentMethod = (method: string | null | undefined, fallback = '---') => {
+    if (!method) return fallback;
+    if (method === 'transfer') return 'Chuyển khoản';
+    if (method === 'cash') return 'Tiền mặt';
+    return method; // đã là nhãn tiếng Việt sẵn có trong dữ liệu, hiển thị nguyên trạng
+  };
+
   const formattedAmount = (amount: number) => (
-    <span className="whitespace-nowrap font-mono">
+    <span className="whitespace-nowrap ">
       {(amount || 0).toLocaleString('vi-VN')}
       {'\u00A0\u0111'}
     </span>
@@ -110,7 +111,7 @@ export default function InvoiceDetailDrawer({
               {invoiceType === 'service' && 'Chi tiết Hóa đơn dịch vụ'}
               {invoiceType === 'liquidation' && 'Chi tiết Hóa đơn thanh lý'}
             </h3>
-            <p className="font-mono text-xs text-[#5e5f5d] mt-1">
+            <p className=" text-xs text-[#5e5f5d] mt-1">
               Mã: {invoiceData.id || invoiceData.code || '---'}
             </p>
           </div>
@@ -144,14 +145,14 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right font-semibold text-[#1b1c1c]">{invoiceData.room_name || '---'}</div>
                   
                   <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.created_at || '---'}</div>
-                  
+                  <div className="text-right text-[#1b1c1c]  text-xs">{formatInvoiceDate(invoiceData.created_at)}</div>
+
                   <div className="text-[#8A7563]">Hạn thanh toán:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.deadline || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.deadline || '---'}</div>
 
                   <div className="text-[#8A7563]">Phương thức thu:</div>
                   <div className="text-right text-[#1b1c1c]">
-                    {invoiceData.payment_method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt'}
+                    {formatPaymentMethod(invoiceData.payment_method)}
                   </div>
                 </div>
               </div>
@@ -160,14 +161,8 @@ export default function InvoiceDetailDrawer({
                 <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Chi tiết thanh toán</h4>
                 <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
                   <span className="font-bold text-[#1b1c1c]">Tổng tiền đặt cọc:</span>
-                  <span className="text-xl font-bold text-[#5a462d] font-mono">{formattedAmount(invoiceData.amount)}</span>
+                  <span className="text-xl font-bold text-[#5a462d] ">{formattedAmount(invoiceData.amount)}</span>
                 </div>
-                {invoiceData.note && (
-                  <div className="mt-2 text-xs bg-[#FAF9F6] p-3 rounded-lg border border-[#DCCFC0]/40 text-[#8A7563]">
-                    <span className="font-semibold block text-[#5C4632] mb-0.5">Ghi chú:</span>
-                    {invoiceData.note}
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -175,7 +170,7 @@ export default function InvoiceDetailDrawer({
           {/* 2. CHECKIN TYPE */}
           {invoiceType === 'checkin' && (() => {
             const rent = invoiceData.rent_amount || 0;
-            const deposit = depositDetails?.amount || invoiceData.rent_amount || 0;
+            const deposit = invoiceData.deposit_amount || 0;
             const servicesList = invoiceData.services || [];
             const servicesTotal = servicesList.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
             const calculatedTotal = rent + deposit + servicesTotal;
@@ -188,19 +183,19 @@ export default function InvoiceDetailDrawer({
                   <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin hóa đơn</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã hóa đơn nhận phòng:</div>
-                    <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.id || '---'}</div>
+                    <div className="text-right  font-semibold text-[#5C4632]">{invoiceData.id || '---'}</div>
                     
                     <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                    <div className="text-right text-[#5C4632] font-mono">{invoiceData.created_at || '---'}</div>
-                    
+                    <div className="text-right text-[#5C4632] ">{formatInvoiceDate(invoiceData.created_at)}</div>
+
                     <div className="text-[#8A7563]">Hạn thanh toán:</div>
-                    <div className="text-right text-[#5C4632] font-mono">
+                    <div className="text-right text-[#5C4632] ">
                       {invoiceData.deadline || invoiceData.checkin_date || (invoiceData.created_at ? invoiceData.created_at.substring(0, 10) : '---')}
                     </div>
 
                     <div className="text-[#8A7563]">Phương thức thanh toán:</div>
                     <div className="text-right text-[#5C4632] font-semibold">
-                      {invoiceData.payment_method === 'transfer' ? 'Chuyển khoản' : invoiceData.payment_method === 'cash' ? 'Tiền mặt' : invoiceData.payment_method || 'Chuyển khoản (QR)'}
+                      {formatPaymentMethod(invoiceData.payment_method, 'Chuyển khoản (QR)')}
                     </div>
                   </div>
                 </div>
@@ -210,12 +205,12 @@ export default function InvoiceDetailDrawer({
                   <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin hợp đồng</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã hợp đồng:</div>
-                    <div className="text-right font-mono font-semibold text-[#5C4632]">
-                      {invoiceData.deposit_ref ? invoiceData.deposit_ref.replace('DEP', 'HĐ') : 'HĐ-MOCK'}
+                    <div className="text-right  font-semibold text-[#5C4632]">
+                      {invoiceData.contract_id || (invoiceData.deposit_ref ? invoiceData.deposit_ref.replace('DEP', 'HĐ') : 'HĐ-MOCK')}
                     </div>
                     
                     <div className="text-[#8A7563]">Ngày bắt đầu thuê:</div>
-                    <div className="text-right text-[#5C4632] font-mono">{invoiceData.checkin_date || '---'}</div>
+                    <div className="text-right text-[#5C4632] ">{invoiceData.checkin_date || '---'}</div>
                     
                     <div className="text-[#8A7563]">Kỳ thanh toán:</div>
                     <div className="text-right text-[#5C4632] font-semibold">
@@ -238,14 +233,14 @@ export default function InvoiceDetailDrawer({
                   <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider">Thông tin phòng / giường</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-xs">
                     <div className="text-[#8A7563]">Mã phòng / giường:</div>
-                    <div className="text-right font-mono font-semibold text-[#5C4632]">{invoiceData.room_id || '---'}</div>
+                    <div className="text-right  font-semibold text-[#5C4632]">{invoiceData.room_id || '---'}</div>
                     
                     <div className="text-[#8A7563]">Tên phòng:</div>
                     <div className="text-right font-semibold text-[#5C4632]">{invoiceData.room_name || '---'}</div>
                     
                     <div className="text-[#8A7563]">Loại phòng:</div>
                     <div className="text-right text-[#5C4632]">
-                      {roomDetails?.room_type || 'Ký túc xá cao cấp'}
+                      {invoiceData.room_type || '---'}
                     </div>
                   </div>
                 </div>
@@ -287,7 +282,7 @@ export default function InvoiceDetailDrawer({
                 {/* Section 6: Tổng cộng */}
                 <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
                     <span className="font-bold text-[#1b1c1c]">Tổng cộng cần thanh toán:</span>
-                    <span className="text-xl font-bold text-[#5a462d] font-mono">{formattedAmount(invoiceData.total)}</span>
+                    <span className="text-xl font-bold text-[#5a462d] ">{formattedAmount(invoiceData.total)}</span>
                   </div>
               </>
             );
@@ -309,16 +304,16 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right text-[#1b1c1c] font-semibold">Tháng {invoiceData.period || '---'}</div>
 
                   <div className="text-[#8A7563]">Hạn thanh toán:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.due_date || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.due_date || '---'}</div>
 
                   <div className="text-[#8A7563]">Ngày lập hóa đơn:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{formatInvoiceDate(invoiceData.created_at)}</div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Chi tiết chỉ số & chi phí</h4>
-                <div className="divide-y divide-[#E7DED2]/65 text-xs font-mono space-y-1">
+                <div className="divide-y divide-[#E7DED2]/65 text-xs  space-y-1">
                   <div className="flex justify-between py-1.5">
                     <span className="font-sans text-[#1b1c1c]">Tiền thuê phòng:</span>
                     <span className="text-[#1b1c1c]">{formattedAmount(invoiceData.rent_amount)}</span>
@@ -339,7 +334,7 @@ export default function InvoiceDetailDrawer({
 
                 <div className="flex justify-between items-center py-2.5 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10 mt-3">
                   <span className="font-bold text-[#5C4632] text-sm">Tổng cộng hóa đơn:</span>
-                  <span className="font-mono text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total)}</span>
+                  <span className=" text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total)}</span>
                 </div>
               </div>
             </>
@@ -361,7 +356,7 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right text-[#1b1c1c] font-medium">{invoiceData.description || '---'}</div>
 
                   <div className="text-[#8A7563]">Ngày tạo phiếu:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.created_at || '---'}</div>
                 </div>
               </div>
 
@@ -369,7 +364,7 @@ export default function InvoiceDetailDrawer({
                 <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Thanh toán dịch vụ</h4>
                 <div className="flex justify-between items-center py-2.5 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10">
                   <span className="font-bold text-[#5C4632] text-sm">Số tiền dịch vụ:</span>
-                  <span className="font-mono text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.amount || invoiceData.total)}</span>
+                  <span className=" text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.amount || invoiceData.total)}</span>
                 </div>
               </div>
             </>
@@ -385,23 +380,24 @@ export default function InvoiceDetailDrawer({
                   <div className="text-right font-semibold text-[#1b1c1c]">{invoiceData.customer_name || '---'}</div>
                   
                   <div className="text-[#8A7563]">Hợp đồng số:</div>
-                  <div className="text-right font-semibold text-[#1b1c1c] font-mono text-xs">{invoiceData.contract_code || invoiceData.contract_id || '---'}</div>
+                  <div className="text-right font-semibold text-[#1b1c1c]  text-xs">{invoiceData.contract_code || invoiceData.contract_id || '---'}</div>
                   
                   <div className="text-[#8A7563]">Ngày thanh lý:</div>
-                  <div className="text-right text-[#1b1c1c] font-mono text-xs">{invoiceData.liquidated_at || invoiceData.created_at || '---'}</div>
+                  <div className="text-right text-[#1b1c1c]  text-xs">{invoiceData.liquidated_at || invoiceData.created_at || '---'}</div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <h4 className="font-label-caps text-[11px] text-[#8A7563] border-b border-[#DCCFC0]/55 pb-1 font-bold uppercase tracking-wider">Bảng quyết toán thanh lý</h4>
-                <div className="divide-y divide-[#E7DED2]/65 text-xs font-mono">
+                <div className="divide-y divide-[#E7DED2]/65 text-xs ">
                   <div className="flex justify-between py-2">
                     <span className="font-sans text-[#1b1c1c]">Tiền hoàn cọc phòng:</span>
                     <span className="text-[#5F7D4E] font-bold">+{formattedAmount(invoiceData.refund_amount || invoiceData.deposit_refund)}</span>
                   </div>
-                  {invoiceData.deductions && invoiceData.deductions.map((ded: any, i: number) => (
+                  {(invoiceData.deductions || invoiceData.refund_reconciliations?.deductions) && 
+                    (invoiceData.deductions || invoiceData.refund_reconciliations?.deductions).map((ded: any, i: number) => (
                     <div key={i} className="flex justify-between py-2">
-                      <span className="font-sans text-[#1b1c1c]">{ded.name}:</span>
+                      <span className="font-sans text-[#1b1c1c]">{ded.name || ded.reason}:</span>
                       <span className="text-[#A94F4F] font-bold">-{formattedAmount(ded.amount)}</span>
                     </div>
                   ))}
@@ -415,7 +411,7 @@ export default function InvoiceDetailDrawer({
 
                 <div className="flex justify-between items-center py-2.5 bg-[#5C4632]/5 px-3 rounded-lg border border-[#5C4632]/10 mt-3">
                   <span className="font-bold text-[#5C4632] text-sm">Tổng thanh toán thực tế:</span>
-                  <span className="font-mono text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total || invoiceData.amount)}</span>
+                  <span className=" text-lg font-bold text-[#5C4632]">{formattedAmount(invoiceData.total || invoiceData.amount)}</span>
                 </div>
               </div>
             </>

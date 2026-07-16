@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import {
   User, Shield, Lock, ChevronRight,
-  X, Eye, EyeOff, Check, Camera, Briefcase, MapPin
+  X, Eye, EyeOff, Check, Briefcase, MapPin
 } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import FormLabel from '../../components/ui/FormLabel';
+import apiClient from '../../lib/api.client';
 
 // ─── Brown Tone Palette (Staff Dashboard) ─────────────────────────────────────
 // Primary accent: #6f583c  |  Surface: #faf2ec  |  Border: #d1c4b9
@@ -15,6 +16,7 @@ import FormLabel from '../../components/ui/FormLabel';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuthStore();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,18 +40,37 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const strengthLabel = ['', 'Yếu', 'Trung bình', 'Khá tốt', 'Mạnh'][strength];
   const strengthColor = ['', 'bg-error', 'bg-yellow-400', 'bg-blue-400', 'bg-[#6f583c]'][strength];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!oldPassword) { setError('Vui lòng nhập mật khẩu hiện tại.'); return; }
     if (newPassword.length < 8) { setError('Mật khẩu mới phải có ít nhất 8 ký tự.'); return; }
     if (newPassword !== confirmPassword) { setError('Mật khẩu xác nhận không khớp.'); return; }
+    if (oldPassword === newPassword) { setError('Mật khẩu mới phải khác mật khẩu hiện tại.'); return; }
+    if (!user?.email) { setError('Không xác định được tài khoản. Vui lòng đăng nhập lại.'); return; }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      // 1. Xác minh mật khẩu HIỆN TẠI (backend change-password không kiểm tra mật khẩu cũ,
+      //    nên FE tự xác minh bằng một lần đăng nhập thử — không ảnh hưởng phiên đang dùng).
+      try {
+        await apiClient.post('/auth/login', { email: user.email, password: oldPassword });
+      } catch {
+        setError('Mật khẩu hiện tại không đúng.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Đổi sang mật khẩu mới (POST /api/auth/change-password — cập nhật qua Supabase Admin).
+      await apiClient.post('/auth/change-password', { newPassword });
+
       setIsLoading(false);
       setSuccess(true);
       setTimeout(() => { onClose(); }, 1800);
-    }, 1200);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Lỗi khi đổi mật khẩu. Vui lòng thử lại.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -133,11 +154,10 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Nhập lại mật khẩu mới"
-                    className={`w-full bg-[#faf2ec] border rounded-full py-3.5 px-6 pr-12 text-sm focus:outline-none focus:ring-2 text-[#1e1b17] transition-all ${
-                      confirmPassword && confirmPassword !== newPassword
-                        ? 'border-error focus:ring-error/20 focus:border-error'
-                        : 'border-[#d1c4b9] focus:border-[#6f583c] focus:ring-[#6f583c]/20'
-                    }`}
+                    className={`w-full bg-[#faf2ec] border rounded-full py-3.5 px-6 pr-12 text-sm focus:outline-none focus:ring-2 text-[#1e1b17] transition-all ${confirmPassword && confirmPassword !== newPassword
+                      ? 'border-error focus:ring-error/20 focus:border-error'
+                      : 'border-[#d1c4b9] focus:border-[#6f583c] focus:ring-[#6f583c]/20'
+                      }`}
                   />
                   <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4e453c] hover:text-[#1e1b17] cursor-pointer">
                     {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -189,6 +209,60 @@ function getRoleDisplayInfo(role: string) {
   }
 }
 
+interface InputFieldProps {
+  label: string;
+  name: string;
+  value: string;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  isEditing: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+}
+
+const InputField = ({
+  label,
+  name,
+  value,
+  type = 'text',
+  placeholder = '',
+  disabled = false,
+  isEditing,
+  onChange
+}: InputFieldProps) => {
+  const isDate = type === 'date';
+  if (isDate) {
+    return (
+      <CustomDatePicker
+        label={label}
+        value={value}
+        onChange={(val) => {
+          onChange({
+            target: { name, value: val }
+          } as any);
+        }}
+        disabled={disabled || !isEditing}
+        placeholder={placeholder || 'Chọn ngày'}
+        required={label.includes('*')}
+      />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <FormLabel label={label} required={label.includes('*')} />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled || !isEditing}
+        className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
+      />
+    </div>
+  );
+};
+
 // ─── Main Staff Profile Page ───────────────────────────────────────────────────
 export default function StaffProfilePage() {
   const { user } = useAuthStore();
@@ -199,17 +273,11 @@ export default function StaffProfilePage() {
     full_name: '',
     email: '',
     phone: '',
-    cccd: '',
     dob: '',
     gender: 'female',
-    issue_date: '',
-    issue_place: '',
-    nationality: 'Việt Nam',
-    permanent_address: '',
     department: '',
     position: '',
     branch: '',
-    employee_code: '',
     start_date: '',
   });
 
@@ -217,31 +285,102 @@ export default function StaffProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const roleInfo = user ? getRoleDisplayInfo(user.role) : getRoleDisplayInfo('sale');
 
-  useEffect(() => {
-    if (user) {
-      const defaultData = {
-        full_name: user.full_name || '',
-        email: user.email || '',
-        phone: user.phone || '0912345678',
-        cccd: '012987654321',
-        dob: '1995-03-15',
-        gender: 'female',
-        issue_date: '2015-06-20',
-        issue_place: 'Cục CSQLHC về TTXH',
-        nationality: 'Việt Nam',
-        permanent_address: '45 Đường Nguyễn Huệ, Quận 1, TP.HCM',
-        department: roleInfo.dept,
-        position: roleInfo.label,
-        branch: 'Chi nhánh Quận 1',
-        employee_code: 'NV-' + (user.id || '001').toUpperCase().slice(-3),
-        start_date: '2023-01-10',
-      };
-      setFormData(defaultData);
-      setInitialData(defaultData);
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const directToken = localStorage.getItem('access_token');
+      if (directToken) {
+        return {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${directToken}`
+        };
+      }
+
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
     }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const normalizeGender = (gender?: string) => {
+    if (!gender) return 'female';
+    if (gender === 'Nam') return 'male';
+    if (gender === 'Nữ') return 'female';
+    if (gender === 'Khác') return 'other';
+    return gender;
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/auth/me`, { headers });
+      const result = await res.json();
+      if (result.success && result.data) {
+        const rawProfile = result.data;
+        const profileData = {
+          ...rawProfile,
+          ...(rawProfile.details || {}),
+          full_name: rawProfile.full_name || rawProfile.details?.full_name,
+          email: rawProfile.email || rawProfile.details?.email || rawProfile.details?.profiles?.email,
+          phone: rawProfile.phone || rawProfile.details?.phone,
+          role: rawProfile.role || rawProfile.details?.role || rawProfile.details?.profiles?.role,
+        };
+        const mappedData = {
+          full_name: profileData.full_name || '',
+          email: profileData.email || '',
+          phone: profileData.phone || '',
+          dob: profileData.dob || '',
+          gender: normalizeGender(profileData.gender),
+          department: profileData.department || roleInfo.dept,
+          position: profileData.position || roleInfo.label,
+          branch: profileData.branch_name || profileData.branch_id || '—',
+          start_date: profileData.join_date || (profileData.created_at ? profileData.created_at.slice(0, 10) : ''),
+        };
+        setFormData(mappedData);
+        setInitialData(mappedData);
+      } else {
+        console.error(result.message || 'Failed to fetch profile');
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, [user]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -255,58 +394,49 @@ export default function StaffProfilePage() {
     if (initialData) setFormData(initialData);
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!isDirty) return;
     setIsSaving(true);
     setSaveSuccess(false);
-    setTimeout(() => {
+    setSaveError('');
+    try {
+      const headers = await getAuthHeaders();
+      // Chuẩn hoá gender về đúng quy ước DB ('Nam'/'Nữ'/'Khác') thay vì 'male'/'female'.
+      const genderDb = formData.gender === 'male' ? 'Nam' : formData.gender === 'female' ? 'Nữ' : 'Khác';
+      // Chỉ gửi các trường thực sự cho phép chỉnh sửa (không gửi join_date read-only để tránh ghi đè nhầm).
+      const updateData = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        dob: formData.dob || null,
+        gender: genderDb,
+      };
+
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(updateData)
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        setSaveSuccess(true);
+        setInitialData(formData);
+        setIsEditing(false);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setSaveError(result.message || 'Lưu hồ sơ thất bại. Vui lòng thử lại.');
+      }
+    } catch (err: any) {
+      setSaveError(err?.message || 'Lỗi kết nối khi lưu hồ sơ.');
+    } finally {
       setIsSaving(false);
-      setSaveSuccess(true);
-      setInitialData(formData);
-      setIsEditing(false);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+    }
   };
 
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // ── Shared InputField ─────────────────────────────────────────────────────
-  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: {
-    label: string; name: string; value: string; type?: string; placeholder?: string; disabled?: boolean;
-  }) => {
-    const isDate = type === 'date';
-    if (isDate) {
-      return (
-        <CustomDatePicker
-          label={label}
-          value={value}
-          onChange={(val) => {
-            handleProfileChange({
-              target: { name, value: val }
-            } as any);
-          }}
-          disabled={disabled || !isEditing}
-          placeholder={placeholder || 'Chọn ngày'}
-          required={label.includes('*')}
-        />
-      );
-    }
-    return (
-      <div className="space-y-2">
-        <FormLabel label={label} required={label.includes('*')} />
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={handleProfileChange}
-          placeholder={placeholder}
-          disabled={disabled || !isEditing}
-          className="w-full bg-[#faf2ec] border border-[#d1c4b9] rounded-full py-3.5 px-6 text-sm transition-all focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20 text-[#1e1b17] disabled:opacity-60 disabled:cursor-not-allowed"
-        />
-      </div>
-    );
-  };
+
 
   const ReadOnlyField = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
     <div className="space-y-2">
@@ -358,22 +488,20 @@ export default function StaffProfilePage() {
           <div className="flex gap-2 bg-[#faf2ec] border border-[#d1c4b9] rounded-full p-1 shrink-0">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'profile'
-                  ? 'bg-[#6f583c] text-white shadow-md'
-                  : 'text-[#4e453c] hover:text-[#1e1b17]'
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${activeTab === 'profile'
+                ? 'bg-[#6f583c] text-white shadow-md'
+                : 'text-[#4e453c] hover:text-[#1e1b17]'
+                }`}
             >
               <User className="w-4 h-4" />
               Hồ sơ
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'settings'
-                  ? 'bg-[#6f583c] text-white shadow-md'
-                  : 'text-[#4e453c] hover:text-[#1e1b17]'
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${activeTab === 'settings'
+                ? 'bg-[#6f583c] text-white shadow-md'
+                : 'text-[#4e453c] hover:text-[#1e1b17]'
+                }`}
             >
               <Shield className="w-4 h-4" />
               Cài đặt
@@ -395,16 +523,13 @@ export default function StaffProfilePage() {
                 <div className="relative shrink-0">
                   <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#6f583c]/20 to-[#8c7355]/30 border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
                     {user.avatar_url ? (
-                      <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                      <img src={user.avatar_url} alt={user.full_name ?? 'Staff'} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-5xl font-extrabold text-[#6f583c]">
-                        {user.full_name.charAt(0)}
+                        {user.full_name?.charAt(0) ?? 'U'}
                       </span>
                     )}
                   </div>
-                  <button className="absolute bottom-1 right-1 p-2 bg-[#6f583c] text-white rounded-full border-[3px] border-white shadow-sm cursor-pointer hover:bg-[#5a4630] transition-colors">
-                    <Camera className="w-4 h-4" />
-                  </button>
                 </div>
 
                 {/* Info */}
@@ -420,11 +545,7 @@ export default function StaffProfilePage() {
                     {formData.department}
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex justify-between items-center bg-[#faf2ec] p-3.5 px-5 rounded-2xl text-sm border border-[#d1c4b9]">
-                      <span className="text-[#4e453c] font-medium">Mã NV:</span>
-                      <span className="font-bold text-[#6f583c]">{formData.employee_code}</span>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex justify-between items-center bg-[#faf2ec] p-3.5 px-5 rounded-2xl text-sm border border-[#d1c4b9]">
                       <span className="text-[#4e453c] font-medium">Chi nhánh:</span>
                       <span className="font-semibold text-[#1e1b17] text-xs">{formData.branch}</span>
@@ -456,11 +577,10 @@ export default function StaffProfilePage() {
                       setIsEditing(true);
                     }
                   }}
-                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm cursor-pointer border ${
-                    isEditing
-                      ? 'bg-[#faf2ec] hover:bg-[#f4ede6] text-[#4e453c] border-[#d1c4b9]'
-                      : 'bg-[#6f583c]/10 hover:bg-[#6f583c]/20 text-[#6f583c] border-[#6f583c]/20'
-                  }`}
+                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm cursor-pointer border ${isEditing
+                    ? 'bg-[#faf2ec] hover:bg-[#f4ede6] text-[#4e453c] border-[#d1c4b9]'
+                    : 'bg-[#6f583c]/10 hover:bg-[#6f583c]/20 text-[#6f583c] border-[#6f583c]/20'
+                    }`}
                 >
                   {isEditing ? (
                     <>Hủy chỉnh sửa</>
@@ -481,7 +601,6 @@ export default function StaffProfilePage() {
                   <Briefcase className="w-3.5 h-3.5" /> Thông tin công tác
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <ReadOnlyField label="Mã nhân viên" value={formData.employee_code} />
                   <ReadOnlyField label="Chức vụ" value={formData.position} />
                   <ReadOnlyField label="Phòng ban" value={formData.department} />
                   <ReadOnlyField label="Chi nhánh làm việc" value={formData.branch} icon={<MapPin className="w-4 h-4" />} />
@@ -496,10 +615,10 @@ export default function StaffProfilePage() {
                   <User className="w-3.5 h-3.5" /> Thông tin cá nhân
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <InputField label="Họ và tên *" name="full_name" value={formData.full_name} />
-                  <InputField label="Email *" name="email" value={formData.email} disabled />
+                  <InputField label="Họ và tên *" name="full_name" value={formData.full_name} isEditing={isEditing} onChange={handleProfileChange} />
+                  <InputField label="Email *" name="email" value={formData.email} disabled isEditing={isEditing} onChange={handleProfileChange} />
 
-                  <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
+                  <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} isEditing={isEditing} onChange={handleProfileChange} />
                   <div className="space-y-2">
                     <FormLabel label="Giới tính" required />
                     <CustomSelect
@@ -513,23 +632,12 @@ export default function StaffProfilePage() {
                         { value: 'female', label: 'Nữ' },
                         { value: 'other', label: 'Khác' },
                       ]}
-                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3.5 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
+                      triggerClassName="w-full !bg-[#faf2ec] !border-[#d1c4b9] border !py-3 !px-6 text-sm text-[#1e1b17] focus:outline-none focus:ring-2 focus:border-[#6f583c] focus:ring-[#6f583c]/20"
                       dropdownClassName="border-[#d1c4b9]"
                     />
                   </div>
 
-                  <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" />
-                  <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} />
-
-                  <InputField label="Số CCCD / Passport *" name="cccd" value={formData.cccd} />
-                  <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} />
-
-                  <div className="md:col-span-2">
-                    <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} />
-                  </div>
+                  <InputField label="Số điện thoại *" name="phone" value={formData.phone} placeholder="0912345678" isEditing={isEditing} onChange={handleProfileChange} />
                 </div>
               </div>
 
@@ -540,6 +648,9 @@ export default function StaffProfilePage() {
                     <span className="text-sm text-[#6f583c] font-semibold animate-fade-in flex items-center gap-1">
                       <Check className="w-4 h-4" /> Đã cập nhật thành công!
                     </span>
+                  )}
+                  {saveError && (
+                    <span className="text-sm text-error font-semibold flex items-center gap-1">{saveError}</span>
                   )}
                   <button
                     onClick={saveProfile}

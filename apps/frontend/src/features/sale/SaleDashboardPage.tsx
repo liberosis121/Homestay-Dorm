@@ -1,11 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { useSaleDashboardStore } from './store/useSaleDashboardStore';
-import { TodayAppointment, RecentRegistration, ActivityLog } from '../../lib/supabaseClient';
+import { useSaleDashboardStore, TodayAppointment, RecentRegistration } from './store/useSaleDashboardStore';
 import {
   CalendarCheck, UserSearch, FileSignature, User,
-  MoreVertical, CheckCircle, X, ClipboardList, Users, FileText, RefreshCw
+  ClipboardList, Users, RefreshCw, XCircle
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -16,11 +15,12 @@ const todayLabel = today.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: TodayAppointment['status'] }) {
   const map = {
+    pending: { label: 'CHỜ XÁC NHẬN', cls: 'bg-[#f4ede6] text-[#7f756b]' },
     confirmed: { label: 'ĐÃ XÁC NHẬN', cls: 'bg-[#d2e9cd] text-[#384c37]' },
-    pending:   { label: 'CHỜ DUYỆT',   cls: 'bg-[#fdddb9] text-[#584329]' },
+    completed: { label: 'HOÀN THÀNH', cls: 'bg-[#e8e1db] text-[#4e453c]' },
     cancelled: { label: 'ĐÃ HỦY',      cls: 'bg-[#ffdad6] text-[#93000a]' },
   };
-  const s = map[status];
+  const s = map[status] || map.confirmed;
   return (
     <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${s.cls}`}>
       {s.label}
@@ -36,17 +36,15 @@ function SkeletonRow() {
       <td className="px-6 py-4"><div className="h-4 w-28 bg-[#eee7e1] rounded" /></td>
       <td className="px-6 py-4"><div className="h-4 w-36 bg-[#eee7e1] rounded" /></td>
       <td className="px-6 py-4"><div className="h-5 w-24 bg-[#eee7e1] rounded-full" /></td>
-      <td className="px-6 py-4"><div className="h-4 w-4 bg-[#eee7e1] rounded" /></td>
     </tr>
   );
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({
-  label, value, icon, iconBg, trend, trendColor,
+  label, value, icon, iconBg,
 }: {
-  label: string; value: string | number; icon: string;
-  iconBg: string; trend: string; trendColor: string;
+  label: string; value: string | number; icon: string; iconBg: string;
 }) {
   return (
     <div className="bg-white rounded-xl border border-[#d1c4b9] shadow-sm hover:shadow-md transition-shadow p-6">
@@ -56,7 +54,6 @@ function KpiCard({
             {icon}
           </span>
         </div>
-        <span className={`text-xs font-bold ${trendColor}`}>{trend}</span>
       </div>
       <p className="text-[13px] text-[#4e453c] font-medium mb-1">{label}</p>
       <p className="text-2xl font-bold text-[#1e1b17]">{String(value).padStart(2, '0')}</p>
@@ -84,50 +81,18 @@ function ActionCard({
   );
 }
 
-// ─── Timeline Dot ─────────────────────────────────────────────────────────────
-function TimelineDot({ type }: { type: ActivityLog['type'] }) {
-  const map = {
-    contract:     'bg-[#6f583c] ring-[#fdddb9]',
-    schedule:     'bg-[#4d614b] ring-[#d2e9cd]',
-    system:       'bg-[#d1c4b9] ring-[#eee7e1]',
-    registration: 'bg-[#4d614b] ring-[#d2e9cd]',
-  };
-  return (
-    <div className={`absolute left-2.5 top-1 w-3 h-3 rounded-full border-4 border-[#fff8f3] ring-2 ${map[type]}`} />
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SaleDashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const {
-    isLoading, todayAppointments, recentRegistrations, activityLogs,
-    openMenuId, setOpenMenuId, fetchAll, confirmAppointment, cancelAppointment,
+    isLoading, loadError, todayAppointments, recentRegistrations, stats, fetchAll,
   } = useSaleDashboardStore();
-
-  // Đóng dropdown khi click bên ngoài
-  const menuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [setOpenMenuId]);
 
   useEffect(() => {
     if (!user || user.role !== 'sale') { navigate('/login'); return; }
     fetchAll();
   }, [user, navigate, fetchAll]);
-
-  // ── KPI Stats tính từ mock data ──────────────────────────────────────────
-  const newRegistrations = recentRegistrations.length;
-  const pendingSchedules = todayAppointments.filter(a => a.status === 'pending').length;
-  const upcomingSchedules = todayAppointments.filter(a => a.status !== 'cancelled').length;
-  const pendingContracts = 3; // mock cố định
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: "'Lexend', sans-serif" }}>
@@ -148,39 +113,38 @@ export default function SaleDashboardPage() {
         </button>
       </div>
 
+      {/* ── Lỗi tải dữ liệu ───────────────────────────────────────────────── */}
+      {loadError && (
+        <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2 bg-[#ffdad6] text-[#93000a] border border-[#f4b4ae]">
+          <XCircle className="w-4 h-4 shrink-0" /> {loadError}
+        </div>
+      )}
+
       {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <KpiCard
           label="Phiếu đăng ký mới"
-          value={newRegistrations}
+          value={stats.newRegistrations}
           icon="description"
           iconBg="bg-[#fdddb9] text-[#6f583c]"
-          trend="+12%"
-          trendColor="text-[#4d614b] font-bold"
         />
         <KpiCard
-          label="Lịch hẹn chờ xử lý"
-          value={pendingSchedules}
-          icon="pending_actions"
+          label="Lịch hẹn hôm nay"
+          value={stats.todayCount}
+          icon="event_available"
           iconBg="bg-[#d2e9cd] text-[#4d614b]"
-          trend="-2%"
-          trendColor="text-[#ba1a1a] font-bold"
         />
         <KpiCard
           label="Lịch xem phòng sắp tới"
-          value={upcomingSchedules}
+          value={stats.upcomingCount}
           icon="event"
           iconBg="bg-[#fdddb9] text-[#6f583c]"
-          trend="+5"
-          trendColor="text-[#4d614b] font-bold"
         />
         <KpiCard
-          label="Hợp đồng chờ soạn"
-          value={pendingContracts}
-          icon="history_edu"
+          label="Đơn đã lên lịch xem"
+          value={stats.scheduledCount}
+          icon="pending_actions"
           iconBg="bg-[#e6e2de] text-[#605e5b]"
-          trend="Ổn định"
-          trendColor="text-[#4e453c]"
         />
       </section>
 
@@ -205,15 +169,14 @@ export default function SaleDashboardPage() {
               </button>
             </div>
 
-            <div className="overflow-x-auto" ref={menuRef}>
+            <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-[#faf2ec] text-[#4e453c]">
                   <tr>
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Thời gian</th>
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Khách hàng</th>
-                    <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Loại phòng</th>
+                    <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider">Phòng / Chi nhánh</th>
                     <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-center">Trạng thái</th>
-                    <th className="px-6 py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#d1c4b9]">
@@ -221,14 +184,14 @@ export default function SaleDashboardPage() {
                     <>{[1,2,3].map(i => <SkeletonRow key={i} />)}</>
                   ) : todayAppointments.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-[#4e453c] text-sm">
+                      <td colSpan={4} className="px-6 py-12 text-center text-[#4e453c] text-sm">
                         <CalendarCheck className="w-10 h-10 mx-auto mb-3 text-[#d1c4b9]" />
                         Không có lịch hẹn nào hôm nay
                       </td>
                     </tr>
                   ) : (
                     todayAppointments.map((appt) => (
-                      <tr key={appt.id} className="hover:bg-[#fff8f3] transition-colors relative">
+                      <tr key={appt.id} className="hover:bg-[#fff8f3] transition-colors">
                         <td className="px-6 py-4 text-sm font-semibold text-[#1e1b17]">{appt.time}</td>
                         <td className="px-6 py-4 text-sm text-[#1e1b17]">{appt.customer_name}</td>
                         <td className="px-6 py-4 text-sm text-[#1e1b17]">
@@ -237,43 +200,6 @@ export default function SaleDashboardPage() {
                         </td>
                         <td className="px-6 py-4 text-center align-middle">
                           <StatusBadge status={appt.status} />
-                        </td>
-                        <td className="px-6 py-4 text-right relative">
-                          <button
-                            onClick={() => setOpenMenuId(openMenuId === appt.id ? null : appt.id)}
-                            className="p-1.5 rounded-full text-[#7f756b] hover:text-[#6f583c] hover:bg-[#f4ede6] transition-colors cursor-pointer"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-
-                          {/* Dropdown action menu */}
-                          {openMenuId === appt.id && (
-                            <div className="absolute right-6 top-10 z-30 w-max min-w-[230px] bg-white border border-[#d1c4b9] rounded-xl shadow-xl overflow-hidden">
-                              {appt.status === 'pending' && (
-                                <button
-                                  onClick={() => confirmAppointment(appt.id)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm leading-none text-[#1e1b17] hover:bg-[#d2e9cd]/50 transition-colors cursor-pointer text-left whitespace-nowrap"
-                                >
-                                  <CheckCircle className="w-4 h-4 shrink-0 text-[#4d614b]" />
-                                  Xác nhận lịch hẹn
-                                </button>
-                              )}
-                              {appt.status !== 'cancelled' && (
-                                <button
-                                  onClick={() => cancelAppointment(appt.id)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm leading-none text-[#ba1a1a] hover:bg-[#ffdad6]/50 transition-colors cursor-pointer text-left whitespace-nowrap"
-                                >
-                                  <X className="w-4 h-4 shrink-0" />
-                                  Hủy lịch hẹn
-                                </button>
-                              )}
-                              {appt.status === 'cancelled' && (
-                                <div className="px-4 py-3 text-xs leading-none text-[#7f756b] whitespace-nowrap text-center">
-                                  Không có hành động khả dụng
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </td>
                       </tr>
                     ))
@@ -315,7 +241,7 @@ export default function SaleDashboardPage() {
           </div>
         </div>
 
-        {/* RIGHT: Đăng ký gần đây + Timeline */}
+        {/* RIGHT: Đăng ký gần đây */}
         <div className="space-y-6">
 
           {/* Đăng ký gần đây */}
@@ -359,40 +285,8 @@ export default function SaleDashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[#1e1b17]">{reg.customer_name}</p>
-                      <p className="text-xs text-[#4e453c]">{reg.time_ago} • {reg.room_name}</p>
+                      <p className="text-xs text-[#4e453c]">{reg.time_ago}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Dòng thời gian hoạt động */}
-          <div className="bg-white rounded-xl border border-[#d1c4b9] shadow-sm p-6">
-            <h3 className="text-xs font-bold text-[#1e1b17] uppercase tracking-wider mb-5 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-[#6f583c]" />
-              Dòng thời gian hoạt động
-            </h3>
-
-            {isLoading ? (
-              <div className="space-y-5">
-                {[1,2,3].map(i => (
-                  <div key={i} className="flex gap-4 animate-pulse">
-                    <div className="w-3 h-3 rounded-full bg-[#eee7e1] shrink-0 mt-1" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3.5 w-36 bg-[#eee7e1] rounded" />
-                      <div className="h-3 w-28 bg-[#eee7e1] rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="relative space-y-6 before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#d1c4b9]">
-                {activityLogs.map((log: ActivityLog) => (
-                  <div key={log.id} className="relative pl-10">
-                    <TimelineDot type={log.type} />
-                    <p className="text-sm font-semibold text-[#1e1b17]">{log.title}</p>
-                    <p className="text-xs text-[#4e453c] mt-0.5">{log.detail}</p>
                   </div>
                 ))}
               </div>

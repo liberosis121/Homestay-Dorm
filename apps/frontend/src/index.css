@@ -263,3 +263,9 @@ input[type="file"],
 .cursor-pointer {
   cursor: pointer !important;
 }
+
+/* Hide browser's default eye/clear icons in input[type="password"] (Edge, IE, etc.) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}

@@ -35,19 +35,31 @@ export default function Navbar() {
         {/* MIDDLE SIDE: Navigation Links */}
         <div className="hidden md:flex items-center gap-8">
           <Link 
-            className={`font-body-md transition-colors ${location.pathname === '/' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`} 
+            className={`font-body-md transition-all duration-200 border-b-2 pb-1 ${
+              location.pathname === '/' 
+                ? 'text-primary font-bold border-primary' 
+                : 'text-on-surface-variant border-transparent hover:text-primary hover:border-primary/30'
+            }`} 
             to="/"
           >
             Giới thiệu
           </Link>
           <Link 
-            className={`font-body-md transition-colors ${location.pathname === '/customer/services' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`}
+            className={`font-body-md transition-all duration-200 border-b-2 pb-1 ${
+              location.pathname === '/customer/services' 
+                ? 'text-primary font-bold border-primary' 
+                : 'text-on-surface-variant border-transparent hover:text-primary hover:border-primary/30'
+            }`}
             to="/customer/services"
           >
             Dịch vụ
           </Link>
           <Link 
-            className={`font-body-md transition-colors ${location.pathname.includes('/rooms') ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant hover:text-primary'}`} 
+            className={`font-body-md transition-all duration-200 border-b-2 pb-1 ${
+              location.pathname.includes('/rooms') 
+                ? 'text-primary font-bold border-primary' 
+                : 'text-on-surface-variant border-transparent hover:text-primary hover:border-primary/30'
+            }`} 
             to="/rooms"
           >
             Phòng trống
@@ -77,7 +89,7 @@ export default function Navbar() {
                     {user.avatar_url ? (
                       <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
                     ) : (
-                      user.email[0].toUpperCase()
+                      (user.email?.[0] ?? user.full_name?.[0] ?? 'U').toUpperCase()
                     )}
                   </div>
                   <span className="hidden sm:block font-label-md">{user.full_name || 'Khách hàng'}</span>

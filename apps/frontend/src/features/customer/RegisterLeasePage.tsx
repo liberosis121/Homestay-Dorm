@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Send, Sparkles, UserRound } from 'lucide-react';
+import { CalendarClock, CheckCircle, ChevronLeft, ClipboardList, Home, Info, Send, Sparkles, UserRound, XCircle } from 'lucide-react';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import { useAuthStore } from '../../stores/authStore';
-import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import { cancelLeaseRegistrationApi, createLeaseRegistrationApi, getMyLeaseRegistrationsApi, type LeaseRegistration } from './lease.api';
+import { getBranchesApi } from '../rooms/rooms.api';
+import { fetchProfile } from './services/profile.service';
 
 type InterestedRoomState = {
   interestedRoomId?: string;
@@ -35,13 +37,6 @@ const genderOptions = [
   { value: 'other', label: 'Khác' },
 ];
 
-const branchOptions = [
-  { value: 'b-1', label: 'Chi nhánh Quận 1' },
-  { value: 'b-2', label: 'Chi nhánh Quận 7' },
-  { value: 'b-3', label: 'Thủ Đức - Làng Đại Học' },
-  { value: 'any', label: 'Chưa quyết định' },
-];
-
 const budgetOptions = [
   { value: 'under_2m', label: 'Dưới 2 triệu' },
   { value: '2m_5m', label: '2 - 5 triệu' },
@@ -58,9 +53,22 @@ const viewingTimeOptions = [
 ];
 
 const today = new Date().toISOString().split('T')[0];
-const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px-5 text-sm font-body-md shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface hover:border-primary/40';
+const inputClass = 'w-full bg-white border border-[#d7ded3] rounded-24 py-3.5 px-5 text-sm font-body-md shadow-[0_1px_0_rgba(74,101,73,0.04)] transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface hover:border-primary/40 disabled:bg-[#f6f5f1] disabled:text-on-surface-variant/70 disabled:cursor-not-allowed disabled:border-[#e3e2de]';
 const selectTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
-const datePickerTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 px-5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
+const datePickerTriggerClass = 'w-full bg-white border-[#d7ded3] rounded-24 py-3.5 pl-12 pr-5 shadow-[0_1px_0_rgba(74,101,73,0.04)] hover:border-primary/40 transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/20';
+
+const BLOCKING_REGISTRATION_STATUSES = new Set(['pending_schedule', 'scheduled', 'deposited']);
+const REGISTRATION_STATUS_LABELS: Record<string, string> = {
+  pending_schedule: 'Chờ Sale xếp lịch',
+  scheduled: 'Đã có lịch xem',
+  deposited: 'Đã đặt cọc',
+};
+
+const findBlockingRegistration = (registrations: LeaseRegistration[]) => {
+  return registrations
+    .filter((registration) => BLOCKING_REGISTRATION_STATUSES.has(registration.status))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
+};
 
 export const RegisterLeasePage: React.FC = () => {
   const navigate = useNavigate();
@@ -71,6 +79,12 @@ export const RegisterLeasePage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [branches, setBranches] = useState<any[]>([]);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
+  const [registrations, setRegistrations] = useState<LeaseRegistration[]>([]);
+  const [isCheckingRegistrations, setIsCheckingRegistrations] = useState(false);
+  const [isCancellingRegistration, setIsCancellingRegistration] = useState(false);
+  const [registrationActionMessage, setRegistrationActionMessage] = useState('');
 
   const [form, setForm] = useState({
     fullName: user?.full_name || '',
@@ -104,8 +118,80 @@ export const RegisterLeasePage: React.FC = () => {
     }
     if (user.renting_room_name) {
       navigate('/profile');
+      return;
     }
+
+    // Kiểm tra tính đầy đủ của hồ sơ
+    fetchProfile()
+      .then((data) => {
+        const phone = data.phone || '';
+        const details = data.details || {};
+        const cccd = details.cccd || '';
+        const dob = details.dob || '';
+        const gender = details.gender || '';
+        const nationality = details.nationality || '';
+        const issueDate = details.cccd_issue_date || '';
+        const issuePlace = details.cccd_issue_place || '';
+        const address = details.address || '';
+
+        const complete = (
+          phone.trim() !== '' &&
+          cccd.trim() !== '' &&
+          dob.trim() !== '' &&
+          gender.trim() !== '' &&
+          nationality.trim() !== '' &&
+          issueDate.trim() !== '' &&
+          issuePlace.trim() !== '' &&
+          address.trim() !== ''
+        );
+        setIsProfileComplete(complete);
+
+        // Load thông tin của người dùng vào form
+        const genderVal = details.gender || '';
+        let mappedGender = 'male';
+        if (genderVal === 'female' || genderVal === 'Nữ') {
+          mappedGender = 'female';
+        } else if (genderVal === 'other' || genderVal === 'Khác') {
+          mappedGender = 'other';
+        } else if (genderVal === 'male' || genderVal === 'Nam') {
+          mappedGender = 'male';
+        }
+
+        setForm(prev => ({
+          ...prev,
+          fullName: data.full_name || prev.fullName,
+          phone: phone || prev.phone,
+          email: data.email || prev.email,
+          gender: mappedGender,
+        }));
+      })
+      .catch((err) => {
+        console.error('Lỗi khi kiểm tra hồ sơ cá nhân:', err);
+        setIsProfileComplete(false);
+      });
+
+    getBranchesApi()
+      .then((data) => setBranches(data))
+      .catch((err) => console.error('Lỗi khi tải chi nhánh:', err));
+    setIsCheckingRegistrations(true);
+    getMyLeaseRegistrationsApi()
+      .then((data) => setRegistrations(data))
+      .catch((err) => {
+        console.error('Lỗi khi tải phiếu đăng ký thuê:', err);
+        setErrors(prev => ({
+          ...prev,
+          submit: 'Không thể kiểm tra phiếu thuê hiện có. Vui lòng thử lại sau.',
+        }));
+      })
+      .finally(() => setIsCheckingRegistrations(false));
   }, [user, navigate, location]);
+
+  const branchOptions = useMemo(() => {
+    return [
+      ...branches.map((b: any) => ({ value: b.id, label: b.name })),
+      { value: 'any', label: 'Chưa quyết định' }
+    ];
+  }, [branches]);
 
   const interestedRoomLabel = useMemo(() => {
     if (!interested.interestedRoomName) return null;
@@ -114,7 +200,31 @@ export const RegisterLeasePage: React.FC = () => {
       branch: interested.preferredBranchName || branchOptions.find(b => b.value === interested.preferredBranchId)?.label || 'Chi nhánh đang cập nhật',
       price: interested.preferredBudget ? `${interested.preferredBudget.toLocaleString('vi-VN')}đ/tháng` : 'Giá đang cập nhật',
     };
-  }, [interested]);
+  }, [interested, branchOptions]);
+
+  const blockingRegistration = useMemo(() => findBlockingRegistration(registrations), [registrations]);
+  const canCancelBlockingRegistration = blockingRegistration?.status === 'pending_schedule';
+
+  const handleCancelBlockingRegistration = async () => {
+    if (!blockingRegistration || !canCancelBlockingRegistration) return;
+
+    setIsCancellingRegistration(true);
+    setRegistrationActionMessage('');
+    try {
+      const updated = await cancelLeaseRegistrationApi(blockingRegistration.id);
+      setRegistrations(prev => prev.map(item => item.id === updated.id ? updated : item));
+      setErrors(prev => {
+        const { submit, ...rest } = prev;
+        return rest;
+      });
+      setRegistrationActionMessage('Đã hủy phiếu cũ. Bạn có thể gửi phiếu yêu cầu thuê mới.');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Không thể hủy phiếu cũ. Vui lòng thử lại hoặc liên hệ Sale.';
+      setErrors(prev => ({ ...prev, submit: msg }));
+    } finally {
+      setIsCancellingRegistration(false);
+    }
+  };
 
   const setField = (key: keyof typeof form, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -141,46 +251,92 @@ export const RegisterLeasePage: React.FC = () => {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user || !validate()) return;
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      const db = getMockDB();
-      const registration = {
-        id: `rr-${Date.now()}`,
-        customer_id: user.id,
-        customer_name: form.fullName,
-        phone: form.phone,
-        email: form.email,
-        gender: form.gender,
-        preferred_room_type: form.preferredRoomType,
-        rental_type: form.rentalType,
-        occupants_count: Number(form.occupantsCount),
-        preferred_branch_id: form.preferredBranchId,
-        budget_range: form.budgetRange,
-        move_in_date: form.moveInDate,
-        lease_term: form.leaseTerm,
-        preferred_viewing_date: form.preferredViewingDate,
-        preferred_viewing_time: form.preferredViewingTime,
-        viewing_time_note: form.viewingTimeNote,
-        preferred_amenities: form.amenities,
-        note: form.note,
-        interested_room_id: interested.interestedRoomId,
-        interested_room_name: interested.interestedRoomName,
-        status: 'pending_schedule',
-        created_at: new Date().toISOString(),
-      };
-
-      saveMockDB({
-        ...db,
-        rental_registrations: [...(db.rental_registrations || []), registration],
+    if (blockingRegistration) {
+      setErrors({
+        submit: canCancelBlockingRegistration
+          ? 'Bạn cần hủy phiếu cũ hoặc đặt lại lịch với Sale trước khi tạo phiếu mới.'
+          : 'Bạn đang có phiếu thuê đang xử lý. Vui lòng kiểm tra lịch xem phòng hoặc liên hệ Sale để được hỗ trợ.',
       });
-      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Map khoảng giá (categorical) -> ngân sách tối đa dạng số (cột preferred_price là numeric)
+      const budgetToPrice: Record<string, number> = {
+        under_2m: 2000000,
+        '2m_5m': 5000000,
+        over_5m: 8000000,
+        flexible: 0, // 0 = linh hoạt / chưa xác định
+      };
+      // Gửi TÊN khu vực (không phải branch ID) để Sale đọc được
+      const areaLabel = branchOptions.find(b => b.value === form.preferredBranchId)?.label || 'Chưa quyết định';
+      const viewingTimeLabel = viewingTimeOptions.find(t => t.value === form.preferredViewingTime)?.label || form.preferredViewingTime;
+
+      // Map form fields sang format backend yêu cầu
+      await createLeaseRegistrationApi({
+        occupants_count: parseInt(form.occupantsCount, 10),
+        preferred_area: areaLabel,
+        preferred_room_type: form.preferredRoomType.toLowerCase(), // 'dorm' | 'twin' | 'studio' | 'any'
+        preferred_price: budgetToPrice[form.budgetRange] ?? 0,
+        viewing_preference: `${form.preferredViewingDate} (${viewingTimeLabel})`,
+        expected_move_in_date: form.moveInDate,
+        rental_duration: `${form.leaseTerm} tháng`,
+        other_criteria: [
+          interested.interestedRoomName ? `Phòng quan tâm: ${interested.interestedRoomName}` : '',
+          form.note,
+          form.amenities.join(', '),
+          form.viewingTimeNote,
+        ].filter(Boolean).join(' | ') || undefined,
+      });
       setSubmitted(true);
-    }, 800);
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Có lỗi xảy ra khi gửi đơn. Vui lòng thử lại.';
+      setErrors({ submit: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isProfileComplete === null) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-3">
+          <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+          <p className="font-body-md text-sm text-on-surface-variant">Đang kiểm tra hồ sơ cá nhân...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isProfileComplete === false) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-6 bg-surface theme-customer">
+        <div className="w-full max-w-lg bg-white dark:bg-surface-container-highest/80 border border-glass-stroke shadow-2xl rounded-[32px] p-8 md:p-10 text-center flex flex-col items-center gap-6 moss-shadow">
+          <div className="w-20 h-20 bg-amber-50 dark:bg-amber-950/30 rounded-full flex items-center justify-center text-amber-500 shadow-lg shadow-amber-500/10">
+            <span className="material-symbols-outlined text-4xl">warning</span>
+          </div>
+          <div className="space-y-3">
+            <h2 className="font-headline-lg text-2xl font-bold text-on-surface">Cập nhật hồ sơ cá nhân</h2>
+            <p className="font-body-md text-on-surface-variant leading-relaxed text-sm text-justify">
+              Bạn cần điền đầy đủ các thông tin cá nhân bắt buộc bao gồm: <strong>Số điện thoại, Số CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày cấp và Nơi cấp CCCD, Địa chỉ thường trú</strong> trong hồ sơ cá nhân của mình trước khi thực hiện chức năng đăng ký thuê phòng.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-full h-14 bg-primary text-on-primary rounded-2xl font-label-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-all shadow-lg shadow-primary/10 mt-2 cursor-pointer group"
+          >
+            Cập nhật hồ sơ cá nhân
+            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -250,20 +406,67 @@ export const RegisterLeasePage: React.FC = () => {
             </div>
           )}
 
+          {registrationActionMessage && (
+            <div className="mb-6 flex items-start gap-3 rounded-24 border border-primary/25 bg-primary/10 px-5 py-4 text-sm text-primary">
+              <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <span className="leading-6">{registrationActionMessage}</span>
+            </div>
+          )}
+
+          {blockingRegistration && (
+            <div className="mb-6 rounded-24 border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-[#5f4a1f]">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 shrink-0 mt-0.5 text-amber-700" />
+                  <div>
+                    <p className="font-bold text-[#4c3b18]">Bạn đang có phiếu yêu cầu thuê đang xử lý</p>
+                    <p className="mt-1 leading-6">
+                      Phiếu {blockingRegistration.id} đang ở trạng thái{' '}
+                      <span className="font-semibold">{REGISTRATION_STATUS_LABELS[blockingRegistration.status] || blockingRegistration.status}</span>.
+                      Nếu bạn vẫn còn nhu cầu với phiếu cũ, Sale có thể xếp lại lịch trên phiếu này.
+                      Nếu muốn gửi thông tin mới, hãy hủy phiếu cũ trước.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/customer/viewing-schedules')}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d7ded3] bg-white px-4 py-2.5 text-sm font-semibold text-[#4a6549] shadow-sm transition hover:bg-primary/5 cursor-pointer"
+                  >
+                    <CalendarClock className="w-4 h-4" />
+                    Đặt lại lịch với Sale
+                  </button>
+                  {canCancelBlockingRegistration && (
+                    <button
+                      type="button"
+                      onClick={handleCancelBlockingRegistration}
+                      disabled={isCancellingRegistration}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-error px-4 py-2.5 text-sm font-semibold text-on-error shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      {isCancellingRegistration ? 'Đang hủy phiếu...' : 'Hủy phiếu cũ để tạo phiếu mới'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormSection icon={<UserRound className="w-5 h-5" />} title="Thông tin liên hệ">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Họ và tên" error={errors.fullName}>
-                  <input value={form.fullName} onChange={e => setField('fullName', e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" />
+                  <input value={form.fullName} onChange={e => setField('fullName', e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" disabled />
                 </Field>
                 <Field label="Số điện thoại" error={errors.phone}>
-                  <input value={form.phone} onChange={e => setField('phone', e.target.value)} className={inputClass} placeholder="0901234567" />
+                  <input value={form.phone} onChange={e => setField('phone', e.target.value)} className={inputClass} placeholder="0901234567" disabled />
                 </Field>
                 <Field label="Email" error={errors.email}>
-                  <input value={form.email} onChange={e => setField('email', e.target.value)} className={inputClass} placeholder="email@example.com" />
+                  <input value={form.email} onChange={e => setField('email', e.target.value)} className={inputClass} placeholder="email@example.com" disabled />
                 </Field>
                 <Field label="Giới tính">
-                  <CustomSelect value={form.gender} onChange={val => setField('gender', val)} options={genderOptions} triggerClassName={selectTriggerClass} />
+                  <CustomSelect value={form.gender} onChange={val => setField('gender', val)} options={genderOptions} triggerClassName={selectTriggerClass} disabled pill hideArrow />
                 </Field>
               </div>
             </FormSection>
@@ -370,12 +573,25 @@ export const RegisterLeasePage: React.FC = () => {
               </div>
             </FormSection>
 
+            {errors.submit && (
+              <div className="flex items-start gap-3 rounded-24 border border-error/40 bg-error/10 px-5 py-4 text-sm text-error">
+                <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                <span className="leading-6">{errors.submit}</span>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-surface-variant">
               <p className="text-xs text-on-surface-variant leading-relaxed max-w-xl">
                 Phiếu này sẽ được gửi đến nhân viên Sale để kiểm tra phòng/giường phù hợp trước khi lập lịch xem phòng.
               </p>
-              <button type="submit" disabled={isSubmitting} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-95 hover:-translate-y-[1px] hover:shadow-md active:translate-y-[1px] active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
-                {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu đăng ký'}
+              <button type="submit" disabled={isSubmitting || isCheckingRegistrations || !!blockingRegistration} className="inline-flex w-auto shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-timber-accent px-7 py-2.5 text-sm font-label-md text-white shadow-sm transition-all hover:opacity-95 hover:-translate-y-[1px] hover:shadow-md active:translate-y-[1px] active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
+                {isCheckingRegistrations
+                  ? 'Đang kiểm tra phiếu cũ...'
+                  : blockingRegistration
+                    ? 'Cần xử lý phiếu cũ trước'
+                    : isSubmitting
+                      ? 'Đang gửi...'
+                      : 'Gửi phiếu đăng ký'}
                 <Send className="w-4 h-4" />
               </button>
             </div>

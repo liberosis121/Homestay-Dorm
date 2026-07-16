@@ -1,7 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { getMockDB, saveMockDB, ViewingSchedule, CustomerDepositRequest, Room, Bed } from '../../lib/supabaseClient';
+import { ViewingSchedule, getMyViewingSchedulesApi, cancelViewingScheduleApi, rescheduleViewingScheduleApi, confirmViewingScheduleApi } from './viewing.api';
+import { getMyDepositsApi, createDepositApi, createGroupDepositApi, DepositRequest } from './deposit.api';
+import { getMyLeaseRegistrationsApi } from './lease.api';
+import { getRoomDetailApi } from '../rooms/rooms.api';
+
+// Khóa liên kết phiếu cọc <-> lịch xem phòng: một phiếu cọc gắn với đúng buổi xem
+// của cùng đơn đăng ký (registration_id) VÀ cùng phòng (room_id) đã dẫn tới việc đặt cọc.
+const depositKey = (d: { registration_id: string; room_id: string }) => `${d.registration_id}|${d.room_id}`;
+const scheduleKey = (s: { registration_id: string; room_id: string }) => `${s.registration_id}|${s.room_id}`;
 import { useViewingScheduleStore } from './store/useViewingScheduleStore';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import CustomSelect from '../../components/ui/CustomSelect';
@@ -22,14 +30,22 @@ const formatDateVN = (dateStr: string) => {
 };
 
 // ─── StatusBadge ──────────────────────────────────────────────────────────────
-const StatusBadge = ({ status }: { status: ViewingSchedule['status'] }) => {
+const StatusBadge = ({
+  status,
+  pendingConfirmationActor,
+}: {
+  status: ViewingSchedule['status'];
+  pendingConfirmationActor?: ViewingSchedule['pendingConfirmationActor'];
+}) => {
   const map = {
     confirmed: { label: 'ĐÃ XÁC NHẬN', cls: 'bg-[#e8f5e9] text-[#2e7d32]' },
-    pending:   { label: 'CHỜ DUYỆT',   cls: 'bg-[#fff8e1] text-[#f57f17]' },
+    pending:   { label: 'CHỜ XÁC NHẬN', cls: 'bg-[#fff8e1] text-[#f57f17]' },
     completed: { label: 'HOÀN THÀNH',  cls: 'bg-surface-container text-on-surface-variant' },
     cancelled: { label: 'ĐÃ HỦY',     cls: 'bg-error-container text-error' },
   };
-  const s = map[status];
+  const s = status === 'pending' && pendingConfirmationActor === 'staff'
+    ? { label: 'CHỜ SALE XÁC NHẬN', cls: 'bg-[#fff8e1] text-[#f57f17]' }
+    : map[status];
   return (
     <span className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase ${s.cls}`}>
       {s.label}
@@ -236,13 +252,15 @@ const AppointmentCard = ({
   depositRequest,
   onCancel,
   onReschedule,
+  onConfirm,
   onCreateDepositRequest,
 }: {
   schedule: ViewingSchedule;
-  depositRequest?: CustomerDepositRequest;
+  depositRequest?: DepositRequest;
   onCancel: (id: string) => void;
   onReschedule: (id: string) => void;
-  onCreateDepositRequest: (schedule: ViewingSchedule) => { ok: boolean; message: string };
+  onConfirm: (id: string) => void;
+  onCreateDepositRequest: (schedule: ViewingSchedule) => Promise<{ ok: boolean; message: string }> | { ok: boolean; message: string };
 }) => {
   const { cancellingId, setCancellingId, reschedulingId, setReschedulingId, rescheduleDate, rescheduleTime, setRescheduleDate, setRescheduleTime } = useViewingScheduleStore();
   const navigate = useNavigate();
@@ -250,6 +268,7 @@ const AppointmentCard = ({
   const [confirmingDeposit, setConfirmingDeposit] = useState(false);
   const [depositError, setDepositError] = useState('');
   const isUpcoming = schedule.status === 'pending' || schedule.status === 'confirmed';
+  const canManageSchedule = schedule.can_manage !== false;
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -264,8 +283,8 @@ const AppointmentCard = ({
     showToast('Đã cập nhật lịch hẹn thành công.');
   };
 
-  const confirmDepositRequest = () => {
-    const result = onCreateDepositRequest(schedule);
+  const confirmDepositRequest = async () => {
+    const result = await onCreateDepositRequest(schedule);
     setConfirmingDeposit(false);
     if (result.ok) {
       setDepositError('');
@@ -301,7 +320,7 @@ const AppointmentCard = ({
                 <h3 className="font-bold text-primary text-lg leading-tight">{schedule.room_name}</h3>
                 <p className="text-xs text-on-surface-variant mt-0.5">ID: {schedule.id.toUpperCase()}</p>
               </div>
-              <StatusBadge status={schedule.status} />
+              <StatusBadge status={schedule.status} pendingConfirmationActor={schedule.pendingConfirmationActor} />
             </div>
           </div>
         </div>
@@ -319,9 +338,13 @@ const AppointmentCard = ({
           <div className="flex items-center gap-2 text-sm text-on-surface-variant">
             <User className="w-4 h-4 shrink-0 text-primary" />
             <span>{schedule.staff_name}</span>
-            <span className="text-outline">·</span>
-            <Phone className="w-3.5 h-3.5 shrink-0" />
-            <span>{schedule.staff_phone}</span>
+            {schedule.staff_phone && (
+              <>
+                <span className="text-outline">·</span>
+                <Phone className="w-3.5 h-3.5 shrink-0" />
+                <span>{schedule.staff_phone}</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -329,7 +352,7 @@ const AppointmentCard = ({
         <Timeline step={schedule.timeline_step} status={schedule.status} />
 
         {/* Reschedule inline form */}
-        {reschedulingId === schedule.id && (
+        {canManageSchedule && reschedulingId === schedule.id && (
           <div className="mb-4 p-4 rounded-[16px] bg-primary-fixed/20 border border-primary/20 space-y-3">
             <p className="text-sm font-semibold text-primary">Chọn thời gian mới</p>
             <div className="grid grid-cols-2 gap-3">
@@ -390,8 +413,16 @@ const AppointmentCard = ({
         )}
 
         {/* Action buttons — only for upcoming */}
-        {isUpcoming && (
+        {isUpcoming && canManageSchedule && (
           <div className="flex gap-2 flex-wrap">
+            {schedule.status === 'pending' && schedule.pendingConfirmationActor !== 'staff' && (
+              <button
+                onClick={() => onConfirm(schedule.id)}
+                className="flex-1 min-w-[130px] flex items-center justify-center gap-1.5 py-2.5 bg-primary text-on-primary rounded-full text-sm font-semibold hover:opacity-90 transition-all active:scale-[0.98]"
+              >
+                <CheckCircle className="w-4 h-4" /> Xác nhận lịch
+              </button>
+            )}
             <button
               onClick={() => { setReschedulingId(schedule.id); setCancellingId(null); setRescheduleDate(''); setRescheduleTime(''); }}
               className="flex-1 min-w-[110px] flex items-center justify-center gap-1.5 py-2.5 border border-primary text-primary rounded-full text-sm font-semibold hover:bg-primary/5 transition-colors cursor-pointer"
@@ -416,7 +447,7 @@ const AppointmentCard = ({
         {schedule.status === 'completed' && (
           <div className="mt-4">
             {depositRequest ? (() => {
-              const depStatus = depositRequest.status;
+              const depStatus: string = depositRequest.status;
               let title = 'Yêu cầu đặt cọc đang chờ xác nhận';
               let desc = 'Nhân viên Sale sẽ kiểm tra phòng/giường sau buổi xem và liên hệ bạn để xác nhận khoản đặt cọc.';
               let isSuccess = false;
@@ -449,7 +480,17 @@ const AppointmentCard = ({
                   </div>
                 </div>
               );
-            })() : confirmingDeposit ? (
+            })() : !canManageSchedule ? (
+              <div className="p-4 rounded-[16px] bg-surface-container-low border border-outline-variant flex items-start gap-3">
+                <CreditCard className="w-5 h-5 shrink-0 mt-0.5 text-on-surface-variant" />
+                <div>
+                  <p className="text-sm font-semibold text-on-surface">Chờ người đại diện đặt cọc</p>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Bạn là thành viên nhóm nên chỉ có thể theo dõi lịch và trạng thái đặt cọc. Người đại diện sẽ thực hiện thao tác đặt cọc/thanh toán.
+                  </p>
+                </div>
+              </div>
+            ) : confirmingDeposit ? (
               <div className="p-4 rounded-[16px] bg-[#f7f4ef] border border-[#d8c8b4]">
                 <p className="text-sm font-semibold text-primary">Bạn muốn gửi yêu cầu đặt cọc phòng này?</p>
                 <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
@@ -512,30 +553,30 @@ export default function ViewingSchedulePage() {
   const {
     activeTab, setActiveTab,
     searchQuery, setSearchQuery,
-    setCancellingId, setReschedulingId
+    setCancellingId, setReschedulingId,
+    rescheduleDate, rescheduleTime
   } = useViewingScheduleStore();
 
   const [allSchedules, setAllSchedules] = useState<ViewingSchedule[]>([]);
-  const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
-  const [initialDepositScheduleIds, setInitialDepositScheduleIds] = useState<Set<string>>(new Set());
+  const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
+  const [depositedKeys, setDepositedKeys] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
     setIsLoading(true);
-    setTimeout(() => {
-      const db = getMockDB();
-      const list: ViewingSchedule[] = (db.viewing_schedules || []).filter(
-        (s: ViewingSchedule) => s.customer_id === user.id
-      );
-      const requests: CustomerDepositRequest[] = (db.customer_deposit_requests || []).filter(
-        (r: CustomerDepositRequest) => r.customer_id === user.id
-      );
-      setAllSchedules(list);
-      setDepositRequests(requests);
-      setInitialDepositScheduleIds(new Set(requests.map(r => r.viewing_schedule_id)));
+    Promise.all([
+      getMyViewingSchedulesApi(),
+      getMyDepositsApi()
+    ]).then(([schedulesList, depositsList]) => {
+      setAllSchedules(schedulesList);
+      setDepositRequests(depositsList);
+      setDepositedKeys(new Set(depositsList.map(depositKey)));
+    }).catch(err => {
+      console.error('Lỗi khi tải lịch xem phòng hoặc đặt cọc:', err);
+    }).finally(() => {
       setIsLoading(false);
-    }, 800);
+    });
   }, [user, navigate]);
 
   // Stats
@@ -557,8 +598,8 @@ export default function ViewingSchedulePage() {
     // Sort past schedules to push completed & deposit-request-less ones to the top
     if (activeTab === 'past') {
       tabFiltered.sort((a, b) => {
-        const aHasDep = initialDepositScheduleIds.has(a.id);
-        const bHasDep = initialDepositScheduleIds.has(b.id);
+        const aHasDep = depositedKeys.has(scheduleKey(a));
+        const bHasDep = depositedKeys.has(scheduleKey(b));
         
         // Prioritize completed over cancelled
         if (a.status === 'completed' && b.status !== 'completed') return -1;
@@ -585,84 +626,108 @@ export default function ViewingSchedulePage() {
       s.room_name.toLowerCase().includes(q) ||
       s.branch_name.toLowerCase().includes(q)
     );
-  }, [allSchedules, activeTab, searchQuery, initialDepositScheduleIds]);
+  }, [allSchedules, activeTab, searchQuery, depositedKeys]);
 
-  const handleCancel = (id: string) => {
-    const db = getMockDB();
-    const list = db.viewing_schedules || [];
-    const idx = list.findIndex((s: ViewingSchedule) => s.id === id);
-    if (idx !== -1) {
-      list[idx].status = 'cancelled';
-      list[idx].timeline_step = 1;
-      saveMockDB({ ...db, viewing_schedules: list });
-      setAllSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled', timeline_step: 1 } : s));
+  // Tải lại toàn bộ lịch từ server sau mỗi thao tác (bảo đảm có đủ join phòng/chi nhánh
+  // và trạng thái nhất quán, thay vì vá 1 item bằng response thô thiếu join).
+  const reloadSchedules = async () => {
+    try {
+      const list = await getMyViewingSchedulesApi();
+      setAllSchedules(list);
+    } catch (err) {
+      console.error('Lỗi khi tải lại lịch xem phòng:', err);
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    try {
+      await cancelViewingScheduleApi(id);
+      await reloadSchedules();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi hủy lịch xem phòng.');
     }
     setCancellingId(null);
   };
 
-  const handleReschedule = (id: string) => {
-    setReschedulingId(null);
-    setAllSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'confirmed' } : s));
+  const handleConfirm = async (id: string) => {
+    try {
+      await confirmViewingScheduleApi(id);
+      await reloadSchedules();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi xác nhận lịch xem phòng.');
+    }
   };
 
-  const handleCreateDepositRequest = (schedule: ViewingSchedule) => {
+  const handleReschedule = async (id: string) => {
+    try {
+      const dateStr = rescheduleDate; // vd: 2026-06-25
+      const timeStr = rescheduleTime; // vd: 09:30
+      // Diễn giải giờ khách chọn là GIỜ ĐỊA PHƯƠNG (không thêm 'Z' UTC), đồng nhất với
+      // cách phía Sale tạo/dời lịch. Nếu ép 'Z' thì 08:00 sẽ bị hiển thị thành 15:00 (UTC+7).
+      const isoTime = new Date(`${dateStr}T${timeStr}:00`).toISOString();
+
+      await rescheduleViewingScheduleApi(id, isoTime);
+      await reloadSchedules();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi đổi lịch xem phòng.');
+    }
+    setReschedulingId(null);
+  };
+
+  const handleCreateDepositRequest = async (schedule: ViewingSchedule) => {
     if (!user) return { ok: false, message: 'Bạn cần đăng nhập để gửi yêu cầu đặt cọc.' };
-    const db = getMockDB();
-    const list: CustomerDepositRequest[] = db.customer_deposit_requests || [];
-    const existing = list.find(r => r.viewing_schedule_id === schedule.id && r.customer_id === user.id);
-    if (existing) {
-      setDepositRequests(prev => prev.some(r => r.id === existing.id) ? prev : [...prev, existing]);
-      return { ok: true, message: 'Yêu cầu đặt cọc của bạn đã được ghi nhận trước đó.' };
-    }
 
-    const room = (db.rooms || []).find((r: Room) => r.id === schedule.room_id);
-    const activeRoomDeposit = list.find(
-      r => r.room_id === schedule.room_id && r.status !== 'cancelled'
-    );
+    try {
+      // 1. Lấy chi tiết phòng (giường trống) + đơn đăng ký (để biết số thành viên nhóm).
+      const [roomDetails, myRegs] = await Promise.all([
+        getRoomDetailApi(schedule.room_id),
+        getMyLeaseRegistrationsApi()
+      ]);
+      const reg = myRegs.find(r => r.id === schedule.registration_id);
+      const neededBeds = reg?.occupants_count && reg.occupants_count > 0 ? reg.occupants_count : 1;
 
-    if (!room) {
-      return { ok: false, message: 'Không tìm thấy thông tin phòng trong hệ thống. Vui lòng liên hệ nhân viên Sale để kiểm tra lại.' };
-    }
-
-    if (activeRoomDeposit || room.status === 'deposited' || room.status === 'occupied' || room.status === 'maintenance') {
-      return {
-        ok: false,
-        message: 'Phòng/giường này đã được đặt cọc hoặc không còn trống. Nhân viên Sale sẽ hỗ trợ bạn chọn phương án phù hợp khác.',
-      };
-    }
-
-    if (room.status === 'partial') {
-      const availableBeds = (db.beds || []).filter(
-        (bed: Bed) => bed.room_id === room.id && bed.status === 'available'
-      );
-      if (availableBeds.length === 0) {
+      const availableBeds = (roomDetails.beds || []).filter(b => b.status === 'available');
+      if (availableBeds.length < neededBeds) {
         return {
           ok: false,
-          message: 'Các giường còn lại trong phòng này hiện đã được đặt cọc hoặc đang có người thuê.',
+          message: neededBeds > 1
+            ? `Nhóm cần ${neededBeds} giường trống nhưng phòng hiện chỉ còn ${availableBeds.length}. Vui lòng liên hệ Sale.`
+            : 'Hiện tại phòng này không còn giường nào trống ở trạng thái sẵn sàng để cọc.'
         };
       }
+
+      // 2. Gọi API tạo phiếu cọc: nhóm (N giường / 1 phiếu) hoặc lẻ (1 giường).
+      if (neededBeds > 1) {
+        const bedIds = availableBeds.slice(0, neededBeds).map(b => b.id);
+        await createGroupDepositApi({
+          registration_id: schedule.registration_id,
+          bed_ids: bedIds
+        });
+      } else {
+        await createDepositApi({
+          registration_id: schedule.registration_id,
+          bed_id: availableBeds[0].id
+        });
+      }
+
+      // 3. Tải lại danh sách cọc để đồng bộ UI
+      const depositsList = await getMyDepositsApi();
+      setDepositRequests(depositsList);
+      setDepositedKeys(new Set(depositsList.map(depositKey)));
+
+      return {
+        ok: true,
+        message: neededBeds > 1
+          ? `Đã tạo phiếu cọc nhóm giữ ${neededBeds} giường bằng 1 hóa đơn chung!`
+          : 'Đã tạo yêu cầu đặt cọc giường thành công trên hệ thống!'
+      };
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Có lỗi xảy ra khi tạo yêu cầu đặt cọc. Vui lòng liên hệ Sale để được hỗ trợ.';
+      return { ok: false, message: msg };
     }
-
-    const request: CustomerDepositRequest = {
-      id: `cdr-${Date.now()}`,
-      customer_id: user.id,
-      customer_name: user.full_name || 'Khách hàng mới',
-      customer_phone: user.phone || '0977889900',
-      room_id: schedule.room_id,
-      room_name: schedule.room_name,
-      room_image_url: schedule.room_image_url,
-      branch_name: schedule.branch_name,
-      viewing_schedule_id: schedule.id,
-      deposit_amount: 1000000,
-      expected_move_in_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: 'pending_sale_confirmation',
-      note: 'Khách đã xem phòng và muốn đăng ký đặt cọc.',
-      created_at: new Date().toISOString(),
-    };
-
-    saveMockDB({ ...db, customer_deposit_requests: [request, ...list] });
-    setDepositRequests(prev => [request, ...prev]);
-    return { ok: true, message: 'Đã gửi yêu cầu đặt cọc cho nhân viên Sale.' };
   };
 
   const statsCards = [
@@ -766,9 +831,10 @@ export default function ViewingSchedulePage() {
                   <AppointmentCard
                      key={s.id}
                      schedule={s}
-                     depositRequest={depositRequests.find(r => r.viewing_schedule_id === s.id)}
+                     depositRequest={depositRequests.find(r => r.registration_id === s.registration_id && r.room_id === s.room_id)}
                      onCancel={handleCancel}
                      onReschedule={handleReschedule}
+                     onConfirm={handleConfirm}
                      onCreateDepositRequest={handleCreateDepositRequest}
                   />
                 ))}

@@ -1,5 +1,22 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useMemo, useState } from 'react';
-import { getMockDB, saveMockDB, ManagerDeposit } from '../../lib/supabaseClient';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { ManagerDeposit } from '../../lib/supabaseClient';
+
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes} ${day}/${month}/${year}`;
+  } catch (err) {
+    return dateStr;
+  }
+};
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -9,50 +26,127 @@ const T = {
 };
 
 const STATUS_LABELS: Record<ManagerDeposit['status'], { label: string; bg: string; text: string; icon: string }> = {
-  pending:   { label: 'Chờ duyệt',   bg: T.amberBg, text: T.amber,  icon: 'hourglass_empty' },
-  approved:  { label: 'Đã duyệt',    bg: T.sageBg,  text: T.sage,   icon: 'check_circle' },
-  rejected:  { label: 'Từ chối',     bg: T.redBg,   text: T.red,    icon: 'cancel' },
-  need_more: { label: 'Cần bổ sung', bg: '#F3F4F6', text: '#4B5563',  icon: 'info' },
-  expired:   { label: 'Quá hạn',     bg: '#E5E7EB', text: '#9CA3AF',  icon: 'schedule' },
+  pending: { label: 'Chờ duyệt', bg: T.amberBg, text: T.amber, icon: 'hourglass_empty' },
+  approved: { label: 'Đã duyệt', bg: T.sageBg, text: T.sage, icon: 'check_circle' },
+  rejected: { label: 'Từ chối', bg: T.redBg, text: T.red, icon: 'cancel' },
+  need_more: { label: 'Cần bổ sung', bg: '#F3F4F6', text: '#4B5563', icon: 'info' },
+  expired: { label: 'Quá hạn', bg: '#E5E7EB', text: '#9CA3AF', icon: 'schedule' },
 };
 
 const DEPOSIT_TYPE_CONFIG = {
+  group: { label: 'Nhóm', icon: 'groups', bg: '#FAF2E8', text: '#5C4632' },
   room: { label: 'Cả phòng', icon: 'meeting_room', bg: '#FAF2E8', text: '#5C4632' },
-  bed:  { label: 'Giường lẻ', icon: 'bed',          bg: '#EAF0E6', text: '#5F7D4E' },
+  bed: { label: 'Giường lẻ', icon: 'bed', bg: '#EAF0E6', text: '#5F7D4E' },
 };
 
 const DEPOSIT_TYPE_FALLBACK = DEPOSIT_TYPE_CONFIG.room;
 
 const getTypeCfg = (dt?: string) =>
-  DEPOSIT_TYPE_CONFIG[dt as 'room' | 'bed'] ?? DEPOSIT_TYPE_FALLBACK;
+  DEPOSIT_TYPE_CONFIG[dt as keyof typeof DEPOSIT_TYPE_CONFIG] ?? DEPOSIT_TYPE_FALLBACK;
+
+const getPaymentDisplay = (value?: string) => {
+  const raw = (value || '').trim();
+  const lower = raw.toLowerCase();
+  if (!raw) return 'Chưa rõ';
+  if (lower.includes('chuyển khoản') || lower.includes('transfer')) return 'Chuyển khoản';
+  if (lower.includes('tiền mặt') || lower.includes('cash')) return 'Tiền mặt';
+  return raw;
+};
 
 export default function ManagerDepositsPage() {
-  const [deposits, setDeposits]         = useState<ManagerDeposit[]>([]);
-  const [selected, setSelected]         = useState<ManagerDeposit | null>(null);
+  const [deposits, setDeposits] = useState<ManagerDeposit[]>([]);
+  const { isSubmitting, guard } = useSubmitLock();
+  const [selected, setSelected] = useState<ManagerDeposit | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterType, setFilterType]     = useState<string>('all');
-  const [search, setSearch]             = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [search, setSearch] = useState('');
   const [reviewerNote, setReviewerNote] = useState('');
-  const [drawerOpen, setDrawerOpen]     = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    // Auth that cua kyen: uu tien gui access_token Supabase ma authStore luu sau khi login.
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      };
+    }
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchDeposits = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/deposits`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        setDeposits(result.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching deposits:', err);
+    }
+  };
 
   useEffect(() => {
-    const db = getMockDB();
-    // ── Migrate old data that may lack deposit_type ──────────────
-    const migrated = (db.manager_deposits || []).map((d: ManagerDeposit, i: number) => ({
-      ...d,
-      deposit_type: d.deposit_type ?? ((i % 3 === 0) ? 'bed' : 'room'),
-    }));
-    // Persist migrated data back so subsequent loads are clean
-    if (!db.manager_deposits?.[0]?.deposit_type) {
-      db.manager_deposits = migrated;
-      saveMockDB(db);
-    }
-    setDeposits(migrated);
+    fetchDeposits();
   }, []);
 
   const counts = useMemo(() => {
     const c = { all: deposits.length, pending: 0, approved: 0, rejected: 0, need_more: 0, expired: 0 };
-    deposits.forEach(d => { c[d.status]++; });
+    deposits.forEach(d => { if (c[d.status] !== undefined) c[d.status]++; });
     return c;
   }, [deposits]);
 
@@ -60,14 +154,15 @@ export default function ManagerDepositsPage() {
     const q = search.toLowerCase().trim();
     return deposits.filter(d => {
       const matchStatus = filterStatus === 'all' || d.status === filterStatus;
-      const matchType   = filterType   === 'all' || d.deposit_type === filterType;
+      const matchType = filterType === 'all' || d.deposit_type === filterType;
       const matchSearch = !q
         || d.id.toLowerCase().includes(q)
         || d.customer_name.toLowerCase().includes(q)
         || d.customer_phone.includes(q)
         || d.room_name.toLowerCase().includes(q)
         || (d.bed_name || '').toLowerCase().includes(q)
-        || d.bank_name.toLowerCase().includes(q);
+        || (d.bed_names || []).join(' ').toLowerCase().includes(q)
+        || getPaymentDisplay(d.bank_name).toLowerCase().includes(q);
       return matchStatus && matchType && matchSearch;
     });
   }, [deposits, filterStatus, filterType, search]);
@@ -78,50 +173,52 @@ export default function ManagerDepositsPage() {
     setDrawerOpen(true);
   };
 
-  const updateStatus = (newStatus: ManagerDeposit['status']) => {
-    if (!selected) return;
-    const db = getMockDB();
-    
-    // 1. Update the ManagerDeposit status
-    const updated = db.manager_deposits.map((d: ManagerDeposit) =>
-      d.id === selected.id
-        ? { ...d, status: newStatus, reviewer_note: reviewerNote, reviewed_at: new Date().toISOString() }
-        : d
-    );
-    db.manager_deposits = updated;
+  const getBedDisplay = (dep: ManagerDeposit) => {
+    if (dep.bed_names && dep.bed_names.length > 0) return dep.bed_names.join(', ');
+    return dep.bed_name || '';
+  };
 
-    // 2. Sync with CustomerDepositRequest and DepositInvoice
-    if (newStatus === 'approved') {
-      db.customer_deposit_requests = (db.customer_deposit_requests || []).map((r: any) =>
-        r.customer_id === selected.customer_id && r.room_id === selected.room_id
-          ? { ...r, status: 'paid', note: reviewerNote || r.note }
-          : r
-      );
-      db.deposit_invoices = (db.deposit_invoices || []).map((i: any) =>
-        i.customer_id === selected.customer_id && i.room_id === selected.room_id
-          ? { ...i, status: 'paid' }
-          : i
-      );
-    } else if (newStatus === 'rejected' || newStatus === 'need_more') {
-      db.customer_deposit_requests = (db.customer_deposit_requests || []).map((r: any) =>
-        r.customer_id === selected.customer_id && r.room_id === selected.room_id
-          ? { ...r, status: 'invoice_created', note: reviewerNote || r.note }
-          : r
-      );
-      db.deposit_invoices = (db.deposit_invoices || []).map((i: any) =>
-        i.customer_id === selected.customer_id && i.room_id === selected.room_id
-          ? { ...i, status: 'pending' }
-          : i
-      );
+  const getBedTableDisplay = (dep: ManagerDeposit) => {
+    if (dep.deposit_type === 'group' && dep.bed_names && dep.bed_names.length > 0) {
+      return `${dep.bed_names.length} giường`;
     }
+    return dep.bed_name || '';
+  };
 
-    saveMockDB(db);
-    setDeposits(updated);
-    setSelected(prev => prev ? { ...prev, status: newStatus, reviewer_note: reviewerNote } : null);
+  // Khoa chong double-click: tranh duyet/tu choi phieu coc nhieu lan.
+  const updateStatus = async (newStatus: ManagerDeposit['status']) => {
+    await guard(() => doUpdateStatus(newStatus));
+  };
+
+  const doUpdateStatus = async (newStatus: ManagerDeposit['status']) => {
+    if (!selected) return;
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/deposits/${selected.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: newStatus,
+          reviewer_note: reviewerNote
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setDeposits(prev => prev.map((d: ManagerDeposit) =>
+          d.id === selected.id
+            ? { ...d, status: newStatus, reviewer_note: reviewerNote, reviewed_at: new Date().toISOString() }
+            : d
+        ));
+        setSelected(prev => prev ? { ...prev, status: newStatus, reviewer_note: reviewerNote } : null);
+        setDrawerOpen(false);
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-5 animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif" }} className="space-y-5 animate-fade-in-up">
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
@@ -135,9 +232,9 @@ export default function ManagerDepositsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {([
           { key: 'all', label: 'Tất cả', text: T.primary, bg: T.primaryLight },
-          { key: 'pending',   ...STATUS_LABELS.pending,   label: 'Chờ duyệt'   },
-          { key: 'approved',  ...STATUS_LABELS.approved,  label: 'Đã duyệt'    },
-          { key: 'rejected',  ...STATUS_LABELS.rejected,  label: 'Từ chối'     },
+          { key: 'pending', ...STATUS_LABELS.pending, label: 'Chờ duyệt' },
+          { key: 'approved', ...STATUS_LABELS.approved, label: 'Đã duyệt' },
+          { key: 'rejected', ...STATUS_LABELS.rejected, label: 'Từ chối' },
           { key: 'need_more', ...STATUS_LABELS.need_more, label: 'Cần bổ sung' },
         ] as { key: string; label: string; bg: string; text: string }[]).map(item => {
           const isActive = filterStatus === item.key;
@@ -196,9 +293,10 @@ export default function ManagerDepositsPage() {
         {/* Deposit Type filter */}
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           {([
-            { key: 'all',  label: 'Tất cả loại',  icon: 'apps' },
-            { key: 'room', label: 'Cả phòng',     icon: 'meeting_room' },
-            { key: 'bed',  label: 'Giường lẻ',    icon: 'bed' },
+            { key: 'all', label: 'Tất cả loại', icon: 'apps' },
+            { key: 'room', label: 'Cả phòng', icon: 'meeting_room' },
+            { key: 'bed', label: 'Giường lẻ', icon: 'bed' },
+            { key: 'group', label: 'Nhóm', icon: 'groups' },
           ] as { key: string; label: string; icon: string }[]).map(t => {
             const isSelected = filterType === t.key;
             return (
@@ -230,15 +328,15 @@ export default function ManagerDepositsPage() {
         <div className="overflow-x-auto">
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '11%' }} /> {/* Mã cọc */}
-              <col style={{ width: '16%' }} /> {/* Khách hàng */}
-              <col style={{ width: '12%' }} /> {/* Loại đặt cọc */}
-              <col style={{ width: '14%' }} /> {/* Phòng / Giường */}
-              <col style={{ width: '12%' }} /> {/* Số tiền */}
-              <col style={{ width: '11%' }} /> {/* Ngân hàng */}
-              <col style={{ width: '11%' }} /> {/* Ngày cọc */}
-              <col style={{ width: '13%' }} /> {/* Trạng thái */}
-              <col style={{ width: '10%' }} /> {/* Action */}
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
@@ -247,7 +345,7 @@ export default function ManagerDepositsPage() {
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                 }}>Mã cọc</th>
-                {['Khách hàng', 'Loại cọc', 'Phòng / Giường', 'Số tiền', 'Ngân hàng', 'Ngày cọc', 'Trạng thái'].map(h => (
+                {['Khách hàng', 'Loại cọc', 'Phòng / Giường', 'Số tiền', 'Phương thức', 'Ngày cọc', 'Trạng thái'].map(h => (
                   <th key={h} style={{
                     padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                     color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
@@ -258,12 +356,12 @@ export default function ManagerDepositsPage() {
                   padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                }}></th>
+                }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((dep) => {
-                const meta    = STATUS_LABELS[dep.status] ?? STATUS_LABELS.pending;
+                const meta = STATUS_LABELS[dep.status] ?? STATUS_LABELS.pending;
                 const typeCfg = getTypeCfg(dep.deposit_type);
                 return (
                   <tr key={dep.id}
@@ -272,8 +370,8 @@ export default function ManagerDepositsPage() {
                     onClick={() => openDrawer(dep)}>
 
                     {/* Mã cọc */}
-                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                      {dep.id}
+                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 11, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
+                      {formatShortId(dep.id, 'deposit')}
                     </td>
 
                     {/* Khách hàng */}
@@ -298,24 +396,24 @@ export default function ManagerDepositsPage() {
                     {/* Phòng / Giường */}
                     <td style={{ padding: '14px 16px' }}>
                       <p style={{ fontSize: 13, color: T.text, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dep.room_name}</p>
-                      {dep.bed_name && (
-                        <p style={{ fontSize: 11, color: T.textMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      {getBedTableDisplay(dep) && (
+                        <p title={getBedDisplay(dep)} style={{ fontSize: 11, color: T.textMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 }}>
                           <span className="material-symbols-outlined" style={{ fontSize: 12 }}>bed</span>
-                          {dep.bed_name}
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{getBedTableDisplay(dep)}</span>
                         </p>
                       )}
                     </td>
 
                     {/* Số tiền */}
-                    <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 800, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                      {dep.amount.toLocaleString('vi-VN')}đ
+                    <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 800, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>
+                      {(dep.amount ?? 0).toLocaleString('vi-VN')}đ
                     </td>
 
-                    {/* Ngân hàng */}
-                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dep.bank_name}</td>
+                    {/* Phương thức thu */}
+                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getPaymentDisplay(dep.bank_name)}</td>
 
                     {/* Ngày cọc */}
-                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>{dep.deposit_date}</td>
+                    <td style={{ padding: '14px 16px', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>{formatDate(dep.deposit_date)}</td>
 
                     {/* Trạng thái */}
                     <td style={{ padding: '14px 16px' }}>
@@ -337,7 +435,7 @@ export default function ManagerDepositsPage() {
                         borderRadius: 9999, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: T.primary, cursor: 'pointer',
                         transition: 'all 0.15s ease-in-out'
                       }}
-                      className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
+                        className="hover:bg-primary hover:text-white active:scale-[0.95]">Xem</button>
                     </td>
                   </tr>
                 );
@@ -383,35 +481,10 @@ export default function ManagerDepositsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiết đặt cọc</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Mã cọc: {selected.id} • {selected.customer_name}</p>
                 </div>
                 <button onClick={() => setDrawerOpen(false)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }} className="hover:bg-primaryLight hover:border-primary/30 active:scale-90 shadow-sm">
                   <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                 </button>
-              </div>
-              {/* Status + Type badges */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: STATUS_LABELS[selected.status].bg, color: STATUS_LABELS[selected.status].text,
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
-                  border: `1px solid ${STATUS_LABELS[selected.status].text}1A`
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{STATUS_LABELS[selected.status].icon}</span>
-                  {STATUS_LABELS[selected.status].label}
-                </span>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: getTypeCfg(selected.deposit_type).bg,
-                  color: getTypeCfg(selected.deposit_type).text,
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
-                  border: `1px solid ${getTypeCfg(selected.deposit_type).text}1A`
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-                    {getTypeCfg(selected.deposit_type).icon}
-                  </span>
-                  {getTypeCfg(selected.deposit_type).label}
-                </span>
               </div>
             </div>
 
@@ -421,7 +494,14 @@ export default function ManagerDepositsPage() {
                 <div style={{ padding: '10px 16px', borderBottom: `1px solid ${T.border}` }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase' }}>Ảnh bill chuyển khoản</p>
                 </div>
-                <img src={selected.bill_image_url} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
+                {selected.bill_image_url ? (
+                  <img src={selected.bill_image_url} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
+                ) : (
+                  <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textFaint }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 6 }}>image_not_supported</span>
+                    <p style={{ fontSize: 12 }}>Chưa có ảnh bill minh chứng</p>
+                  </div>
+                )}
               </div>
 
               {/* Info grid */}
@@ -429,15 +509,14 @@ export default function ManagerDepositsPage() {
                 <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', marginBottom: 14, letterSpacing: 0.8 }}>Thông tin cọc</h4>
                 <div className="space-y-3">
                   {[
-                    { label: 'Khách hàng',    val: selected.customer_name },
+                    { label: 'Khách hàng', val: selected.customer_name },
                     { label: 'Số điện thoại', val: selected.customer_phone },
-                    { label: 'Loại đặt cọc',  val: getTypeCfg(selected.deposit_type).label, highlight: true },
+                    { label: 'Loại đặt cọc', val: getTypeCfg(selected.deposit_type).label, highlight: true },
                     { label: 'Phòng đăng ký', val: selected.room_name },
-                    ...(selected.bed_name ? [{ label: 'Giường', val: selected.bed_name }] : []),
-                    { label: 'Số tiền cọc',   val: `${selected.amount.toLocaleString('vi-VN')}đ`, isAmount: true },
-                    { label: 'Ngân hàng',     val: selected.bank_name },
-                    { label: 'Số tài khoản',  val: selected.account_number },
-                    { label: 'Ngày cọc',      val: selected.deposit_date },
+                    ...(getBedDisplay(selected) ? [{ label: selected.deposit_type === 'group' ? 'Giường nhóm' : 'Giường', val: getBedDisplay(selected) }] : []),
+                    { label: 'Số tiền cọc', val: `${(selected.amount ?? 0).toLocaleString('vi-VN')}đ`, isAmount: true },
+                    { label: 'Phương thức thu', val: getPaymentDisplay(selected.bank_name) },
+                    { label: 'Ngày cọc', val: formatDate(selected.deposit_date) },
                   ].map((row, i) => (
                     <div key={i} className="flex justify-between items-center">
                       <span style={{ fontSize: 13, color: T.textMuted }}>{row.label}</span>
@@ -447,68 +526,24 @@ export default function ManagerDepositsPage() {
                 </div>
               </div>
 
-              {/* Reviewer note */}
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-                  Ghi chú duyệt / Lý do
-                </label>
-                <textarea
-                  value={reviewerNote}
-                  onChange={e => setReviewerNote(e.target.value)}
-                  placeholder="Nhập ghi chú hoặc lý do từ chối/yêu cầu bổ sung..."
-                  rows={3}
-                  style={{ width: '100%', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, color: T.text, resize: 'none', background: T.bg, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s ease-in-out' }}
-                  className="focus:border-[#5C4632]"
-                />
-              </div>
 
-              {/* Quick actions */}
-              <div>
-                <h4 style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Hành động nhanh</h4>
-                <div className="space-y-2">
-                  {[
-                    { label: 'Liên hệ qua Zalo / SĐT', icon: 'chat', onClick: () => window.open(`tel:${selected.customer_phone}`) },
-                    { label: 'Tải xuống ảnh minh chứng cọc', icon: 'download', onClick: () => window.open(selected.bill_image_url, '_blank') },
-                    { label: 'Lịch sử giao dịch phòng', icon: 'history' },
-                  ].map((action, i) => (
-                    <button key={i} onClick={action.onClick} style={{ 
-                      width: '100%', 
-                      padding: '12px 14px', 
-                      borderRadius: 12, 
-                      border: `1px solid ${T.border}`, 
-                      background: T.surface, 
-                      cursor: 'pointer', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 10, 
-                      fontSize: 13, 
-                      color: T.text, 
-                      fontWeight: 600, 
-                      transition: 'all 0.15s ease-in-out' 
-                    }} className="hover:bg-[#FAF9F7] hover:border-primary/25 hover:text-primary active:scale-[0.98]">
-                      <span className="material-symbols-outlined" style={{ fontSize: 20, color: T.primary }}>{action.icon}</span>
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* Actions */}
             {selected.status === 'pending' && (
               <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
-                <button onClick={() => updateStatus('approved')}
+                <button onClick={() => updateStatus('approved')} disabled={isSubmitting}
                   style={{ flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
                   className="hover:opacity-90 active:scale-[0.98]">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
-                  Duyệt & Giữ {selected.deposit_type === 'bed' ? 'giường' : 'phòng'}
+                  Duyệt & Giữ {selected.deposit_type === 'room' ? 'phòng' : 'giường'}
                 </button>
-                <button onClick={() => updateStatus('need_more')}
+                <button onClick={() => updateStatus('need_more')} disabled={isSubmitting}
                   style={{ flex: 1, background: '#F3F4F6', color: '#4B5563', border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                   className="hover:bg-gray-200 active:scale-[0.98]">
                   Cần bổ sung
                 </button>
-                <button onClick={() => updateStatus('rejected')}
+                <button onClick={() => updateStatus('rejected')} disabled={isSubmitting}
                   style={{ flex: 1, background: T.redBg, color: T.red, border: `1px solid ${T.red}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                   className="hover:bg-red-100 active:scale-[0.98]">
                   Từ chối
@@ -518,7 +553,7 @@ export default function ManagerDepositsPage() {
             {selected.status !== 'pending' && (
               <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <p style={{ fontSize: 12.5, color: T.textMuted, textAlign: 'center', fontWeight: 500 }}>
-                  Chứng từ đã được xử lý: <strong style={{ color: STATUS_LABELS[selected.status].text, fontWeight: 700 }}>{STATUS_LABELS[selected.status].label}</strong>
+                  Chứng từ đã được xử lý: <strong style={{ color: (STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending).text, fontWeight: 700 }}>{(STATUS_LABELS[selected.status] ?? STATUS_LABELS.pending).label}</strong>
                   {selected.reviewed_at && ` vào ${new Date(selected.reviewed_at).toLocaleDateString('vi-VN')}`}
                 </p>
               </div>

@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getMockDB } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
 import { Calendar, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
 
@@ -26,75 +25,160 @@ export default function ManagerDashboardPage() {
       year: 'numeric' 
     });
   }, []);
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    // Auth that cua kyen: uu tien gui access_token Supabase ma authStore luu sau khi login.
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      };
+    }
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
 
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
 
   useEffect(() => {
-    const db = getMockDB();
-    const rooms = db.rooms || [];
-    const deposits = db.manager_deposits || [];
-    const residency = db.residency_checks || [];
-    const handovers = db.asset_handovers || [];
+    const loadDashboardData = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        
+        // Fetch all data in parallel
+        const [roomsRes, depositsRes, residencyRes, handoversRes] = await Promise.all([
+          fetch(`${API_BASE}/rooms`, { headers }),
+          fetch(`${API_BASE}/deposits`, { headers }),
+          fetch(`${API_BASE}/residency`, { headers }),
+          fetch(`${API_BASE}/handovers`, { headers })
+        ]);
 
-    const occupied = rooms.filter((r: any) => r.status === 'occupied').length;
-    const total = rooms.length;
-    const available = rooms.filter((r: any) => r.status === 'available').length;
-    const pendingDeposits = deposits.filter((d: any) => d.status === 'pending').length;
-    const pendingResidency = residency.filter((r: any) => r.status === 'pending').length;
+        const [roomsData, depositsData, residencyData, handoversData] = await Promise.all([
+          roomsRes.json(),
+          depositsRes.json(),
+          residencyRes.json(),
+          handoversRes.json()
+        ]);
 
-    setKpis([
-      {
-        label: 'Tỷ lệ lấp đầy',
-        value: total ? `${Math.round((occupied / total) * 100)}%` : '0%',
-        sub: `${occupied}/${total} phòng đang có người ở`,
-        color: T.sage,
-        bg: T.sageBg,
-        icon: 'apartment',
-      },
-      {
-        label: 'Phòng trống',
-        value: available,
-        sub: 'Sẵn sàng cho thuê ngay',
-        color: T.primary,
-        bg: T.primaryLight,
-        icon: 'door_open',
-      },
-      {
-        label: 'Cọc chờ duyệt',
-        value: pendingDeposits,
-        sub: 'Yêu cầu kiểm duyệt đặt cọc',
-        color: T.amber,
-        bg: T.amberBg,
-        icon: 'pending_actions',
-      },
-      {
-        label: 'Hồ sơ lưu trú',
-        value: pendingResidency,
-        sub: 'Chờ kiểm tra điều kiện',
-        color: T.red,
-        bg: T.redBg,
-        icon: 'badge',
-      },
-    ]);
+        const rooms = roomsData.success ? roomsData.data : [];
+        const deposits = depositsData.success ? depositsData.data : [];
+        const residency = residencyData.success ? residencyData.data : [];
+        const handovers = handoversData.success ? handoversData.data : [];
 
-    const activities = [
-      ...deposits.filter((d: any) => d.status === 'pending').slice(0, 3).map((d: any) => ({
-        icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, detail: `${d.room_name} • ${(d.amount / 1000000).toFixed(1)}Mđ`, time: '5 phút trước', link: '/manager/deposits'
-      })),
-      ...handovers.filter((h: any) => h.status === 'pending').slice(0, 2).map((h: any) => ({
-        icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, detail: h.room_name, time: '1 giờ trước', link: '/manager/handovers'
-      })),
-      ...residency.filter((r: any) => r.status === 'pending').slice(0, 2).map((r: any) => ({
-        icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, detail: `${r.room_name} • ${r.id_type === 'passport' ? 'Hộ chiếu' : 'CCCD'}`, time: '2 giờ trước', link: '/manager/residency-checks'
-      })),
-    ].slice(0, 6);
-    setRecentActivity(activities);
+        const occupied = rooms.filter((r: any) => r.status === 'occupied').length;
+        const total = rooms.length;
+        const available = rooms.filter((r: any) => r.status === 'available').length;
+        const pendingDeposits = deposits.filter((d: any) => d.status === 'pending').length;
+        const pendingResidency = residency.filter((r: any) => r.status === 'pending').length;
+
+        setKpis([
+          {
+            label: 'Tỷ lệ lấp đầy',
+            value: total ? `${Math.round((occupied / total) * 100)}%` : '0%',
+            sub: `${occupied}/${total} phòng đang có người ở`,
+            color: T.sage,
+            bg: T.sageBg,
+            icon: 'apartment',
+          },
+          {
+            label: 'Phòng trống',
+            value: available,
+            sub: 'Sẵn sàng cho thuê ngay',
+            color: T.primary,
+            bg: T.primaryLight,
+            icon: 'door_open',
+          },
+          {
+            label: 'Cọc chờ duyệt',
+            value: pendingDeposits,
+            sub: 'Yêu cầu kiểm duyệt đặt cọc',
+            color: T.amber,
+            bg: T.amberBg,
+            icon: 'pending_actions',
+          },
+          {
+            label: 'Hồ sơ lưu trú',
+            value: pendingResidency,
+            sub: 'Chờ kiểm tra điều kiện',
+            color: T.red,
+            bg: T.redBg,
+            icon: 'badge',
+          },
+        ]);
+
+        const activities = [
+          ...deposits.filter((d: any) => d.status === 'pending').slice(0, 3).map((d: any) => ({
+            icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, badges: [d.room_name, `${(d.amount / 1000000).toFixed(1)}Mđ`], time: 'Mới nhận', link: '/manager/deposits'
+          })),
+          ...handovers.filter((h: any) => h.status === 'pending' || h.status === 'partial').slice(0, 2).map((h: any) => ({
+            icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, badges: [h.room_name], time: 'Mới nhận', link: '/manager/handovers'
+          })),
+          ...residency.filter((r: any) => r.status === 'pending').slice(0, 2).map((r: any) => ({
+            icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, badges: [r.room_name, `CCCD: ${r.id_number}`], time: 'Mới nhận', link: '/manager/residency-checks'
+          })),
+        ].slice(0, 6);
+        setRecentActivity(activities);
+      } catch (err) {
+        console.error('Error loading dashboard data:', err);
+      }
+    };
+
+    loadDashboardData();
   }, []);
 
 
   return (
     <div
-      style={{ fontFamily: "'Inter', sans-serif" }}
+      style={{ fontFamily: "'Lexend', sans-serif" }}
       className="space-y-8 animate-fade-in-up"
     >
       {/* Greeting Header */}
@@ -103,7 +187,7 @@ export default function ManagerDashboardPage() {
           <h1 className="text-2xl font-bold text-[#8C7355]">Xin chào, {user?.full_name?.split(' (')[0] || 'Quản lý'}!</h1>
           <p className="text-[13px] text-[#4E453C] mt-1 flex items-center gap-2 font-medium">
             <Calendar className="w-4 h-4 text-[#8C7355]" />
-            {todayLabel} · <span className="text-[#7F756B]">Bàn vận hành chi nhánh — Quận 1</span>
+            {todayLabel}
           </p>
         </div>
         <button
@@ -167,7 +251,7 @@ export default function ManagerDashboardPage() {
         <div>
           <h4 style={{ color: '#A67B5B', fontSize: 13, fontWeight: 700 }}>Thông báo vận hành hôm nay</h4>
           <p style={{ color: T.textMuted, fontSize: 11.5, marginTop: 4, lineHeight: 1.5 }}>
-            Đề nghị Quản lý chi nhánh tập trung hoàn tất việc **duyệt đặt cọc** đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi **kiểm duyệt hồ sơ lưu trú** để tránh chậm trễ báo cáo cơ quan công an địa phương.
+            Đề nghị Quản lý chi nhánh tập trung hoàn tất việc <strong className="font-bold text-[#A67B5B]">duyệt đặt cọc</strong> đối với các yêu cầu mới trong vòng 24 giờ. Đồng thời kiểm tra điều kiện đăng ký tạm trú tạm vắng khi <strong className="font-bold text-[#A67B5B]">kiểm duyệt hồ sơ lưu trú</strong> để tránh chậm trễ báo cáo cơ quan công an địa phương.
           </p>
         </div>
       </div>
@@ -213,10 +297,23 @@ export default function ManagerDashboardPage() {
                 <p style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {act.title}
                 </p>
-                <p style={{ color: T.textMuted, fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {act.detail}
-                </p>
-                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 3 }}>{act.time}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {act.badges && act.badges.map((badge: string, index: number) => (
+                    <span key={index} style={{
+                      backgroundColor: `${act.color}15`,
+                      color: act.color,
+                      border: `1px solid ${act.color}30`,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 9999,
+                      display: 'inline-block'
+                    }}>
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 6 }}>{act.time}</span>
               </div>
               <div style={{
                 opacity: 0,

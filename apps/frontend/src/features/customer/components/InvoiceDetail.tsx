@@ -1,3 +1,4 @@
+import { formatShortId } from '../../../lib/utils';
 import { Invoice } from '../store/useInvoiceStore';
 import { Info, CreditCard, CheckCircle2, ShieldAlert } from 'lucide-react';
 
@@ -16,7 +17,17 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
     );
   }
 
+  const canPay = invoice.canPay !== false && !invoice.isCredit;
+
   const getStatusAlert = () => {
+    if (invoice.isCredit) {
+      return (
+        <div className="flex items-center gap-2 p-3 bg-status-success/10 border border-status-success/20 rounded-xl text-status-success text-xs font-semibold">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>Khoản này là tiền hoàn cọc cho khách hàng, không phải hóa đơn cần thanh toán.</span>
+        </div>
+      );
+    }
     switch (invoice.status) {
       case 'paid':
         return (
@@ -30,6 +41,13 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
           <div className="flex items-center gap-2 p-3 bg-status-error/10 border border-status-error/20 rounded-xl text-status-error text-xs font-semibold animate-pulse">
             <ShieldAlert className="w-4 h-4 shrink-0" />
             <span>Hóa đơn này đã quá hạn thanh toán! Vui lòng thanh toán ngay để tránh gián đoạn dịch vụ.</span>
+          </div>
+        );
+      case 'pending':
+        return (
+          <div className="flex items-center gap-2 p-3 bg-status-warning/10 border border-status-warning/20 rounded-xl text-status-warning text-xs font-semibold">
+            <Info className="w-4 h-4 shrink-0" />
+            <span>Hóa đơn đang chờ Kế toán xác nhận thu tiền. Vui lòng không thanh toán lại.</span>
           </div>
         );
       default:
@@ -55,7 +73,7 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
           </span>
           <span className="whitespace-nowrap text-xs font-semibold text-on-primary/85">Hạn: {formatDate(invoice.dueDate)}</span>
         </div>
-        <h2 className="text-xl font-bold font-headline-md tracking-wide">{invoice.id}</h2>
+        <h2 className="text-xl font-bold font-headline-md tracking-wide">{formatShortId(invoice.id, 'invoice')}</h2>
         <p className="text-xs opacity-90 mt-1 font-medium">Kỳ thanh toán: {invoice.billingPeriod}</p>
       </div>
 
@@ -125,7 +143,22 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
             </span>
           </div>
 
-          {invoice.status !== 'paid' ? (
+          {invoice.isCredit ? (
+            <div className="w-full py-3 text-center border-2 border-status-success/30 text-status-success font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-success/5 cursor-default">
+              <CheckCircle2 className="w-5 h-5" />
+              KHOẢN HOÀN CỌC
+            </div>
+          ) : invoice.status === 'paid' ? (
+            <div className="w-full py-3 text-center border-2 border-status-success/30 text-status-success font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-success/5 cursor-default">
+              <CheckCircle2 className="w-5 h-5" />
+              ĐÃ THANH TOÁN
+            </div>
+          ) : invoice.status === 'pending' ? (
+            <div className="w-full py-3 text-center border-2 border-status-warning/30 text-status-warning font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-warning/5 cursor-default">
+              <Info className="w-5 h-5" />
+              CHỜ XÁC NHẬN
+            </div>
+          ) : canPay ? (
             <button
               onClick={() => onPay(invoice.id)}
               className="w-full py-3.5 bg-primary hover:bg-[#253228] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-primary/10 hover:shadow-lg cursor-pointer"
@@ -134,9 +167,8 @@ export default function InvoiceDetail({ invoice, onPay }: Props) {
               THANH TOÁN NGAY
             </button>
           ) : (
-            <div className="w-full py-3 text-center border-2 border-status-success/30 text-status-success font-bold rounded-xl flex items-center justify-center gap-1.5 bg-status-success/5 cursor-default">
-              <CheckCircle2 className="w-5 h-5" />
-              ĐÃ THANH TOÁN
+            <div className="w-full py-3 text-center border-2 border-outline-variant/30 text-on-surface-variant font-bold rounded-xl flex items-center justify-center gap-1.5 bg-surface-container-low cursor-default">
+              KHÔNG CẦN THANH TOÁN
             </div>
           )}
         </div>

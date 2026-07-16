@@ -2,10 +2,60 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Search, Eye, Printer, Save, CheckCircle2
 } from 'lucide-react';
-import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room, DepositInvoice } from '../../lib/supabaseClient';
+import { mockSupabase, getMockDB, saveMockDB, CheckinInvoice, Room } from '../../lib/supabaseClient';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
+import CustomSelect from '../../components/ui/CustomSelect';
+import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { accountantService } from './services/accountant.service';
+import { formatShortId } from '../../lib/utils';
+import { SERVICE_FEE, CARD_FEE, CLEANING_FEE, calcCheckinTotal } from '../../lib/billing';
+
+// Chuẩn hóa danh sách hóa đơn check-in từ response API.
+const mapCheckinInvoices = (checkinInvoices: any[]): CheckinInvoice[] =>
+  (checkinInvoices || []).map((inv: any) => {
+    const contract = inv.contracts || {};
+    const noteData = inv.note ? JSON.parse(inv.note) : {};
+    return {
+      id: inv.id,
+      customer_id: contract.id || inv.customer_id,
+      customer_name: inv.customer_name || 'Khách hàng',
+      room_id: contract.rooms?.id || inv.room_id || '',
+      room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+      room_type: inv.room_type || contract.rooms?.room_type || '',
+      checkin_date: contract.start_date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
+      rent_amount: contract.rent_price || inv.rent_amount || 0,
+      deposit_amount: inv.deposit_amount ?? undefined,
+      deposit_ref: contract.deposit_id || '',
+      contract_id: contract.id || '',
+      services: noteData.services || [],
+      total: inv.amount,
+      status: inv.status,
+      created_at: inv.created_at || ''
+    };
+  });
+
+// Chuẩn hóa danh sách HỢP ĐỒNG ACTIVE (do Sale đã lập) — nguồn để lập hóa đơn nhận phòng.
+// Đúng nghiệp vụ: chỉ hợp đồng đã ký mới được lập hóa đơn nhận phòng (KHÔNG dùng hóa đơn cọc nữa).
+// Loại bỏ hợp đồng đã có hóa đơn nhận phòng (checkedInContractIds) để tránh lập trùng.
+const mapCheckinContracts = (contracts: any[], checkedInContractIds: Set<string>): any[] =>
+  (contracts || [])
+    .filter((c: any) => !checkedInContractIds.has(c.id))
+    .map((c: any) => ({
+      id: c.id, // = contract.id thật
+      contract_code: c.contract_code || c.id,
+      customer_id: c.customer_id || '',
+      customer_name: c.customer_name || 'Khách hàng',
+      room_id: c.room_id || '',
+      room_name: c.room_name || 'Phòng',
+      rent_amount: Number(c.rent_price) || 0,
+      deposit_amount: Number(c.deposit_amount) || 0,
+      amount: Number(c.deposit_amount) || 0, // giữ tương thích field cũ trong JSX/nhánh mock
+    }));
 
 export default function AccountantCheckinPage() {
+  const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<CheckinInvoice[]>([]);
   const [selectedContractId, setSelectedContractId] = useState('');
   const [cardFeeChecked, setCardFeeChecked] = useState(true);
@@ -17,7 +67,7 @@ export default function AccountantCheckinPage() {
   const contractDropdownRef = useRef<HTMLDivElement>(null);
   
   // Contracts list referencing deposits
-  const [pendingDeposits, setPendingDeposits] = useState<DepositInvoice[]>([]);
+  const [pendingDeposits, setPendingDeposits] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -36,11 +86,28 @@ export default function AccountantCheckinPage() {
 
   // Load data
   useEffect(() => {
-    const db = getMockDB();
-    setInvoices(db.checkin_invoices || []);
-    // Contracts available for checkin are paid deposits
-    setPendingDeposits(db.deposit_invoices?.filter((d: DepositInvoice) => d.status === 'paid') || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [checkinInvoices, activeContracts] = await Promise.all([
+          accountantService.fetchCheckinInvoices(email),
+          accountantService.fetchActiveContracts(email, 'checkin')
+        ]);
+
+        const mappedInvoices = mapCheckinInvoices(checkinInvoices);
+        const checkedInContractIds = new Set(mappedInvoices.map((inv) => inv.contract_id).filter((id): id is string => !!id));
+        const mappedContracts = mapCheckinContracts(activeContracts, checkedInContractIds);
+
+        setInvoices(mappedInvoices);
+        setPendingDeposits(mappedContracts);
+      } catch (err) {
+        console.warn('[AccountantCheckin] Failed to fetch backend data:', err);
+        setInvoices([]);
+        setPendingDeposits([]);
+      }
+    };
+    loadData();
+  }, [user]);
 
   // Click outside handler for contract dropdown
   useEffect(() => {
@@ -55,76 +122,131 @@ export default function AccountantCheckinPage() {
 
   const selectedDeposit = pendingDeposits.find(d => d.id === selectedContractId);
 
-  // Auto-calculated fees
-  const rentAmount = selectedDeposit ? (selectedDeposit.amount) : 0; // Rent Month 1 equals deposit
-  const depositAmount = selectedDeposit ? selectedDeposit.amount : 0;
-  const cardFee = cardFeeChecked ? 100000 : 0;
-  const cleaningFee = cleaningFeeChecked ? 200000 : 0;
-  const totalCost = rentAmount + depositAmount + cardFee + cleaningFee;
+  // Auto-calculated fees — tiền thuê tháng đầu lấy từ hợp đồng, tiền cọc từ phiếu cọc gốc.
+  // Tiền cọc CHỈ để hiển thị đối chiếu, KHÔNG cộng vào tổng phải thu (khách đã trả ở bước đặt cọc).
+  const rentAmount = selectedDeposit ? Number(selectedDeposit.rent_amount) || 0 : 0;
+  const depositAmount = selectedDeposit ? Number(selectedDeposit.deposit_amount) || 0 : 0;
+  const cardFee = cardFeeChecked ? CARD_FEE : 0;
+  const cleaningFee = cleaningFeeChecked ? CLEANING_FEE : 0;
+  const totalCost = calcCheckinTotal({
+    monthlyRent: rentAmount,
+    cardFee: cardFeeChecked,
+    cleaningFee: cleaningFeeChecked,
+  });
 
-  const handleCreateCheckinInvoice = (e: React.FormEvent) => {
+  // Khóa chống double-click: tránh lập trùng hóa đơn nhận phòng khi click nhiều lần.
+  const handleCreateCheckinInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedContractId || !selectedDeposit) {
       setToastMessage('Vui lòng chọn một hợp đồng đã duyệt!');
       return;
     }
+    await guard(() => createCheckinInvoice());
+  };
 
-    const services = [];
-    if (cardFeeChecked) services.push({ name: 'Phí cấp thẻ từ (2 thẻ)', amount: 100000 });
-    if (cleaningFeeChecked) services.push({ name: 'Phí vệ sinh ban đầu', amount: 200000 });
+  const createCheckinInvoice = async () => {
+    if (!selectedContractId || !selectedDeposit) return;
+    const email = user?.email || 'accountant@homestay.vn';
+    const services = [{ name: 'Phí dịch vụ cố định', amount: SERVICE_FEE }];
+    if (cardFeeChecked) services.push({ name: 'Phí cấp thẻ từ (2 thẻ)', amount: CARD_FEE });
+    if (cleaningFeeChecked) services.push({ name: 'Phí vệ sinh ban đầu', amount: CLEANING_FEE });
 
-    const newInvoice: Omit<CheckinInvoice, 'id'> = {
-      customer_id: selectedDeposit.customer_id,
-      customer_name: selectedDeposit.customer_name,
-      room_id: selectedDeposit.room_id,
-      room_name: selectedDeposit.room_name,
-      checkin_date: new Date().toISOString().split('T')[0],
-      rent_amount: rentAmount,
-      deposit_ref: selectedDeposit.id,
-      services,
-      total: totalCost,
-      status: 'pending',
-      created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
-    };
-
-    const res = mockSupabase.from('checkin_invoices').insert(newInvoice);
-    if (res.data) {
-      // Reload invoices
-      const db = getMockDB();
-      setInvoices(db.checkin_invoices || []);
-      
-      // Update deposit status to checkin invoiced / or room status
-      const updatedRooms = db.rooms.map((r: Room) => {
-        if (r.id === selectedDeposit.room_id) {
-          return { ...r, status: 'occupied' };
-        }
-        return r;
+    try {
+      await accountantService.createCheckinInvoice(email, {
+        contractId: selectedContractId,
+        amount: totalCost,
+        paymentMethod: 'transfer',
+        note: JSON.stringify({ services })
       });
-      db.rooms = updatedRooms;
-      saveMockDB(db);
 
-      // Reset
+      setToastMessage('Lập hóa đơn nhận phòng thành công.');
       setSelectedContractId('');
       setCardFeeChecked(true);
       setCleaningFeeChecked(true);
-      setToastMessage('Lập hóa đơn nhận phòng thành công.');
+
+      // Refresh list
+      const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
+      const activeContracts = await accountantService.fetchActiveContracts(email, 'checkin');
+
+      const mappedInvoices = mapCheckinInvoices(checkinInvoices);
+      const checkedInContractIds = new Set(mappedInvoices.map((inv) => inv.contract_id).filter((id): id is string => !!id));
+      const mappedContracts = mapCheckinContracts(activeContracts, checkedInContractIds);
+
+      setInvoices(mappedInvoices);
+      setPendingDeposits(mappedContracts);
+    } catch (err: any) {
+      console.warn('[AccountantCheckin] Live API failed, falling back to mock DB:', err);
+      const newInvoice: Omit<CheckinInvoice, 'id'> = {
+        customer_id: selectedDeposit.customer_id,
+        customer_name: selectedDeposit.customer_name,
+        room_id: selectedDeposit.room_id,
+        room_name: selectedDeposit.room_name,
+        checkin_date: new Date().toISOString().split('T')[0],
+        rent_amount: rentAmount,
+        deposit_ref: selectedDeposit.id,
+        services,
+        total: totalCost,
+        status: 'unpaid',
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      };
+
+      const res = mockSupabase.from('checkin_invoices').insert(newInvoice);
+      if (res.data) {
+        const db = getMockDB();
+        setInvoices(db.checkin_invoices || []);
+        const updatedRooms = db.rooms.map((r: Room) => {
+          if (r.id === selectedDeposit.room_id) return { ...r, status: 'occupied' };
+          return r;
+        });
+        db.rooms = updatedRooms;
+        saveMockDB(db);
+        setSelectedContractId('');
+        setCardFeeChecked(true);
+        setCleaningFeeChecked(true);
+        setToastMessage('Lập hóa đơn nhận phòng thành công (Mock DB).');
+      }
     }
   };
 
-  const handleConfirmPayment = (id: string) => {
-    const res = mockSupabase.from('checkin_invoices').update(id, { status: 'paid' });
-    if (res.data) {
-      const db = getMockDB();
-      setInvoices(db.checkin_invoices || []);
+  const handleConfirmPayment = async (id: string) => {
+    await guard(() => confirmPayment(id));
+  };
+
+  const confirmPayment = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmInvoicePayment(email, id, 'transfer');
+      setToastMessage('Đã xác nhận thu tiền thành công.');
+
+      const checkinInvoices = await accountantService.fetchCheckinInvoices(email);
+      const mappedInvoices = mapCheckinInvoices(checkinInvoices);
+      setInvoices(mappedInvoices);
+
       if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
         setSelectedDetailInvoice({ ...selectedDetailInvoice, status: 'paid' });
       }
-      setToastMessage('Đã xác nhận thu tiền thành công.');
+    } catch (err) {
+      console.warn('[AccountantCheckin] Live API payment confirm failed, falling back to mock DB:', err);
+      const res = mockSupabase.from('checkin_invoices').update(id, { status: 'paid' });
+      if (res.data) {
+        const db = getMockDB();
+        setInvoices(db.checkin_invoices || []);
+        if (selectedDetailInvoice && selectedDetailInvoice.id === id) {
+          setSelectedDetailInvoice({ ...selectedDetailInvoice, status: 'paid' });
+        }
+        setToastMessage('Đã xác nhận thu tiền thành công (Mock DB).');
+      }
     }
   };
 
   // Summaries
-  const todayCount = invoices.filter(inv => inv.checkin_date === new Date().toISOString().split('T')[0]).length;
+  // "HĐ nhận phòng hôm nay" = số hóa đơn được LẬP trong ngày hôm nay (theo created_at thật).
+  const isSameLocalDay = (iso?: string) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    return !isNaN(d.getTime()) && d.toDateString() === new Date().toDateString();
+  };
+  const todayCount = invoices.filter(inv => isSameLocalDay(inv.created_at)).length;
   const totalPaidSum = invoices
     .filter(inv => inv.status === 'paid')
     .reduce((sum, inv) => sum + inv.total, 0);
@@ -155,7 +277,7 @@ export default function AccountantCheckinPage() {
   }, [pendingDeposits, contractSearchQuery]);
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Page Header */}
       <div>
         <h2 className="font-headline-md text-2xl text-[#5C4632] font-semibold">Lập hóa đơn nhận phòng</h2>
@@ -166,15 +288,15 @@ export default function AccountantCheckinPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm flex flex-col justify-between h-[100px]">
           <span className="font-label-caps text-[11px] text-[#8A7563] font-bold uppercase tracking-wider">HĐ Nhận Phòng Hôm Nay</span>
-          <div className="text-3xl font-semibold text-[#5C4632] tabular-nums">{todayCount || 5}</div>
+          <div className="text-3xl font-semibold text-[#5C4632] tabular-nums">{todayCount}</div>
         </div>
         <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-l-4 border-l-[#5F7D4E] flex flex-col justify-between h-[100px]">
-          <span className="font-label-caps text-[11px] text-[#5F7D4E] font-bold uppercase tracking-wider">Tổng Thu Check-in (Tháng)</span>
-          <div className="text-3xl font-bold text-[#5F7D4E] tabular-nums">{(totalPaidSum || 24500000).toLocaleString('vi-VN')} ₫</div>
+          <span className="font-label-caps text-[11px] text-[#5F7D4E] font-bold uppercase tracking-wider">Tổng Thu Check-in</span>
+          <div className="text-3xl font-bold text-[#5F7D4E] tabular-nums">{totalPaidSum.toLocaleString('vi-VN')} ₫</div>
         </div>
         <div className="bg-white border border-[#DCCFC0] p-4 rounded-lg shadow-sm border-l-4 border-l-[#B9792B] flex flex-col justify-between h-[100px]">
           <span className="font-label-caps text-[11px] text-[#B9792B] font-bold uppercase tracking-wider">HĐ Chờ Xử Lý</span>
-          <div className="text-3xl font-semibold text-[#B9792B] tabular-nums">{pendingCheckinsCount || 2}</div>
+          <div className="text-3xl font-semibold text-[#B9792B] tabular-nums">{pendingCheckinsCount}</div>
         </div>
       </div>
 
@@ -211,16 +333,16 @@ export default function AccountantCheckinPage() {
                       setIsContractDropdownOpen(!isContractDropdownOpen);
                       setContractSearchQuery('');
                     }}
-                    className={`w-full flex items-center justify-between bg-white border border-[#7f756c] px-4 py-2.5 rounded-xl outline-none transition-all cursor-pointer font-label-md text-sm ${
+                    className={`w-full flex items-center justify-between h-14 bg-[#F5F2EE] border-none px-4 rounded-2xl outline-none transition-all cursor-pointer font-label-md text-sm ${
                       isContractDropdownOpen
-                        ? 'ring-2 ring-[#5a462d] border-transparent shadow-sm'
-                        : 'hover:border-[#5a462d]/50'
+                        ? 'ring-2 ring-[#5a462d] shadow-sm'
+                        : 'hover:bg-[#EAE4DC]'
                     }`}
                   >
                     <div className="truncate text-left">
                       {selectedDeposit ? (
                         <span className="truncate font-medium text-[#1b1c1c]">
-                          {selectedDeposit.id.replace('DEP', 'HĐ')} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
+                          {formatShortId(selectedDeposit.id, 'contract')} — Phòng {selectedDeposit.room_name} ({selectedDeposit.customer_name})
                         </span>
                       ) : (
                         <span className="text-[#8A7563]">— Chọn hợp đồng (Đã duyệt cọc) —</span>
@@ -276,11 +398,11 @@ export default function AccountantCheckinPage() {
                                 }`}
                               >
                                 <div className="flex justify-between items-center w-full">
-                                  <span className="font-mono font-bold text-[#5C4632]">
-                                    {d.id.replace('DEP', 'HĐ')}
+                                  <span className=" font-bold text-[#5C4632]">
+                                    {formatShortId(d.id, 'contract')}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#E8EDE5] text-[#5F7D4E] uppercase">
-                                    Đã cọc
+                                    Đã ký HĐ
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-[#8A7563] truncate">
@@ -327,13 +449,13 @@ export default function AccountantCheckinPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
                 <span className="text-sm text-[#1b1c1c]">Tiền Thuê Tháng Đầu (Tỷ lệ: 100%)</span>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} ₫</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} ₫</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
-                <span className="text-sm text-[#1b1c1c]">Tiền Cọc Định Kỳ (Giữ hộ)</span>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{depositAmount.toLocaleString('vi-VN')} ₫</span>
+                <span className="text-sm text-[#1b1c1c]">Phí Dịch Vụ Cố Định</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{SERVICE_FEE.toLocaleString('vi-VN')} ₫</span>
               </div>
-              
+
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
                 <label className="flex items-center gap-2.5 text-sm text-[#1b1c1c] cursor-pointer group">
                   <input
@@ -355,7 +477,7 @@ export default function AccountantCheckinPage() {
                   </div>
                   <span className="select-none group-hover:text-[#5C4632] transition-colors">Phí Cấp Thẻ Từ (2 thẻ)</span>
                 </label>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{cardFee.toLocaleString('vi-VN')} ₫</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{cardFee.toLocaleString('vi-VN')} ₫</span>
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-[#E7DED2]">
@@ -379,10 +501,20 @@ export default function AccountantCheckinPage() {
                   </div>
                   <span className="select-none group-hover:text-[#5C4632] transition-colors">Phí Vệ Sinh Ban Đầu</span>
                 </label>
-                <span className="font-mono font-medium text-sm text-[#1b1c1c]">{cleaningFee.toLocaleString('vi-VN')} ₫</span>
+                <span className=" font-medium text-sm text-[#1b1c1c]">{cleaningFee.toLocaleString('vi-VN')} ₫</span>
               </div>
 
-              <div className="flex justify-between items-center pt-3 mt-3">
+              {/* Tiền cọc: KHÔNG cộng vào tổng phải thu — khách đã thanh toán ở bước đặt cọc. */}
+              <div className="flex justify-between items-center gap-3 mt-3 rounded-lg bg-[#E8EDE5]/60 border border-[#5F7D4E]/25 px-3 py-2">
+                <span className="text-xs text-[#4E6840] font-semibold">
+                  Tiền cọc phòng (đã thu ở phiếu cọc — không tính vào hóa đơn này)
+                </span>
+                <span className="font-bold text-sm text-[#5F7D4E] whitespace-nowrap">
+                  {depositAmount.toLocaleString('vi-VN')} ₫
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 mt-1 border-t border-[#DCCFC0]">
                 <span className="text-lg font-bold text-[#5C4632]">Tổng Cộng:</span>
                 <span className="text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} ₫</span>
               </div>
@@ -403,11 +535,11 @@ export default function AccountantCheckinPage() {
               <button
                 type="button"
                 onClick={handleCreateCheckinInvoice}
-                disabled={!selectedContractId}
+                disabled={!selectedContractId || isSubmitting}
                 className="px-5 py-2 bg-[#5C4632] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 <Save className="w-4 h-4" />
-                <span>Tạo hóa đơn</span>
+                <span>{isSubmitting ? 'Đang xử lý...' : 'Tạo hóa đơn'}</span>
               </button>
             </div>
           </div>
@@ -444,14 +576,14 @@ export default function AccountantCheckinPage() {
                       <th className="py-1.5 text-right font-normal">Thành tiền (₫)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E7DED2] divide-dashed font-mono">
+                  <tbody className="divide-y divide-[#E7DED2] divide-dashed ">
                     <tr>
                       <td className="py-1.5 text-[#1b1c1c]">Tiền thuê (Tháng đầu)</td>
                       <td className="py-1.5 text-right text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')}</td>
                     </tr>
                     <tr>
-                      <td className="py-1.5 text-[#1b1c1c]">Tiền cọc phòng</td>
-                      <td className="py-1.5 text-right text-[#1b1c1c]">{depositAmount.toLocaleString('vi-VN')}</td>
+                      <td className="py-1.5 text-[#1b1c1c]">Phí dịch vụ cố định</td>
+                      <td className="py-1.5 text-right text-[#1b1c1c]">{SERVICE_FEE.toLocaleString('vi-VN')}</td>
                     </tr>
                     {cardFeeChecked && (
                       <tr>
@@ -470,9 +602,17 @@ export default function AccountantCheckinPage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center mt-6 pt-3 border-t-2 border-[#DCCFC0]">
-              <span className="font-bold text-sm text-[#1b1c1c]">Tổng thanh toán:</span>
-              <span className="font-mono text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} đ</span>
+            <div className="mt-6">
+              {selectedDeposit && depositAmount > 0 && (
+                <div className="flex justify-between items-center text-[11px] text-[#5F7D4E] pb-2">
+                  <span>Tiền cọc đã thu trước (không tính vào hóa đơn)</span>
+                  <span className="font-semibold">{depositAmount.toLocaleString('vi-VN')} ₫</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-3 border-t-2 border-[#DCCFC0]">
+                <span className="font-bold text-sm text-[#1b1c1c]">Tổng thanh toán:</span>
+                <span className=" text-xl font-extrabold text-[#5C4632]">{totalCost.toLocaleString('vi-VN')} đ</span>
+              </div>
             </div>
           </div>
         </div>
@@ -497,16 +637,19 @@ export default function AccountantCheckinPage() {
               />
             </div>
             
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-[#DCCFC0] rounded-lg text-xs py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#5C4632] focus:border-transparent hover:border-[#5C4632] transition-all cursor-pointer"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ thanh toán</option>
-              <option value="paid">Đã thanh toán</option>
-              <option value="draft">Bản nháp</option>
-            </select>
+              onChange={setStatusFilter}
+              theme="accountant"
+              className="w-40"
+              triggerClassName="py-1.5 text-xs"
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'pending', label: 'Chờ thanh toán' },
+                { value: 'paid', label: 'Đã thanh toán' },
+                { value: 'draft', label: 'Bản nháp' },
+              ]}
+            />
           </div>
         </div>
 
@@ -526,19 +669,23 @@ export default function AccountantCheckinPage() {
             <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
-                  <td className="p-4 font-mono font-bold text-[#5C4632] text-left">{inv.id}</td>
-                  <td className="p-4 font-mono text-xs text-[#8A7563] text-left">{inv.deposit_ref.replace('DEP', 'HĐ')} ({inv.room_name})</td>
+                  <td className="p-4  font-bold text-[#5C4632] text-left" title={inv.id}>
+                    {formatShortId(inv.id, 'invoice')}
+                  </td>
+                  <td className="p-4  text-xs text-[#8A7563] text-left">{formatShortId(inv.deposit_ref, 'deposit')} ({inv.room_name})</td>
                   <td className="p-4 font-semibold text-[#1b1c1c] text-left">{inv.customer_name}</td>
-                  <td className="p-4 text-xs font-mono text-[#8A7563] text-left">{inv.checkin_date}</td>
-                  <td className="p-4 text-right font-mono font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')} ₫</td>
+                  <td className="p-4 text-xs  text-[#8A7563] text-left">{inv.created_at ? new Date(inv.created_at).toLocaleDateString('vi-VN') : '—'}</td>
+                  <td className="p-4 text-right  font-medium text-[#1b1c1c]">{inv.total.toLocaleString('vi-VN')} ₫</td>
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
                       inv.status === 'pending' ? 'bg-[#FAF2E8] text-[#B9792B]' :
+                      inv.status === 'unpaid' ? 'bg-[#F8EAE8] text-[#A94F4F]' :
                       'bg-[#ECE6DE] text-[#8A7563]'
                     }`}>
                       {inv.status === 'paid' ? 'Đã thu' :
-                       inv.status === 'pending' ? 'Chờ TT' : 'Bản nháp'}
+                       inv.status === 'pending' ? 'Chờ xác nhận' :
+                       inv.status === 'unpaid' ? 'Chờ TT' : 'Bản nháp'}
                     </span>
                   </td>
                   <td className="p-4">
@@ -546,7 +693,8 @@ export default function AccountantCheckinPage() {
                       {inv.status === 'pending' && (
                         <button
                           onClick={() => handleConfirmPayment(inv.id)}
-                          className="px-2.5 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:bg-[#4E6840] transition-colors cursor-pointer active:scale-[0.95] focus:outline-none focus:ring-2 focus:ring-[#5F7D4E]/40"
+                          disabled={isSubmitting}
+                          className="px-2.5 py-1 bg-[#5F7D4E] text-white rounded text-[11px] font-semibold hover:bg-[#4E6840] transition-colors cursor-pointer active:scale-[0.95] focus:outline-none focus:ring-2 focus:ring-[#5F7D4E]/40 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Xác nhận thu
                         </button>

@@ -9,13 +9,12 @@ import BackButton from '../../components/ui/BackButton';
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  
+
   const { register, error: authError, loading } = useAuthStore();
   const navigate = useNavigate();
   
@@ -27,8 +26,13 @@ export default function RegisterPage() {
     setLocalError('');
     setSuccess(false);
 
-    if (!fullName || !email || !phone || !password || !confirmPassword) {
-      setLocalError('Vui lòng điền đầy đủ tất cả các trường thông tin');
+    if (
+      !fullName || 
+      !email || 
+      !password || 
+      !confirmPassword
+    ) {
+      setLocalError('Vui lòng điền đầy đủ thông tin đăng ký bắt buộc');
       return;
     }
 
@@ -39,12 +43,7 @@ export default function RegisterPage() {
       return;
     }
 
-    // Phone validation (Vietnamese phone number format check)
-    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
-    if (!phoneRegex.test(phone)) {
-      setLocalError('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10 chữ số)');
-      return;
-    }
+    // Phone validation removed
 
     if (password.length < 6) {
       setLocalError('Mật khẩu phải chứa ít nhất 6 ký tự');
@@ -61,13 +60,32 @@ export default function RegisterPage() {
       return;
     }
 
-    const isSuccess = await register(email, fullName, phone);
+    const isSuccess = await register(
+      email, 
+      fullName, 
+      '', 
+      password,
+      '', // dob để trống lúc đăng ký
+      'male', // gender mặc định
+      '', // nationality để trống
+      '', // cccd để trống
+      '', // issueDate để trống
+      '', // issuePlace để trống
+      ''  // permanentAddress để trống
+    );
     if (isSuccess) {
       setSuccess(true);
       setTimeout(() => {
         navigate('/');
       }, 1500);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtbhyikorukkxjkrabgt.supabase.co';
+    const redirectUrl = window.location.origin + '/#/auth/callback';
+    const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = oauthUrl;
   };
 
   return (
@@ -171,23 +189,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Số điện thoại */}
-              <div className="space-y-2">
-                <label className="block font-label-md text-sm text-on-surface-variant ml-2">Số điện thoại</label>
-                <div className="relative">
-                  <input 
-                    type="tel" 
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      setLocalError('');
-                    }}
-                    placeholder="0912345678"
-                    className={`w-full h-14 pl-12 pr-4 bg-surface-container-low border ${localError && !phone ? 'border-error' : 'border-transparent'} rounded-2xl font-body-md focus:ring-2 focus:ring-primary/20 outline-none transition-all`}
-                  />
-                  <span className="material-symbols-outlined absolute left-4 top-4 pointer-events-none text-on-surface-variant">call</span>
-                </div>
-              </div>
 
               {/* Mật khẩu */}
               <div className="space-y-2">
@@ -239,6 +240,8 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+
+
               {/* Điều khoản chính sách */}
               <div className="pt-2">
                 <label className="flex items-start gap-3 cursor-pointer group">
@@ -287,6 +290,7 @@ export default function RegisterPage() {
 
             <button 
               type="button" 
+              onClick={handleGoogleLogin}
               className="w-full h-14 mt-6 bg-white dark:bg-surface-container-low border border-surface-variant/60 hover:border-primary hover:bg-primary/5 rounded-2xl font-bold text-sm md:text-base flex items-center justify-center gap-3.5 transition-all duration-300 text-on-surface shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] group"
             >
               <img 

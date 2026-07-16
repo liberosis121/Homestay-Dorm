@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
-import { 
-  User, Shield, Camera, ChevronRight, Lock, 
+import {
+  User, Shield, Camera, ChevronRight, Lock,
   Compass, Calendar, FileText, CreditCard, LogOut, Info, Receipt,
-  X, Eye, EyeOff, Check, Zap, ClipboardList
+  X, Eye, EyeOff, Check, Zap, ClipboardList, MapPin
 } from 'lucide-react';
 import avatarCartoon from '../../assets/avatar-cartoon-male.png';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import FormLabel from '../../components/ui/FormLabel';
+import { fetchProfile, updateProfileApi, fetchMyResidencyInfo, fetchPendingResidencyDeposit, submitResidencyInfo } from './services/profile.service';
+import { changePasswordApi } from '../auth/auth.api';
 
 // ─── Password Change Modal ────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
@@ -36,18 +38,23 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const strengthLabel = ['', 'Yếu', 'Trung bình', 'Khá tốt', 'Mạnh'][strength];
   const strengthColor = ['', 'bg-error', 'bg-yellow-400', 'bg-blue-400', 'bg-[#4a6549]'][strength];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!oldPassword) { setError('Vui lòng nhập mật khẩu hiện tại.'); return; }
     if (newPassword.length < 8) { setError('Mật khẩu mới phải có ít nhất 8 ký tự.'); return; }
     if (newPassword !== confirmPassword) { setError('Mật khẩu xác nhận không khớp.'); return; }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await changePasswordApi(newPassword);
       setSuccess(true);
       setTimeout(() => { onClose(); }, 1800);
-    }, 1200);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || err.message || 'Lỗi khi thay đổi mật khẩu.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -174,16 +181,93 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
 
 
+interface InputFieldProps {
+  label: string;
+  name: string;
+  value: string;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  isEditing: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+}
+
+const InputField = ({
+  label,
+  name,
+  value,
+  type = 'text',
+  placeholder = '',
+  disabled = false,
+  isEditing,
+  onChange
+}: InputFieldProps) => {
+  const isDate = type === 'date';
+  if (isDate) {
+    return (
+      <CustomDatePicker
+        label={label}
+        value={value}
+        onChange={(val) => {
+          onChange({
+            target: { name, value: val }
+          } as any);
+        }}
+        disabled={disabled || !isEditing}
+        placeholder={placeholder || 'Chọn ngày'}
+        required={label.includes('*')}
+        variant="surface"
+      />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <FormLabel label={label} required={label.includes('*')} />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled || !isEditing}
+        className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
+      />
+    </div>
+  );
+};
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, setLogoutConfirmOpen } = useAuthStore();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'residency' | 'settings'>('profile');
   
-  const isNewCustomer = user?.email === 'newcustomer@gmail.com';
+  const stayStatus = user?.stay_status || (user?.renting_room_name ? 'active' : (user?.has_contract_history ? 'available' : 'new'));
+  const isRenting = stayStatus === 'active' && !!user?.renting_room_name;
+  const isPendingPayment = stayStatus === 'pending_payment';
+  const isRecentlyCheckedOut = stayStatus === 'recently_checked_out';
+  const isAvailableAfterCheckout = stayStatus === 'available';
+  const isNewCustomer = stayStatus === 'new' || stayStatus === 'available';
+  const canViewHousingHistory = !!user?.has_contract_history || isPendingPayment || isRecentlyCheckedOut;
+  const memberSinceLabel = (() => {
+    const raw = user?.member_since || user?.created_at;
+    if (!raw) return '--/----';
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return '--/----';
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  })();
+  const roomStatusLabel = isRenting
+    ? (user?.renting_room_name || 'Đang thuê')
+    : isPendingPayment
+      ? 'Chờ thanh toán nhận phòng'
+      : isRecentlyCheckedOut
+        ? 'Đã trả phòng'
+        : 'Chưa đăng ký';
 
   // ── Profile Form State ────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
@@ -195,30 +279,47 @@ export default function ProfilePage() {
     gender: 'male',
     issue_date: '',
     issue_place: '',
-    nationality: 'Việt Nam',
+    nationality: '',
     permanent_address: '',
   });
 
   const [initialData, setInitialData] = useState<typeof formData | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      const defaultData = {
-        full_name: user.full_name || '',
-        email: user.email || '',
-        phone: user.phone || '0977889900',
-        cccd: isNewCustomer ? '' : '012345678910',
-        dob: '2000-01-01',
-        gender: 'male',
-        issue_date: '2018-05-10',
-        issue_place: 'Cục CSQLHC về TTXH',
-        nationality: 'Việt Nam',
-        permanent_address: '123 Đường A, Quận B, TP.HCM',
+  const loadProfile = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // fetchProfile không cần email nữa — token tự động kẹp qua api.client interceptor
+      const data = await fetchProfile();
+      const profileData = {
+        full_name: data.full_name || user?.full_name || '',
+        email: data.email || user?.email || '',
+        phone: data.phone || user?.phone || '',
+        cccd: data.details?.cccd || '',
+        dob: data.details?.dob || '',
+        gender: (data.details?.gender === 'female' || data.details?.gender === 'Nữ') ? 'female' : 'male',
+        issue_date: data.details?.cccd_issue_date || '',
+        issue_place: data.details?.cccd_issue_place || '',
+        nationality: data.details?.nationality || '',
+        permanent_address: data.details?.address || '',
       };
-      setFormData(defaultData);
-      setInitialData(defaultData);
+      setFormData(profileData);
+      setInitialData(profileData);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi tải thông tin cá nhân');
+    } finally {
+      setIsLoading(false);
     }
-  }, [user, isNewCustomer]);
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadProfile();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user?.id, loadProfile]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -231,57 +332,112 @@ export default function ProfilePage() {
     if (initialData) setFormData(initialData);
   };
 
-  const saveProfile = () => {
-    if (!isDirty) return;
+  const saveProfile = async () => {
+    if (!isDirty || !user?.email) return;
     setIsSaving(true);
     setSaveSuccess(false);
-    setTimeout(() => {
-      setIsSaving(false);
-      setSaveSuccess(true);
+    setError(null);
+    try {
+      await updateProfileApi(formData);
       setInitialData(formData);
       setIsEditing(false);
+      setSaveSuccess(true);
+      
+      // Sync global auth store
+      useAuthStore.setState((state) => ({
+        user: state.user ? {
+          ...state.user,
+          full_name: formData.full_name,
+          phone: formData.phone,
+        } : null
+      }));
+
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi cập nhật thông tin cá nhân');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── Residency Info State (Thông tin cư trú) ───────────────────────────────
+  const [residencyList, setResidencyList] = useState<any[]>([]);
+  const [residencyLoading, setResidencyLoading] = useState(false);
+  const [residencyError, setResidencyError] = useState<string | null>(null);
+  const [residencyLoaded, setResidencyLoaded] = useState(false);
+  // Phiếu cọc đã thanh toán đang chờ khai báo cư trú (bước 9). null = không có.
+  const [pendingResidencyDeposit, setPendingResidencyDeposit] = useState<any | null>(null);
+  const [residencyForm, setResidencyForm] = useState({ start_date: '', permanent_address: '', purpose: '' });
+  const [residencySubmitting, setResidencySubmitting] = useState(false);
+  const [residencyFormError, setResidencyFormError] = useState<string | null>(null);
+  const [residencySubmitSuccess, setResidencySubmitSuccess] = useState(false);
+
+  const loadResidencyTab = useCallback(async () => {
+    setResidencyLoading(true);
+    setResidencyError(null);
+    try {
+      const [list, pending] = await Promise.all([
+        fetchMyResidencyInfo(),
+        fetchPendingResidencyDeposit(),
+      ]);
+      setResidencyList(list || []);
+      setPendingResidencyDeposit(pending || null);
+      setResidencyLoaded(true);
+    } catch (err: any) {
+      console.error(err);
+      setResidencyError(err.message || 'Lỗi khi tải thông tin cư trú');
+    } finally {
+      setResidencyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'residency' || residencyLoaded || !user?.id) return;
+    loadResidencyTab();
+  }, [activeTab, residencyLoaded, user?.id, loadResidencyTab]);
+
+  // Prefill địa chỉ thường trú từ hồ sơ cá nhân khi mở form khai báo.
+  useEffect(() => {
+    if (pendingResidencyDeposit && !residencyForm.permanent_address && formData.permanent_address) {
+      setResidencyForm((prev) => ({ ...prev, permanent_address: formData.permanent_address }));
+    }
+  }, [pendingResidencyDeposit, formData.permanent_address]);
+
+  const handleSubmitResidency = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResidencyFormError(null);
+    if (!residencyForm.start_date || !residencyForm.permanent_address.trim() || !residencyForm.purpose.trim()) {
+      setResidencyFormError('Vui lòng nhập đầy đủ ngày bắt đầu lưu trú, địa chỉ thường trú và mục đích lưu trú.');
+      return;
+    }
+    setResidencySubmitting(true);
+    try {
+      await submitResidencyInfo(residencyForm);
+      setResidencySubmitSuccess(true);
+      setResidencyForm({ start_date: '', permanent_address: '', purpose: '' });
+      // Tải lại: phiếu cọc sẽ biến mất khỏi diện chờ, bản khai xuất hiện trong lịch sử.
+      setResidencyLoaded(false);
+      await loadResidencyTab();
+      setTimeout(() => setResidencySubmitSuccess(false), 4000);
+    } catch (err: any) {
+      console.error(err);
+      setResidencyFormError(err.response?.data?.message || err.message || 'Lỗi khi khai báo thông tin cư trú.');
+    } finally {
+      setResidencySubmitting(false);
+    }
+  };
+
+  const residencyStatusLabel = (result: string) => {
+    if (result === 'approved') return { text: 'Đạt điều kiện', className: 'bg-[#eff3ef] text-[#4a6549] border-[#a8c3a5]' };
+    if (result === 'rejected') return { text: 'Không đạt', className: 'bg-error-container/40 text-error border-error/30' };
+    return { text: 'Đang chờ duyệt', className: 'bg-surface-container-low text-on-surface-variant border-surface-variant' };
   };
 
   // ── Settings State ────────────────────────────────────────────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // ── Shared InputField ─────────────────────────────────────────────────────
-  const InputField = ({ label, name, value, type = 'text', placeholder = '', disabled = false }: any) => {
-    const isDate = type === 'date';
-    if (isDate) {
-      return (
-        <CustomDatePicker
-          label={label}
-          value={value}
-          onChange={(val) => {
-            handleProfileChange({
-              target: { name, value: val }
-            } as any);
-          }}
-          disabled={disabled || !isEditing}
-          placeholder={placeholder || 'Chọn ngày'}
-          required={label.includes('*')}
-          variant="surface"
-        />
-      );
-    }
-    return (
-      <div className="space-y-2">
-        <FormLabel label={label} required={label.includes('*')} />
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={handleProfileChange}
-          placeholder={placeholder}
-          disabled={disabled || !isEditing}
-          className="w-full bg-surface-container-low border border-surface-variant rounded-24 py-3.5 px-6 text-sm font-body-md transition-all focus:outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 text-on-surface disabled:opacity-60"
-        />
-      </div>
-    );
-  };
+
 
 
 
@@ -309,14 +465,59 @@ export default function ProfilePage() {
                   <User className="w-5 h-5" /> Hồ sơ cá nhân
                 </button>
 
-                <button 
-                  onClick={() => setActiveTab('settings')} 
+                <button
+                  onClick={() => setActiveTab('residency')}
+                  className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-24 transition-all font-label-md cursor-pointer text-left ${activeTab === 'residency' ? 'bg-primary-container text-on-primary-container font-bold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+                >
+                  <MapPin className="w-5 h-5" /> Thông tin cư trú
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('settings')}
                   className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-24 transition-all font-label-md cursor-pointer text-left ${activeTab === 'settings' ? 'bg-primary-container text-on-primary-container font-bold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
                 >
                   <Shield className="w-5 h-5" /> Bảo mật &amp; Cài đặt
                 </button>
                 
-                {isNewCustomer ? (
+                {isRenting ? (
+                  <>
+                    <Link to="/customer/invoices" state={{ from: '/profile' }} className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <CreditCard className="w-5 h-5" /> Hóa đơn &amp; Thanh toán
+                    </Link>
+                    <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <FileText className="w-5 h-5" /> Hợp đồng của tôi
+                    </Link>
+                    <Link to="/customer/services" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Zap className="w-5 h-5" /> Dịch vụ của tôi
+                    </Link>
+                    {user?.can_request_checkout === true && (
+                      <Link to="/customer/checkout-request" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                        <ClipboardList className="w-5 h-5" /> Đăng ký trả phòng
+                      </Link>
+                    )}
+                    <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
+                      <Compass className="w-5 h-5" /> Tìm phòng khác
+                    </Link>
+                  </>
+                ) : canViewHousingHistory ? (
+                  <>
+                    <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Compass className="w-5 h-5" /> Tra cứu &amp; Thuê phòng
+                    </Link>
+                    <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
+                    </Link>
+                    <Link to="/customer/invoices" state={{ from: '/profile' }} className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <CreditCard className="w-5 h-5" /> Hóa đơn &amp; Thanh toán
+                    </Link>
+                    <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <FileText className="w-5 h-5" /> Hợp đồng của tôi
+                    </Link>
+                    <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
+                    </Link>
+                  </>
+                ) : (
                   <>
                     <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Compass className="w-5 h-5" /> Tra cứu &amp; Thuê phòng
@@ -326,24 +527,6 @@ export default function ProfilePage() {
                     </Link>
                     <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/customer/invoices" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <CreditCard className="w-5 h-5" /> Hóa đơn &amp; Thanh toán
-                    </Link>
-                    <Link to="/customer/contracts" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <FileText className="w-5 h-5" /> Hợp đồng của tôi
-                    </Link>
-                    <Link to="/customer/services" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <Zap className="w-5 h-5" /> Dịch vụ của tôi
-                    </Link>
-                    <Link to="/customer/checkout-request" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
-                      <ClipboardList className="w-5 h-5" /> Đăng ký trả phòng
-                    </Link>
-                    <Link to="/rooms" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md mt-4 border-t border-surface-variant pt-4">
-                      <Compass className="w-5 h-5" /> Tìm phòng khác
                     </Link>
                   </>
                 )}
@@ -361,14 +544,42 @@ export default function ProfilePage() {
           <div className="flex-1 space-y-6">
             <div className="mb-8">
               <h1 className="font-headline-lg text-3xl text-primary font-bold">
-                {activeTab === 'profile' ? 'Thông tin cá nhân' : 'Bảo mật & Cài đặt'}
+                {activeTab === 'profile' ? 'Thông tin cá nhân' : activeTab === 'residency' ? 'Thông tin cư trú' : 'Bảo mật & Cài đặt'}
               </h1>
               <p className="font-body-md text-on-surface-variant mt-2">
-                {activeTab === 'profile' 
+                {activeTab === 'profile'
                   ? 'Quản lý thông tin tài khoản và cấu hình lưu trú của bạn.'
+                  : activeTab === 'residency'
+                  ? 'Lịch sử khai báo thông tin cư trú theo từng hợp đồng thuê.'
                   : 'Quản lý cài đặt thông báo, ngôn ngữ và các tùy chọn bảo mật tài khoản.'}
               </p>
             </div>
+
+            {/* Incomplete Profile Warning Banner */}
+            {activeTab === 'profile' && !isLoading && (
+              !formData.phone.trim() ||
+              !formData.cccd.trim() ||
+              !formData.dob.trim() ||
+              !formData.gender.trim() ||
+              !formData.nationality.trim() ||
+              !formData.issue_date.trim() ||
+              !formData.issue_place.trim() ||
+              !formData.permanent_address.trim()
+            ) && (
+              <div className="bg-[#eff3ef] border border-[#a8c3a5] rounded-32 p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm animate-fade-in mb-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-[#4a6549] text-white rounded-24 shadow-inner shrink-0">
+                    <Info className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-[#4a6549] text-base">Hồ sơ cá nhân chưa hoàn tất!</h4>
+                    <p className="text-sm text-on-surface-variant leading-relaxed">
+                      Bạn cần cập nhật đầy đủ thông tin cá nhân bắt buộc (bao gồm: Số điện thoại, CCCD/Passport, Ngày sinh, Giới tính, Quốc tịch, Ngày/Nơi cấp CCCD và Địa chỉ thường trú) trước khi thực hiện <strong>đăng ký thuê phòng</strong> hoặc <strong>đặt cọc</strong>. Hãy nhấn nút "Chỉnh sửa" bên dưới để bổ sung.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* New Customer Warning Banner */}
             {isNewCustomer && activeTab === 'profile' && (
@@ -395,57 +606,92 @@ export default function ProfilePage() {
 
             {/* ── PROFILE TAB ───────────────────────────────────────────── */}
             {activeTab === 'profile' && (
-              <div className="space-y-6 animate-fade-in">
-                {/* Profile Avatar Card */}
-                <div className="bg-surface-container-lowest rounded-32 p-8 border border-surface-variant flex flex-col sm:flex-row items-center gap-8 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 left-0 bottom-0 w-32 bg-primary/10 hidden sm:block"></div>
-                  
-                  <div className="relative shrink-0 sm:ml-4 z-10">
-                    <img 
-                      src={user?.avatar_url || avatarCartoon} 
-                      alt="Avatar" 
-                      className="w-28 h-28 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
-                    />
-                    <button className="absolute bottom-1 right-1 p-2 bg-[#4a6549] text-white rounded-full border-[3px] border-surface shadow-sm cursor-pointer hover:bg-[#3a503a] transition-colors z-20">
-                      <Camera className="w-4 h-4" />
-                    </button>
+              isLoading ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                  <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin cá nhân...</p>
+                </div>
+              ) : error && !formData.email ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 bg-error-container/30 rounded-full flex items-center justify-center text-error border border-error/20">
+                    <X className="w-6 h-6" />
                   </div>
-                  
-                  <div className="flex-1 text-center sm:text-left z-10">
-                    <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
-                    <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
-                      {isNewCustomer ? (
-                        <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                          Khách hàng mới
-                        </span>
-                      ) : (
-                        <>
-                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                            Sinh viên
-                          </span>
-                          <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
-                            Phòng 402-B
-                          </span>
-                        </>
-                      )}
+                  <p className="text-error font-bold text-base">Không thể tải thông tin cá nhân</p>
+                  <p className="text-on-surface-variant text-sm text-center max-w-md">{error}</p>
+                  <button
+                    onClick={() => loadProfile()}
+                    className="px-6 py-2.5 bg-primary text-white rounded-full font-label-md text-sm hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+                  >
+                    Thử tải lại
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6 animate-fade-in">
+                  {/* Profile Avatar Card */}
+                  <div className="bg-surface-container-lowest rounded-32 p-8 border border-surface-variant flex flex-col sm:flex-row items-center gap-8 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 bottom-0 w-32 bg-primary/10 hidden sm:block"></div>
+                    
+                    <div className="relative shrink-0 sm:ml-4 z-10">
+                      <img 
+                        src={user?.avatar_url || avatarCartoon} 
+                        alt="Avatar" 
+                        className="w-28 h-28 rounded-full object-cover border-4 border-surface shadow-md bg-white relative z-10" 
+                      />
+                      <button className="absolute bottom-1 right-1 p-2 bg-[#4a6549] text-white rounded-full border-[3px] border-surface shadow-sm cursor-pointer hover:bg-[#3a503a] transition-colors z-20">
+                        <Camera className="w-4 h-4" />
+                      </button>
                     </div>
                     
-                    <div className="mt-4 flex flex-col sm:flex-row gap-4 w-full">
-                      <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
-                        <span className="text-on-surface-variant font-label-md">Thành viên từ:</span>
-                        <span className="font-semibold text-on-surface">
-                          {isNewCustomer ? '06/2026' : '05/2023'}
-                        </span>
+                    <div className="flex-1 text-center sm:text-left z-10">
+                      <h2 className="text-2xl font-bold text-primary">{formData.full_name}</h2>
+                      <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+                        {isNewCustomer ? (
+                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                            {isAvailableAfterCheckout ? 'Chưa đăng ký phòng' : 'Khách hàng mới'}
+                          </span>
+                        ) : isRecentlyCheckedOut ? (
+                          <>
+                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                              Cựu thành viên
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-error/20 bg-error/10 px-2.5 py-1 text-[11px] font-semibold text-error">
+                              Đã trả phòng
+                            </span>
+                          </>
+                        ) : isPendingPayment ? (
+                          <>
+                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                              Chờ nhận phòng
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-status-warning/20 bg-status-warning/10 px-2.5 py-1 text-[11px] font-semibold text-status-warning">
+                              Chờ thanh toán nhận phòng
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
+                              {user?.renting_room_name}
+                            </span>
+                          </>
+                        )}
                       </div>
-                      <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
-                        <span className="text-on-surface-variant font-label-md">Phòng lưu trú:</span>
-                        <span className={`font-semibold ${isNewCustomer ? 'text-error' : 'text-primary'}`}>
-                          {isNewCustomer ? 'Chưa đăng ký' : 'Premium Eco'}
-                        </span>
+                      
+                      <div className="mt-4 flex flex-col sm:flex-row gap-4 w-full">
+                        <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
+                          <span className="text-on-surface-variant font-label-md">Thành viên từ:</span>
+                          <span className="font-semibold text-on-surface">
+                            {memberSinceLabel}
+                          </span>
+                        </div>
+                        <div className="flex-1 flex justify-between items-center bg-surface-container-low p-3.5 px-5 rounded-24 text-sm border border-surface-variant">
+                          <span className="text-on-surface-variant font-label-md">Phòng lưu trú:</span>
+                          <span className={`font-semibold ${!isRenting ? 'text-error' : 'text-primary'}`}>
+                            {roomStatusLabel}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
                 {/* Profile Details Form */}
                 <div className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm relative">
@@ -481,10 +727,10 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InputField label="Họ và tên *" name="full_name" value={formData.full_name} />
-                    <InputField label="Email liên lạc *" name="email" value={formData.email} disabled />
+                    <InputField label="Họ và tên *" name="full_name" value={formData.full_name} isEditing={isEditing} onChange={handleProfileChange} />
+                    <InputField label="Email liên lạc *" name="email" value={formData.email} disabled isEditing={isEditing} onChange={handleProfileChange} />
                     
-                    <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} />
+                    <InputField label="Ngày sinh *" name="dob" type="date" value={formData.dob} isEditing={isEditing} onChange={handleProfileChange} />
                     <div className="space-y-2">
                       <FormLabel label="Giới tính" required />
                       <CustomSelect
@@ -502,22 +748,24 @@ export default function ProfilePage() {
                       />
                     </div>
                     
-                    <InputField label="Số điện thoại *" name="phone" value={formData.phone} />
-                    <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} />
+                    <InputField label="Số điện thoại *" name="phone" value={formData.phone} isEditing={isEditing} onChange={handleProfileChange} />
+                    <InputField label="Quốc tịch *" name="nationality" value={formData.nationality} isEditing={isEditing} onChange={handleProfileChange} />
 
                     <InputField 
                       label="Số CCCD / Passport *" 
                       name="cccd" 
                       value={formData.cccd} 
                       placeholder={isNewCustomer ? "Vui lòng nhập CCCD để làm thủ tục thuê" : ""} 
+                      isEditing={isEditing}
+                      onChange={handleProfileChange}
                     />
-                    <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} />
+                    <InputField label="Ngày cấp *" name="issue_date" type="date" value={formData.issue_date} isEditing={isEditing} onChange={handleProfileChange} />
                     
                     <div className="md:col-span-2">
-                      <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} />
+                      <InputField label="Nơi cấp *" name="issue_place" value={formData.issue_place} isEditing={isEditing} onChange={handleProfileChange} />
                     </div>
                     <div className="md:col-span-2">
-                      <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} />
+                      <InputField label="Địa chỉ thường trú *" name="permanent_address" value={formData.permanent_address} isEditing={isEditing} onChange={handleProfileChange} />
                     </div>
                   </div>
                   
@@ -526,6 +774,11 @@ export default function ProfilePage() {
                       {saveSuccess && (
                         <span className="text-sm text-primary font-semibold animate-fade-in">
                           ✓ Đã cập nhật thành công!
+                        </span>
+                      )}
+                      {error && (
+                        <span className="text-sm text-error font-semibold animate-fade-in">
+                          ⚠ {error}
                         </span>
                       )}
                       <button 
@@ -539,6 +792,163 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
+            )
+            )}
+
+            {/* ── RESIDENCY INFO TAB ────────────────────────────────────── */}
+            {activeTab === 'residency' && (
+              residencyLoading ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                  <p className="text-on-surface-variant font-semibold text-sm">Đang tải thông tin cư trú...</p>
+                </div>
+              ) : residencyError ? (
+                <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                  <div className="w-12 h-12 bg-error-container/30 rounded-full flex items-center justify-center text-error border border-error/20">
+                    <X className="w-6 h-6" />
+                  </div>
+                  <p className="text-error font-bold text-base">Không thể tải thông tin cư trú</p>
+                  <p className="text-on-surface-variant text-sm text-center max-w-md">{residencyError}</p>
+                </div>
+              ) : (
+                <div className="space-y-5 animate-fade-in">
+
+                  {/* Residency Info Banner */}
+                  <div className="bg-[#eff3ef] border border-[#a8c3a5] rounded-32 p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm animate-fade-in">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-[#4a6549] text-white rounded-24 shadow-inner shrink-0">
+                        <Info className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-[#4a6549] text-base">Quy định Khai báo Thông tin Cư trú</h4>
+                        <p className="text-sm text-on-surface-variant leading-relaxed">
+                          Theo quy định quản lý lưu trú, quý khách vui lòng hoàn tất khai báo cư trú <strong>sau khi thanh toán cọc giữ phòng/giường thành công</strong>. Ban quản lý cơ sở sẽ đối chiếu thông tin này để thẩm định điều kiện trước khi phê duyệt và lập hợp đồng thuê phòng chính thức.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Form khai báo cư trú — chỉ hiện khi có phiếu cọc đã thanh toán đang chờ khai báo (bước 9) */}
+                  {pendingResidencyDeposit && (
+                    <form onSubmit={handleSubmitResidency} className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border-2 border-[#a8c3a5] shadow-sm">
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="p-3 bg-[#4a6549] text-white rounded-24 shadow-inner shrink-0">
+                          <MapPin className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-headline-md text-base text-[#4a6549] font-bold">Khai báo thông tin cư trú</h3>
+                          <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
+                            Bạn đã thanh toán cọc cho <strong>{pendingResidencyDeposit.room_name}</strong>. Vui lòng khai báo thông tin cư trú để quản lý kiểm tra điều kiện lưu trú trước khi lập hợp đồng.
+                          </p>
+                        </div>
+                      </div>
+
+                      {residencySubmitSuccess && (
+                        <div className="mb-5 flex items-center gap-2 bg-[#eff3ef] border border-[#a8c3a5] text-[#4a6549] rounded-24 px-4 py-3 text-sm font-semibold">
+                          <Check className="w-4 h-4" /> Khai báo thành công! Vui lòng chờ quản lý duyệt.
+                        </div>
+                      )}
+                      {residencyFormError && (
+                        <div className="mb-5 flex items-center gap-2 bg-error-container/30 border border-error/30 text-error rounded-24 px-4 py-3 text-sm font-semibold">
+                          <X className="w-4 h-4" /> {residencyFormError}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                        <div>
+                          <FormLabel label="Ngày bắt đầu lưu trú" required />
+                          <CustomDatePicker
+                            value={residencyForm.start_date}
+                            onChange={(val: string) => setResidencyForm((prev) => ({ ...prev, start_date: val }))}
+                          />
+                        </div>
+                        <div>
+                          <FormLabel label="Mục đích lưu trú" required />
+                          <CustomSelect
+                            value={residencyForm.purpose}
+                            onChange={(val: string) => setResidencyForm((prev) => ({ ...prev, purpose: val }))}
+                            options={[
+                              { value: 'Đi học / Đi làm', label: 'Đi học / Đi làm' },
+                              { value: 'Công tác', label: 'Công tác' },
+                              { value: 'Du lịch', label: 'Du lịch' },
+                              { value: 'Khác', label: 'Khác' },
+                            ]}
+                            placeholder="Chọn mục đích lưu trú"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <FormLabel label="Địa chỉ thường trú" required />
+                          <input
+                            type="text"
+                            value={residencyForm.permanent_address}
+                            onChange={(e) => setResidencyForm((prev) => ({ ...prev, permanent_address: e.target.value }))}
+                            placeholder="Nhập địa chỉ thường trú theo CCCD"
+                            className="w-full px-4 py-3 rounded-24 border border-surface-variant bg-surface-container-low text-on-surface text-sm focus:outline-none focus:border-primary transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end mt-6">
+                        <button
+                          type="submit"
+                          disabled={residencySubmitting}
+                          className="px-6 py-3 bg-[#4a6549] hover:bg-[#3a503a] disabled:opacity-60 text-white rounded-full font-label-md transition-all text-sm shadow-md"
+                        >
+                          {residencySubmitting ? 'Đang gửi...' : 'Gửi khai báo cư trú'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* Lịch sử khai báo */}
+                  {residencyList.length === 0 && !pendingResidencyDeposit ? (
+                    <div className="bg-surface-container-lowest rounded-32 p-16 border border-surface-variant flex flex-col items-center justify-center space-y-4 shadow-sm min-h-[350px]">
+                      <MapPin className="w-12 h-12 text-on-surface-variant/40" />
+                      <p className="text-on-surface-variant font-semibold text-sm text-center">
+                        Bạn chưa khai báo thông tin cư trú cho hợp đồng nào.
+                      </p>
+                    </div>
+                  ) : (
+                    residencyList.map((r) => {
+                      const badge = residencyStatusLabel(r.check_result);
+                      return (
+                        <div key={r.id} className="bg-surface-container-lowest rounded-32 p-8 md:p-10 border border-surface-variant shadow-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                            <h3 className="font-headline-md text-base text-on-surface font-bold flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-on-surface-variant" />
+                              {r.contract_code ? `Hợp đồng ${r.contract_code}` : 'Khai báo (chưa lập hợp đồng)'}
+                              {r.room_name && <span className="text-on-surface-variant font-normal">— {r.room_name}</span>}
+                            </h3>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badge.className}`}>
+                              {badge.text}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                            <div>
+                              <p className="text-on-surface-variant mb-1">Ngày bắt đầu lưu trú</p>
+                              <p className="font-semibold text-on-surface">{r.start_date || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-on-surface-variant mb-1">Mục đích lưu trú</p>
+                              <p className="font-semibold text-on-surface">{r.purpose || '—'}</p>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <p className="text-on-surface-variant mb-1">Địa chỉ thường trú</p>
+                              <p className="font-semibold text-on-surface">{r.permanent_address || '—'}</p>
+                            </div>
+                            {r.check_result === 'rejected' && r.reject_reason && (
+                              <div className="sm:col-span-2 bg-error-container/20 border border-error/20 rounded-24 p-4">
+                                <p className="text-error text-xs font-bold mb-1">Lý do không đạt</p>
+                                <p className="text-error text-sm">{r.reject_reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )
             )}
 
             {/* ── SETTINGS TAB ──────────────────────────────────────────── */}

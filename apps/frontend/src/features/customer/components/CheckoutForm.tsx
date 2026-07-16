@@ -137,7 +137,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
               placeholder="Chọn ngày"
               error={!!errors.expectedDate}
               variant="surface"
-              triggerClassName="bg-surface-container-low border-outline-variant hover:border-primary/50 rounded-xl px-4 py-3"
+              triggerClassName="bg-surface-container-low border-outline-variant hover:border-primary/50 rounded-xl pl-12 pr-10 py-3"
             />
             {errors.expectedDate && (
               <p className="text-xs text-error font-medium mt-1">{errors.expectedDate}</p>

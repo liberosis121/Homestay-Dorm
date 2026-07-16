@@ -1,21 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getRoomDetailApi, getRoomBedsApi } from './rooms.api';
 import { useAuthStore } from '../../stores/authStore';
 import Navbar from '../../components/ui/Navbar';
 import Footer from '../../components/ui/Footer';
 import Gallery from './components/Gallery';
 import BedAvailability from './components/BedAvailability';
 import BookingPanel from './components/BookingPanel';
-import { 
-  Users, 
-  MapPin, 
-  ArrowLeft, 
-  ShieldAlert, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Users,
+  MapPin,
+  ArrowLeft,
+  ShieldAlert,
+  CheckCircle2,
+  XCircle,
   Layers,
-  Maximize,
   CheckCircle,
   AlertCircle,
   ShieldCheck
@@ -55,10 +54,10 @@ export default function RoomDetailPage() {
   const [beds, setBeds] = useState<Bed[]>([]);
   const [branchAddress, setBranchAddress] = useState<string>('Quận 1, TP. Hồ Chí Minh');
   const [branchName, setBranchName] = useState<string>('Chi nhánh Quận 1');
-  
+
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
   const [isFullRoomSelected, setIsFullRoomSelected] = useState<boolean>(false);
-  
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,50 +65,29 @@ export default function RoomDetailPage() {
   const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
 
   const fetchRoomData = async () => {
+    if (!roomId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const db = getMockDB();
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Gọi API thật thay vì getMockDB()
+      const [roomData, bedsData] = await Promise.all([
+        getRoomDetailApi(roomId),
+        getRoomBedsApi(roomId).catch(() => [])
+      ]);
 
-      const foundRoom = db.rooms?.find((r: any) => r.id === roomId) as Room;
-      if (!foundRoom) {
+      if (!roomData) {
         setRoom(null);
         setIsLoading(false);
         return;
       }
 
-      setRoom(foundRoom);
+      setRoom(roomData as any);
+      setBeds(bedsData as any[]);
 
-      // Fetch or generate beds
-      let matchedBeds = db.beds?.filter((b: any) => b.room_id === roomId) as Bed[];
-      if (!matchedBeds || matchedBeds.length === 0) {
-        // Dynamically generate beds for rich demo data based on capacity & status
-        const count = foundRoom.capacity;
-        const occupiedCount = foundRoom.current_occupants;
-        
-        matchedBeds = Array.from({ length: count }).map((_, index) => {
-          let status: 'available' | 'occupied' | 'deposited' = 'available';
-          if (index < occupiedCount) {
-            status = 'occupied';
-          }
-          return {
-            id: `${foundRoom.id}-bed-${index + 1}`,
-            room_id: foundRoom.id,
-            name: `Giường ${String.fromCharCode(65 + index)}`, // Giường A, Giường B, Giường C...
-            price: foundRoom.price,
-            status: status
-          };
-        });
-      }
-      setBeds(matchedBeds);
-
-      // Fetch branch info
-      const foundBranch = db.branches?.find((b: any) => b.id === foundRoom.branch_id);
-      if (foundBranch) {
-        setBranchName(foundBranch.name);
-        setBranchAddress(foundBranch.address);
+      // Đọc thông tin chi nhánh từ dữ liệu phòng (đã được join bởi API)
+      if (roomData.branches) {
+        setBranchName(roomData.branches.name || 'Chi nhánh');
+        setBranchAddress(roomData.branches.address || 'TP. Hồ Chí Minh');
       }
     } catch (err) {
       setError('Đã xảy ra lỗi khi kết nối dữ liệu. Vui lòng tải lại trang.');
@@ -129,7 +107,7 @@ export default function RoomDetailPage() {
     setIsFullRoomSelected(isFullRoom);
   };
 
-  const handleBookingAction = (_type: 'interest') => {
+  const handleBookingAction = (type: 'interest' | 'group') => {
     if (!user) {
       navigate('/login');
       return;
@@ -139,6 +117,26 @@ export default function RoomDetailPage() {
       setNotification({
         type: 'warning',
         message: `Hiện bạn đang thuê ${user.renting_room_name}, lưu ý trả phòng theo hợp đồng trước khi thuê phòng mới.`
+      });
+      return;
+    }
+
+    // Đăng ký thuê theo nhóm: điều hướng sang luồng riêng, truyền số giường trống THỰC TẾ
+    // (tính từ danh sách beds) để trang nhóm chặn thêm thành viên vượt quá.
+    if (type === 'group') {
+      const availableBedsCount = beds.filter((b) => b.status === 'available').length;
+      const selectedBedsNames = beds
+        .filter((b) => selectedBeds.includes(b.id))
+        .map((b) => b.name);
+      navigate('/customer/register-group', {
+        state: {
+          roomId: room?.id,
+          roomName: room?.name,
+          capacity: room?.capacity,
+          availableBeds: availableBedsCount,
+          selectedBedsNames,
+          genderType: room?.gender_type,
+        },
       });
       return;
     }
@@ -320,14 +318,13 @@ export default function RoomDetailPage() {
 
       {/* Main Container */}
       <main className="flex-grow pt-24 pb-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full relative">
-        
+
         {notification && (
           <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[150] w-full max-w-xl p-4 animate-fade-in-up">
-            <div className={`backdrop-blur-md p-5 rounded-2xl shadow-2xl flex items-start gap-4 border border-white/20 ${
-              notification.type === 'warning' 
-                ? 'bg-status-warning/95 text-white' 
+            <div className={`backdrop-blur-md p-5 rounded-2xl shadow-2xl flex items-start gap-4 border border-white/20 ${notification.type === 'warning'
+                ? 'bg-status-warning/95 text-white'
                 : 'bg-primary/95 text-on-primary'
-            }`}>
+              }`}>
               {notification.type === 'warning' ? (
                 <AlertCircle className="w-6 h-6 shrink-0 mt-0.5" />
               ) : (
@@ -339,13 +336,12 @@ export default function RoomDetailPage() {
                 </h4>
                 <p className="text-xs opacity-90 mt-1 leading-relaxed">{notification.message}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setNotification(null)}
-                className={`${
-                  notification.type === 'warning' 
-                    ? 'text-white/80 hover:text-white hover:bg-white/10' 
+                className={`${notification.type === 'warning'
+                    ? 'text-white/80 hover:text-white hover:bg-white/10'
                     : 'text-on-primary/80 hover:text-on-primary hover:bg-white/10'
-                } p-1 rounded-full cursor-pointer transition-colors`}
+                  } p-1 rounded-full cursor-pointer transition-colors`}
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -355,8 +351,8 @@ export default function RoomDetailPage() {
 
         {/* Back Link */}
         <div className="mt-6 mb-8">
-          <Link 
-            to="/rooms" 
+          <Link
+            to="/rooms"
             className="inline-flex items-center gap-1.5 px-4 py-2 border border-transparent rounded-full hover:border-primary/25 hover:bg-primary/5 transition-all duration-300 text-primary font-label-md group cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" /> Quay lại danh sách phòng
@@ -409,10 +405,10 @@ export default function RoomDetailPage() {
 
         {/* Details and Sidebar Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-          
+
           {/* Left: Detailed Contents */}
           <div className="lg:col-span-8 space-y-12">
-            
+
             {/* Description */}
             <section className="space-y-4">
               <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Mô tả phòng</h2>
@@ -422,7 +418,7 @@ export default function RoomDetailPage() {
             </section>
 
             {/* Bento Grid Info Box */}
-            <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <section className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="p-6 bg-surface-container-low border border-outline-variant/10 rounded-2xl text-center space-y-1 shadow-sm hover:shadow-md transition-shadow">
                 <Users className="w-6 h-6 text-primary mx-auto mb-1" />
                 <p className="text-caption text-on-surface-variant">Sức chứa tối đa</p>
@@ -441,12 +437,6 @@ export default function RoomDetailPage() {
                 <Layers className="w-6 h-6 text-primary mx-auto mb-1" />
                 <p className="text-caption text-on-surface-variant">Vị trí tầng</p>
                 <p className="font-label-md text-label-md text-on-surface font-bold">Tầng {room.floor}</p>
-              </div>
-
-              <div className="p-6 bg-surface-container-low border border-outline-variant/10 rounded-2xl text-center space-y-1 shadow-sm hover:shadow-md transition-shadow">
-                <Maximize className="w-6 h-6 text-primary mx-auto mb-1" />
-                <p className="text-caption text-on-surface-variant">Diện tích sử dụng</p>
-                <p className="font-label-md text-label-md text-on-surface font-bold">25 m²</p>
               </div>
             </section>
 
@@ -476,7 +466,7 @@ export default function RoomDetailPage() {
               />
             </section>
 
-           
+
             {/* Room Rules Section */}
             <section className="p-8 bg-surface-container-high border border-outline-variant/40 rounded-32 space-y-5">
               <h2 className="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">

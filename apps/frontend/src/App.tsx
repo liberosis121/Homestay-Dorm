@@ -10,7 +10,6 @@ import {
   LogOut, 
   Menu, 
   X, 
-  Database, 
   Building, 
   CheckCircle, 
   Calendar, 
@@ -24,7 +23,6 @@ import {
   LogIn,
   Search
 } from 'lucide-react';
-import { initializeMockDB } from './lib/supabaseClient';
 import { useAuthStore } from './stores/authStore';
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
@@ -32,6 +30,7 @@ import RegisterPage from './features/auth/RegisterPage';
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import OTPVerificationPage from './features/auth/OTPVerificationPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
+import AuthCallbackPage from './features/auth/AuthCallbackPage';
 import ProfilePage from './features/customer/ProfilePage';
 import StaffProfilePage from './features/staff/StaffProfilePage';
 import RoomsPage from './features/rooms/RoomsPage';
@@ -64,7 +63,6 @@ import AdminRoomsPage from './features/admin/AdminRoomsPage';
 import AdminServicesPage from './features/admin/AdminServicesPage';
 import AdminConditionsPage from './features/admin/AdminConditionsPage';
 import AdminAssetsPage from './features/admin/AdminAssetsPage';
-import AdminBackupPage from './features/admin/AdminBackupPage';
 import AdminDashboardPage from './features/admin/AdminDashboardPage';
 import ManagerDashboardPage from './features/manager/ManagerDashboardPage';
 import ManagerRoomsPage from './features/manager/ManagerRoomsPage';
@@ -86,12 +84,8 @@ function ScrollToTop() {
   return null;
 }
 
-// App Wrapper to handle initialization
+// App Wrapper — khởi tạo phiên làm việc khi ứng dụng mở lần đầu
 export default function App() {
-  useEffect(() => {
-    initializeMockDB();
-  }, []);
-
   return (
     <HashRouter>
       <AppRoutes />
@@ -110,8 +104,12 @@ function AppRoutes() {
     <>
       <ScrollToTop />
       <Routes>
+        {/* Chỉ khớp ĐÚNG trang gốc "/". Trước đây dùng "/*" khiến route này nuốt hết
+            mọi /customer/* (viewing-schedules, deposit-history, ...) và đá khách về
+            trang chủ, vì React Router v6 ưu tiên route khai báo trước khi cùng điểm khớp. */}
         <Route path="/" element={!user || user.role === 'customer' ? <LandingPage /> : <DashboardLayout />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/" replace />} />
         <Route path="/forgot-password" element={!user ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
         <Route path="/verify-otp" element={!user ? <OTPVerificationPage /> : <Navigate to="/" replace />} />
@@ -200,18 +198,18 @@ function DashboardLayout() {
 
   // Dynamic Sidebar Menu Items based on User Role
   const getMenuItems = () => {
+    if (!user) return [];
     switch (user.role) {
       case 'admin':
         return [
-          { path: '/', label: 'Tổng quan hệ thống', icon: Home },
+          { path: '/admin/dashboard', label: 'Tổng quan hệ thống', icon: Home },
           { path: '/admin/users', label: 'Quản trị Khách hàng', icon: Users },
           { path: '/admin/employees', label: 'Quản trị Nhân viên', icon: User },
           { path: '/admin/branches', label: 'Quản trị Chi nhánh', icon: Building },
           { path: '/admin/rooms-catalog', label: 'Phòng & Giường', icon: Layers },
           { path: '/admin/services', label: 'Danh mục Dịch vụ', icon: Folder },
           { path: '/admin/conditions', label: 'Điều kiện lưu trú', icon: ClipboardList },
-          { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings },
-          { path: '/admin/backup', label: 'Sao lưu & Khôi phục', icon: Database }
+          { path: '/admin/assets', label: 'Tài sản dùng chung', icon: Settings }
         ];
       case 'manager':
         return [
@@ -245,27 +243,51 @@ function DashboardLayout() {
           { path: '/profile', label: 'Hồ sơ cá nhân', icon: User }
         ];
       case 'customer':
-        return [
-          { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
-          { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
-          { path: '/customer/services', label: user.renting_room_name ? 'Dịch vụ của tôi' : 'Dịch vụ & Bảng giá', icon: Zap },
-          { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
-          { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
-          { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
-          { path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }
-        ];
+        const stayStatus = user.stay_status || (user.renting_room_name ? 'active' : (user.has_contract_history ? 'available' : 'new'));
+        const isRenting = stayStatus === 'active' && !!user.renting_room_name;
+        const canViewHousingHistory = !!user.has_contract_history || stayStatus === 'pending_payment' || stayStatus === 'recently_checked_out';
+        const canRequestCheckout = user.can_request_checkout === true;
+        if (isRenting) {
+          return [
+            { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
+            { path: '/rooms', label: 'Tìm phòng khác', icon: Compass },
+            { path: '/customer/services', label: 'Dịch vụ của tôi', icon: Zap },
+            { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
+            { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
+            ...(canRequestCheckout ? [{ path: '/customer/checkout-request', label: 'Đăng ký trả phòng', icon: ClipboardList }] : [])
+          ];
+        } else if (canViewHousingHistory) {
+          return [
+            { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
+            { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
+            { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
+            { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
+            { path: '/customer/contracts', label: 'Hợp đồng của tôi', icon: FileText },
+            { path: '/customer/deposit-history', label: 'Lịch sử đặt cọc', icon: Receipt }
+          ];
+        } else {
+          return [
+            { path: '/profile', label: 'Hồ sơ cá nhân', icon: Users },
+            { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
+            { path: '/customer/services', label: 'Dịch vụ & Bảng giá', icon: Zap },
+            { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
+            { path: '/customer/deposit-history', label: 'Lịch sử đặt cọc', icon: Receipt }
+          ];
+        }
       default:
         return [];
     }
   };
 
   const getRoleLabel = () => {
+    if (!user) return { text: 'Người dùng', bg: 'bg-surface-container text-on-surface border-outline/20' };
     switch (user.role) {
       case 'admin': return { text: 'Quản trị viên', bg: 'bg-primary-container text-on-primary-container border-primary/20' };
       case 'manager': return { text: 'Quản lý chi nhánh', bg: 'bg-primary-fixed-dim/20 text-primary border-primary/20' };
       case 'sale': return { text: 'Nhân viên Sale', bg: 'bg-secondary-container text-on-secondary-container border-secondary/20' };
       case 'accountant': return { text: 'Kế toán', bg: 'bg-tertiary-container text-on-tertiary-container border-tertiary/20' };
       case 'customer': return { text: 'Khách thuê', bg: 'bg-error-container text-on-error-container border-error/20' };
+      default: return { text: 'Người dùng', bg: 'bg-surface-container text-on-surface border-outline/20' };
     }
   };
 
@@ -273,6 +295,7 @@ function DashboardLayout() {
   const menuItems = getMenuItems();
 
   const getSidebarSubtitle = () => {
+    if (!user) return 'PHÂN HỆ';
     switch (user.role) {
       case 'sale': return 'PHÂN HỆ NHÂN VIÊN SALE';
       case 'manager': return 'PHÂN HỆ QUẢN LÝ';
@@ -288,7 +311,7 @@ function DashboardLayout() {
       {/* ----------------------------------------------------
           SIDEBAR (Desktop)
          ---------------------------------------------------- */}
-      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col flex-shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
+      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
         <div className="p-6 border-b border-[#d1c4b9] flex items-center gap-3">
           <div className="p-2 bg-[#4a6549]/10 rounded-xl text-[#4a6549] border border-[#4a6549]/20 flex items-center justify-center shrink-0">
             <span 
@@ -412,7 +435,7 @@ function DashboardLayout() {
             {/* Branch display for Managers/Sales */}
             <div className="hidden sm:flex items-center gap-2 text-sm font-label-md text-[#4e453c] bg-[#faf2ec] px-4 py-2 rounded-24 border border-[#d1c4b9]">
               <Building className="w-4 h-4 text-[#6f583c]" />
-              <span>{user.role === 'customer' ? 'Khu vực thuê: TP.HCM' : 'Chi nhánh làm việc: Quận 1'}</span>
+              <span>{user.role === 'customer' ? 'Khu vực thuê: TP.HCM' : `Chi nhánh làm việc: ${user.branch_name || 'Tất cả'}`}</span>
             </div>
           </div>
           <div className="flex items-center gap-5">
@@ -422,10 +445,10 @@ function DashboardLayout() {
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="w-10 h-10 rounded-full bg-[#6f583c]/15 hover:bg-[#6f583c] hover:text-white text-[#6f583c] border border-[#6f583c]/10 flex items-center justify-center text-sm font-headline-md transition-all shadow-sm hover:shadow cursor-pointer overflow-hidden"
               >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.full_name ?? 'User'} className="w-full h-full object-cover" />
                 ) : (
-                  user.full_name.charAt(0)
+                  user?.full_name?.charAt(0) ?? 'U'
                 )}
               </button>
 
@@ -492,6 +515,7 @@ function DashboardLayout() {
             {user.role === 'accountant' && <Route path="/accountant/refunds" element={<AccountantRefundsPage />} />}
             {user.role === 'accountant' && <Route path="/accountant/payouts" element={<AccountantPayoutsPage />} />}
             {/* Admin Routes (UC25-UC32) */}
+            {user.role === 'admin' && <Route path="/admin/dashboard" element={<AdminDashboardPage />} />}
             {user.role === 'admin' && <Route path="/admin/users" element={<AdminUsersPage />} />}
             {user.role === 'admin' && <Route path="/admin/employees" element={<AdminEmployeesPage />} />}
             {user.role === 'admin' && <Route path="/admin/branches" element={<AdminBranchesPage />} />}
@@ -499,7 +523,6 @@ function DashboardLayout() {
             {user.role === 'admin' && <Route path="/admin/services" element={<AdminServicesPage />} />}
             {user.role === 'admin' && <Route path="/admin/conditions" element={<AdminConditionsPage />} />}
             {user.role === 'admin' && <Route path="/admin/assets" element={<AdminAssetsPage />} />}
-            {user.role === 'admin' && <Route path="/admin/backup" element={<AdminBackupPage />} />}
             {(user.role === 'sale' || user.role === 'manager' || user.role === 'accountant') && (
               <Route path="/sale/customers" element={<CustomerLookupPage />} />
             )}
@@ -524,7 +547,7 @@ function DashboardDispatcher() {
   if (user.role === 'sale') return <Navigate to="/sale/dashboard" replace />;
   if (user.role === 'accountant') return <Navigate to="/accountant/dashboard" replace />;
   if (user.role === 'manager') return <Navigate to="/manager/dashboard" replace />;
-  if (user.role === 'admin') return <AdminDashboardPage />;
+  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
 
   const cards = [
     { title: 'Tỷ lệ phòng lấp đầy', val: '78%', desc: '+2.4% so với tháng trước', icon: Activity, color: 'text-primary bg-primary/10', border: 'border-primary/20' },
@@ -604,7 +627,7 @@ function DashboardDispatcher() {
 function PlaceholderPage() {
   const location = useLocation();
   return (
-    <div className="min-h-[450px] flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
+    <div className="min-h-112.5 flex flex-col items-center justify-center text-center p-8 bg-[#faf2ec] border border-[#d1c4b9] rounded-32 shadow-sm animate-fade-in-up">
       <div className="p-5 bg-[#6f583c]/10 rounded-2xl text-[#6f583c] border border-[#6f583c]/20 mb-6 flex items-center justify-center">
         <Compass className="w-12 h-12" />
       </div>

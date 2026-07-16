@@ -1,4 +1,14 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
+import {
+  fetchAdminAssets,
+  createAssetApi,
+  updateAssetApi,
+  fetchAdminBranches,
+  fetchAdminRooms,
+  fetchBedsByRoom,
+} from './services/admin.service';
 
 const A = {
   bg: '#fff8f3',          // Sand background
@@ -19,7 +29,12 @@ interface Asset {
   id: string;
   name: string;
   category: AssetCategory;
-  location: string;
+  branch?: { id: string; name: string };
+  room?: { id: string; name: string };
+  bed?: { id: string; name: string };
+  branch_id?: string;
+  room_id?: string;
+  bed_id?: string;
   brand: string;
   purchaseDate: string;
   value: number;
@@ -29,7 +44,7 @@ interface Asset {
 
 const STATUS_ASSET: Record<AssetStatus, { label: string; cls: string }> = {
   in_use: { label: 'Đang sử dụng', cls: 'bg-[#e8ede7] text-[#5f745d]' },
-  available: { label: 'Sẵn sàng', cls: 'bg-emerald-50 text-emerald-700' },
+  available: { label: 'Trong kho', cls: 'bg-emerald-50 text-emerald-700' },
   maintenance: { label: 'Đang bảo trì', cls: 'bg-amber-50 text-amber-700' },
   damaged: { label: 'Hư hỏng', cls: 'bg-red-50 text-red-700' },
 };
@@ -41,32 +56,102 @@ const CAT_LABEL: Record<AssetCategory, { label: string; icon: string }> = {
   facility: { label: 'Cơ sở hạ tầng', icon: 'construction' },
 };
 
-const MOCK_ASSETS: Asset[] = [
-  { id: 'TS001', name: 'Giường tầng - Set A', category: 'furniture', location: 'Phòng 101 - Quận 1', brand: 'Nội thất Hòa Phát', purchaseDate: '01/06/2022', value: 3500000, status: 'in_use', serialNumber: 'HP-BED-001A' },
-  { id: 'TS002', name: 'Điều hòa 12000BTU', category: 'electronics', location: 'Phòng 101 - Quận 1', brand: 'Daikin', purchaseDate: '15/07/2021', value: 8500000, status: 'in_use', serialNumber: 'DK-AC-0078' },
-  { id: 'TS003', name: 'Máy lạnh 9000BTU', category: 'electronics', location: 'Kho - Quận 1', brand: 'Samsung', purchaseDate: '10/03/2023', value: 6200000, status: 'available', serialNumber: 'SAM-AC-1234' },
-  { id: 'TS004', name: 'Tủ quần áo 4 ngăn', category: 'furniture', location: 'Phòng 202 - Quận 3', brand: 'IKEA', purchaseDate: '01/01/2020', value: 2800000, status: 'damaged', serialNumber: 'IKEA-WRD-456' },
-  { id: 'TS005', name: 'Máy nước nóng', category: 'appliance', location: 'Phòng 102 - Quận 1', brand: 'Ariston', purchaseDate: '05/08/2022', value: 4200000, status: 'maintenance', serialNumber: 'ARS-HWT-789' },
-  { id: 'TS006', name: 'Camera an ninh', category: 'facility', location: 'Hành lang tầng 1 - Quận 1', brand: 'Hikvision', purchaseDate: '20/09/2021', value: 1800000, status: 'in_use', serialNumber: 'HIK-CAM-321' },
-];
+const getLocationString = (asset: Asset): string => {
+  if (asset.bed) return `${asset.bed.name} - ${asset.room?.name} (${asset.branch?.name})`;
+  if (asset.room) return `${asset.room.name} (${asset.branch?.name})`;
+  if (asset.branch) return `Kho ${asset.branch.name}`;
+  return 'Chưa sắp xếp';
+};
 
 export default function AdminAssetsPage() {
-  const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [filterBranchId, setFilterBranchId] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [form, setForm] = useState<Partial<Asset>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [successMsg, setSuccessMsg] = useState('');
+  
+  // States for branch/room/bed location selectors
+  const [branches, setBranches] = useState<any[]>([]);
+  const [allRooms, setAllRooms] = useState<any[]>([]);
+  const [bedsForRoom, setBedsForRoom] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [selectedBedId, setSelectedBedId] = useState('');
+
+  const ITEMS_PER_PAGE = 5;
+
+  const loadAssets = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAdminAssets();
+      const mapped = (data || []).map((dbAsset: any) => ({
+        id: dbAsset.serial_number,
+        name: dbAsset.name || '',
+        category: dbAsset.category || 'furniture',
+        branch: dbAsset.branch,
+        room: dbAsset.room,
+        bed: dbAsset.bed,
+        branch_id: dbAsset.branch_id,
+        room_id: dbAsset.room_id,
+        bed_id: dbAsset.bed_id,
+        brand: dbAsset.brand || '',
+        purchaseDate: dbAsset.purchase_date ? dbAsset.purchase_date.split('-').reverse().join('/') : '',
+        value: dbAsset.value || 0,
+        status: dbAsset.status === 'in_stock' ? 'available' : (dbAsset.status || 'available'),
+        serialNumber: dbAsset.serial_number
+      }));
+      setAssets(mapped);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Lỗi khi tải danh sách tài sản');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    loadAssets();
+    (async () => {
+      try {
+        const [dbBranches, dbRooms] = await Promise.all([
+          fetchAdminBranches(),
+          fetchAdminRooms()
+        ]);
+        setBranches(dbBranches || []);
+        setAllRooms(dbRooms || []);
+      } catch (err) {
+        console.error('Lỗi khi tải danh mục chi nhánh/phòng:', err);
+      }
+    })();
   }, []);
+
+  // Fetch beds when selected room changes
+  useEffect(() => {
+    if (selectedRoomId) {
+      (async () => {
+        try {
+          const data = await fetchBedsByRoom(selectedRoomId);
+          setBedsForRoom(data || []);
+        } catch (err) {
+          console.error('Lỗi khi tải danh sách giường:', err);
+          setBedsForRoom([]);
+        }
+      })();
+    } else {
+      setBedsForRoom([]);
+      setSelectedBedId('');
+    }
+  }, [selectedRoomId]);
+
+  // Reset room and bed when selected branch changes (disabled to avoid overriding state when editing)
 
   const kpis = useMemo(() => {
     const total = assets.length;
@@ -83,54 +168,177 @@ export default function AdminAssetsPage() {
 
   const filtered = useMemo(() => assets.filter(a => {
     const q = search.toLowerCase();
-    const matchQ = !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || a.location.toLowerCase().includes(q);
+    const matchQ = !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q) || getLocationString(a).toLowerCase().includes(q);
     const matchStatus = !filterStatus || a.status === filterStatus;
     const matchCat = !filterCategory || a.category === filterCategory;
-    return matchQ && matchStatus && matchCat;
-  }), [assets, search, filterStatus, filterCategory]);
+    const matchBranch = !filterBranchId || a.branch_id === filterBranchId;
+    return matchQ && matchStatus && matchCat && matchBranch;
+  }), [assets, search, filterStatus, filterCategory, filterBranchId]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, filterCategory, filterBranchId]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedAssets = useMemo(() => {
+    return filtered.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
+  }, [filtered, safeCurrentPage]);
+  const pageStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1;
+  const pageEnd = Math.min(safeCurrentPage * ITEMS_PER_PAGE, filtered.length);
 
   const openAdd = () => {
     setModalMode('add');
-    setForm({ name: '', category: 'furniture', location: '', brand: '', purchaseDate: '', value: 0, status: 'available', serialNumber: '' });
+    setForm({ name: '', category: 'furniture', brand: '', purchaseDate: '', value: 0, status: 'available', serialNumber: '' });
+    setSelectedBranchId('');
+    setSelectedRoomId('');
+    setSelectedBedId('');
     setShowModal(true);
   };
 
-  const openEdit = (a: Asset) => {
+  const openEdit = async (a: Asset) => {
     setModalMode('edit');
     setForm({ ...a });
+
+    setSelectedBranchId(a.branch_id || '');
+    setSelectedRoomId(a.room_id || '');
+    setSelectedBedId(a.bed_id || '');
+
+    if (a.room_id) {
+      try {
+        const bedsData = await fetchBedsByRoom(a.room_id);
+        setBedsForRoom(bedsData || []);
+      } catch (err) {
+        console.error('Lỗi khi tải giường:', err);
+      }
+    } else {
+      setBedsForRoom([]);
+    }
+
     setShowModal(true);
   };
 
-  const saveForm = () => {
+  const saveForm = async () => {
     if (!form.name?.trim()) {
       alert("Tên tài sản không được để trống!");
       return;
     }
-    if (!form.location?.trim()) {
-      alert("Vị trí không được để trống!");
+    if (!selectedBranchId) {
+      alert("Vui lòng chọn chi nhánh!");
       return;
     }
-    if (modalMode === 'add') {
-      const na: Asset = {
-        name: form.name,
-        category: form.category || 'furniture',
-        location: form.location,
-        brand: form.brand || '',
-        value: form.value || 0,
-        status: form.status || 'available',
-        purchaseDate: form.purchaseDate || new Date().toLocaleDateString('vi-VN'),
-        serialNumber: form.serialNumber || `SN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        id: `TS${String(assets.length + 1).padStart(3, '0')}`
-      };
-      setAssets(prev => [...prev, na]);
-    } else {
-      setAssets(prev => prev.map(a => a.id === form.id ? { ...a, ...form } as Asset : a));
+
+    // Nếu không chọn phòng, tự động đưa trạng thái về available nếu đang là in_use
+    let finalStatus = form.status || 'available';
+    if (!selectedRoomId && finalStatus === 'in_use') {
+      finalStatus = 'available';
     }
-    setShowModal(false);
+
+    const apiStatus = finalStatus === 'available' ? 'in_stock' : finalStatus;
+
+    try {
+      if (modalMode === 'add') {
+        const pDate = form.purchaseDate ? form.purchaseDate.split('/').reverse().join('-') : new Date().toISOString().split('T')[0];
+        const created = await createAssetApi({
+          name: form.name,
+          category: form.category || 'furniture',
+          branch_id: selectedBranchId,
+          room_id: selectedRoomId,
+          bed_id: selectedBedId,
+          brand: form.brand || '',
+          value: form.value || 0,
+          status: apiStatus,
+          purchase_date: pDate
+        });
+        const na: Asset = {
+          id: created.serial_number,
+          name: created.name,
+          category: created.category as AssetCategory,
+          branch_id: created.branch_id || '',
+          room_id: created.room_id || '',
+          bed_id: created.bed_id || '',
+          brand: created.brand,
+          value: created.value,
+          status: (created.status === 'in_stock' ? 'available' : created.status) as AssetStatus,
+          purchaseDate: created.purchase_date ? created.purchase_date.split('-').reverse().join('/') : '',
+          serialNumber: created.serial_number
+        };
+        setAssets(prev => [na, ...prev]);
+        setSuccessMsg("Đã thêm tài sản mới thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
+      } else {
+        if (!form.serialNumber) return;
+        const updated = await updateAssetApi(form.serialNumber, {
+          branch_id: selectedBranchId,
+          room_id: selectedRoomId,
+          bed_id: selectedBedId,
+          value: form.value,
+          status: apiStatus
+        });
+        setAssets(prev => prev.map(a => a.serialNumber === form.serialNumber ? {
+          ...a,
+          branch_id: updated.branch_id || '',
+          room_id: updated.room_id || '',
+          bed_id: updated.bed_id || '',
+          value: updated.value,
+          status: (updated.status === 'in_stock' ? 'available' : updated.status) as AssetStatus
+        } : a));
+        setSuccessMsg("Đã cập nhật thông tin tài sản thành công!");
+        setTimeout(() => setSuccessMsg(""), 3500);
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi lưu thông tin tài sản');
+    }
   };
+
+  const formatNumber = (num: number | undefined) => {
+    if (!num) return "";
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  const categoryFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "furniture", label: "Nội thất" },
+    { value: "electronics", label: "Điện tử" },
+    { value: "appliance", label: "Thiết bị" },
+    { value: "facility", label: "Cơ sở hạ tầng" }
+  ];
+
+  const statusFilterOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "in_use", label: "Đang sử dụng" },
+    { value: "available", label: "Trong kho" },
+    { value: "maintenance", label: "Đang bảo trì" },
+    { value: "damaged", label: "Hư hỏng" }
+  ];
+
+  const categoryFormOptions = [
+    { value: "furniture", label: "Nội thất" },
+    { value: "electronics", label: "Điện tử" },
+    { value: "appliance", label: "Thiết bị" },
+    { value: "facility", label: "Cơ sở hạ tầng" }
+  ];
+
+  const statusFormOptions = [
+    { value: "available", label: "Trong kho" },
+    { value: "in_use", label: "Đang sử dụng" },
+    { value: "maintenance", label: "Bảo trì" },
+    { value: "damaged", label: "Hư hỏng" }
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in-up" style={{ fontFamily: 'Lexend, sans-serif' }}>
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className="flex items-center gap-2 bg-[#5f745d] text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold">
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -140,12 +348,18 @@ export default function AdminAssetsPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}>
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer">
           <span className="material-symbols-outlined text-[18px]">add_circle</span>
           Thêm tài sản
         </button>
       </header>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI */}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -175,26 +389,35 @@ export default function AdminAssetsPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg text-sm outline-none"
             style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }} />
         </div>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[150px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả loại</option>
-          <option value="furniture">Nội thất</option>
-          <option value="electronics">Điện tử</option>
-          <option value="appliance">Thiết bị</option>
-          <option value="facility">Cơ sở hạ tầng</option>
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{ border: `1px solid ${A.border}`, background: A.surface, color: A.textPrimary }}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="in_use">Đang sử dụng</option>
-          <option value="available">Sẵn sàng</option>
-          <option value="maintenance">Đang bảo trì</option>
-          <option value="damaged">Hư hỏng</option>
-        </select>
+        <CustomSelect
+          value={filterBranchId}
+          onChange={setFilterBranchId}
+          options={[
+            { value: "", label: "Tất cả chi nhánh" },
+            ...branches.map(b => ({ value: b.id, label: b.name }))
+          ]}
+          placeholder="Chi nhánh"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
+        <CustomSelect
+          value={filterCategory}
+          onChange={setFilterCategory}
+          options={categoryFilterOptions}
+          placeholder="Loại tài sản"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[150px]"
+        />
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={statusFilterOptions}
+          placeholder="Trạng thái"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
         <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterCategory(''); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}>
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           Làm mới
@@ -209,7 +432,7 @@ export default function AdminAssetsPage() {
             <thead style={{ background: A.sidebar, borderBottom: `1px solid ${A.border}` }}>
               <tr>
                 {['Mã TS', 'Tên tài sản', 'Loại', 'Vị trí', 'Thương hiệu', 'Giá trị', 'Trạng thái', 'Thao tác'].map(h => (
-                  <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${h === 'Thao tác' ? 'text-center' : 'text-left'}`}
                     style={{ color: A.textMuted }}>{h}</th>
                 ))}
               </tr>
@@ -236,7 +459,7 @@ export default function AdminAssetsPage() {
                     <p className="text-xs mt-1" style={{ color: A.textMuted }}>Vui lòng thay đổi từ khóa hoặc bộ lọc của bạn.</p>
                   </td>
                 </tr>
-              ) : filtered.map((a, i) => {
+              ) : paginatedAssets.map((a, i) => {
                 const si = STATUS_ASSET[a.status];
                 const cat = CAT_LABEL[a.category];
                 return (
@@ -245,15 +468,31 @@ export default function AdminAssetsPage() {
                     style={{ borderBottom: `1px solid ${A.border}`, background: i % 2 === 0 ? A.surface : A.bg }}
                     onMouseEnter={e => (e.currentTarget.style.background = A.bg)}
                     onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? A.surface : A.bg)}>
-                    <td className="px-4 py-3 text-sm font-mono font-semibold" style={{ color: A.accent }}>{a.id}</td>
+                    <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.accent }}>{formatShortId(a.id, 'checkout')}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.textPrimary }}>{a.name}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5" style={{ color: A.textMuted }}>
+                      <div className="flex items-center gap-1.5 whitespace-nowrap" style={{ color: A.textMuted }}>
                         <span className="material-symbols-outlined text-[16px]">{cat.icon}</span>
                         <span className="text-xs">{cat.label}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>{a.location}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: A.textMuted }}>
+                      {a.bed ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-[#1e1b17]">{a.bed.name} - {a.room?.name}</span>
+                          <span className="text-xs">{a.branch?.name}</span>
+                        </div>
+                      ) : a.room ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-[#1e1b17]">{a.room.name}</span>
+                          <span className="text-xs">{a.branch?.name}</span>
+                        </div>
+                      ) : a.branch ? (
+                        <span className="font-medium text-[#1e1b17]">Kho {a.branch.name}</span>
+                      ) : (
+                        <span>Chưa sắp xếp</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm" style={{ color: A.textPrimary }}>{a.brand}</td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: A.primary }}>
                       {a.value.toLocaleString('vi-VN')}đ
@@ -262,7 +501,7 @@ export default function AdminAssetsPage() {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${si.cls}`}>{si.label}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-center gap-1 transition-opacity">
                         <button onClick={e => { e.stopPropagation(); openEdit(a); }}
                           className="p-1.5 rounded-full hover:bg-gray-100 transition-colors" style={{ color: A.accent }}
                           title="Chỉnh sửa tài sản">
@@ -279,8 +518,35 @@ export default function AdminAssetsPage() {
         <div className="px-5 py-3 flex items-center justify-between"
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}>
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {assets.length} tài sản
+            Hiển thị {pageStart} - {pageEnd} trong số {filtered.length} tài sản
           </p>
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Trước
+              </button>
+            )}
+            <span className="text-xs font-semibold" style={{ color: A.textMuted }}>
+              Trang {safeCurrentPage}/{totalPages}
+            </span>
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Sau
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
@@ -308,47 +574,25 @@ export default function AdminAssetsPage() {
             <div className="grid grid-cols-2 gap-4">
 
               {/* Mã tài sản, Ngày mua, Số Serial (Only in Edit Mode) */}
+              {/* Mã tài sản (Only in Edit Mode) */}
               {modalMode === 'edit' && (
-                <div className="col-span-2 grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mã tài sản</label>
-                    <input
-                      value={form.id || ''}
-                      readOnly
-                      disabled
-                      tabIndex={-1}
-                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Ngày mua</label>
-                    <input
-                      value={form.purchaseDate || ''}
-                      readOnly
-                      disabled
-                      tabIndex={-1}
-                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Số Serial</label>
-                    <input
-                      value={form.serialNumber || ''}
-                      readOnly
-                      disabled
-                      tabIndex={-1}
-                      className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                      style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                    />
-                  </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Mã tài sản</label>
+                  <input
+                    value={form.id || ''}
+                    readOnly
+                    disabled
+                    tabIndex={-1}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
+                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  />
                 </div>
               )}
 
               {/* Tên tài sản */}
+              {/* Tên tài sản */}
               <div className="col-span-2">
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Tên tài sản <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Tên tài sản <span className="text-red-500">*</span></label>
                 <input
                   value={form.name || ''}
                   onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
@@ -356,60 +600,50 @@ export default function AdminAssetsPage() {
                   disabled={modalMode === 'edit'}
                   tabIndex={modalMode === 'edit' ? -1 : undefined}
                   placeholder="Tên tài sản..."
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
-                      ? 'cursor-not-allowed select-none opacity-60'
-                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
                     }`}
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
 
               {/* Loại tài sản */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Loại</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Loại</label>
                 {modalMode === 'edit' ? (
                   <input
                     value={CAT_LABEL[form.category as AssetCategory]?.label || ''}
                     readOnly
                     disabled
                     tabIndex={-1}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm cursor-not-allowed select-none opacity-60 outline-none border border-[#d1c4b9] bg-[#faf2ec]/50 text-[#1e1b17]"
                   />
                 ) : (
-                  <select
+                  <CustomSelect
                     value={form.category || 'furniture'}
-                    onChange={e => setForm(prev => ({ ...prev, category: e.target.value as AssetCategory }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-                    style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                  >
-                    <option value="furniture">Nội thất</option>
-                    <option value="electronics">Điện tử</option>
-                    <option value="appliance">Thiết bị</option>
-                    <option value="facility">Cơ sở hạ tầng</option>
-                  </select>
+                    onChange={val => setForm(prev => ({ ...prev, category: val as AssetCategory }))}
+                    options={categoryFormOptions}
+                    placeholder="Loại"
+                    theme="sale"
+                  />
                 )}
               </div>
 
               {/* Trạng thái - EDITABLE in both modes */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Trạng thái</label>
-                <select
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Trạng thái</label>
+                <CustomSelect
                   value={form.status || 'available'}
-                  onChange={e => setForm(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
-                >
-                  <option value="available">Sẵn sàng</option>
-                  <option value="in_use">Đang sử dụng</option>
-                  <option value="maintenance">Bảo trì</option>
-                  <option value="damaged">Hư hỏng</option>
-                </select>
+                  onChange={val => setForm(prev => ({ ...prev, status: val as AssetStatus }))}
+                  options={statusFormOptions}
+                  placeholder="Trạng thái"
+                  theme="sale"
+                />
               </div>
 
               {/* Thương hiệu */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Thương hiệu</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Thương hiệu</label>
                 <input
                   value={form.brand || ''}
                   onChange={e => setForm(prev => ({ ...prev, brand: e.target.value }))}
@@ -417,37 +651,125 @@ export default function AdminAssetsPage() {
                   disabled={modalMode === 'edit'}
                   tabIndex={modalMode === 'edit' ? -1 : undefined}
                   placeholder="Thương hiệu..."
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow ${modalMode === 'edit'
-                      ? 'cursor-not-allowed select-none opacity-60'
-                      : 'focus:ring-1 focus:ring-[#6f583c]'
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
                     }`}
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
                 />
               </div>
 
               {/* Giá trị - EDITABLE in both modes */}
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Giá trị (đ)</label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giá trị (đ)</label>
                 <input
-                  type="number"
-                  value={form.value || 0}
-                  onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  type="text"
+                  value={formatNumber(form.value)}
+                  onChange={e => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    const num = clean ? parseInt(clean, 10) : 0;
+                    setForm(prev => ({ ...prev, value: num }));
+                  }}
+                  placeholder="Nhập giá trị..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
                 />
               </div>
 
-              {/* Vị trí - EDITABLE in both modes */}
+              {/* Ngày mua */}
               <div className="col-span-2">
-                <label className="block text-xs font-semibold mb-1 uppercase" style={{ color: A.textMuted }}>Vị trí <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Ngày mua</label>
                 <input
-                  value={form.location || ''}
-                  onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="Vị trí tài sản..."
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-shadow focus:ring-1 focus:ring-[#6f583c]"
-                  style={{ border: `1px solid ${A.border}`, background: A.bg, color: A.textPrimary }}
+                  type="date"
+                  style={{ accentColor: '#6f583c' }}
+                  value={form.purchaseDate ? form.purchaseDate.split('/').reverse().join('-') : ''}
+                  onChange={e => {
+                    const d = e.target.value;
+                    setForm(prev => ({ ...prev, purchaseDate: d ? d.split('-').reverse().join('/') : '' }));
+                  }}
+                  readOnly={modalMode === 'edit'}
+                  disabled={modalMode === 'edit'}
+                  tabIndex={modalMode === 'edit' ? -1 : undefined}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all ${modalMode === 'edit'
+                      ? 'cursor-not-allowed select-none opacity-60 bg-[#faf2ec]/50 border border-[#d1c4b9]'
+                      : 'border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]'
+                    }`}
                 />
               </div>
+
+              {/* Chi nhánh */}
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Chi nhánh <span className="text-red-500">*</span></label>
+                <CustomSelect
+                  value={selectedBranchId}
+                  onChange={val => {
+                    setSelectedBranchId(val);
+                    setSelectedRoomId('');
+                    setSelectedBedId('');
+                  }}
+                  options={[
+                    { value: "", label: "Chọn chi nhánh" },
+                    ...branches.map(b => ({ value: b.id, label: b.name }))
+                  ]}
+                  theme="sale"
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
+              </div>
+
+              {/* Phòng */}
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Phòng <span style={{ fontSize: '10px', textTransform: 'none', fontWeight: 500, color: '#8a7563' }}>(bỏ trống = cất vào kho)</span></label>
+                <CustomSelect
+                  value={selectedRoomId}
+                  onChange={val => {
+                    setSelectedRoomId(val);
+                    setSelectedBedId('');
+                    if (val && form.status === 'available') {
+                      setForm(prev => ({ ...prev, status: 'in_use' }));
+                    } else if (!val && form.status === 'in_use') {
+                      setForm(prev => ({ ...prev, status: 'available' }));
+                    }
+                  }}
+                  options={[
+                    { value: "", label: selectedBranchId ? "Cất vào kho chi nhánh" : "Vui lòng chọn chi nhánh trước" },
+                    ...allRooms
+                      .filter(r => r.branch_id === selectedBranchId)
+                      .map(r => ({ value: r.id, label: r.name }))
+                  ]}
+                  theme="sale"
+                  disabled={!selectedBranchId}
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
+              </div>
+
+              {/* Giường (Optional) */}
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]">Giường (Không bắt buộc)</label>
+                <CustomSelect
+                  value={selectedBedId}
+                  onChange={val => setSelectedBedId(val)}
+                  options={[
+                    { value: "", label: selectedRoomId ? "Dùng chung cho cả phòng" : "Vui lòng chọn phòng trước" },
+                    ...bedsForRoom.map(bd => ({ value: bd.id, label: bd.name }))
+                  ]}
+                  theme="sale"
+                  disabled={!selectedRoomId}
+                  triggerClassName="w-full !py-2.5 bg-[#fff8f3] border-[#d1c4b9]"
+                />
+              </div>
+
+              {/* Preview Vị trí */}
+              {selectedBranchId && (
+                <div className="col-span-2 p-3 rounded-lg border border-[#5f745d]/20 bg-[#5f745d]/5 text-xs text-[#5f745d] font-semibold flex items-center gap-1.5 animate-fade-in-up">
+                  <span className="material-symbols-outlined text-[16px]">location_on</span>
+                  Vị trí lưu trữ thực tế: <span className="font-extrabold underline">
+                    {(() => {
+                      const b = branches.find(x => x.id === selectedBranchId);
+                      const r = allRooms.find(x => x.id === selectedRoomId);
+                      const bd = bedsForRoom.find(x => x.id === selectedBedId);
+                      return getLocationString({ branch: b, room: r, bed: bd } as any);
+                    })()}
+                  </span>
+                </div>
+              )}
 
 
 
@@ -456,13 +778,13 @@ export default function AdminAssetsPage() {
             {/* Modal Actions */}
             <div className="flex gap-3 pt-3 border-t mt-2" style={{ borderColor: A.border }}>
               <button onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border hover:bg-gray-50 transition-colors"
-                style={{ borderColor: A.border, color: A.textMuted }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
+              >
                 Hủy
               </button>
               <button onClick={saveForm}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-95 shadow"
-                style={{ background: A.primary }}>
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
+              >
                 {modalMode === 'add' ? 'Thêm tài sản' : 'Lưu thay đổi'}
               </button>
             </div>
@@ -474,6 +796,20 @@ export default function AdminAssetsPage() {
         @keyframes slideInRight {
           from { transform: translateX(100%); }
           to { transform: translateX(0); }
+        }
+        input[type="date"]::selection {
+          background-color: #6f583c;
+          color: white;
+        }
+        input[type="date"]::-webkit-datetime-edit-month-field:focus,
+        input[type="date"]::-webkit-datetime-edit-day-field:focus,
+        input[type="date"]::-webkit-datetime-edit-year-field:focus {
+          background-color: #6f583c !important;
+          color: white !important;
+        }
+        input[type="date"]::-moz-selection {
+          background-color: #6f583c;
+          color: white;
         }
       `}</style>
     </div>

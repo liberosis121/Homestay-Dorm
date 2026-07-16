@@ -1,14 +1,15 @@
+import { formatShortId } from '../../lib/utils';
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, CheckCircle, Calendar, Clock,
-  RotateCcw, XCircle, Building2, FileText, Filter
+  RotateCcw, XCircle, Building2, FileText, Filter, CalendarPlus
 } from 'lucide-react';
-import { useSaleScheduleStore, ScheduleStatus, ReschedulePayload } from './store/useSaleScheduleStore';
+import { useSaleScheduleStore, ScheduleStatus, ReschedulePayload, SaleSchedule } from './store/useSaleScheduleStore';
 import ScheduleStatusBadge from './components/ScheduleStatusBadge';
 import ScheduleCalendar from './components/ScheduleCalendar';
 import CreateFromRegistrationModal from './components/CreateFromRegistrationModal';
 import { useAuthStore } from '../../stores/authStore';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getRoomsApi } from '../rooms/rooms.api';
 import CustomSelect from '../../components/ui/CustomSelect';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 
@@ -19,6 +20,12 @@ interface MockRoom {
   name: string;
   branch_id: string;
   room_type: string;
+  capacity?: number;
+  gender_type?: string;
+  price?: number;
+  amenities?: string[];
+  image_url?: string;
+  status?: string;
 }
 
 interface MockBranch {
@@ -43,6 +50,20 @@ const parseLocalDate = (dateStr: string) => {
   return new Date(y, m, d);
 };
 
+// ─── Điều kiện hiển thị thao tác theo trạng thái lịch hẹn ──────────────────────
+// Dùng chung cho panel chi tiết (TimelineWidget). Trạng thái kết thúc
+// (completed / cancelled) không còn thao tác khả dụng.
+const canConfirmByStaff = (schedule: SaleSchedule) =>
+  schedule.status === 'pending' && schedule.pendingConfirmationActor === 'staff';
+const canComplete = (schedule: SaleSchedule) =>
+  ['confirmed', 'in_progress'].includes(schedule.status);
+const canReschedule = (status: ScheduleStatus) =>
+  ['pending', 'confirmed', 'rescheduled'].includes(status);
+const canCancel = (status: ScheduleStatus) =>
+  ['pending', 'confirmed', 'rescheduled'].includes(status);
+const hasAnyAction = (schedule: SaleSchedule) =>
+  canConfirmByStaff(schedule) || canComplete(schedule) || canReschedule(schedule.status) || canCancel(schedule.status);
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const SaleSchedulesPage: React.FC = () => {
@@ -63,18 +84,23 @@ const SaleSchedulesPage: React.FC = () => {
     openRescheduleModal,
     closeRescheduleModal,
     cancelSchedule,
+    confirmSchedule,
     completeSchedule,
     createSchedule,
     rescheduleAppointment,
     getScheduleById,
+    schedules,
+    loadSchedules,
+    loadError,
   } = useSaleScheduleStore();
 
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 5, 2)); // Anchored to June 2026
   const [rooms, setRooms] = useState<MockRoom[]>([]);
   const [branches, setBranches] = useState<MockBranch[]>([]);
-  const [customers, setCustomers] = useState<MockProfile[]>([]);
+  const [customers] = useState<MockProfile[]>([]);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [confirmCompleteId, setConfirmCompleteId] = useState<string | null>(null);
+  const [rebookingScheduleId, setRebookingScheduleId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState('');
 
   const filteredSchedules = getFilteredSchedules();
@@ -82,10 +108,7 @@ const SaleSchedulesPage: React.FC = () => {
 
   // Filter reactively for calendar view (excludes selectedDate filter so other days remain visible)
   const calendarSchedules = React.useMemo(() => {
-    const isSale = user?.role === 'sale';
-    return useSaleScheduleStore.getState().schedules.filter((s) => {
-      // NV sales chỉ đc xem lịch hẹn tại chi nhánh mình làm việc (b-1)
-      if (isSale && s.branchId !== 'b-1') return false;
+    return schedules.filter((s) => {
       if (filters.selectedBranch && s.branchId !== filters.selectedBranch) return false;
       if (filters.selectedStatus && s.status !== filters.selectedStatus) return false;
       if (filters.searchQuery) {
@@ -99,16 +122,37 @@ const SaleSchedulesPage: React.FC = () => {
       }
       return true;
     });
-  }, [filters.selectedBranch, filters.selectedStatus, filters.searchQuery, user]);
+  }, [schedules, filters.selectedBranch, filters.selectedStatus, filters.searchQuery]);
   const selectedSchedule = selectedScheduleId ? getScheduleById(selectedScheduleId) : null;
+  const rebookingSchedule = rebookingScheduleId ? getScheduleById(rebookingScheduleId) : null;
 
-  // Load data from MockDB
+  // Tải lịch xem phòng THẬT từ API; dữ liệu cho modal tạo lịch cũng lấy từ API rooms.
   useEffect(() => {
-    const db = getMockDB();
-    setRooms(db.rooms || []);
-    setBranches(db.branches || []);
-    setCustomers((db.profiles || []).filter((p: MockProfile) => p.role === 'customer'));
-  }, []);
+    loadSchedules();
+    // Load danh sách phòng từ API thật cho dropdown tạo lịch hẹn
+    getRoomsApi().then(roomList => {
+      setRooms(roomList.map(r => ({
+        id: r.id,
+        name: r.name,
+        branch_id: r.branch_id,
+        room_type: r.room_type,
+        capacity: r.capacity,
+        gender_type: r.gender_type,
+        price: r.price,
+        amenities: r.amenities,
+        image_url: r.image_url,
+        status: r.status,
+      })));
+      // Extract branches từ rooms (mỏi phòng có branches nếu API join)
+      const branchMap = new Map<string, MockBranch>();
+      roomList.forEach(r => {
+        if (r.branches && !branchMap.has(r.branch_id)) {
+          branchMap.set(r.branch_id, { id: r.branch_id, name: r.branches.name });
+        }
+      });
+      setBranches(Array.from(branchMap.values()));
+    }).catch(err => console.error('Lỗi khi tải danh sách phòng:', err));
+  }, [loadSchedules]);
 
   const handleMonthChange = (dir: 'prev' | 'next') => {
     setCurrentMonth((prev) => {
@@ -122,17 +166,36 @@ const SaleSchedulesPage: React.FC = () => {
     setFilter('selectedDate', date || null);
   };
 
-  const handleCancelConfirm = () => {
+  const handleCancelConfirm = async () => {
     if (confirmCancelId) {
-      cancelSchedule(confirmCancelId);
-      setConfirmCancelId(null);
+      try {
+        await cancelSchedule(confirmCancelId);
+        showToast('Đã hủy lịch hẹn trên hệ thống.');
+        setConfirmCancelId(null);
+      } catch (err: any) {
+        showToast(err?.message || 'Không thể hủy lịch hẹn.');
+      }
     }
   };
 
-  const handleCompleteConfirm = () => {
+  const handleCompleteConfirm = async () => {
     if (confirmCompleteId) {
-      completeSchedule(confirmCompleteId);
-      setConfirmCompleteId(null);
+      try {
+        await completeSchedule(confirmCompleteId);
+        showToast('Đã ghi nhận hoàn thành lịch xem phòng.');
+        setConfirmCompleteId(null);
+      } catch (err: any) {
+        showToast(err?.message || 'Không thể ghi nhận hoàn thành lịch.');
+      }
+    }
+  };
+
+  const handleStaffConfirm = async (id: string) => {
+    try {
+      await confirmSchedule(id);
+      showToast('Đã xác nhận lịch dời do khách hàng đề xuất.');
+    } catch (err: any) {
+      showToast(err?.message || 'Không thể xác nhận lịch hẹn.');
     }
   };
 
@@ -170,6 +233,21 @@ const SaleSchedulesPage: React.FC = () => {
         onReset={resetFilters}
       />
 
+      {/* Lỗi tải dữ liệu */}
+      {loadError && (
+        <div className="rounded-2xl px-4 py-3 text-sm flex items-center gap-2 bg-error/10 text-error border border-error/30">
+          <XCircle className="w-4 h-4 shrink-0" /> {loadError}
+        </div>
+      )}
+
+      {/* Ghi chú chế độ kết nối */}
+      <div className="rounded-2xl px-4 py-2.5 text-xs flex items-start gap-2 bg-[#fdf6ec] text-[#7a5a2e] border border-[#e7d3b5]">
+        <FileText className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <span>
+          Danh sách, <b>Tạo lịch</b>, <b>Dời lịch</b>, <b>Hủy</b> và <b>Hoàn thành</b> đã đồng bộ máy chủ thật qua lịch của nhân viên sale đăng nhập.
+        </span>
+      </div>
+
       {/* Bento Grid */}
       <div className="grid grid-cols-12 gap-5">
         {/* LEFT: Calendar + Table */}
@@ -188,9 +266,6 @@ const SaleSchedulesPage: React.FC = () => {
             schedules={filteredSchedules}
             selectedId={selectedScheduleId}
             onSelect={setSelectedSchedule}
-            onReschedule={openRescheduleModal}
-            onCancel={(id) => setConfirmCancelId(id)}
-            onComplete={(id) => setConfirmCompleteId(id)}
           />
         </div>
 
@@ -200,7 +275,14 @@ const SaleSchedulesPage: React.FC = () => {
           <Upcoming24hWidget schedules={upcoming24h} />
 
           {/* Timeline for selected */}
-          <TimelineWidget schedule={selectedSchedule} />
+          <TimelineWidget
+            schedule={selectedSchedule}
+            onReschedule={openRescheduleModal}
+            onCancel={(id) => setConfirmCancelId(id)}
+            onConfirm={handleStaffConfirm}
+            onComplete={(id) => setConfirmCompleteId(id)}
+            onCreateFollowUp={(id) => setRebookingScheduleId(id)}
+          />
         </div>
       </div>
 
@@ -214,6 +296,21 @@ const SaleSchedulesPage: React.FC = () => {
           onClose={closeCreateModal}
           onCreate={createSchedule}
           onCreated={() => showToast('Đã tạo lịch hẹn và gửi thông báo cho khách.')}
+        />
+      )}
+
+      {rebookingSchedule && (
+        <CreateFromRegistrationModal
+          rooms={rooms}
+          branches={branches}
+          customers={customers}
+          createdBy={user?.full_name || 'Nhân viên Sale'}
+          initialRegistrationId={rebookingSchedule.registrationId}
+          excludeRoomId={rebookingSchedule.roomId}
+          followUpMode
+          onClose={() => setRebookingScheduleId(null)}
+          onCreate={createSchedule}
+          onCreated={() => showToast('Đã lập lịch xem phòng mới cho phiếu yêu cầu hiện tại.')}
         />
       )}
 
@@ -304,7 +401,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, branches, onSetFilter, o
       {isSale ? (
         <div className="flex items-center gap-2 pl-3.5 pr-5 py-2.5 bg-[#f4ede6] border border-[#d1c4b9] rounded-xl text-sm font-bold text-[#6f583c] shadow-sm select-none cursor-not-allowed">
           <Building2 className="w-4 h-4 text-[#8c7355]" />
-          <span>Chi nhánh: Q.1</span>
+          <span>Chi nhánh {user?.branch_name?.replace('Chi nhánh ', '') || 'N/A'}</span>
         </div>
       ) : (
         <CustomSelect
@@ -365,13 +462,10 @@ interface ScheduleTableProps {
   schedules: ReturnType<typeof useSaleScheduleStore.getState>['schedules'];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  onReschedule: (id: string) => void;
-  onCancel: (id: string) => void;
-  onComplete: (id: string) => void;
 }
 
 const ScheduleTable: React.FC<ScheduleTableProps> = ({
-  schedules, selectedId, onSelect, onReschedule, onCancel, onComplete,
+  schedules, selectedId, onSelect,
 }) => {
   const getInitials = (name: string) => {
     const parts = name.trim().split(' ');
@@ -386,13 +480,6 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
     'bg-[#e8e1db] text-[#4e453c]',
     'bg-primary-fixed text-on-primary-fixed',
   ];
-
-  const canReschedule = (status: ScheduleStatus) =>
-    ['pending', 'confirmed', 'rescheduled'].includes(status);
-  const canCancel = (status: ScheduleStatus) =>
-    ['pending', 'confirmed', 'rescheduled'].includes(status);
-  const canComplete = (status: ScheduleStatus) =>
-    ['confirmed', 'in_progress'].includes(status);
 
   if (schedules.length === 0) {
     return (
@@ -431,9 +518,6 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
               <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[110px] min-w-[110px]">
                 Trạng thái
               </th>
-              <th className="px-3 py-3 text-[11px] font-bold text-[#7f756b] uppercase tracking-wider whitespace-nowrap w-[120px] min-w-[120px]">
-                Thao tác
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#d1c4b9]/60">
@@ -449,7 +533,7 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 >
                   {/* Mã lịch */}
                   <td className="px-3 py-3 whitespace-nowrap w-[80px] min-w-[80px]">
-                    <span className="font-mono font-bold text-sm text-[#6f583c]">#{s.id}</span>
+                    <span className="font-bold text-sm text-[#6f583c]">{formatShortId(s.id, 'schedule')}</span>
                   </td>
 
                   {/* Khách hàng */}
@@ -484,42 +568,6 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                   {/* Trạng thái */}
                   <td className="px-3 py-3 w-[110px] min-w-[110px]">
                     <ScheduleStatusBadge status={s.status} />
-                  </td>
-
-                  {/* Thao tác */}
-                  <td className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[120px]">
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      {canComplete(s.status) && (
-                        <button
-                          onClick={() => onComplete(s.id)}
-                          title="Hoàn thành"
-                          className="p-1.5 text-[#4d614b] hover:bg-[#4d614b]/10 rounded-lg transition-all"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </button>
-                      )}
-                      {canReschedule(s.status) && (
-                        <button
-                          onClick={() => onReschedule(s.id)}
-                          title="Dời lịch"
-                          className="p-1.5 text-[#6f583c] hover:bg-[#6f583c]/10 rounded-lg transition-all"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                        </button>
-                      )}
-                      {canCancel(s.status) && (
-                        <button
-                          onClick={() => onCancel(s.id)}
-                          title="Hủy lịch"
-                          className="p-1.5 text-error hover:bg-error/10 rounded-lg transition-all"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      )}
-                      {!canComplete(s.status) && !canReschedule(s.status) && !canCancel(s.status) && (
-                        <span className="text-xs text-on-surface-variant italic">—</span>
-                      )}
-                    </div>
                   </td>
                 </tr>
               );
@@ -614,9 +662,14 @@ const Upcoming24hWidget: React.FC<Upcoming24hWidgetProps> = ({ schedules }) => {
 
 interface TimelineWidgetProps {
   schedule: ReturnType<typeof useSaleScheduleStore.getState>['schedules'][0] | undefined | null;
+  onReschedule: (id: string) => void;
+  onCancel: (id: string) => void;
+  onConfirm: (id: string) => void;
+  onComplete: (id: string) => void;
+  onCreateFollowUp: (id: string) => void;
 }
 
-const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
+const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule, onReschedule, onCancel, onConfirm, onComplete, onCreateFollowUp }) => {
   if (!schedule) {
     return (
       <div className="bg-white rounded-2xl border border-[#d1c4b9] p-5 text-center" style={{ boxShadow: '0 4px 12px rgba(45, 42, 38, 0.04)' }}>
@@ -634,7 +687,7 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
           Tiến trình lịch hẹn
         </h3>
         <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#E8E1D3] text-[#5E503F] border border-[#D2C4AF] rounded-lg whitespace-nowrap">
-          #{schedule.id}
+          {formatShortId(schedule.id, 'schedule')}
         </span>
       </div>
       <div className="text-xs text-on-surface-variant mb-4">
@@ -685,6 +738,68 @@ const TimelineWidget: React.FC<TimelineWidgetProps> = ({ schedule }) => {
           <p className="text-xs text-on-surface-variant">{schedule.notes}</p>
         </div>
       )}
+
+      {/* Thao tác — chuyển từ cột bảng sang panel chi tiết (phương án B) */}
+      <div className="mt-4 pt-4 border-t border-[#d1c4b9]">
+        <p className="text-[10px] font-bold text-[#7f756b] uppercase tracking-wider mb-2">Thao tác</p>
+        {hasAnyAction(schedule) ? (
+          <div className="flex flex-wrap gap-2">
+            {canConfirmByStaff(schedule) && (
+              <button
+                onClick={() => onConfirm(schedule.id)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#4d614b] bg-[#4d614b]/10 hover:bg-[#4d614b]/20 transition-all active:scale-95"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Xác nhận lịch
+              </button>
+            )}
+            {canComplete(schedule) && (
+              <button
+                onClick={() => onComplete(schedule.id)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#4d614b] bg-[#4d614b]/10 hover:bg-[#4d614b]/20 transition-all active:scale-95"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Hoàn thành
+              </button>
+            )}
+            {canReschedule(schedule.status) && (
+              <button
+                onClick={() => onReschedule(schedule.id)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#6f583c] bg-[#6f583c]/10 hover:bg-[#6f583c]/20 transition-all active:scale-95"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Dời lịch
+              </button>
+            )}
+            {canCancel(schedule.status) && (
+              <button
+                onClick={() => onCancel(schedule.id)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-error bg-error/10 hover:bg-error/20 transition-all active:scale-95"
+              >
+                <XCircle className="w-4 h-4" />
+                Hủy lịch
+              </button>
+            )}
+          </div>
+        ) : schedule.status === 'completed' && schedule.registrationId ? (
+          <div className="space-y-2">
+            <button
+              onClick={() => onCreateFollowUp(schedule.id)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#4f6f4a] bg-[#4f6f4a]/10 hover:bg-[#4f6f4a]/20 transition-all active:scale-95"
+            >
+              <CalendarPlus className="w-4 h-4" />
+              Lập lịch xem phòng mới
+            </button>
+            <p className="text-xs text-on-surface-variant italic">
+              Dùng khi khách chưa ưng ý phòng hiện tại và cần xem phòng khác trên cùng phiếu yêu cầu.
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-on-surface-variant italic">
+            Lịch hẹn đã kết thúc — không còn thao tác khả dụng.
+          </p>
+        )}
+      </div>
     </div>
   );
 };

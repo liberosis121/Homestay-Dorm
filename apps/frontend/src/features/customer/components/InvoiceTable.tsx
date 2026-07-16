@@ -1,3 +1,4 @@
+import { formatShortId } from '../../../lib/utils';
 import { Invoice } from '../store/useInvoiceStore';
 import { Eye, CreditCard } from 'lucide-react';
 
@@ -23,6 +24,12 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
             Chờ thanh toán
           </span>
         );
+      case 'pending':
+        return (
+          <span className="inline-flex h-7 min-w-[104px] items-center justify-center rounded-full bg-[#FAF2E8] border border-[#E7DED2] px-3 text-xs font-semibold text-[#B9792B]">
+            Chờ xác nhận
+          </span>
+        );
       case 'overdue':
         return (
           <span className="inline-flex h-7 min-w-[104px] items-center justify-center rounded-full bg-status-error/15 px-3 text-xs font-semibold text-status-error">
@@ -34,23 +41,35 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
 
   const getInvoiceTypeLabel = (type: Invoice['type']) => {
     switch (type) {
+      case 'deposit':
+        return 'Đặt cọc';
+      case 'checkin':
+        return 'Nhận phòng';
       case 'monthly':
         return 'Định kỳ';
       case 'service':
         return 'Dịch vụ';
       case 'incidental':
         return 'Phát sinh';
+      case 'refund':
+        return 'Hoàn cọc';
     }
   };
 
   const getInvoiceTypeBadgeClass = (type: Invoice['type']) => {
     switch (type) {
+      case 'deposit':
+        return 'border-[#b9792b]/20 bg-[#faf2e8] text-[#8a5a18]';
+      case 'checkin':
+        return 'border-[#4a6549]/20 bg-[#eff3ef] text-[#4a6549]';
       case 'monthly':
         return 'border-primary/15 bg-primary/10 text-primary';
       case 'service':
         return 'border-[#d1c4b9] bg-[#faf2ec] text-[#6f583c]';
       case 'incidental':
         return 'border-[#d8cbb8] bg-[#f4f1ec] text-[#7a6b5b]';
+      case 'refund':
+        return 'border-status-success/20 bg-status-success/10 text-status-success';
     }
   };
 
@@ -96,6 +115,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
             ) : (
               invoices.map((invoice) => {
                 const isSelected = invoice.id === selectedId;
+                const canPay = invoice.canPay !== false && !invoice.isCredit;
                 return (
                   <tr
                     key={invoice.id}
@@ -106,8 +126,8 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         : 'hover:bg-surface-container-low hover:shadow-sm'
                     }`}
                   >
-                    <td className="px-5 py-4 text-[13px] font-semibold text-primary">
-                      {invoice.id}
+                    <td className="px-5 py-4 text-[13px] font-semibold text-primary" title={invoice.id}>
+                      {formatShortId(invoice.id, 'invoice')}
                     </td>
                     <td className="px-5 py-4 text-sm text-on-surface-variant hidden sm:table-cell">
                       {invoice.billingPeriod}
@@ -127,7 +147,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                       {getStatusBadge(invoice.status)}
                     </td>
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                      <div className={`flex items-center gap-2 ${invoice.status === 'paid' ? 'justify-center' : 'justify-start pl-2'}`}>
+                      <div className={`flex items-center gap-2 ${invoice.status === 'paid' || !canPay ? 'justify-center' : 'justify-start pl-2'}`}>
                         <button
                           onClick={() => onSelect(invoice.id)}
                           className="p-2 text-secondary hover:bg-secondary-container/40 hover:text-primary rounded-lg transition-all cursor-pointer active:scale-90"
@@ -135,7 +155,7 @@ export default function InvoiceTable({ invoices, selectedId, onSelect, onPay }: 
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {invoice.status !== 'paid' && (
+                        {canPay && invoice.status !== 'paid' && invoice.status !== 'pending' && (
                           <button
                             onClick={() => onPay(invoice.id)}
                             className="bg-primary hover:bg-[#253228] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer hover:shadow-md"

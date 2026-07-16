@@ -1,18 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, X, Info } from 'lucide-react';
-import { getMockDB, saveMockDB, RefundRecord } from '../../lib/supabaseClient';
+import { RefundRecord } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { accountantService } from './services/accountant.service';
+import CustomSelect from '../../components/ui/CustomSelect';
+
+// Unified deduction reason constants — used for both saving and reading
+const REASON_UTILITY = 'Điện nước';
+const REASON_DAMAGE = 'Hư hỏng tài sản';
+const REASON_CLEANING = 'Phí vệ sinh';
+const REASON_VIOLATION = 'Phạt vi phạm';
+
+type LiveRefundRecord = RefundRecord & {
+  checkout_id?: string;
+  contract_id?: string;
+  reconciliation_id?: string;
+  cleaning_fee?: number;
+  violation_penalty?: number;
+};
+
+const uniqueReconciliationsByCheckout = (records: any[]) => {
+  const seen = new Set<string>();
+  return records.filter((record) => {
+    const key = record.checkout_id || record.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const formatNumberInput = (val: string | number): string => {
+  const str = typeof val === 'number' ? val.toString() : val;
+  const cleanVal = str.replace(/\D/g, '');
+  if (!cleanVal) return '0';
+  return Number(cleanVal).toLocaleString('vi-VN');
+};
 
 export default function AccountantRefundsPage() {
-  const [refunds, setRefunds] = useState<RefundRecord[]>([]);
+  const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
+  const [refunds, setRefunds] = useState<LiveRefundRecord[]>([]);
   const [selectedRefundId, setSelectedRefundId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'checkout' | 'cancellation'>('checkout');
   
   // Refund calculation states
   const [residencyRate, setResidencyRate] = useState<number>(100); // 80, 50, 70, 100
-  const [elecWaterDeduction, setElecWaterDeduction] = useState('350000');
-  const [damageDeduction, setDamageDeduction] = useState('850000');
-  const [cleaningDeduction, setCleaningDeduction] = useState('200000');
+  const [elecWaterDeduction, setElecWaterDeduction] = useState('350.000');
+  const [damageDeduction, setDamageDeduction] = useState('850.000');
+  const [cleaningDeduction, setCleaningDeduction] = useState('200.000');
   const [violationDeduction, setViolationDeduction] = useState('0');
   
   // Calculation results state
@@ -24,11 +61,123 @@ export default function AccountantRefundsPage() {
   // Inspection report drawer
   const [damageDrawerOpen, setDamageDrawerOpen] = useState(false);
 
-  // Load Data
+  // Load Data (dung chung cho lan tai dau va sau moi lan duyet hoan coc)
+  const loadRefundData = useCallback(async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [pendingCheckouts, liveReconciliations, cancellationRefunds] = await Promise.all([
+          accountantService.fetchPendingCheckouts(email),
+          accountantService.fetchRefundReconciliations(email),
+          accountantService.fetchCancellationRefunds(email)
+        ]);
+
+        const mappedCheckouts = (pendingCheckouts || []).map((ch: any) => {
+          const contract = ch.contracts || {};
+          const profile = contract.profiles || {};
+          return {
+            id: ch.id,
+            checkout_id: ch.id,
+            contract_id: contract.id,
+            customer_id: profile.id || contract.customer_id,
+            customer_name: profile.full_name || 'Khách hàng',
+            room_id: contract.rooms?.id || contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            checkout_date: ch.request_date || '',
+            deposit_original: Number(contract.deposit_amount || contract.rent_price || 0),
+            damage_deductions: (ch.incidental_costs || []).map((ic: any) => ({
+              item: ic.name,
+              amount: Number(ic.amount) || 0,
+              condition: ic.condition,
+              note: ic.note
+            })),
+            debt_deductions: Number(ch.debt_amount) || 0,
+            cleaning_fee: Number(ch.cleaning_fee) || 0,
+            violation_penalty: Number(ch.violation_penalty) || 0,
+            status: ch.status === 'pending' ? 'pending' : 'calculated',
+            created_at: ch.request_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: 0,
+            total_deductions: 0
+          };
+        });
+
+        const mappedReconciliations = uniqueReconciliationsByCheckout(liveReconciliations || []).map((rec: any) => {
+          const checkout = rec.checkouts || {};
+          const contract = checkout.contracts || {};
+          const customer_name = contract.profiles?.full_name || 'Khách hàng';
+
+          const damage_deductions = (rec.deductions || [])
+            .filter((d: any) => d.reason !== REASON_UTILITY && d.reason !== REASON_CLEANING && d.reason !== REASON_VIOLATION)
+            .map((d: any) => ({
+              item: d.reason,
+              amount: Number(d.amount) || 0,
+              condition: 'Hỏng/Mất',
+              note: d.note || ''
+            }));
+
+          const debt_deductions = (rec.deductions || [])
+            .find((d: any) => d.reason === REASON_UTILITY)?.amount || 0;
+
+          const cleaning_fee = (rec.deductions || [])
+            .find((d: any) => d.reason === REASON_CLEANING)?.amount || 0;
+
+          const violation_penalty = (rec.deductions || [])
+            .find((d: any) => d.reason === REASON_VIOLATION)?.amount || 0;
+
+          return {
+            id: rec.id,
+            checkout_id: rec.checkout_id,
+            contract_id: contract.id || checkout.contract_id,
+            reconciliation_id: rec.id,
+            customer_id: contract.profiles?.id || contract.customer_id || '',
+            customer_name,
+            room_id: contract.rooms?.id || contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            checkout_date: checkout.request_date || rec.reconciliation_date || '',
+            deposit_original: Number(rec.original_deposit || contract.deposit_amount || contract.rent_price || 0),
+            damage_deductions,
+            debt_deductions,
+            cleaning_fee,
+            violation_penalty,
+            status: rec.status === 'paid' ? 'paid' : 'confirmed',
+            created_at: rec.reconciliation_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: Number(rec.final_refund || 0),
+            total_deductions: Number(rec.total_deductions || 0)
+          };
+        });
+
+        // Ung vien hoan coc khi chua ky HD (hoan 80%) -> tab "cancellation"
+        const mappedCancellations = (cancellationRefunds || []).map((c: any) => ({
+          id: c.id,
+          checkout_id: '',
+          contract_id: '',
+          customer_id: '',
+          customer_name: c.customer_name || 'Khách hàng',
+          room_id: c.room_id || '',
+          room_name: c.room_name || 'Phòng',
+          checkout_date: c.request_date || '',
+          deposit_original: Number(c.deposit_amount) || 0,
+          damage_deductions: [],
+          debt_deductions: 0,
+          status: 'pending' as const,
+          created_at: c.request_date || new Date().toISOString(),
+          type: 'cancellation' as const,
+          cancellation_reason: c.cancellation_reason || 'user_cancelled',
+          refund_amount: 0,
+          total_deductions: 0
+        }));
+
+        setRefunds([...mappedCheckouts, ...mappedReconciliations, ...mappedCancellations]);
+      } catch (err) {
+        console.warn('[AccountantRefunds] Failed to fetch live data:', err);
+        setRefunds([]);
+      }
+  }, [user]);
+
   useEffect(() => {
-    const db = getMockDB();
-    setRefunds(db.refund_records || []);
-  }, []);
+    loadRefundData();
+  }, [loadRefundData]);
 
   const activeRefund = refunds.find(r => r.id === selectedRefundId);
   const isCancellation = activeRefund?.type === 'cancellation';
@@ -51,17 +200,17 @@ export default function AccountantRefundsPage() {
       if (activeRefund.type === 'cancellation') {
         setResidencyRate(80); // 80% for cancellation
         const penalty = activeRefund.total_deductions !== undefined ? activeRefund.total_deductions : 0;
-        setViolationDeduction(penalty.toString());
+        setViolationDeduction(formatNumberInput(penalty));
         setElecWaterDeduction('0');
         setDamageDeduction('0');
         setCleaningDeduction('0');
       } else {
         setResidencyRate(100); // default to 100% for normal checkout, accountant can select others
         const damageTotal = activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0;
-        setDamageDeduction(damageTotal.toString());
-        setElecWaterDeduction(activeRefund.debt_deductions?.toString() || '0');
-        setCleaningDeduction('200000'); // default cleaning fee
-        setViolationDeduction('0');
+        setDamageDeduction(formatNumberInput(damageTotal));
+        setElecWaterDeduction(formatNumberInput(activeRefund.debt_deductions || 0));
+        setCleaningDeduction(formatNumberInput(activeRefund.cleaning_fee !== undefined ? activeRefund.cleaning_fee : 200000));
+        setViolationDeduction(formatNumberInput(activeRefund.violation_penalty || 0));
       }
     }
   }, [selectedRefundId, activeRefund]);
@@ -86,52 +235,92 @@ export default function AccountantRefundsPage() {
     setIsCalculated(true);
   };
 
-  const handleApproveRefund = () => {
+  // Khoa chong double-click: tranh lap trung ban doi soat hoan coc.
+  const handleApproveRefund = async () => {
+    await guard(() => doApproveRefund());
+  };
+
+  const doApproveRefund = async () => {
     if (!activeRefund) return;
+    if (activeRefund.status === 'confirmed' || activeRefund.status === 'paid') {
+      alert('Hồ sơ này đã được lập đối soát, vui lòng chuyển sang phân hệ chi tiền để xử lý tiếp.');
+      return;
+    }
     if (!isCalculated) {
       alert("Vui lòng nhấn 'Tính toán đối soát' trước khi phê duyệt!");
       return;
     }
     
-    const db = getMockDB();
-    
-    // Create payout record automatically first in UC17 list
-    const payoutId = `PAY-${Date.now().toString().slice(-4)}`;
-    const newPayout = {
-      id: payoutId,
-      refund_id: activeRefund.id,
-      customer_id: activeRefund.customer_id,
-      customer_name: activeRefund.customer_name,
-      bank_account: `001100${Math.floor(100000 + Math.random() * 900000)}`,
-      bank_name: 'Vietcombank',
-      account_holder: activeRefund.customer_name.toUpperCase(),
-      amount: netRefund, // Can be positive (hoàn cọc) or negative (thu thêm)
-      payment_method: 'transfer' as const,
-      status: 'pending' as const,
-      created_at: new Date().toISOString().split('T')[0]
-    };
-    
-    db.payout_records = [newPayout, ...(db.payout_records || [])];
-    
-    // Update refund status to confirmed (Chờ xử lý hoàn cọc)
-    const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
-      if (r.id === activeRefund.id) {
-        return {
-          ...r,
-          status: 'confirmed',
-          debt_deductions: parseInt(elecWaterDeduction) || 0,
-          total_deductions: totalDeductions,
-          refund_amount: netRefund
-        };
+    const email = user?.email || 'accountant@homestay.vn';
+    const checkoutId = activeRefund.checkout_id || activeRefund.id;
+    const contractId = activeRefund.contract_id;
+
+    // Nhanh HOAN COC CHUA KY HD (hoan 80%): khong co checkout/contract, tao hoa don hoan coc gan deposit_id.
+    if (activeRefund.type === 'cancellation') {
+      try {
+        await accountantService.createCancellationRefund(email, {
+          depositRequestId: activeRefund.id,
+          originalDeposit: activeRefund.deposit_original,
+          refundRate: residencyRate / 100,
+          totalDeductions,
+          finalRefund: netRefund,
+          note: `Hoàn cọc hủy thuê (chưa ký HĐ) cho ${activeRefund.customer_name}`
+        });
+        alert('Duyệt hoàn cọc (chưa ký HĐ) thành công! Lệnh chi đã chuyển sang phân hệ Chi tiền.');
+        setIsCalculated(false);
+        await loadRefundData();
+      } catch (err) {
+        alert((err as Error)?.message || 'Không thể duyệt hoàn cọc.');
       }
-      return r;
-    });
-    db.refund_records = updatedRefunds;
-    
-    saveMockDB(db);
-    setRefunds(updatedRefunds);
-    setIsCalculated(false);
-    alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
+      return;
+    }
+
+    if (!contractId) {
+      alert('Không tìm thấy hợp đồng liên kết với hồ sơ trả phòng này.');
+      return;
+    }
+
+    const numElec = parseInt(elecWaterDeduction.replace(/\D/g, '')) || 0;
+    const numDamage = parseInt(damageDeduction.replace(/\D/g, '')) || 0;
+    const numClean = parseInt(cleaningDeduction.replace(/\D/g, '')) || 0;
+    const numViolation = parseInt(violationDeduction.replace(/\D/g, '')) || 0;
+
+    const deductionsList = [];
+    if (numElec > 0) {
+      deductionsList.push({ reason: REASON_UTILITY, amount: numElec });
+    }
+    if (numDamage > 0) {
+      deductionsList.push({ reason: REASON_DAMAGE, amount: numDamage });
+    }
+    if (numClean > 0) {
+      deductionsList.push({ reason: REASON_CLEANING, amount: numClean });
+    }
+    if (numViolation > 0) {
+      deductionsList.push({ reason: REASON_VIOLATION, amount: numViolation });
+    }
+
+    try {
+      // De biet checkoutId co the mapping dung hop dong, ta truyen activeRefund.id lam ca 2
+      await accountantService.createRefundReconciliation(email, {
+        checkoutId,
+        contractId,
+        originalDeposit: activeRefund.deposit_original,
+        refundRate: residencyRate / 100,
+        baseRefund: basicRefundAmount,
+        totalDeductions: totalDeductions,
+        finalRefund: netRefund,
+        additionalCharge: netRefund < 0 ? Math.abs(netRefund) : 0,
+        note: `Bản đối soát hoàn cọc cho ${activeRefund.customer_name}`,
+        deductions: deductionsList
+      });
+
+      alert('Lập bảng đối soát hoàn cọc thành công! Lệnh xử lý hoàn cọc đã được chuyển sang phân hệ chi tiền.');
+      setIsCalculated(false);
+      await loadRefundData();
+    } catch (err) {
+      console.warn('[AccountantRefunds] Live API failed:', err);
+      alert((err as Error)?.message || 'Không thể lập bảng đối soát hoàn cọc trên dữ liệu hiện tại.');
+    }
   };
 
   // Stats
@@ -150,7 +339,7 @@ export default function AccountantRefundsPage() {
   });
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Page Header */}
       <div>
         <h2 className="font-headline-md text-2xl text-[#5a462d] font-semibold">Đối soát hoàn cọc</h2>
@@ -239,8 +428,8 @@ export default function AccountantRefundsPage() {
                   >
                     <td className="p-3 font-semibold text-[#1b1c1c]">{r.room_name}</td>
                     <td className="p-3 font-medium text-[#1b1c1c]">{r.customer_name}</td>
-                    <td className="p-3 text-xs text-[#5e5f5d] font-mono">{r.checkout_date}</td>
-                    <td className="p-3 text-right font-mono text-[#1b1c1c]">{r.deposit_original.toLocaleString('vi-VN')}</td>
+                    <td className="p-3 text-xs text-[#5e5f5d] ">{r.checkout_date}</td>
+                    <td className="p-3 text-right  text-[#1b1c1c]">{r.deposit_original.toLocaleString('vi-VN')}</td>
                     <td className="p-3 text-center">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                         r.status === 'confirmed' || r.status === 'paid' ? 'bg-[#E8F5E9] text-[#2E7D32]' :
@@ -279,22 +468,24 @@ export default function AccountantRefundsPage() {
               <div className="p-4 space-y-4">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-[#5e5f5d]">Tiền cọc gốc:</span>
-                  <span className="font-mono font-bold text-[#1b1c1c]">{activeRefund.deposit_original.toLocaleString('vi-VN')} đ</span>
+                  <span className=" font-bold text-[#1b1c1c]">{activeRefund.deposit_original.toLocaleString('vi-VN')} đ</span>
                 </div>
 
                 {/* Residency / Refund Rate Selector (UC Step 6) */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-[#5a462d]">Tỷ lệ hoàn cọc cơ bản</label>
-                  <select
-                    value={residencyRate}
-                    onChange={(e) => { setResidencyRate(parseInt(e.target.value)); setIsCalculated(false); }}
-                    className="w-full bg-white border border-[#d1c4b9] rounded py-1.5 px-3 text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                  >
-                    <option value={100}>Hết hạn hợp đồng (Hoàn 100%)</option>
-                    <option value={70}>Trả trước hạn, ở trên 6 tháng (Hoàn 70%)</option>
-                    <option value={50}>Trả trước hạn, ở dưới 6 tháng (Hoàn 50%)</option>
-                    <option value={80}>Chưa ký hợp đồng / Hủy thuê (Hoàn 80%)</option>
-                  </select>
+                  <CustomSelect
+                    value={String(residencyRate)}
+                    onChange={(v) => { setResidencyRate(parseInt(v)); setIsCalculated(false); }}
+                    theme="accountant"
+                    triggerClassName="py-1.5 text-xs"
+                    options={[
+                      { value: '100', label: 'Hết hạn hợp đồng (Hoàn 100%)' },
+                      { value: '70', label: 'Trả trước hạn, ở trên 6 tháng (Hoàn 70%)' },
+                      { value: '50', label: 'Trả trước hạn, ở dưới 6 tháng (Hoàn 50%)' },
+                      { value: '80', label: 'Chưa ký hợp đồng / Hủy thuê (Hoàn 80%)' },
+                    ]}
+                  />
                 </div>
 
                 {/* Cancellation Info Badge */}
@@ -326,8 +517,8 @@ export default function AccountantRefundsPage() {
                         <input
                           type="text"
                           value={violationDeduction}
-                          onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
-                          className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                          disabled
+                          className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                       </div>
@@ -344,8 +535,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={elecWaterDeduction}
-                            onChange={(e) => { setElecWaterDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -369,8 +560,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={damageDeduction}
-                            onChange={(e) => { setDamageDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -385,8 +576,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={cleaningDeduction}
-                            onChange={(e) => { setCleaningDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -401,8 +592,8 @@ export default function AccountantRefundsPage() {
                           <input
                             type="text"
                             value={violationDeduction}
-                            onChange={(e) => { setViolationDeduction(e.target.value); setIsCalculated(false); }}
-                            className="w-full bg-[#fbf9f8] border border-[#7f756c] text-[#ba1a1a] font-mono text-sm text-right rounded py-1.5 px-3 pr-8 focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                            disabled
+                            className="w-full bg-[#f3f0ec] border border-[#7f756c] text-[#ba1a1a] text-sm text-right rounded py-1.5 px-3 pr-8 cursor-not-allowed opacity-75"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ba1a1a]">đ</span>
                         </div>
@@ -425,11 +616,11 @@ export default function AccountantRefundsPage() {
                   <div className="border-t border-[#d1c4b9] pt-3 space-y-2 text-xs bg-[#fbf9f8] p-3 rounded border">
                     <div className="flex justify-between">
                       <span className="text-[#5e5f5d]">Tiền hoàn cơ bản ({residencyRate}%):</span>
-                      <span className="font-mono text-[#1b1c1c]">{basicRefundAmount.toLocaleString('vi-VN')} đ</span>
+                      <span className=" text-[#1b1c1c]">{basicRefundAmount.toLocaleString('vi-VN')} đ</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#5e5f5d]">Tổng các khoản trừ:</span>
-                      <span className="font-mono text-error">-{totalDeductions.toLocaleString('vi-VN')} đ</span>
+                      <span className=" text-error">-{totalDeductions.toLocaleString('vi-VN')} đ</span>
                     </div>
                     
                     <div className="h-[1px] bg-[#d1c4b9] my-1.5" />
@@ -439,12 +630,12 @@ export default function AccountantRefundsPage() {
                       <div className="text-right">
                         {netRefund >= 0 ? (
                           <>
-                            <span className="text-lg font-extrabold text-[#2E7D32] block font-mono">+{netRefund.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-lg font-extrabold text-[#2E7D32] block ">+{netRefund.toLocaleString('vi-VN')} đ</span>
                             <span className="text-[9px] text-[#2E7D32] font-bold uppercase tracking-wider block">Hoàn trả khách</span>
                           </>
                         ) : (
                           <>
-                            <span className="text-lg font-extrabold text-[#ba1a1a] block font-mono">{netRefund.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-lg font-extrabold text-[#ba1a1a] block ">{netRefund.toLocaleString('vi-VN')} đ</span>
                             <span className="text-[9px] text-[#ba1a1a] font-bold uppercase tracking-wider block">Khách đóng thêm</span>
                           </>
                         )}
@@ -472,9 +663,9 @@ export default function AccountantRefundsPage() {
                 <button
                   type="button"
                   onClick={handleApproveRefund}
-                  disabled={activeRefund.status === 'confirmed' || activeRefund.status === 'paid'}
+                  disabled={activeRefund.status === 'confirmed' || activeRefund.status === 'paid' || isSubmitting}
                   className={`flex-1 py-2 rounded text-xs font-bold transition cursor-pointer ${
-                    activeRefund.status === 'confirmed' || activeRefund.status === 'paid'
+                    activeRefund.status === 'confirmed' || activeRefund.status === 'paid' || isSubmitting
                       ? 'bg-[#e4e2e1] text-[#7f756c] cursor-not-allowed'
                       : 'bg-[#5a462d] text-white hover:opacity-90 shadow-sm'
                   }`}
@@ -518,14 +709,16 @@ export default function AccountantRefundsPage() {
                     <div key={idx} className="border border-[#d1c4b9] rounded p-3 bg-[#FAF9F6]">
                       <div className="flex justify-between items-start mb-1.5">
                         <span className="font-bold text-sm text-[#1b1c1c]">{item.item}</span>
-                        <span className="font-mono text-sm text-[#ba1a1a] font-semibold">{item.amount.toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-sm text-[#ba1a1a] font-semibold">{item.amount.toLocaleString('vi-VN')} đ</span>
                       </div>
-                      <p className="text-xs text-[#5e5f5d]">Biên bản kiểm tra phòng kỹ thuật lập lúc bàn giao trả phòng.</p>
-                      
-                      {/* Photo preview placeholder */}
-                      <div className="mt-2.5 bg-[#e4e2e1] border border-[#d1c4b9] rounded h-28 flex items-center justify-center text-xs text-[#5e5f5d] select-none font-bold uppercase tracking-wider">
-                        [Hình ảnh minh chứng hao mòn/hư hại]
-                      </div>
+                      <p className="text-xs text-[#5e5f5d] mb-1">
+                        <strong>Tình trạng lúc trả:</strong> {item.condition || 'Hỏng/Mất'}
+                      </p>
+                      {item.note && (
+                        <p className="text-xs text-[#8c6d50] bg-[#FAF2EC] p-2 rounded border border-[#e8dfd8] mt-1.5">
+                          <strong>Ghi chú hư hại:</strong> {item.note}
+                        </p>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -536,7 +729,7 @@ export default function AccountantRefundsPage() {
 
             <div className="p-6 border-t border-[#d1c4b9] bg-[#fbf9f8] flex justify-between items-center text-sm font-semibold">
               <span className="text-[#5e5f5d]">Tổng giá trị khấu trừ:</span>
-              <span className="text-base text-[#ba1a1a] font-bold font-mono">
+              <span className="text-base text-[#ba1a1a] font-bold ">
                 {(activeRefund.damage_deductions?.reduce((sum, item) => sum + item.amount, 0) || 0).toLocaleString('vi-VN')} VND
               </span>
             </div>

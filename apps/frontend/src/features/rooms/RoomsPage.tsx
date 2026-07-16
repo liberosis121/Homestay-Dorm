@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMockDB } from '../../lib/supabaseClient';
+import { getRoomsApi, Room } from './rooms.api';
 import { useRoomSearchStore } from './store/useRoomSearchStore';
 import ListingRoomCard from './components/ListingRoomCard';
 import FilterBar from './components/FilterBar';
@@ -11,9 +11,12 @@ import Footer from '../../components/ui/Footer';
 import heroImage from '../../assets/hero.jpg';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 
+const getAvailableBeds = (room: Room) =>
+  Math.max(room.available_beds_count ?? (room.capacity - room.current_occupants), 0);
+
 export default function RoomsPage() {
   const [showExtendedFilters, setShowExtendedFilters] = useState(false);
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
 
@@ -24,14 +27,17 @@ export default function RoomsPage() {
   } = useRoomSearchStore();
 
   useEffect(() => {
-    // Simulate API fetch
     setIsLoading(true);
     const fetchRooms = async () => {
-      const db = getMockDB();
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setRooms(db.rooms || []);
-      setIsLoading(false);
+      try {
+        // Gọi API thật thay vì getMockDB()
+        const data = await getRoomsApi();
+        setRooms(data);
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách phòng:', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchRooms();
   }, []);
@@ -40,10 +46,10 @@ export default function RoomsPage() {
   const filteredRooms = rooms.filter(room => {
     if (keyword && !room.name.toLowerCase().includes(keyword.toLowerCase())) return false;
     if (branch !== 'Tất cả chi nhánh' && room.branch_id !== branch) return false;
-    if (roomType !== 'Loại phòng' && room.room_type !== roomType) return false;
-    if (gender !== 'Giới tính' && gender !== 'Tất cả' && room.gender_type !== gender) return false;
+    if (roomType !== 'Tất cả loại phòng' && room.room_type.toLowerCase() !== roomType.toLowerCase()) return false;
+    if (gender !== 'Tất cả giới tính' && room.gender_type !== gender) return false;
     
-    if (onlyAvailable && room.status !== 'available' && room.status !== 'partial') return false;
+    if (onlyAvailable && getAvailableBeds(room) <= 0) return false;
     
     if (capacity && capacity !== '') {
       if (capacity === '6+' && room.capacity < 6) return false;
@@ -62,9 +68,9 @@ export default function RoomsPage() {
 
   // Sort Logic
   const sortedRooms = [...filteredRooms].sort((a, b) => {
+    if (sortBy.includes('nhi')) return getAvailableBeds(b) - getAvailableBeds(a);
     if (sortBy === 'Giá thấp nhất') return a.price - b.price;
     if (sortBy === 'Giá cao nhất') return b.price - a.price;
-    if (sortBy === 'Trống nhiều nhất') return (b.capacity - b.current_occupants) - (a.capacity - a.current_occupants);
     // Mới nhất (default)
     return 0;
   });

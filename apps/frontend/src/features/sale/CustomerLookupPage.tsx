@@ -1,15 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { formatShortId } from '../../lib/utils';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, RefreshCw, HelpCircle, AlertTriangle 
 } from 'lucide-react';
 import CustomerProfileCard from './components/CustomerProfileCard';
 import CustomerTabs from './components/CustomerTabs';
-import CustomerTimeline from './components/CustomerTimeline';
-import { MOCK_CUSTOMERS, Customer } from '../../lib/mockCustomers';
-import { getMockDB, saveMockDB } from '../../lib/supabaseClient';
+import { customerLookupService, Customer } from './services/customerLookup.service';
 
 export default function CustomerLookupPage() {
-
   // Trạng thái Form Tìm kiếm
   const [searchName, setSearchName] = useState('');
   const [searchID, setSearchID] = useState('');
@@ -19,16 +17,24 @@ export default function CustomerLookupPage() {
   // Danh sách khách hàng và khách hàng đang chọn
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [activeCustomer, setActiveCustomer] = useState<Customer | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Load database từ LocalStorage lúc khởi tạo
-  useEffect(() => {
-    const db = getMockDB();
-    if (db && db.customers && db.customers.length > 0) {
-      setCustomers(db.customers);
-    } else {
-      setCustomers(MOCK_CUSTOMERS);
+  const loadCustomersList = useCallback(async () => {
+    try {
+      const liveCustomers = await customerLookupService.fetchCustomers();
+      setCustomers(liveCustomers);
+      setLoadError(null);
+    } catch (err) {
+      console.warn('[CustomerLookup] Failed to fetch live customer data:', err);
+      setCustomers([]);
+      setLoadError('Không thể tải dữ liệu khách hàng từ máy chủ.');
     }
   }, []);
+
+  // Load danh sách khách hàng thật từ API lúc khởi tạo
+  useEffect(() => {
+    loadCustomersList();
+  }, [loadCustomersList]);
 
   // Lọc danh sách khách hàng dựa trên thông tin tìm kiếm
   const filteredCustomers = useMemo(() => {
@@ -57,26 +63,12 @@ export default function CustomerLookupPage() {
     });
   }, [customers, searchName, searchID, searchPhone, searchEmail]);
 
-  // Kiểm tra giả lập trạng thái lỗi
-  const isErrorTriggered = useMemo(() => {
-    const qName = searchName.toLowerCase();
-    const qID = searchID.toLowerCase();
-    const qPhone = searchPhone.toLowerCase();
-    const qEmail = searchEmail.toLowerCase();
-    return (
-      qName.includes('lỗi') || qName.includes('error') ||
-      qID.includes('lỗi') || qID.includes('error') ||
-      qPhone.includes('lỗi') || qPhone.includes('error') ||
-      qEmail.includes('lỗi') || qEmail.includes('error')
-    );
-  }, [searchName, searchID, searchPhone, searchEmail]);
-
   // Trạng thái UI động
   const uiState = useMemo(() => {
-    if (isErrorTriggered) return 'error';
+    if (loadError) return 'error';
     if (filteredCustomers.length === 0) return 'empty';
     return 'success';
-  }, [isErrorTriggered, filteredCustomers]);
+  }, [loadError, filteredCustomers]);
 
   // Tự động gán active customer khi danh sách đã lọc thay đổi
   useEffect(() => {
@@ -106,16 +98,12 @@ export default function CustomerLookupPage() {
 
 
 
-  // Cập nhật thông tin khách hàng từ tab thông tin cá nhân
-  const handleUpdateCustomer = (updatedCust: Customer) => {
-    const db = getMockDB();
-    const updatedList = customers.map(c => 
-      c.id === updatedCust.id ? updatedCust : c
-    );
-    setCustomers(updatedList);
-    db.customers = updatedList;
-    saveMockDB(db);
-    setActiveCustomer(updatedCust);
+  const getInitials = (name: string) => {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return 'KH';
+    return words.length === 1
+      ? words[0].slice(0, 2).toUpperCase()
+      : `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
   };
 
 
@@ -183,7 +171,7 @@ export default function CustomerLookupPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* CỘT TRÁI: Sidebar danh sách khách hàng luôn hiển thị */}
-        <div className="lg:col-span-4 xl:col-span-3 bg-white rounded-24 border border-[#d1c4b9] shadow-sm p-4 flex flex-col h-[700px] overflow-hidden animate-fade-in-up">
+        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-24 border border-[#d1c4b9] shadow-sm p-4 flex flex-col h-[700px] overflow-hidden animate-fade-in-up">
           <div className="flex items-center justify-between pb-3 border-b border-[#e8ede7] mb-3">
             <h3 className="font-bold text-[#6f583c] text-xs tracking-wide uppercase flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -202,10 +190,16 @@ export default function CustomerLookupPage() {
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
             {filteredCustomers.map(cust => {
               const isActive = activeCustomer?.id === cust.id;
-              const statusLabel = cust.status === 'active' ? 'Đang thuê' : 'Đã trả';
+              const statusLabel = cust.status === 'active' 
+                ? 'Đang thuê' 
+                : cust.status === 'inactive' 
+                  ? 'Đã trả' 
+                  : 'Chưa thuê';
               const statusColor = cust.status === 'active'
                 ? 'bg-[#e8ede7] text-[#5f745d]'
-                : 'bg-gray-100 text-gray-500';
+                : cust.status === 'inactive'
+                  ? 'bg-gray-100 text-gray-500'
+                  : 'bg-[#e0f2fe] text-[#0369a1]';
 
               return (
                 <button
@@ -217,18 +211,31 @@ export default function CustomerLookupPage() {
                       : 'bg-white border-[#d1c4b9]/40'
                   }`}
                 >
-                  <img
-                    src={cust.avatar}
-                    alt={cust.fullName}
-                    className="w-10 h-10 rounded-full object-cover bg-[#faf2ec] border border-[#d1c4b9]/50 shrink-0"
-                  />
+                  <div className="relative flex w-10 h-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#d1c4b9]/60 bg-[#faf2ec] text-xs font-extrabold text-[#6f583c]">
+                    <span>{getInitials(cust.fullName)}</span>
+                    {cust.avatar && (
+                      <img
+                        src={cust.avatar}
+                        alt={cust.fullName}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-bold truncate ${isActive ? 'text-[#6f583c]' : 'text-[#1e1b17]'}`}>
                       {cust.fullName}
                     </p>
-                    <p className="text-[11px] text-[#7f756b] font-medium mt-0.5 truncate font-body-sm">
-                      {cust.code} • {cust.personalInfo.phone}
-                    </p>
+                    <div className="flex flex-wrap gap-1 mt-1 font-body-sm">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#eee7e1] text-[#6f583c] text-[10px] font-bold">
+                        {formatShortId(cust.code, 'customer')}
+                      </span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#eee7e1]/80 text-[#4e453c] text-[10px] font-bold">
+                        {cust.personalInfo.phone}
+                      </span>
+                    </div>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${statusColor}`}>
                     {statusLabel}
@@ -237,24 +244,24 @@ export default function CustomerLookupPage() {
               );
             })}
 
-            {filteredCustomers.length === 0 && !isErrorTriggered && (
+            {filteredCustomers.length === 0 && !loadError && (
               <div className="flex flex-col items-center justify-center py-12 text-center text-[#7f756b]">
                 <HelpCircle className="w-8 h-8 opacity-40 mb-2" />
                 <p className="text-xs font-semibold">Không tìm thấy khách hàng nào</p>
               </div>
             )}
             
-            {isErrorTriggered && (
+            {loadError && (
               <div className="flex flex-col items-center justify-center py-12 text-center text-red-500">
                 <AlertTriangle className="w-8 h-8 opacity-60 mb-2" />
-                <p className="text-xs font-bold">Lỗi kết nối máy chủ</p>
+                <p className="text-xs font-bold">{loadError}</p>
               </div>
             )}
           </div>
         </div>
 
         {/* CỘT PHẢI: Canvas thông tin chi tiết */}
-        <div className="lg:col-span-8 xl:col-span-9 min-h-[700px] relative">
+        <div className="lg:col-span-7 xl:col-span-8 min-h-[700px] relative">
           
           {/* A. TRẠNG THÁI LỖI */}
           {uiState === 'error' && (
@@ -264,14 +271,14 @@ export default function CustomerLookupPage() {
               </div>
               <h3 className="text-xl font-bold text-[#ba1a1a] mb-2">Đã xảy ra lỗi kết nối</h3>
               <p className="text-sm text-[#7f756b] max-w-md font-body-md leading-relaxed mb-6 px-4">
-                Lỗi giả lập máy chủ dữ liệu trung tâm không phản hồi hoặc hết thời gian yêu cầu. Vui lòng thử lại.
+                Máy chủ dữ liệu khách hàng không phản hồi hoặc hết thời gian yêu cầu. Vui lòng thử lại.
               </p>
               <button
-                onClick={handleResetSearch}
+                onClick={loadCustomersList}
                 className="px-6 py-2.5 bg-[#ba1a1a] hover:bg-[#ba1a1a]/95 text-white font-semibold text-sm rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 duration-200 flex items-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                Làm mới bộ lọc
+                Thử tải lại
               </button>
             </div>
           )}
@@ -298,28 +305,9 @@ export default function CustomerLookupPage() {
                 customer={activeCustomer} 
               />
 
-              {/* Bottom Contents Grid Layout */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                
-                {/* Left & Middle Column: Detailed Tabs */}
-                <div className="xl:col-span-2 space-y-6">
-                  <CustomerTabs customer={activeCustomer} onUpdateCustomer={handleUpdateCustomer} />
-                </div>
-
-                {/* Right Column: Activities Timeline */}
-                <div className="space-y-6">
-                  
-                  {/* Hoạt động gần đây */}
-                  <div className="bg-white p-6 rounded-24 border border-[#d1c4b9] shadow-sm">
-                    <h4 className="font-bold text-[#6f583c] text-sm tracking-wider uppercase mb-5 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 0" }}>history</span>
-                      Hoạt động gần đây
-                    </h4>
-                    <CustomerTimeline activities={activeCustomer.recentActivities} />
-                  </div>
-
-                </div>
-
+              {/* Bottom Contents: Detailed Tabs */}
+              <div className="w-full">
+                <CustomerTabs customer={activeCustomer} />
               </div>
 
             </div>

@@ -1,128 +1,183 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Receipt, LogIn, ArrowLeftRight, CheckCircle, 
+import {
+  Receipt, LogIn, ArrowLeftRight, CheckCircle,
   TrendingUp, AlertCircle, ArrowRight, Clock, BarChart3, RefreshCw, Calendar
 } from 'lucide-react';
 import { getMockDB } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../stores/authStore';
+import { accountantService } from './services/accountant.service';
+
+// ─── Helpers tính toán số liệu (dùng chung cho cả nhánh live & mock fallback) ──
+// Hóa đơn "chưa thu" có thể mang status 'pending' (định kỳ) HOẶC 'unpaid' (cọc, hoàn cọc).
+const OUTSTANDING_STATUSES = ['pending', 'unpaid'];
+
+const amountOf = (x: any) => Number(x?.amount ?? x?.total ?? 0) || 0;
+
+const sumByStatus = (list: any[], statuses: string[]) =>
+  (list || []).filter((x: any) => statuses.includes(x.status)).reduce((s: number, x: any) => s + amountOf(x), 0);
+
+const countByStatus = (list: any[], statuses: string[]) =>
+  (list || []).filter((x: any) => statuses.includes(x.status)).length;
+
+// Tỷ lệ thu = đã thu / (đã thu + còn phải thu). Trả về số nguyên %.
+const collectionPct = (paid: number, outstanding: number) => {
+  const billed = paid + outstanding;
+  return billed > 0 ? Math.round((paid / billed) * 100) : 0;
+};
+
+// Định dạng thời gian thật từ payment_time; null/không hợp lệ → "Chưa thanh toán".
+const formatPaymentTime = (t: any) => {
+  if (!t) return 'Chưa thanh toán';
+  const d = new Date(t);
+  if (isNaN(d.getTime())) return 'Chưa thanh toán';
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+};
+
+interface DashboardStats {
+  totalRevenue: number;
+  depositRev: number;
+  checkinRev: number;
+  monthlyRev: number;
+  collectionRate: number;
+  depositRate: number;
+  checkinRate: number;
+  monthlyRate: number;
+  pendingInvoicesCount: number;
+  pendingRefundsCount: number;
+  pendingPayoutsCount: number;
+  recentActivities: any[];
+}
+
+// Tính toàn bộ số liệu dashboard từ 5 danh sách hóa đơn/hồ sơ.
+const computeDashboardStats = (
+  depInvoices: any[], chkInvoices: any[], monInvoices: any[], refunds: any[], payouts: any[]
+): DashboardStats => {
+  const depositRev = sumByStatus(depInvoices, ['paid']);
+  const checkinRev = sumByStatus(chkInvoices, ['paid']);
+  const monthlyRev = sumByStatus(monInvoices, ['paid']);
+  const totalRevenue = depositRev + checkinRev + monthlyRev;
+
+  const depositOut = sumByStatus(depInvoices, OUTSTANDING_STATUSES);
+  const checkinOut = sumByStatus(chkInvoices, OUTSTANDING_STATUSES);
+  const monthlyOut = sumByStatus(monInvoices, OUTSTANDING_STATUSES);
+  const totalOut = depositOut + checkinOut + monthlyOut;
+
+  const pendingInvoicesCount =
+    countByStatus(depInvoices, OUTSTANDING_STATUSES) +
+    countByStatus(chkInvoices, OUTSTANDING_STATUSES) +
+    countByStatus(monInvoices, OUTSTANDING_STATUSES);
+
+  const pendingRefundsCount = (refunds || []).filter(
+    (r: any) => r.status === 'pending' || r.status === 'calculated'
+  ).length;
+  // Phiếu chi (refund invoices) chờ chi: 'pending', 'processing' hoặc 'unpaid'.
+  const pendingPayoutsCount = (payouts || []).filter(
+    (p: any) => ['pending', 'processing', 'unpaid'].includes(p.status)
+  ).length;
+
+  const recentActivities: any[] = [];
+  (depInvoices || []).slice(0, 3).forEach((inv: any) => {
+    recentActivities.push({
+      id: inv.id,
+      type: 'deposit',
+      title: `Đặt cọc: ${inv.customer_name || 'Khách hàng'}`,
+      subtitle: `${inv.room_name || 'Phòng'} - ${amountOf(inv).toLocaleString('vi-VN')} ₫`,
+      status: inv.status,
+      time: inv.payment_time || null,
+      path: '/accountant/invoices/deposit'
+    });
+  });
+  (chkInvoices || []).slice(0, 2).forEach((inv: any) => {
+    recentActivities.push({
+      id: inv.id,
+      type: 'checkin',
+      title: `Nhận phòng: ${inv.customer_name || 'Khách hàng'}`,
+      subtitle: `${inv.room_name || 'Phòng'} - ${amountOf(inv).toLocaleString('vi-VN')} ₫`,
+      status: inv.status,
+      time: inv.payment_time || null,
+      path: '/accountant/invoices/checkin'
+    });
+  });
+  (refunds || []).slice(0, 2).forEach((r: any) => {
+    recentActivities.push({
+      id: r.id,
+      type: 'refund',
+      title: `Đối soát cọc: ${r.customer_name || 'Khách hàng'}`,
+      subtitle: `${r.room_name || 'Phòng'} - Hoàn ${Number(r.refund_amount ?? r.final_refund ?? 0).toLocaleString('vi-VN')} ₫`,
+      status: r.status,
+      time: r.payment_time || r.reconciliation_date || null,
+      path: '/accountant/refunds'
+    });
+  });
+
+  // Sắp xếp giảm dần theo thời gian; các mục chưa có thời gian (null) xuống cuối.
+  recentActivities.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+
+  return {
+    totalRevenue,
+    depositRev,
+    checkinRev,
+    monthlyRev,
+    collectionRate: collectionPct(totalRevenue, totalOut),
+    depositRate: collectionPct(depositRev, depositOut),
+    checkinRate: collectionPct(checkinRev, checkinOut),
+    monthlyRate: collectionPct(monthlyRev, monthlyOut),
+    pendingInvoicesCount,
+    pendingRefundsCount,
+    pendingPayoutsCount,
+    recentActivities: recentActivities.slice(0, 5)
+  };
+};
 
 export default function AccountantDashboardPage() {
   const { user } = useAuthStore();
   const today = new Date();
   const todayLabel = today.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  const T = {
-    bg: '#FFF8F3', surface: '#FFFFFF', sidebar: '#FAF2EC',
-    border: '#DCCFC0', primary: '#5C4632', primaryLight: '#FAF9F6',
-    sage: '#5F7D4E', sageBg: '#E8EDE5', amber: '#B9792B', amberBg: '#FAF2E8',
-    red: '#A94F4F', redBg: '#F8EAE8', text: '#1b1c1c', textMuted: '#5C4632', textFaint: '#8A7563'
-  };
-
-  const quickActions = [
-    { label: 'Hóa đơn Đặt cọc', icon: 'receipt_long', path: '/accountant/invoices/deposit', color: T.amber, bg: T.amberBg },
-    { label: 'Hóa đơn Nhận phòng', icon: 'login', path: '/accountant/invoices/checkin', color: T.sage, bg: T.sageBg },
-    { label: 'Hóa đơn Định kỳ', icon: 'credit_card', path: '/accountant/invoices/monthly', color: T.primary, bg: T.primaryLight },
-    { label: 'Đối soát Hoàn cọc', icon: 'compare_arrows', path: '/accountant/refunds', color: T.amber, bg: T.amberBg },
-    { label: 'Chi tiền & Thanh lý', icon: 'paid', path: '/accountant/payouts', color: T.red, bg: T.redBg },
-    { label: 'Hồ sơ Khách hàng', icon: 'manage_search', path: '/sale/customers', color: T.textFaint, bg: '#F5F0EB' },
-  ];
-
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     depositRev: 0,
     checkinRev: 0,
     monthlyRev: 0,
+    collectionRate: 0,
+    depositRate: 0,
+    checkinRate: 0,
+    monthlyRate: 0,
     pendingInvoicesCount: 0,
     pendingRefundsCount: 0,
     pendingPayoutsCount: 0,
-    recentActivities: [] as any[]
+    recentActivities: []
   });
 
   useEffect(() => {
-    const db = getMockDB();
-    
-    // Revenue from paid invoices
-    const depositRev = (db.deposit_invoices || [])
-      .filter((inv: any) => inv.status === 'paid')
-      .reduce((sum: number, inv: any) => sum + inv.amount, 0);
-    const checkinRev = (db.checkin_invoices || [])
-      .filter((inv: any) => inv.status === 'paid')
-      .reduce((sum: number, inv: any) => sum + inv.total, 0);
-    const monthlyRev = (db.monthly_invoices || [])
-      .filter((inv: any) => inv.status === 'paid')
-      .reduce((sum: number, inv: any) => sum + inv.total, 0);
-    
-    const totalRevenue = depositRev + checkinRev + monthlyRev;
-
-    // Pending counts
-    const pendingDeposit = (db.deposit_invoices || []).filter((inv: any) => inv.status === 'pending').length;
-    const pendingCheckin = (db.checkin_invoices || []).filter((inv: any) => inv.status === 'pending').length;
-    const pendingMonthly = (db.monthly_invoices || []).filter((inv: any) => inv.status === 'pending').length;
-    const pendingInvoicesCount = pendingDeposit + pendingCheckin + pendingMonthly;
-
-    const pendingRefundsCount = (db.refund_records || []).filter((r: any) => r.status === 'pending' || r.status === 'calculated').length;
-    const pendingPayoutsCount = (db.payout_records || []).filter((p: any) => p.status === 'pending' || p.status === 'processing').length;
-
-    // Gather recent activities from DB
-    const recentActivities: any[] = [];
-    
-    // Add last 3 deposit invoices
-    (db.deposit_invoices || []).slice(0, 3).forEach((inv: any) => {
-      recentActivities.push({
-        id: inv.id,
-        type: 'deposit',
-        title: `Đặt cọc: ${inv.customer_name}`,
-        subtitle: `${inv.room_name} - ${inv.amount.toLocaleString('vi-VN')} ₫`,
-        status: inv.status,
-        time: inv.created_at,
-        path: '/accountant/invoices/deposit'
-      });
-    });
-
-    // Add last 2 checkin invoices
-    (db.checkin_invoices || []).slice(0, 2).forEach((inv: any) => {
-      recentActivities.push({
-        id: inv.id,
-        type: 'checkin',
-        title: `Nhận phòng: ${inv.customer_name}`,
-        subtitle: `${inv.room_name} - ${inv.total.toLocaleString('vi-VN')} ₫`,
-        status: inv.status,
-        time: inv.created_at,
-        path: '/accountant/invoices/checkin'
-      });
-    });
-
-    // Add last 2 refund/payout
-    (db.refund_records || []).slice(0, 2).forEach((r: any) => {
-      recentActivities.push({
-        id: r.id,
-        type: 'refund',
-        title: `Đối soát cọc: ${r.customer_name}`,
-        subtitle: `${r.room_name} - Hoàn ${r.refund_amount.toLocaleString('vi-VN')} ₫`,
-        status: r.status,
-        time: r.created_at,
-        path: '/accountant/refunds'
-      });
-    });
-
-    // Sort recent activities by time descending
-    recentActivities.sort((a, b) => b.time.localeCompare(a.time));
-
-    setStats({
-      totalRevenue,
-      depositRev,
-      checkinRev,
-      monthlyRev,
-      pendingInvoicesCount,
-      pendingRefundsCount,
-      pendingPayoutsCount,
-      recentActivities: recentActivities.slice(0, 5)
-    });
-  }, []);
-
-  const collectionRate = 88; // Static/calculated indicator
-
+    const loadStats = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [depInvoices, chkInvoices, monInvoices, refunds, payouts] = await Promise.all([
+          accountantService.fetchDepositInvoices(email),
+          accountantService.fetchCheckinInvoices(email),
+          accountantService.fetchMonthlyInvoices(email),
+          accountantService.fetchRefundReconciliations(email),
+          accountantService.fetchPayouts(email)
+        ]);
+        setStats(computeDashboardStats(depInvoices, chkInvoices, monInvoices, refunds, payouts));
+      } catch (err) {
+        console.warn('[AccountantDashboard] Failed to fetch live backend stats, falling back to mock DB:', err);
+        const db = getMockDB();
+        setStats(computeDashboardStats(
+          db.deposit_invoices || [],
+          db.checkin_invoices || [],
+          db.monthly_invoices || [],
+          db.refund_records || [],
+          db.payout_records || []
+        ));
+      }
+    };
+    loadStats();
+  }, [user]);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
@@ -130,6 +185,7 @@ export default function AccountantDashboardPage() {
       case 'confirmed':
         return 'bg-[#E8EDE5] text-[#5F7D4E] border-[#DCCFC0]';
       case 'pending':
+      case 'unpaid':
       case 'calculated':
       case 'processing':
         return 'bg-[#FAF2E8] text-[#B9792B] border-[#DCCFC0]';
@@ -146,6 +202,7 @@ export default function AccountantDashboardPage() {
       case 'completed': return 'Đã chi';
       case 'confirmed': return 'Đã duyệt';
       case 'pending': return 'Chờ xử lý';
+      case 'unpaid': return 'Chưa thu';
       case 'calculated': return 'Đang đối soát';
       case 'processing': return 'Đang chi';
       case 'overdue': return 'Quá hạn';
@@ -154,14 +211,14 @@ export default function AccountantDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Greeting Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ fontFamily: "'Lexend', sans-serif" }}>
         <div>
           <h1 className="text-2xl font-bold text-[#5C4632]">Xin chào, {user?.full_name?.split(' (')[0] || 'Kế toán'}!</h1>
           <p className="text-sm text-[#8A7563] mt-1 flex items-center gap-2 font-medium">
             <Calendar className="w-4 h-4 text-[#5C4632]" />
-            {todayLabel} · <span className="text-[#8A7563]">Kỳ kế toán: 06/2026</span>
+            {todayLabel}
           </p>
         </div>
         <button
@@ -185,7 +242,7 @@ export default function AccountantDashboardPage() {
           <div className="mt-2">
             <div className="text-2xl font-bold text-[#5F7D4E] tabular-nums">{stats.totalRevenue.toLocaleString('vi-VN')} ₫</div>
             <p className="text-[10px] text-[#5F7D4E] font-semibold flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" /> +14.2% so với tháng trước
+              <TrendingUp className="w-3 h-3" /> Đã thu {stats.collectionRate}% tổng phải thu
             </p>
           </div>
         </div>
@@ -237,54 +294,24 @@ export default function AccountantDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Quick Actions & Distribution (Col-span 2) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Quick Actions */}
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 28, boxShadow: '0 2px 12px rgba(111,88,60,0.06)' }}>
-            <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 20 }}>
-              Hành động nhanh nghiệp vụ
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-              {quickActions.map((action, i) => (
-                <Link 
-                  key={i} 
-                  to={action.path}
-                  style={{ 
-                    background: action.bg, 
-                    border: `1px solid ${T.border}`, 
-                    borderRadius: 16, 
-                    padding: '20px 12px', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    gap: 10, 
-                    textDecoration: 'none', 
-                    transition: 'all 0.2s' 
-                  }}
-                  className="hover:scale-[1.03] hover:shadow-md"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 28, color: action.color }}>{action.icon}</span>
-                  <span style={{ color: T.text, fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>{action.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
+
 
           {/* Revenue Distribution and Progress */}
           <div className="bg-white border border-[#DCCFC0] rounded-xl p-5 shadow-sm space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-[#5C4632] text-sm">Cơ cấu & Tiến độ thu phí tháng này</h3>
-              <span className="text-xs font-semibold text-[#5C4632]">Tỷ lệ thu hồi: {collectionRate}%</span>
+              <span className="text-xs font-semibold text-[#5C4632]">Tỷ lệ thu hồi: {stats.collectionRate}%</span>
             </div>
-            
+
             <div className="space-y-4">
               {/* Progress collector bar */}
               <div>
                 <div className="flex justify-between text-xs mb-1.5 text-[#8A7563]">
                   <span>Tổng tiền đã thu thực tế: <span className="font-semibold text-[#5F7D4E]">{(stats.totalRevenue).toLocaleString('vi-VN')} ₫</span></span>
-                  <span className="font-bold">{collectionRate}%</span>
+                  <span className="font-bold">{stats.collectionRate}%</span>
                 </div>
                 <div className="w-full bg-[#FAF9F6] h-2.5 rounded-full overflow-hidden border border-[#DCCFC0]">
-                  <div className="bg-[#5C4632] h-full rounded-full transition-all duration-500" style={{ width: `${collectionRate}%` }} />
+                  <div className="bg-[#5C4632] h-full rounded-full transition-all duration-500" style={{ width: `${stats.collectionRate}%` }} />
                 </div>
               </div>
 
@@ -293,18 +320,18 @@ export default function AccountantDashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
                   <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Cọc giữ chỗ</span>
-                  <span className="font-mono text-sm font-bold text-[#5C4632]">{stats.depositRev.toLocaleString('vi-VN')} ₫</span>
-                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt 100%</span>
+                  <span className="text-sm font-bold text-[#5C4632]">{stats.depositRev.toLocaleString('vi-VN')} ₫</span>
+                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt {stats.depositRate}%</span>
                 </div>
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
                   <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Nhận phòng</span>
-                  <span className="font-mono text-sm font-bold text-[#5C4632]">{stats.checkinRev.toLocaleString('vi-VN')} ₫</span>
-                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt 92%</span>
+                  <span className="text-sm font-bold text-[#5C4632]">{stats.checkinRev.toLocaleString('vi-VN')} ₫</span>
+                  <span className="text-[10px] text-[#5F7D4E] block mt-1 font-semibold">Thu đạt {stats.checkinRate}%</span>
                 </div>
                 <div className="bg-[#FAF9F6] border border-[#DCCFC0] p-3 rounded-lg text-center">
                   <span className="text-[10px] text-[#8A7563] font-bold uppercase tracking-wider block mb-1">Định kỳ dịch vụ</span>
-                  <span className="font-mono text-sm font-bold text-[#5C4632]">{stats.monthlyRev.toLocaleString('vi-VN')} ₫</span>
-                  <span className="text-[10px] text-[#B9792B] block mt-1 font-semibold">Thu đạt 76%</span>
+                  <span className="text-sm font-bold text-[#5C4632]">{stats.monthlyRev.toLocaleString('vi-VN')} ₫</span>
+                  <span className="text-[10px] text-[#B9792B] block mt-1 font-semibold">Thu đạt {stats.monthlyRate}%</span>
                 </div>
               </div>
             </div>
@@ -314,10 +341,10 @@ export default function AccountantDashboardPage() {
         {/* Right Column: Recent activities timeline */}
         <div className="bg-white border border-[#DCCFC0] rounded-xl p-5 shadow-sm space-y-4">
           <h3 className="font-bold text-[#5C4632] text-sm">Giao dịch phát sinh gần đây</h3>
-          
+
           <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-[1px] before:bg-[#DCCFC0]">
             {stats.recentActivities.map((act, index) => (
-              <Link 
+              <Link
                 to={act.path}
                 key={`${act.id}-${index}`}
                 className="flex gap-3 hover:bg-[#FBF9F7] p-2 rounded transition group text-left"
@@ -327,7 +354,7 @@ export default function AccountantDashboardPage() {
                   {act.type === 'checkin' && <LogIn className="w-3.5 h-3.5" />}
                   {act.type === 'refund' && <ArrowLeftRight className="w-3.5 h-3.5" />}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start gap-1">
                     <span className="text-xs font-bold text-[#1b1c1c] truncate">{act.title}</span>
@@ -336,10 +363,10 @@ export default function AccountantDashboardPage() {
                     </span>
                   </div>
                   <p className="text-[11px] text-[#8A7563] mt-0.5 truncate">{act.subtitle}</p>
-                  
+
                   <div className="flex justify-between items-center mt-1.5">
-                    <span className="text-[9px] text-[#8A7563] font-mono flex items-center gap-1">
-                      <Clock className="w-2.5 h-2.5" /> {act.time}
+                    <span className="text-[9px] text-[#8A7563] flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" /> {formatPaymentTime(act.time)}
                     </span>
                     <span className="text-[9px] text-[#5C4632] font-bold opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5">
                       Xử lý <ArrowRight className="w-2.5 h-2.5" />
@@ -362,7 +389,7 @@ export default function AccountantDashboardPage() {
         <div>
           <h4 className="font-bold text-xs">Lưu ý chốt kỳ kế toán</h4>
           <p className="text-[11px] text-[#B9792B]/90 mt-0.5 leading-relaxed">
-            Hạn cuối ghi số điện nước và gửi hóa đơn cho khách thuê là ngày **10 hàng tháng**. Vui lòng hoàn thành việc nhập chỉ số tiêu thụ điện nước phòng trước thời gian trên để tránh chậm trễ.
+            Hạn cuối ghi số điện nước và gửi hóa đơn cho khách thuê là ngày <strong className="font-bold">10 hàng tháng</strong>. Vui lòng hoàn thành việc nhập chỉ số tiêu thụ điện nước phòng trước thời gian trên để tránh chậm trễ.
           </p>
         </div>
       </div>

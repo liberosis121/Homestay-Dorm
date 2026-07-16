@@ -1,5 +1,7 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useEffect, useMemo } from "react";
-import { getMockDB } from "../../lib/supabaseClient";
+import { fetchAdminCustomers, toggleCustomerLockApi, createCustomerApi } from "./services/admin.service";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 // ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
 const A = {
@@ -24,7 +26,21 @@ interface CustomerRow {
   accountStatus: "active" | "locked";
   joinDate: string;
   note?: string;
+  customers?: {
+    cccd: string;
+    dob: string;
+    gender: string;
+    nationality: string;
+    address: string;
+  } | null;
 }
+
+const getCustomerCode = (c: CustomerRow) => {
+  if (c.customers?.cccd) {
+    return formatShortId(c.customers.cccd, 'customer');
+  }
+  return formatShortId(c.id, 'customer');
+};
 
 const STATUS_MAP = {
   renting: { label: "Đang thuê", cls: "bg-[#e8ede7] text-[#5f745d]" },
@@ -62,33 +78,105 @@ export default function AdminUsersPage() {
   );
   const [showAddModal, setShowAddModal] = useState(false);
   const [confirmLockCustomer, setConfirmLockCustomer] = useState<CustomerRow | null>(null);
+  const [isConfirmHover, setIsConfirmHover] = useState(false);
+  const [showAddPassword, setShowAddPassword] = useState(false);
+  const [addFullName, setAddFullName] = useState("");
+  const [addCccd, setAddCccd] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addPassword, setAddPassword] = useState("");
+  const [addError, setAddError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [isErrorToast, setIsErrorToast] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
-  // Load from mock DB
-  useEffect(() => {
+  const rentOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "renting", label: "Đang thuê" },
+    { value: "not_renting", label: "Chưa thuê" },
+    { value: "pending", label: "Chờ duyệt" },
+    { value: "checked_out", label: "Đã trả phòng" }
+  ];
+
+  const acctOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "active", label: "Hoạt động" },
+    { value: "locked", label: "Bị khóa" }
+  ];
+
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+    setAddFullName("");
+    setAddCccd("");
+    setAddPhone("");
+    setAddEmail("");
+    setAddPassword("");
+    setAddError("");
+    setShowAddPassword(false);
+  };
+
+  const reloadCustomers = async () => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      const db = getMockDB();
-      const rows: CustomerRow[] = (db.customers || []).map(
-        (c: any, idx: number) => ({
-          id: `KH-${String(idx + 1).padStart(3, "0")}`,
-          full_name: c.full_name || "Khách hàng",
-          email: c.email || "",
-          phone: c.phone || "09x xxx xxxx",
-          renting_room_name: c.renting_room_name,
-          status: c.renting_room_name ? "renting" : "not_renting",
-          accountStatus: "active",
-          joinDate: c.created_at
-            ? new Date(c.created_at).toLocaleDateString("vi-VN")
-            : "01/01/2024",
-          note: "",
-        }),
-      );
-      // Add mock locked account for demo
-      if (rows.length > 2) rows[2].accountStatus = "locked";
+    try {
+      const rows = await fetchAdminCustomers();
       setCustomers(rows);
+    } catch (err) {
+      console.error("Lỗi khi tải khách hàng:", err);
+    } finally {
       setIsLoading(false);
-    }, 450);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!addFullName.trim() || !addCccd.trim() || !addPhone.trim() || !addEmail.trim() || !addPassword.trim()) {
+      setAddError("Vui lòng nhập đầy đủ các trường thông tin.");
+      return;
+    }
+    setAddError("");
+    setIsSubmitting(true);
+    try {
+      await createCustomerApi({
+        fullName: addFullName.trim(),
+        cccd: addCccd.trim(),
+        phone: addPhone.trim(),
+        email: addEmail.trim(),
+        password: addPassword.trim(),
+      });
+      setSuccessMsg("Đã tạo khách hàng mới thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
+      await reloadCustomers();
+      handleCloseAddModal();
+    } catch (err: any) {
+      setAddError(err.message || "Lỗi xảy ra khi tạo tài khoản khách hàng.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Load from database
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const rows = await fetchAdminCustomers();
+        if (active) {
+          setCustomers(rows);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải khách hàng:", err);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const kpis = useMemo(() => {
@@ -145,23 +233,58 @@ export default function AdminUsersPage() {
     });
   }, [customers, search, filterRent, filterAcct]);
 
-  const confirmToggleLock = () => {
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterRent, filterAcct]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  }, [filtered]);
+
+  const displayedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  const confirmToggleLock = async () => {
     if (!confirmLockCustomer) return;
-    const nextStatus =
-      confirmLockCustomer.accountStatus === "active" ? "locked" : "active";
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.id === confirmLockCustomer.id
-          ? { ...c, accountStatus: nextStatus }
-          : c,
-      ),
-    );
-    if (selectedCustomer?.id === confirmLockCustomer.id) {
-      setSelectedCustomer((prev) =>
-        prev ? { ...prev, accountStatus: nextStatus } : null,
-      );
+    
+    // Nếu muốn khóa và khách thuê đang ở (renting) -> Chặn và báo lỗi
+    if (confirmLockCustomer.accountStatus !== 'locked' && confirmLockCustomer.status === 'renting') {
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể khóa tài khoản do khách hàng đang có hợp đồng hoặc hóa đơn chưa thanh toán!");
+      setTimeout(() => setSuccessMsg(''), 3500);
+      setConfirmLockCustomer(null);
+      return;
     }
-    setConfirmLockCustomer(null);
+
+    try {
+      const res = await toggleCustomerLockApi(confirmLockCustomer.id);
+      const nextStatus = res.accountStatus;
+      setCustomers((prev) =>
+        prev.map((c) =>
+          c.id === confirmLockCustomer.id
+            ? { ...c, accountStatus: nextStatus }
+            : c
+        )
+      );
+      if (selectedCustomer?.id === confirmLockCustomer.id) {
+        setSelectedCustomer((prev) =>
+          prev ? { ...prev, accountStatus: nextStatus } : null
+        );
+      }
+      setIsErrorToast(false);
+      setSuccessMsg(nextStatus === 'locked' ? 'Đã khóa tài khoản khách hàng!' : 'Đã mở khóa tài khoản khách hàng!');
+      setTimeout(() => setSuccessMsg(''), 3500);
+    } catch (err) {
+      console.error("Lỗi khi thay đổi khóa:", err);
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể thay đổi trạng thái khóa tài khoản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
+    } finally {
+      setConfirmLockCustomer(null);
+    }
   };
 
   const formatCurrency = (amount: number) =>
@@ -169,54 +292,7 @@ export default function AdminUsersPage() {
 
   const invoiceItems = useMemo(() => {
     if (!selectedCustomer) return [];
-
-    const db = getMockDB() as any;
-    const normalize = (value: string | undefined) =>
-      (value || "").toLowerCase().trim();
-    const matchByName = (value: string | undefined) =>
-      normalize(value) === normalize(selectedCustomer.full_name);
-    const toDateValue = (value?: string) =>
-      value ? new Date(value.replace(" ", "T")).getTime() : 0;
-
-    const depositItems = (db.deposit_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Đặt cọc",
-        room: inv.room_name,
-        amount: inv.amount,
-        status: inv.status,
-        dateLabel: inv.created_at,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    const checkinItems = (db.checkin_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Nhận phòng",
-        room: inv.room_name,
-        amount: inv.total,
-        status: inv.status,
-        dateLabel: inv.created_at,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    const monthlyItems = (db.monthly_invoices || [])
-      .filter((inv: any) => matchByName(inv.customer_name))
-      .map((inv: any) => ({
-        id: inv.id,
-        type: "Định kỳ",
-        room: inv.room_name,
-        amount: inv.total,
-        status: inv.status,
-        dateLabel: `Kỳ ${inv.period}`,
-        sortValue: toDateValue(inv.created_at),
-      }));
-
-    return [...depositItems, ...checkinItems, ...monthlyItems].sort(
-      (a, b) => b.sortValue - a.sortValue,
-    );
+    return (selectedCustomer as any).invoices || [];
   }, [selectedCustomer]);
 
   const invoiceStatusMap: Record<string, { label: string; cls: string }> = {
@@ -232,6 +308,16 @@ export default function AdminUsersPage() {
       className="space-y-6 animate-fade-in-up"
       style={{ fontFamily: "Lexend, sans-serif" }}
     >
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className={`flex items-center gap-2 text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold ${isErrorToast ? 'bg-[#ba1a1a]' : 'bg-[#5f745d]'}`}>
+            <span className="material-symbols-outlined text-[18px]">
+              {isErrorToast ? 'error' : 'check_circle'}
+            </span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -249,8 +335,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow transition-all hover:opacity-90 active:scale-95"
-            style={{ background: A.primary }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">
               person_add
@@ -337,43 +422,29 @@ export default function AdminUsersPage() {
             onBlur={(e) => (e.currentTarget.style.borderColor = A.border)}
           />
         </div>
-        <select
+        <CustomSelect
           value={filterRent}
-          onChange={(e) => setFilterRent(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Trạng thái thuê</option>
-          <option value="renting">Đang thuê</option>
-          <option value="not_renting">Chưa thuê</option>
-          <option value="pending">Chờ duyệt</option>
-          <option value="checked_out">Đã trả phòng</option>
-        </select>
-        <select
+          onChange={setFilterRent}
+          options={rentOptions}
+          placeholder="Trạng thái thuê"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[180px]"
+        />
+        <CustomSelect
           value={filterAcct}
-          onChange={(e) => setFilterAcct(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Trạng thái tài khoản</option>
-          <option value="active">Hoạt động</option>
-          <option value="locked">Bị khóa</option>
-        </select>
+          onChange={setFilterAcct}
+          options={acctOptions}
+          placeholder="Trạng thái tài khoản"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[190px]"
+        />
         <button
           onClick={() => {
             setSearch("");
             setFilterRent("");
             setFilterAcct("");
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
@@ -410,7 +481,7 @@ export default function AdminUsersPage() {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
                     style={{ color: A.textMuted }}
                   >
                     {h}
@@ -472,7 +543,7 @@ export default function AdminUsersPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((c, i) => {
+                displayedCustomers.map((c, i) => {
                   const rentInfo = STATUS_MAP[c.status];
                   const acctInfo = ACCT_MAP[c.accountStatus];
                   return (
@@ -498,8 +569,9 @@ export default function AdminUsersPage() {
                       <td
                         className="px-5 py-3 text-sm font-medium"
                         style={{ color: A.textMuted }}
+                        title={c.id}
                       >
-                        {c.id}
+                        {getCustomerCode(c)}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -562,7 +634,7 @@ export default function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -611,22 +683,36 @@ export default function AdminUsersPage() {
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}
         >
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {customers.length} khách hàng
+            Hiển thị {filtered.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} -{" "}
+            {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} trong số{" "}
+            {filtered.length} khách hàng
           </p>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3].map((n) => (
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
               <button
-                key={n}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors"
-                style={
-                  n === 1
-                    ? { background: A.primary, color: "#fff" }
-                    : { color: A.textPrimary }
-                }
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
               >
-                {n}
+                Trước
               </button>
-            ))}
+            )}
+            <span className="text-xs font-semibold" style={{ color: A.textMuted }}>
+              Trang {currentPage}/{totalPages}
+            </span>
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Sau
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -681,14 +767,20 @@ export default function AdminUsersPage() {
                   >
                     {selectedCustomer.full_name}
                   </h3>
-                  <p className="text-sm" style={{ color: A.textMuted }}>
-                    Mã: {selectedCustomer.id} •{" "}
+                  <p className="text-xs break-all mt-1" style={{ color: A.textMuted }} title={selectedCustomer.id}>
+                    Mã: {getCustomerCode(selectedCustomer)}
+                  </p>
+                  <div className="mt-2 flex justify-center">
                     <span
-                      className={ACCT_MAP[selectedCustomer.accountStatus].text}
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        selectedCustomer.accountStatus === "active"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-red-50 text-red-700 border border-red-200"
+                      }`}
                     >
                       {ACCT_MAP[selectedCustomer.accountStatus].label}
                     </span>
-                  </p>
+                  </div>
                 </div>
               </div>
 
@@ -723,58 +815,64 @@ export default function AdminUsersPage() {
               {/* Tab Content */}
               {drawerTab === "info" && (
                 <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                  <div
+                    className="rounded-xl p-4 space-y-4"
+                    style={{
+                      background: A.sidebar,
+                      border: `1px solid ${A.border}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Email
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.email || "Chưa cập nhật"}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Điện thoại
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.phone}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between pb-3 border-b border-[#d1c4b9]/40">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Ngày tạo tài khoản
-                      </p>
-                      <p
-                        className="text-sm font-medium mt-0.5"
+                      </span>
+                      <span
+                        className="text-sm font-medium"
                         style={{ color: A.textPrimary }}
                       >
                         {selectedCustomer.joinDate}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p
-                        className="text-xs font-semibold uppercase"
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-xs font-semibold uppercase tracking-wider"
                         style={{ color: A.textMuted }}
                       >
                         Trạng thái
-                      </p>
+                      </span>
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-0.5 ${STATUS_MAP[selectedCustomer.status].cls}`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_MAP[selectedCustomer.status].cls}`}
                       >
                         {STATUS_MAP[selectedCustomer.status].label}
                       </span>
@@ -814,7 +912,7 @@ export default function AdminUsersPage() {
               {drawerTab === "history" && (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm" style={{ color: A.textMuted }}>
-                    Lịch sử các hợp đồng thuê phòng của khách hàng.
+                    Lịch sử các hợp đồng thuê phòng của khách hàng
                   </p>
                   {selectedCustomer.renting_room_name ? (
                     <div
@@ -859,7 +957,7 @@ export default function AdminUsersPage() {
               {drawerTab === "invoice" && (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm" style={{ color: A.textMuted }}>
-                    Danh sách hóa đơn của khách hàng.
+                    Danh sách hóa đơn của khách hàng
                   </p>
                   {invoiceItems.length === 0 ? (
                     <p
@@ -869,7 +967,7 @@ export default function AdminUsersPage() {
                       Chưa có hóa đơn cho khách hàng này.
                     </p>
                   ) : (
-                    invoiceItems.map((inv) => {
+                    invoiceItems.map((inv: any) => {
                       const status = invoiceStatusMap[inv.status] || {
                         label: "Không xác định",
                         cls: "bg-gray-100 text-gray-600",
@@ -901,14 +999,12 @@ export default function AdminUsersPage() {
                               className="text-sm font-semibold"
                               style={{ color: A.primary }}
                             >
-                              {inv.id}
+                              {formatShortId(inv.id, 'invoice')}
                             </p>
-                            <p
-                              className="text-xs"
-                              style={{ color: A.textMuted }}
-                            >
-                              {inv.room || "Chưa có phòng"} • {inv.dateLabel}
-                            </p>
+                            <div className="flex flex-col gap-0.5 mt-1 text-xs" style={{ color: A.textMuted }}>
+                              <p>Phòng: <span className="font-medium" style={{ color: A.textPrimary }}>{inv.room || "Chưa có phòng"}</span></p>
+                              <p>Thanh toán: <span className="font-medium" style={{ color: A.textPrimary }}>{inv.dateLabel}</span></p>
+                            </div>
                           </div>
                           <div
                             className="text-sm font-semibold"
@@ -930,21 +1026,30 @@ export default function AdminUsersPage() {
       {/* ── ADD MODAL (minimal) ── */}
       {showAddModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: `${A.primary}66` }}
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+          style={{ background: `rgba(0, 0, 0, 0.4)` }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAddModal(false);
+            if (e.target === e.currentTarget && !isSubmitting) handleCloseAddModal();
           }}
         >
-          <div
-            className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateCustomer();
+            }}
+            className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5 border border-[#eadfd4]"
             style={{ background: A.surface }}
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
                 Thêm khách hàng mới
               </h2>
-              <button onClick={() => setShowAddModal(false)}>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleCloseAddModal}
+                className="p-1 rounded-full hover:bg-[#d1c4b9]/30 transition-all active:scale-95 flex items-center justify-center disabled:opacity-55"
+              >
                 <span
                   className="material-symbols-outlined"
                   style={{ color: A.textMuted }}
@@ -953,43 +1058,132 @@ export default function AdminUsersPage() {
                 </span>
               </button>
             </div>
-            {["Họ và tên", "CCCD", "Email", "Mật khẩu"].map((label) => (
-              <div key={label}>
-                <label
-                  className="block text-xs font-semibold mb-1.5 uppercase"
-                  style={{ color: A.textMuted }}
-                >
-                  {label}
+
+            {addError && (
+              <div className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                {addError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Họ và tên
                 </label>
                 <input
-                  type={label === "Mật khẩu" ? "password" : "text"}
-                  placeholder={`Nhập ${label.toLowerCase()}...`}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.bg,
-                    color: A.textPrimary,
-                  }}
+                  type="text"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập họ và tên..."
+                  value={addFullName}
+                  onChange={(e) => setAddFullName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
                 />
               </div>
-            ))}
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  CCCD
+                </label>
+                <input
+                  type="text"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập cccd..."
+                  value={addCccd}
+                  onChange={(e) => setAddCccd(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập số điện thoại..."
+                  value={addPhone}
+                  onChange={(e) => setAddPhone(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  disabled={isSubmitting}
+                  placeholder="Nhập email..."
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 uppercase text-[#7f756b]">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <input
+                    type={showAddPassword ? "text" : "password"}
+                    required
+                    disabled={isSubmitting}
+                    placeholder="Nhập mật khẩu..."
+                    value={addPassword}
+                    onChange={(e) => setAddPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] pr-10 disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setShowAddPassword(!showAddPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer flex items-center disabled:opacity-50"
+                    aria-label={showAddPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showAddPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border"
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleCloseAddModal}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all hover:bg-black/5 active:scale-95 cursor-pointer disabled:opacity-60"
                 style={{ borderColor: A.border, color: A.textMuted }}
               >
                 Hủy
               </button>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
-                Tạo tài khoản
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Đang tạo...
+                  </>
+                ) : (
+                  "Tạo tài khoản"
+                )}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -997,10 +1191,7 @@ export default function AdminUsersPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{
-            background:
-              confirmLockCustomer.accountStatus === "active"
-                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for lock
-                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for unlock
+            background: "rgba(0, 0, 0, 0.4)",
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmLockCustomer(null);
@@ -1049,42 +1240,47 @@ export default function AdminUsersPage() {
               </h3>
             </div>
             
-            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
-              {confirmLockCustomer.accountStatus === "active" ? (
-                <>
-                  Bạn có chắc muốn <strong>khóa tài khoản</strong> của khách hàng{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockCustomer.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockCustomer.id}) không? Khách hàng này sẽ không thể đăng nhập vào hệ thống.
-                </>
-              ) : (
-                <>
-                  Bạn có chắc muốn <strong>mở khóa tài khoản</strong> của khách hàng{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockCustomer.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockCustomer.id}) không?
-                </>
+            <div className="flex flex-col gap-3.5 py-1 text-sm text-[#4e453c]">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn {confirmLockCustomer.accountStatus === "active" ? "khóa" : "mở khóa"} tài khoản của khách hàng này không?
+              </p>
+              <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold text-gray-500">Khách hàng:</span>
+                  <span className="font-bold text-gray-900">{confirmLockCustomer.full_name}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-semibold text-gray-500">Mã KH:</span>
+                  <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmLockCustomer.id}>
+                    {getCustomerCode(confirmLockCustomer)}
+                  </span>
+                </div>
+              </div>
+              {confirmLockCustomer.accountStatus === "active" && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+                  <span>Khách hàng này sẽ không thể đăng nhập vào hệ thống sau khi tài khoản bị khóa.</span>
+                </div>
               )}
-            </p>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setConfirmLockCustomer(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: A.border, color: A.textMuted }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 onClick={confirmToggleLock}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                onMouseEnter={() => setIsConfirmHover(true)}
+                onMouseLeave={() => setIsConfirmHover(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
                 style={{
                   background:
                     confirmLockCustomer.accountStatus === "active"
-                      ? "#dc2626"
-                      : "#10b981",
+                      ? (isConfirmHover ? "#b91c1c" : "#dc2626")
+                      : (isConfirmHover ? "#059669" : "#10b981"),
                 }}
               >
                 {confirmLockCustomer.accountStatus === "active"

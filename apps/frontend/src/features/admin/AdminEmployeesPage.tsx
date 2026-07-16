@@ -1,4 +1,13 @@
+import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from "react";
+import CustomSelect from "../../components/ui/CustomSelect";
+import {
+  fetchAdminEmployees,
+  createEmployeeApi,
+  updateEmployeeApi,
+  toggleEmployeeLockApi,
+  fetchAdminBranches,
+} from "./services/admin.service";
 
 const A = {
   bg: "#fff8f3", // Sand background
@@ -21,6 +30,7 @@ interface Employee {
   phone: string;
   role: Role;
   branch: string;
+  branch_id?: string;
   status: "active" | "locked";
   joinDate: string;
 }
@@ -41,62 +51,10 @@ const ROLES: Record<Role, { label: string; cls: string }> = {
   admin: { label: "Quản trị viên", cls: "bg-[#e8ede7] text-[#5f745d]" },
 };
 
-const MOCK_EMPLOYEES: Employee[] = [
-  {
-    id: "NV-001",
-    full_name: "Trần Minh Khoa",
-    email: "khoa.tran@homestay.vn",
-    phone: "090 111 2233",
-    role: "sale",
-    branch: "Quận 1",
-    status: "active",
-    joinDate: "01/03/2023",
-  },
-  {
-    id: "NV-002",
-    full_name: "Nguyễn Thị Lan",
-    email: "lan.nguyen@homestay.vn",
-    phone: "091 222 3344",
-    role: "manager",
-    branch: "Quận 3",
-    status: "active",
-    joinDate: "15/07/2022",
-  },
-  {
-    id: "NV-003",
-    full_name: "Lê Văn Đức",
-    email: "duc.le@homestay.vn",
-    phone: "093 333 4455",
-    role: "accountant",
-    branch: "Quận 1",
-    status: "active",
-    joinDate: "10/01/2024",
-  },
-  {
-    id: "NV-004",
-    full_name: "Phạm Thị Hoa",
-    email: "hoa.pham@homestay.vn",
-    phone: "094 444 5566",
-    role: "sale",
-    branch: "Bình Thạnh",
-    status: "locked",
-    joinDate: "05/09/2023",
-  },
-  {
-    id: "NV-005",
-    full_name: "Hoàng Admin",
-    email: "admin@homestay.vn",
-    phone: "095 000 0000",
-    role: "admin",
-    branch: "Tất cả",
-    status: "active",
-    joinDate: "01/01/2022",
-  },
-];
-
 export default function AdminEmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(MOCK_EMPLOYEES);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [filterBranch, setFilterBranch] = useState("");
@@ -104,21 +62,63 @@ export default function AdminEmployeesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editRole, setEditRole] = useState<Role | "">("");
   const [editBranch, setEditBranch] = useState("");
+  const [branches, setBranches] = useState<any[]>([]);
   const [newEmp, setNewEmp] = useState({
     full_name: "",
     email: "",
     phone: "",
     role: "sale" as Role,
-    branch: "Quận 1",
+    branch: "",
   });
   const [confirmLockEmployee, setConfirmLockEmployee] = useState<Employee | null>(null);
+  const [isConfirmHover, setIsConfirmHover] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [isErrorToast, setIsErrorToast] = useState(false);
+  const [addEmpPassword, setAddEmpPassword] = useState("");
+  const [showAddEmpPassword, setShowAddEmpPassword] = useState(false);
+
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+    setNewEmp({
+      full_name: "",
+      email: "",
+      phone: "",
+      role: "sale" as Role,
+      branch: branches[0]?.id || "",
+    });
+    setAddEmpPassword("");
+    setShowAddEmpPassword(false);
+  };
+
+  const loadEmployees = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAdminEmployees();
+      setEmployees(data || []);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Lỗi khi tải danh sách nhân viên");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadBranches = async () => {
+    try {
+      const data = await fetchAdminBranches();
+      setBranches(data || []);
+      if (data && data.length > 0) {
+        setNewEmp(prev => ({ ...prev, branch: data[0].id }));
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải chi nhánh:", err);
+    }
+  };
 
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    loadEmployees();
+    loadBranches();
   }, []);
 
   useEffect(() => {
@@ -128,8 +128,9 @@ export default function AdminEmployeesPage() {
       return;
     }
     setEditRole(selected.role);
-    setEditBranch(selected.branch);
-  }, [selected]);
+    const branchObj = branches.find((b: any) => b.name === selected.branch);
+    setEditBranch(branchObj ? branchObj.id : "");
+  }, [selected, branches]);
 
   const kpis = useMemo(() => {
     const total = employees.length;
@@ -166,54 +167,136 @@ export default function AdminEmployeesPage() {
           e.full_name.toLowerCase().includes(q) ||
           e.email.toLowerCase().includes(q);
         const matchRole = !filterRole || e.role === filterRole;
-        const matchBranch = !filterBranch || e.branch === filterBranch;
+        const matchBranch = !filterBranch || e.branch_id === filterBranch;
         return matchQ && matchRole && matchBranch;
       }),
     [employees, search, filterRole, filterBranch],
   );
 
-  const confirmToggleLock = () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
+  const displayedEmployees = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterRole, filterBranch]);
+
+  const confirmToggleLock = async () => {
     if (!confirmLockEmployee) return;
-    const nextStatus =
-      confirmLockEmployee.status === "active" ? "locked" : "active";
-    setEmployees((prev) =>
-      prev.map((e) =>
-        e.id === confirmLockEmployee.id
-          ? { ...e, status: nextStatus }
-          : e,
-      ),
-    );
-    if (selected?.id === confirmLockEmployee.id) {
-      setSelected((prev) =>
-        prev ? { ...prev, status: nextStatus } : null,
-      );
+
+    // Nếu muốn khóa và nhân viên đang là quản lý (manager) hoặc quản lý chi nhánh -> Chặn và báo lỗi
+    if (confirmLockEmployee.status !== 'locked' && (confirmLockEmployee.role === 'manager' || confirmLockEmployee.branch !== 'Chi nhánh khác')) {
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể khóa tài khoản do nhân viên đang chịu trách nhiệm quản lý cơ sở hoặc tài sản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
+      setConfirmLockEmployee(null);
+      return;
     }
-    setConfirmLockEmployee(null);
+
+    try {
+      const nextStatus = await toggleEmployeeLockApi(confirmLockEmployee.id);
+      setEmployees((prev) =>
+        prev.map((e) =>
+          e.id === confirmLockEmployee.id
+            ? { ...e, status: nextStatus as any }
+            : e,
+        ),
+      );
+      if (selected?.id === confirmLockEmployee.id) {
+        setSelected((prev) =>
+          prev ? { ...prev, status: nextStatus as any } : null,
+        );
+      }
+      setIsErrorToast(false);
+      setSuccessMsg(nextStatus === 'locked' ? 'Đã khóa tài khoản nhân viên!' : 'Đã mở khóa tài khoản nhân viên!');
+      setTimeout(() => setSuccessMsg(''), 3500);
+    } catch (err: any) {
+      console.error(err);
+      setIsErrorToast(true);
+      setSuccessMsg("Không thể thay đổi trạng thái khóa tài khoản!");
+      setTimeout(() => setSuccessMsg(''), 3500);
+    } finally {
+      setConfirmLockEmployee(null);
+    }
   };
 
-  const addEmployee = () => {
-    const emp: Employee = {
-      ...newEmp,
-      id: `NV-${String(employees.length + 1).padStart(3, "0")}`,
-      status: "active",
-      joinDate: new Date().toLocaleDateString("vi-VN"),
-    };
-    setEmployees((prev) => [...prev, emp]);
-    setShowAddModal(false);
-    setNewEmp({
-      full_name: "",
-      email: "",
-      phone: "",
-      role: "sale",
-      branch: "Quận 1",
-    });
+  const addEmployee = async () => {
+    if (!newEmp.full_name || !newEmp.email) {
+      alert("Họ tên và email là bắt buộc");
+      return;
+    }
+    try {
+      const created = await createEmployeeApi({ ...newEmp, password: addEmpPassword || '123456' });
+      setEmployees((prev) => [...prev, created]);
+      setSuccessMsg("Đã thêm nhân viên mới thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
+      handleCloseAddModal();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Lỗi khi thêm nhân viên mới");
+    }
   };
+
+  const saveChanges = async () => {
+    if (!selected) return;
+    try {
+      const updated = await updateEmployeeApi(selected.id, {
+        role: editRole,
+        branch: editBranch,
+      });
+      setEmployees((prev) =>
+        prev.map((e) =>
+          e.id === selected.id
+            ? { ...e, role: updated.role as Role, branch: updated.branch }
+            : e,
+        ),
+      );
+      setSelected((prev) =>
+        prev ? { ...prev, role: updated.role as Role, branch: updated.branch } : null,
+      );
+      setSuccessMsg("Đã cập nhật thông tin nhân viên thành công!");
+      setTimeout(() => setSuccessMsg(""), 3500);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Lỗi khi cập nhật thông tin nhân viên");
+    }
+  };
+  const roleOptions = [
+    { value: "", label: "Tất cả" },
+    { value: "sale", label: "Nhân viên Sale" },
+    { value: "manager", label: "Quản lý CN" },
+    { value: "accountant", label: "Kế toán" },
+    { value: "admin", label: "Quản trị viên" }
+  ];
+
+  const branchOptions = useMemo(() => {
+    return [
+      { value: "", label: "Tất cả" },
+      ...branches.map((b: any) => ({ value: b.id, label: b.name }))
+    ];
+  }, [branches]);
 
   return (
     <div
       className="space-y-6 animate-fade-in-up"
       style={{ fontFamily: "Lexend, sans-serif" }}
     >
+      {successMsg && (
+        <div className="fixed bottom-5 right-5 z-[100] animate-fade-in-up">
+          <div className={`flex items-center gap-2 text-white px-4 py-3 rounded-xl shadow-lg border border-white/10 text-sm font-semibold ${isErrorToast ? 'bg-[#ba1a1a]' : 'bg-[#5f745d]'}`}>
+            <span className="material-symbols-outlined text-[18px]">
+              {isErrorToast ? 'error' : 'check_circle'}
+            </span>
+            {successMsg}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -230,8 +313,7 @@ export default function AdminEmployeesPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow transition-all hover:opacity-90 active:scale-95"
-          style={{ background: A.primary }}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">
             person_add
@@ -239,6 +321,13 @@ export default function AdminEmployeesPage() {
           Thêm nhân viên
         </button>
       </header>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -298,44 +387,29 @@ export default function AdminEmployeesPage() {
             }}
           />
         </div>
-        <select
+        <CustomSelect
           value={filterRole}
-          onChange={(e) => setFilterRole(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Tất cả vai trò</option>
-          <option value="sale">Nhân viên Sale</option>
-          <option value="manager">Quản lý CN</option>
-          <option value="accountant">Kế toán</option>
-          <option value="admin">Quản trị viên</option>
-        </select>
-        <select
+          onChange={setFilterRole}
+          options={roleOptions}
+          placeholder="Vai trò"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
+        <CustomSelect
           value={filterBranch}
-          onChange={(e) => setFilterBranch(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm min-w-[160px] outline-none cursor-pointer"
-          style={{
-            border: `1px solid ${A.border}`,
-            background: A.surface,
-            color: A.textPrimary,
-          }}
-        >
-          <option value="">Tất cả chi nhánh</option>
-          <option value="Quận 1">Quận 1</option>
-          <option value="Quận 3">Quận 3</option>
-          <option value="Bình Thạnh">Bình Thạnh</option>
-        </select>
+          onChange={setFilterBranch}
+          options={branchOptions}
+          placeholder="Chi nhánh"
+          theme="sale"
+          triggerClassName="!py-2 min-w-[160px]"
+        />
         <button
           onClick={() => {
             setSearch("");
             setFilterRole("");
             setFilterBranch("");
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#e8ede7] hover:text-[#4d5e4b] active:scale-95 cursor-pointer"
           style={{ color: A.accent }}
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
@@ -373,7 +447,7 @@ export default function AdminEmployeesPage() {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+                    className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider ${h === "Thao tác" ? "text-center" : "text-left"}`}
                     style={{ color: A.textMuted }}
                   >
                     {h}
@@ -444,7 +518,7 @@ export default function AdminEmployeesPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((emp, i) => {
+                displayedEmployees.map((emp, i) => {
                   const roleInfo = ROLES[emp.role];
                   return (
                     <tr
@@ -466,8 +540,9 @@ export default function AdminEmployeesPage() {
                       <td
                         className="px-5 py-3 text-sm font-medium"
                         style={{ color: A.textMuted }}
+                        title={emp.id}
                       >
-                        {emp.id}
+                        {formatShortId(emp.id, 'employee')}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
@@ -534,7 +609,7 @@ export default function AdminEmployeesPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-center gap-1 transition-opacity">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -572,22 +647,36 @@ export default function AdminEmployeesPage() {
           style={{ background: A.surface, borderTop: `1px solid ${A.border}` }}
         >
           <p className="text-sm" style={{ color: A.textMuted }}>
-            Hiển thị {filtered.length} trong số {employees.length} nhân viên
+            Hiển thị {filtered.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} -{" "}
+            {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} trong số{" "}
+            {filtered.length} nhân viên
           </p>
-          <div className="flex gap-1">
-            {[1, 2].map((n) => (
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
               <button
-                key={n}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium"
-                style={
-                  n === 1
-                    ? { background: A.primary, color: "#fff" }
-                    : { color: A.textPrimary }
-                }
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
               >
-                {n}
+                Trước
               </button>
-            ))}
+            )}
+            <span className="text-xs font-semibold" style={{ color: A.textMuted }}>
+              Trang {currentPage}/{totalPages}
+            </span>
+            {totalPages > 1 && (
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#faf2ec]"
+                style={{ borderColor: A.border, color: A.textMuted }}
+              >
+                Sau
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -648,7 +737,7 @@ export default function AdminEmployeesPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { label: "Mã nhân viên", val: selected.id },
+                  { label: "Mã nhân viên", val: formatShortId(selected.id, 'employee') },
                   { label: "Email", val: selected.email },
                   { label: "Điện thoại", val: selected.phone },
                   { label: "Ngày vào làm", val: selected.joinDate },
@@ -683,21 +772,13 @@ export default function AdminEmployeesPage() {
                 >
                   Đổi vai trò
                 </h4>
-                <select
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.surface,
-                    color: A.textPrimary,
-                  }}
+                <CustomSelect
                   value={editRole || selected.role}
-                  onChange={(e) => setEditRole(e.target.value as Role)}
-                >
-                  <option value="sale">Nhân viên Sale</option>
-                  <option value="manager">Quản lý CN</option>
-                  <option value="accountant">Kế toán</option>
-                  <option value="admin">Quản trị viên</option>
-                </select>
+                  onChange={(val) => setEditRole(val as Role)}
+                  options={roleOptions.filter((o) => o.value !== "")}
+                  placeholder="Vai trò"
+                  theme="sale"
+                />
               </div>
               <div
                 className="p-4 rounded-lg"
@@ -709,21 +790,16 @@ export default function AdminEmployeesPage() {
                 >
                   Đổi chi nhánh
                 </h4>
-                <select
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.surface,
-                    color: A.textPrimary,
-                  }}
+                <CustomSelect
                   value={editBranch || selected.branch}
-                  onChange={(e) => setEditBranch(e.target.value)}
-                >
-                  <option value="Quận 1">Quận 1</option>
-                  <option value="Quận 3">Quận 3</option>
-                  <option value="Bình Thạnh">Bình Thạnh</option>
-                  <option value="Tất cả">Tất cả</option>
-                </select>
+                  onChange={setEditBranch}
+                  options={[
+                    ...branchOptions.filter((o) => o.value !== ""),
+                    { value: "Tất cả", label: "Tất cả" },
+                  ]}
+                  placeholder="Chi nhánh"
+                  theme="sale"
+                />
               </div>
             </div>
             <div
@@ -734,8 +810,8 @@ export default function AdminEmployeesPage() {
               }}
             >
               <button
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}
+                onClick={saveChanges}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
               >
                 Lưu thay đổi
               </button>
@@ -756,7 +832,7 @@ export default function AdminEmployeesPage() {
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: `${A.primary}66` }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAddModal(false);
+            if (e.target === e.currentTarget) handleCloseAddModal();
           }}
         >
           <div
@@ -767,7 +843,7 @@ export default function AdminEmployeesPage() {
               <h2 className="text-lg font-bold" style={{ color: A.primary }}>
                 Thêm nhân viên mới
               </h2>
-              <button onClick={() => setShowAddModal(false)}>
+              <button onClick={handleCloseAddModal}>
                 <span
                   className="material-symbols-outlined"
                   style={{ color: A.textMuted }}
@@ -778,8 +854,7 @@ export default function AdminEmployeesPage() {
             </div>
             <div>
               <label
-                className="block text-xs font-semibold mb-1 uppercase"
-                style={{ color: A.textMuted }}
+                className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
               >
                 Họ và tên
               </label>
@@ -789,18 +864,12 @@ export default function AdminEmployeesPage() {
                   setNewEmp({ ...newEmp, full_name: e.target.value })
                 }
                 placeholder="Nhập họ và tên..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{
-                  border: `1px solid ${A.border}`,
-                  background: A.bg,
-                  color: A.textPrimary,
-                }}
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
               />
             </div>
             <div>
               <label
-                className="block text-xs font-semibold mb-1 uppercase"
-                style={{ color: A.textMuted }}
+                className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
               >
                 Email
               </label>
@@ -810,31 +879,34 @@ export default function AdminEmployeesPage() {
                   setNewEmp({ ...newEmp, email: e.target.value })
                 }
                 placeholder="email@homestay.vn"
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{
-                  border: `1px solid ${A.border}`,
-                  background: A.bg,
-                  color: A.textPrimary,
-                }}
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17]"
               />
             </div>
             <div>
               <label
-                className="block text-xs font-semibold mb-1 uppercase"
-                style={{ color: A.textMuted }}
+                className="block text-xs font-semibold mb-1 uppercase text-[#4e453c]"
               >
                 Mật khẩu
               </label>
-              <input
-                type="password"
-                placeholder="Nhập mật khẩu..."
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={{
-                  border: `1px solid ${A.border}`,
-                  background: A.bg,
-                  color: A.textPrimary,
-                }}
-              />
+              <div className="relative">
+                <input
+                  type={showAddEmpPassword ? "text" : "password"}
+                  placeholder="Nhập mật khẩu..."
+                  value={addEmpPassword}
+                  onChange={(e) => setAddEmpPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all border border-[#d1c4b9] hover:border-[#6f583c] focus:border-[#6f583c] focus:ring-2 focus:ring-[#6f583c]/20 bg-[#fff8f3] text-[#1e1b17] pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAddEmpPassword(!showAddEmpPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer flex items-center"
+                  aria-label={showAddEmpPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showAddEmpPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -844,23 +916,13 @@ export default function AdminEmployeesPage() {
                 >
                   Vai trò
                 </label>
-                <select
+                <CustomSelect
                   value={newEmp.role}
-                  onChange={(e) =>
-                    setNewEmp({ ...newEmp, role: e.target.value as Role })
-                  }
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.bg,
-                    color: A.textPrimary,
-                  }}
-                >
-                  <option value="sale">Nhân viên Sale</option>
-                  <option value="manager">Quản lý CN</option>
-                  <option value="accountant">Kế toán</option>
-                  <option value="admin">Quản trị viên</option>
-                </select>
+                  onChange={(val) => setNewEmp({ ...newEmp, role: val as Role })}
+                  options={roleOptions.filter((o) => o.value !== "")}
+                  placeholder="Vai trò"
+                  theme="sale"
+                />
               </div>
               <div>
                 <label
@@ -869,22 +931,13 @@ export default function AdminEmployeesPage() {
                 >
                   Chi nhánh
                 </label>
-                <select
+                <CustomSelect
                   value={newEmp.branch}
-                  onChange={(e) =>
-                    setNewEmp({ ...newEmp, branch: e.target.value })
-                  }
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{
-                    border: `1px solid ${A.border}`,
-                    background: A.bg,
-                    color: A.textPrimary,
-                  }}
-                >
-                  <option value="Quận 1">Quận 1</option>
-                  <option value="Quận 3">Quận 3</option>
-                  <option value="Bình Thạnh">Bình Thạnh</option>
-                </select>
+                  onChange={(val) => setNewEmp({ ...newEmp, branch: val })}
+                  options={branchOptions.filter((o) => o.value !== "")}
+                  placeholder="Chi nhánh"
+                  theme="sale"
+                />
               </div>
             </div>
             <div className="flex gap-3 pt-1">
@@ -897,8 +950,7 @@ export default function AdminEmployeesPage() {
               </button>
               <button
                 onClick={addEmployee}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: A.primary }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#6f583c] hover:bg-[#54422c] transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
               >
                 Thêm nhân viên
               </button>
@@ -911,10 +963,7 @@ export default function AdminEmployeesPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
           style={{
-            background:
-              confirmLockEmployee.status === "active"
-                ? "rgba(185, 28, 28, 0.4)" // Red tint overlay for lock
-                : "rgba(30, 27, 23, 0.4)", // Dark tint overlay for unlock
+            background: "rgba(0, 0, 0, 0.4)",
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmLockEmployee(null);
@@ -963,42 +1012,47 @@ export default function AdminEmployeesPage() {
               </h3>
             </div>
             
-            <p className="text-sm leading-relaxed" style={{ color: A.textMuted }}>
-              {confirmLockEmployee.status === "active" ? (
-                <>
-                  Bạn có chắc muốn <strong>khóa tài khoản</strong> của nhân viên{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockEmployee.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockEmployee.id}) không? Nhân viên này sẽ không thể đăng nhập vào hệ thống.
-                </>
-              ) : (
-                <>
-                  Bạn có chắc muốn <strong>mở khóa tài khoản</strong> của nhân viên{" "}
-                  <span className="font-semibold text-gray-900">
-                    {confirmLockEmployee.full_name}
-                  </span>{" "}
-                  (Mã: {confirmLockEmployee.id}) không?
-                </>
+            <div className="flex flex-col gap-3.5 py-1 text-sm text-[#4e453c]">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn {confirmLockEmployee.status === "active" ? "khóa" : "mở khóa"} tài khoản của nhân viên này không?
+              </p>
+              <div className="bg-[#faf2ec] border border-[#d1c4b9]/50 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold text-gray-500">Nhân viên:</span>
+                  <span className="font-bold text-gray-900">{confirmLockEmployee.full_name}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-semibold text-gray-500">Mã NV:</span>
+                  <span className="font-mono bg-[#fff8f3] border border-[#d1c4b9]/30 px-2 py-0.5 rounded text-gray-700 select-all max-w-[220px] truncate" title={confirmLockEmployee.id}>
+                    {formatShortId(confirmLockEmployee.id, 'employee')}
+                  </span>
+                </div>
+              </div>
+              {confirmLockEmployee.status === "active" && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+                  <span>Nhân viên này sẽ không thể đăng nhập vào hệ thống sau khi tài khoản bị khóa.</span>
+                </div>
               )}
-            </p>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setConfirmLockEmployee(null)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: A.border, color: A.textMuted }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-[#d1c4b9] text-[#4e453c] hover:bg-[#faf2ec] hover:border-[#6f583c] hover:text-[#6f583c] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 onClick={confirmToggleLock}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                onMouseEnter={() => setIsConfirmHover(true)}
+                onMouseLeave={() => setIsConfirmHover(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer"
                 style={{
                   background:
                     confirmLockEmployee.status === "active"
-                      ? "#dc2626"
-                      : "#10b981",
+                      ? (isConfirmHover ? "#b91c1c" : "#dc2626")
+                      : (isConfirmHover ? "#059669" : "#10b981"),
                 }}
               >
                 {confirmLockEmployee.status === "active"

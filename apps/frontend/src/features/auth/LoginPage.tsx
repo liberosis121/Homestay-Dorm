@@ -25,17 +25,32 @@ export default function LoginPage() {
       return;
     }
 
-    const success = await login(email);
+    // Truyền cả email lẫn password — authStore giờ gọi API thật
+    const success = await login(email, password);
     if (success) {
-      navigate('/');
+      // Redirect theo role: sale/manager/accountant vào dashboard, customer về trang chủ
+      const savedUser = JSON.parse(localStorage.getItem('user_profile') || '{}');
+      const role = savedUser?.role;
+      if (role === 'sale') navigate('/sale/dashboard');
+      else if (role === 'manager') navigate('/manager/dashboard');
+      else if (role === 'accountant') navigate('/accountant/dashboard');
+      else if (role === 'admin') navigate('/admin/dashboard');
+      else navigate('/');
     } else {
       setFailed(true);
     }
   };
 
-  const fillCredential = (presetEmail: string) => {
+  const handleGoogleLogin = () => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtbhyikorukkxjkrabgt.supabase.co';
+    const redirectUrl = window.location.origin + '/#/auth/callback';
+    const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = oauthUrl;
+  };
+
+  const fillCredential = (presetEmail: string, presetPassword = '123456') => {
     setEmail(presetEmail);
-    setPassword('password123');
+    setPassword(presetPassword);
   };
 
   return (
@@ -134,14 +149,7 @@ export default function LoginPage() {
                 <p className="text-error text-sm font-body-md ml-2">{localError || authError}</p>
               )}
 
-              <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative flex items-center justify-center">
-                    <input type="checkbox" className="peer appearance-none w-5 h-5 border-2 border-on-surface-variant/50 rounded flex-shrink-0 checked:bg-primary checked:border-primary transition-all cursor-pointer" />
-                    <span className="material-symbols-outlined absolute text-white text-sm opacity-0 peer-checked:opacity-100 pointer-events-none font-bold">check</span>
-                  </div>
-                  <span className="font-body-md text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Ghi nhớ đăng nhập</span>
-                </label>
+              <div className="flex items-center justify-start pt-2">
                 <a href="#/forgot-password" className="font-label-md text-sm text-primary hover:underline hover:text-primary-dark transition-colors">Quên mật khẩu?</a>
               </div>
 
@@ -168,6 +176,7 @@ export default function LoginPage() {
 
             <button 
               type="button" 
+              onClick={handleGoogleLogin}
               className="w-full h-14 mt-6 bg-white dark:bg-surface-container-low border border-surface-variant/60 hover:border-primary hover:bg-primary/5 rounded-2xl font-bold text-sm md:text-base flex items-center justify-center gap-3.5 transition-all duration-300 text-on-surface shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] group"
             >
               <img 
@@ -197,16 +206,22 @@ export default function LoginPage() {
                 <div className="grid grid-cols-1 gap-2 mt-4">
                   {[
                     { email: 'admin@homestay.com', name: 'Quản trị viên (Admin)' },
-                    { email: 'manager@homestay.com', name: 'Quản lý (Manager)' },
-                    { email: 'sale@homestay.com', name: 'Nhân viên Sale (Sale)' },
-                    { email: 'accountant@homestay.com', name: 'Kế toán (Accountant)' },
-                    { email: 'customer@gmail.com', name: 'Khách hàng cũ (Đã thuê)' },
-                    { email: 'newcustomer@gmail.com', name: 'Khách hàng mới (Chưa thuê)' }
+                    { email: 'ketoan@homestay.com', name: 'Kế toán (CN Quận 9)' },
+                    { email: 'hqh@gmail.com', name: 'Kế toán (CN Quận 5)' },
+                    { email: 'tul@gmail.com', name: 'Kế toán (CN Quận 10)' },
+                    { email: 'quanly@homestay.com', name: 'Quản lý (CN Quận 9)' },
+                    { email: 'nekolele@gmail.com', name: 'Quản lý (CN Quận 5)' },
+                    { email: 'ttk@gmail.com', name: 'Quản lý (CN Quận 10)' },
+                    { email: 'sale@homestay.com', name: 'Sale (CN Quận 9)' },
+                    { email: 'btlui@gmail.com', name: 'Sale (CN Quận 5)' },
+                    { email: 'tbn@gmail.com', name: 'Sale (CN Quận 10)' },
+                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)', password: '12345678' },
+                    { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thanh lý)' }
                   ].map((p) => (
                     <button
                       key={p.email}
                       type="button"
-                      onClick={() => fillCredential(p.email)}
+                      onClick={() => fillCredential(p.email, (p as any).password)}
                       className="w-full text-left bg-surface-container-low hover:bg-surface-container border border-surface-variant rounded-xl p-3 flex items-center justify-between transition-all cursor-pointer animate-fade-in"
                     >
                       <div>

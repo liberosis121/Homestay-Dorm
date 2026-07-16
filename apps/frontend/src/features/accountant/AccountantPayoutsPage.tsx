@@ -1,11 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
-  Search, Copy, Check, Eye, X, ArrowUpRight, Upload, FileText
+  Search, Check, Eye, X, ArrowUpRight, Upload, FileText
 } from 'lucide-react';
 import { getMockDB, saveMockDB, PayoutRecord, RefundRecord } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { accountantService } from './services/accountant.service';
+import { formatShortId } from '../../lib/utils';
+
+const normalizePayoutStatus = (status?: string): PayoutRecord['status'] => {
+  if (status === 'paid' || status === 'completed') return 'completed';
+  if (status === 'processing') return 'processing';
+  return 'pending';
+};
 
 export default function AccountantPayoutsPage() {
+  const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [selectedPayoutId, setSelectedPayoutId] = useState('');
@@ -14,8 +26,45 @@ export default function AccountantPayoutsPage() {
   
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [voucherUploaded, setVoucherUploaded] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ name: string; size: string; previewUrl?: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Dung lượng file tối đa là 5MB!');
+        return;
+      }
+      const sizeStr = file.size > 1024 * 1024 
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+        : `${(file.size / 1024).toFixed(0)} KB`;
+      
+      let previewUrl = undefined;
+      if (file.type.startsWith('image/')) {
+        previewUrl = URL.createObjectURL(file);
+      }
+      
+      setSelectedFile({
+        name: file.name,
+        size: sizeStr,
+        previewUrl
+      });
+      setVoucherUploaded(true);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    if (selectedFile?.previewUrl) {
+      URL.revokeObjectURL(selectedFile.previewUrl);
+    }
+    setSelectedFile(null);
+    setVoucherUploaded(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Payment processing states (UC Xử lý hoàn cọc - Step 5)
   const [payMethod, setPayMethod] = useState<'transfer' | 'cash'>('transfer');
@@ -25,10 +74,71 @@ export default function AccountantPayoutsPage() {
 
   // Load Data
   useEffect(() => {
-    const db = getMockDB();
-    setPayouts(db.payout_records || []);
-    setRefunds(db.refund_records || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [livePayouts, liveRefunds] = await Promise.all([
+          accountantService.fetchPayouts(email),
+          accountantService.fetchRefundReconciliations(email)
+        ]);
+
+        const mappedPayouts = (livePayouts || []).map((p: any) => {
+          const rec = p.refund_reconciliations || {};
+          const checkout = rec.checkouts || {};
+          const contract = checkout.contracts || {};
+          const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
+          return {
+            id: p.id,
+            refund_id: rec.id || p.reconciliation_id || p.contract_id || '',
+            customer_id: contract.customer_id || p.contract_id || '',
+            customer_name,
+            bank_account: p.account_details || '',
+            bank_name: '',
+            account_holder: customer_name.toUpperCase(),
+            // Uu tien final_refund (giu dau am/duong dung ban chat) tu doi soat, vi invoices.amount
+            // luon duoc luu tri tuyet doi (Math.abs) o nhanh "khach no them tien" trong refund.service.ts.
+            amount: Number(rec.final_refund ?? p.amount ?? 0),
+            payment_method: p.payment_method || p.payout_method || 'transfer',
+            status: normalizePayoutStatus(p.status || p.payout_status),
+            paid_at: p.payment_time,
+            created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
+            is_liquidated: contract.status === 'terminated'
+          };
+        });
+
+        const mappedRefunds = (liveRefunds || []).map((rec: any) => {
+          const checkout = rec.checkouts || {};
+          const contract = checkout.contracts || {};
+          return {
+            id: rec.id,
+            customer_id: contract.customer_id || '',
+            customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
+            room_id: contract.rooms?.id || contract.room_id || '',
+            room_name: contract.rooms?.name || 'Phòng',
+            checkout_date: checkout.request_date || rec.reconciliation_date || '',
+            deposit_original: Number(rec.original_deposit || 0),
+            damage_deductions: [],
+            debt_deductions: 0,
+            status: rec.status === 'paid' ? 'paid' : 'confirmed',
+            created_at: rec.reconciliation_date || new Date().toISOString(),
+            type: 'checkout' as const,
+            refund_amount: Number(rec.final_refund || 0),
+            total_deductions: Number(rec.total_deductions || 0),
+            deductions: rec.deductions || []
+          };
+        });
+
+        setPayouts(mappedPayouts);
+        setRefunds(mappedRefunds);
+      } catch (err) {
+        console.warn('[AccountantPayouts] Failed to fetch live data, falling back to mock:', err);
+        const db = getMockDB();
+        setPayouts(db.payout_records || []);
+        setRefunds(db.refund_records || []);
+      }
+    };
+    loadData();
+  }, [user]);
 
   const activePayout = payouts.find(p => p.id === selectedPayoutId);
   const matchedRefund = activePayout ? refunds.find(r => r.id === activePayout.refund_id) : null;
@@ -43,114 +153,175 @@ export default function AccountantPayoutsPage() {
     }
   }, [selectedPayoutId, activePayout]);
 
-  const handleCopyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+
+  // Khoa chong double-click: tranh chi tien 2 lan cho cung mot phieu.
+  const handleConfirmPayout = async () => {
+    await guard(() => doConfirmPayout());
   };
 
-  const handleConfirmPayout = () => {
+  const doConfirmPayout = async () => {
     if (!activePayout) return;
 
-    const db = getMockDB();
-    
-    // Update payout status to completed
-    const updatedPayouts = db.payout_records.map((p: PayoutRecord) => {
-      if (p.id === activePayout.id) {
-        return {
-          ...p,
-          payment_method: payMethod,
-          bank_name: payMethod === 'transfer' ? bankName : '',
-          bank_account: payMethod === 'transfer' ? bankAccount : '',
-          account_holder: payMethod === 'transfer' ? accountHolder : '',
-          status: 'completed' as const,
-          paid_at: new Date().toISOString().split('T')[0]
-        };
+    const email = user?.email || 'accountant@homestay.vn';
+    const details = payMethod === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Tiền mặt';
+
+    try {
+      await accountantService.confirmPayout(email, activePayout.id, details, payMethod);
+
+      if (activePayout.amount >= 0) {
+        alert('Xác nhận xử lý hoàn cọc thành công!');
+      } else {
+        alert('Xác nhận xử lý thu thêm tiền thành công!');
       }
-      return p;
-    });
-    db.payout_records = updatedPayouts;
 
-    // Update refund status to paid
-    const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
-      if (r.id === activePayout.refund_id) {
+      // Refresh list
+      const livePayouts = await accountantService.fetchPayouts(email);
+      const liveRefunds = await accountantService.fetchRefundReconciliations(email);
+
+      const mappedPayouts = (livePayouts || []).map((p: any) => {
+        const rec = p.refund_reconciliations || {};
+        const checkout = rec.checkouts || {};
+        const contract = checkout.contracts || {};
+        const customer_name = p.customer_name || contract.customer_name || contract.profiles?.full_name || 'Khách hàng';
         return {
-          ...r,
-          status: 'paid' as const
+          id: p.id,
+          refund_id: rec.id || p.reconciliation_id,
+          customer_id: contract.customer_id || '',
+          customer_name,
+          bank_account: p.account_details || '',
+          bank_name: '',
+          account_holder: customer_name.toUpperCase(),
+          amount: Number(rec.final_refund ?? p.amount ?? 0),
+          payment_method: p.payment_method || p.payout_method || 'transfer',
+          status: normalizePayoutStatus(p.status || p.payout_status),
+          paid_at: p.payment_time,
+          created_at: p.payment_time || rec.reconciliation_date || new Date().toISOString(),
+          is_liquidated: contract.status === 'terminated'
         };
+      });
+
+      const mappedRefunds = (liveRefunds || []).map((rec: any) => {
+        const checkout = rec.checkouts || {};
+        const contract = checkout.contracts || {};
+        return {
+          id: rec.id,
+          customer_id: contract.customer_id || '',
+          customer_name: contract.customer_name || contract.profiles?.full_name || 'Khách hàng',
+          room_id: contract.rooms?.id || contract.room_id || '',
+          room_name: contract.rooms?.name || 'Phòng',
+          checkout_date: checkout.request_date || rec.reconciliation_date || '',
+          deposit_original: Number(rec.original_deposit || 0),
+          damage_deductions: [],
+          debt_deductions: 0,
+          status: rec.status === 'paid' ? 'paid' : 'confirmed',
+          created_at: rec.reconciliation_date || new Date().toISOString(),
+          type: 'checkout' as const,
+          refund_amount: Number(rec.final_refund || 0),
+          total_deductions: Number(rec.total_deductions || 0),
+          deductions: rec.deductions || []
+        };
+      });
+
+      setPayouts(mappedPayouts);
+      setRefunds(mappedRefunds);
+    } catch (err: any) {
+      console.warn('[AccountantPayouts] Live API failed, falling back to mock:', err);
+      const db = getMockDB();
+      const mockHasPayout = (db.payout_records || []).some((p: PayoutRecord) => p.id === activePayout.id);
+
+      if (!mockHasPayout) {
+        alert(err?.message || 'Không thể xác nhận chi tiền trên dữ liệu hiện tại.');
+        return;
       }
-      return r;
-    });
-    db.refund_records = updatedRefunds;
 
-    // Release room/bed to available
-    if (matchedRefund && matchedRefund.room_id) {
-      db.rooms = (db.rooms || []).map((rm: any) => {
-        if (rm.id === matchedRefund.room_id) {
-          const nextOccupants = Math.max(0, rm.current_occupants - 1);
-          return {
-            ...rm,
-            current_occupants: nextOccupants,
-            status: 'available' as const
-          };
-        }
-        return rm;
-      });
-    }
-
-    // Set active contracts to expired
-    if (db.customers) {
-      db.customers = db.customers.map((c: any) => {
-        const matchesCustomer = 
-          c.id === activePayout.customer_id || 
-          c.fullName === activePayout.customer_name ||
-          c.full_name === activePayout.customer_name;
-
-        if (matchesCustomer) {
-          const updatedContracts = (c.contracts || []).map((contract: any) => {
-            if (contract.status === 'active') {
-              return { ...contract, status: 'expired' as const };
-            }
-            return contract;
-          });
-          return {
-            ...c,
-            status: 'inactive' as const,
-            contracts: updatedContracts
-          };
-        }
-        return c;
-      });
-    }
-
-    // Clear renting room in profiles
-    if (db.profiles) {
-      db.profiles = db.profiles.map((p: any) => {
-        if (p.full_name === activePayout.customer_name || p.email === activePayout.customer_id) {
+      const updatedPayouts = db.payout_records.map((p: PayoutRecord) => {
+        if (p.id === activePayout.id) {
           return {
             ...p,
-            renting_room_name: undefined
+            payment_method: payMethod,
+            bank_name: payMethod === 'transfer' ? bankName : '',
+            bank_account: payMethod === 'transfer' ? bankAccount : '',
+            account_holder: payMethod === 'transfer' ? accountHolder : '',
+            status: 'completed' as const,
+            paid_at: new Date().toISOString().split('T')[0]
           };
         }
         return p;
       });
-    }
+      db.payout_records = updatedPayouts;
 
-    saveMockDB(db);
-    setPayouts(updatedPayouts);
-    setRefunds(updatedRefunds);
+      const updatedRefunds = db.refund_records.map((r: RefundRecord) => {
+        if (r.id === activePayout.refund_id) {
+          return { ...r, status: 'paid' as const };
+        }
+        return r;
+      });
+      db.refund_records = updatedRefunds;
 
-    if (activePayout.amount >= 0) {
-      alert('Xác nhận xử lý hoàn cọc thành công!');
-    } else {
-      alert('Xác nhận xử lý thu thêm tiền thành công!');
+      if (matchedRefund && matchedRefund.room_id) {
+        db.rooms = (db.rooms || []).map((rm: any) => {
+          if (rm.id === matchedRefund.room_id) {
+            const nextOccupants = Math.max(0, rm.current_occupants - 1);
+            return {
+              ...rm,
+              current_occupants: nextOccupants,
+              status: 'available' as const
+            };
+          }
+          return rm;
+        });
+      }
+
+      if (db.customers) {
+        db.customers = db.customers.map((c: any) => {
+          const matchesCustomer = 
+            c.id === activePayout.customer_id || 
+            c.fullName === activePayout.customer_name ||
+            c.full_name === activePayout.customer_name;
+
+          if (matchesCustomer) {
+            const updatedContracts = (c.contracts || []).map((contract: any) => {
+              if (contract.status === 'active') {
+                return { ...contract, status: 'expired' as const };
+              }
+              return contract;
+            });
+            return {
+              ...c,
+              status: 'inactive' as const,
+              contracts: updatedContracts
+            };
+          }
+          return c;
+        });
+      }
+
+      if (db.profiles) {
+        db.profiles = db.profiles.map((p: any) => {
+          if (p.full_name === activePayout.customer_name || p.email === activePayout.customer_id) {
+            return { ...p, renting_room_name: undefined };
+          }
+          return p;
+        });
+      }
+
+      saveMockDB(db);
+      setPayouts(updatedPayouts);
+      setRefunds(updatedRefunds);
+
+      if (activePayout.amount >= 0) {
+        alert('Xác nhận xử lý hoàn cọc thành công (Mock DB)!');
+      } else {
+        alert('Xác nhận xử lý thu thêm tiền thành công (Mock DB)!');
+      }
     }
   };
 
   const handleLiquidation = () => {
     if (!activePayout) return;
     alert(`Đã hoàn tất thanh lý hợp đồng thuê cho khách hàng ${activePayout.customer_name}. Hợp đồng chính thức đóng lại!`);
-    setDrawerOpen(false);
+    setPayouts(prev => prev.map(p => p.id === activePayout.id ? { ...p, is_liquidated: true } : p));
   };
 
   // Stats
@@ -182,7 +353,7 @@ export default function AccountantPayoutsPage() {
   ];
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Page Header */}
       <div>
         <h2 className="font-headline-md text-2xl text-[#5a462d] font-semibold">Chi tiền hoàn cọc & Thanh lý</h2>
@@ -236,6 +407,7 @@ export default function AccountantPayoutsPage() {
               options={statusOptions}
               theme="accountant"
               className="w-44"
+              triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
             />
           </div>
         </div>
@@ -247,7 +419,6 @@ export default function AccountantPayoutsPage() {
                 <th className="p-4">Mã đối soát</th>
                 <th className="p-4">Khách hàng</th>
                 <th className="p-4 text-right">Số tiền hoàn</th>
-                <th className="p-4">Tài khoản nhận</th>
                 <th className="p-4">Trạng thái</th>
                 <th className="p-4 text-center">Thao tác</th>
               </tr>
@@ -256,16 +427,15 @@ export default function AccountantPayoutsPage() {
               {filteredPayouts.map((p) => (
                 <tr
                   key={p.id}
-                  onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); setVoucherUploaded(false); }}
+                  onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); handleRemoveFile(); }}
                   className="hover:bg-[#f6f3f2] cursor-pointer transition-colors"
                 >
-                  <td className="p-4 font-mono font-bold text-[#5a462d]">{p.refund_id}</td>
+                  <td className="p-4  font-bold text-[#5a462d]">{formatShortId(p.refund_id, 'refund')}</td>
                   <td className="p-4">
                     <div className="font-semibold text-[#1b1c1c]">{p.customer_name}</div>
                     <div className="text-xs text-[#5e5f5d]">{p.payment_method === 'cash' ? 'Nhận tiền mặt' : 'Chuyển khoản ngân hàng'}</div>
                   </td>
-                  <td className="p-4 text-right font-mono font-medium text-[#ba1a1a]">{p.amount.toLocaleString('vi-VN')} ₫</td>
-                  <td className="p-4 font-mono text-xs text-[#4e453d]">{p.payment_method === 'cash' ? 'N/A (Tiền mặt)' : `${p.bank_account} (${p.bank_name})`}</td>
+                  <td className="p-4 text-right  font-medium text-[#ba1a1a]">{p.amount.toLocaleString('vi-VN')} ₫</td>
                   <td className="p-4">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       p.status === 'completed' ? 'bg-[#e4e2e1] text-[#4e453d]' : 'bg-[#d0def1] text-[#3d4a59]'
@@ -275,7 +445,7 @@ export default function AccountantPayoutsPage() {
                   </td>
                   <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); setVoucherUploaded(false); }}
+                      onClick={() => { setSelectedPayoutId(p.id); setDrawerOpen(true); handleRemoveFile(); }}
                       className="p-1 hover:bg-[#e4e2e1] rounded text-[#5e5f5d]"
                     >
                       <Eye className="w-4 h-4" />
@@ -314,7 +484,7 @@ export default function AccountantPayoutsPage() {
             <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8] shrink-0">
               <div>
                 <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Chi tiết lệnh chi</h3>
-                <p className="font-mono text-xs text-[#5a462d] mt-1">{activePayout.refund_id}</p>
+                <p className=" text-xs text-[#5a462d] mt-1">{formatShortId(activePayout.refund_id, 'refund')}</p>
               </div>
               <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full">
                 <X className="w-5 h-5" />
@@ -330,7 +500,7 @@ export default function AccountantPayoutsPage() {
                   <div className="text-[#5e5f5d]">Khách hàng:</div>
                   <div className="font-semibold text-right text-[#1b1c1c]">{activePayout.customer_name}</div>
                   <div className="text-[#5e5f5d]">Mã hoàn cọc:</div>
-                  <div className="text-right text-[#1b1c1c]">{activePayout.refund_id}</div>
+                  <div className="text-right text-[#1b1c1c]">{formatShortId(activePayout.refund_id, 'refund')}</div>
                   <div className="text-[#5e5f5d]">Ngày lập lệnh:</div>
                   <div className="text-right text-[#1b1c1c]">{activePayout.created_at}</div>
                 </div>
@@ -344,26 +514,37 @@ export default function AccountantPayoutsPage() {
                 <div className="bg-[#fbf9f8] p-4 border border-[#d1c4b9] rounded-lg space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-[#5e5f5d]">Tiền cọc ban đầu:</span>
-                    <span className="font-mono font-medium text-[#1b1c1c]">{((matchedRefund ? matchedRefund.deposit_original : 2000000)).toLocaleString('vi-VN')} ₫</span>
+                    <span className=" font-medium text-[#1b1c1c]">{((matchedRefund ? matchedRefund.deposit_original : 2000000)).toLocaleString('vi-VN')} ₫</span>
                   </div>
                   {matchedRefund && matchedRefund.type === 'cancellation' ? (
                     <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
                       <span>Khấu trừ phạt hủy cọc / hợp đồng (20%):</span>
-                      <span className="font-mono font-medium">-{matchedRefund.total_deductions.toLocaleString('vi-VN')} ₫</span>
+                      <span className=" font-medium">-{matchedRefund.total_deductions.toLocaleString('vi-VN')} ₫</span>
                     </div>
                   ) : (
                     <>
-                      {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
-                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                          <span>Khấu trừ hư hại tài sản:</span>
-                          <span className="font-mono font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
-                        </div>
-                      )}
-                      {matchedRefund && matchedRefund.debt_deductions > 0 && (
-                        <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
-                          <span>Khấu trừ điện nước / nợ cũ:</span>
-                          <span className="font-mono font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
-                        </div>
+                      {matchedRefund && matchedRefund.deductions && matchedRefund.deductions.length > 0 ? (
+                        matchedRefund.deductions.map((ded: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                            <span>Khấu trừ {ded.reason.toLowerCase()}:</span>
+                            <span className=" font-medium">-{ded.amount.toLocaleString('vi-VN')} ₫</span>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          {matchedRefund && matchedRefund.damage_deductions && matchedRefund.damage_deductions.length > 0 && (
+                            <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                              <span>Khấu trừ hư hại tài sản:</span>
+                              <span className=" font-medium">-{matchedRefund.damage_deductions.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} ₫</span>
+                            </div>
+                          )}
+                          {matchedRefund && matchedRefund.debt_deductions > 0 && (
+                            <div className="flex justify-between items-center text-xs text-[#ba1a1a]">
+                              <span>Khấu trừ điện nước / nợ cũ:</span>
+                              <span className=" font-medium">-{matchedRefund.debt_deductions.toLocaleString('vi-VN')} ₫</span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -371,7 +552,7 @@ export default function AccountantPayoutsPage() {
                     <span className="text-[#1b1c1c]">
                       {activePayout.amount >= 0 ? 'Tổng tiền thực hoàn:' : 'Tổng tiền khách đóng thêm:'}
                     </span>
-                    <span className={`font-mono text-base ${activePayout.amount >= 0 ? 'text-[#2E7D32]' : 'text-[#ba1a1a]'}`}>
+                    <span className={` text-base ${activePayout.amount >= 0 ? 'text-[#2E7D32]' : 'text-[#ba1a1a]'}`}>
                       {Math.abs(activePayout.amount).toLocaleString('vi-VN')} ₫
                     </span>
                   </div>
@@ -392,70 +573,20 @@ export default function AccountantPayoutsPage() {
                         {payMethod === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Tiền mặt tại quầy'}
                       </div>
                     ) : (
-                      <select
+                      <CustomSelect
                         value={payMethod}
-                        onChange={(e) => setPayMethod(e.target.value as 'transfer' | 'cash')}
-                        className="w-full bg-white border border-[#d1c4b9] rounded py-1.5 px-3 text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
-                      >
-                        <option value="transfer">Chuyển khoản ngân hàng</option>
-                        <option value="cash">Tiền mặt tại quầy</option>
-                      </select>
+                        onChange={(v) => setPayMethod(v as 'transfer' | 'cash')}
+                        theme="accountant"
+                        triggerClassName="py-1.5 text-xs"
+                        options={[
+                          { value: 'transfer', label: 'Chuyển khoản ngân hàng' },
+                          { value: 'cash', label: 'Tiền mặt tại quầy' },
+                        ]}
+                      />
                     )}
                   </div>
 
-                  {/* Bank Transfer Details */}
-                  {payMethod === 'transfer' && (
-                    activePayout.status === 'completed' ? (
-                      <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded flex justify-between items-center">
-                        <div>
-                          <div className="font-bold text-xs text-[#1b1c1c]">{bankName}</div>
-                          <div className="font-mono text-xs text-[#5e5f5d] mt-1">
-                            {bankAccount} - {accountHolder}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleCopyText(`${bankName} ${bankAccount} ${accountHolder}`)}
-                          className="text-[#5a462d] p-1.5 hover:bg-[#e4e2e1] rounded transition cursor-pointer"
-                          title="Sao chép thông tin"
-                        >
-                          {copied ? <Check className="w-4 h-4 text-[#2E7D32]" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="bg-[#fbf9f8] border border-[#d1c4b9] p-3 rounded space-y-2.5">
-                        <div>
-                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Tên ngân hàng</label>
-                          <input
-                            type="text"
-                            value={bankName}
-                            onChange={(e) => setBankName(e.target.value)}
-                            placeholder="Ví dụ: Vietcombank, Techcombank..."
-                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Số tài khoản</label>
-                          <input
-                            type="text"
-                            value={bankAccount}
-                            onChange={(e) => setBankAccount(e.target.value)}
-                            placeholder="Nhập số tài khoản ngân hàng..."
-                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-[#5e5f5d] mb-0.5">Tên chủ tài khoản</label>
-                          <input
-                            type="text"
-                            value={accountHolder}
-                            onChange={(e) => setAccountHolder(e.target.value)}
-                            placeholder="Nhập tên viết hoa không dấu..."
-                            className="w-full bg-white border border-[#d1c4b9] rounded py-1 px-2 text-xs focus:outline-none focus:border-[#5a462d]"
-                          />
-                        </div>
-                      </div>
-                    )
-                  )}
+
 
                   {payMethod === 'cash' && (
                     <div className="bg-[#FFF3E0] border border-[#FFE0B2] p-3 rounded text-xs font-semibold text-[#E65100]">
@@ -470,17 +601,35 @@ export default function AccountantPayoutsPage() {
               {/* Section 4: Document upload placeholder */}
               <div>
                 <h4 className="font-label-caps text-[11px] text-[#5a462d] font-bold uppercase tracking-wider mb-2">Chứng từ thanh toán</h4>
-                {voucherUploaded ? (
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept=".jpg,.jpeg,.png,.pdf" 
+                  className="hidden" 
+                />
+                {voucherUploaded && selectedFile ? (
                   <div className="border border-[#2E7D32] bg-[#E8F5E9] rounded-lg p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <FileText className="w-5 h-5 text-[#2E7D32]" />
-                      <span className="text-xs font-semibold text-[#2E7D32]">uynhiemchi_hoancoc.pdf (1.2 MB)</span>
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      {selectedFile.previewUrl ? (
+                        <img 
+                          src={selectedFile.previewUrl} 
+                          alt="Voucher preview" 
+                          className="w-10 h-10 object-cover rounded border border-[#2E7D32]" 
+                        />
+                      ) : (
+                        <FileText className="w-5 h-5 text-[#2E7D32] shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-[#2E7D32] truncate">{selectedFile.name}</p>
+                        <p className="text-[10px] text-[#2E7D32]/80">{selectedFile.size}</p>
+                      </div>
                     </div>
-                    <button onClick={() => setVoucherUploaded(false)} className="text-xs text-[#5e5f5d] hover:underline">Xóa</button>
+                    <button onClick={handleRemoveFile} className="text-xs text-[#5e5f5d] hover:underline ml-4 shrink-0">Xóa</button>
                   </div>
                 ) : (
                   <div
-                    onClick={() => setVoucherUploaded(true)}
+                    onClick={() => fileInputRef.current?.click()}
                     className="border-2 border-dashed border-[#7f756c] rounded-lg p-6 flex flex-col items-center justify-center text-center bg-[#fbf9f8] hover:border-[#5a462d] transition-colors cursor-pointer"
                   >
                     <Upload className="w-6 h-6 text-[#5e5f5d] mb-1.5" />
@@ -496,9 +645,9 @@ export default function AccountantPayoutsPage() {
             <div className="p-6 border-t border-[#d1c4b9] bg-[#fbf9f8] shrink-0 space-y-3">
               <button
                 onClick={handleConfirmPayout}
-                disabled={activePayout.status === 'completed'}
+                disabled={activePayout.status === 'completed' || isSubmitting}
                 className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm transition ${
-                  activePayout.status === 'completed'
+                  activePayout.status === 'completed' || isSubmitting
                     ? 'bg-[#e4e2e1] text-[#7f756c] cursor-not-allowed'
                     : 'bg-[#735d43] text-white hover:opacity-90'
                 }`}
@@ -513,14 +662,14 @@ export default function AccountantPayoutsPage() {
                 <p className="text-[10px] text-[#5e5f5d] mb-1.5 text-center font-semibold">Chỉ khả dụng sau khi hoàn tất chi tiền hoàn cọc</p>
                 <button
                   onClick={handleLiquidation}
-                  disabled={activePayout.status !== 'completed'}
+                  disabled={activePayout.status !== 'completed' || activePayout.is_liquidated}
                   className={`w-full py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-sm border transition ${
-                    activePayout.status !== 'completed'
+                    (activePayout.status !== 'completed' || activePayout.is_liquidated)
                       ? 'border-[#d1c4b9] text-[#7f756c] bg-[#e4e2e1] cursor-not-allowed opacity-55'
                       : 'border-[#5a462d] text-[#5a462d] bg-transparent hover:bg-[#5a462d] hover:text-white'
                   }`}
                 >
-                  Thanh lý hợp đồng
+                  {activePayout.is_liquidated ? 'Đã thanh lý hợp đồng' : 'Thanh lý hợp đồng'}
                 </button>
               </div>
             </div>

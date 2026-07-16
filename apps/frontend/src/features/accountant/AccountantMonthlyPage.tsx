@@ -4,6 +4,76 @@ import {
 } from 'lucide-react';
 import { mockSupabase, getMockDB, saveMockDB, MonthlyInvoice, ServiceSubscription } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
+import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { accountantService } from './services/accountant.service';
+import { formatShortId } from '../../lib/utils';
+
+// Han thanh toan = ngay 10 cua thang KE TIEP sau ky ghi chi so, nhung khong som hon ngay lap + 7 ngay
+// (ke toan co the lap hoa don tre — khach van phai co toi thieu 7 ngay de tra, khong bi 'Qua han' ngay).
+// Backend chot han nay vao invoices.due_date luc lap; ham duoi chi la fallback cho hoa don cu chua co due_date.
+const MIN_GRACE_DAYS = 7;
+const toDateOnly = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const computeDueDate = (billingPeriod: string, createdAt?: string): string => {
+  const [year, month] = billingPeriod.split('-').map(Number);
+  if (!year || !month) return '';
+  const scheduled = toDateOnly(new Date(year, month, 10)); // month (1-based) = index 0-based cua thang ke tiep
+  if (!createdAt) return scheduled;
+
+  const floorDate = new Date(createdAt);
+  floorDate.setDate(floorDate.getDate() + MIN_GRACE_DAYS);
+  const floor = toDateOnly(floorDate);
+  return scheduled > floor ? scheduled : floor;
+};
+
+// Chuyen 'YYYY-MM' (dinh dang billing_period trong DB) sang 'MM/YYYY' (dinh dang hien thi/filter cua trang).
+const toDisplayPeriod = (billingPeriod: string): string => {
+  const match = billingPeriod?.match(/^(\d{4})-(\d{2})$/);
+  return match ? `${match[2]}/${match[1]}` : billingPeriod || '';
+};
+
+// Chieu nguoc lai: 'MM/YYYY' (dropdown chon ky) -> 'YYYY-MM' (dinh dang can gui len API/DB).
+const toApiPeriod = (displayPeriod: string): string => {
+  const match = displayPeriod?.match(/^(\d{2})\/(\d{4})$/);
+  return match ? `${match[2]}-${match[1]}` : displayPeriod || '';
+};
+
+// Chuan hoa danh sach hoa don dinh ky tu response API — dung chung cho lan tai dau va cac lan refresh.
+const mapMonthlyInvoices = (liveInvoices: any[]): MonthlyInvoice[] =>
+  (liveInvoices || []).map((inv: any) => {
+    const contract = inv.contracts || {};
+    const reading = inv.electricity_water_records || {};
+    const elecUse = Math.max(0, (reading.end_electricity ?? 0) - (reading.start_electricity ?? 0));
+    const waterUse = Math.max(0, (reading.end_water ?? 0) - (reading.start_water ?? 0));
+    const billingPeriod: string = reading.billing_period || '';
+
+    return {
+      id: inv.id,
+      customer_id: contract.id || inv.customer_id,
+      customer_name: inv.customer_name || 'Khách hàng',
+      room_id: contract.room_id || inv.room_id,
+      room_name: inv.room_name || contract.rooms?.name || 'Phòng',
+      branch_id: inv.branch_id || '',
+      branch_name: inv.branch_name || '',
+      period: billingPeriod ? toDisplayPeriod(billingPeriod) : '',
+      rent_amount: contract.rent_price || 0,
+      electricity_kwh: elecUse,
+      electricity_cost: elecUse * 3500,
+      water_m3: waterUse,
+      water_cost: waterUse * 15000,
+      services_cost: inv.services_cost ?? 0,
+      total: inv.amount,
+      due_date: inv.due_date || (billingPeriod ? computeDueDate(billingPeriod, inv.created_at) : ''),
+      status: inv.status,
+      created_at: inv.created_at || '',
+      incidentals: inv.incidentals || []
+    };
+  });
+
+
 
 const STANDARD_INCIDENTALS = [
   { value: 'voi_sen', label: 'Đền bù làm hỏng vòi sen tắm', code: 'CPPS-8821', amount: 150000 },
@@ -18,6 +88,8 @@ const STANDARD_INCIDENTALS = [
 ];
 
 export default function AccountantMonthlyPage() {
+  const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<MonthlyInvoice[]>([]);
   const [activeTab, setActiveTab] = useState<'input' | 'list'>('input');
   
@@ -48,6 +120,7 @@ export default function AccountantMonthlyPage() {
   const [newIncidentalDate, setNewIncidentalDate] = useState('');
   const [selectedIncidentalType, setSelectedIncidentalType] = useState('voi_sen');
 
+
   // Search query for contracts list in left panel
   const [contractSearchQuery, setContractSearchQuery] = useState('');
   
@@ -57,47 +130,107 @@ export default function AccountantMonthlyPage() {
 
   // Load Initial Data
   useEffect(() => {
-    const db = getMockDB();
-    setInvoices(db.monthly_invoices || []);
-    
-    // Generate active contracts list based on active checkins / mock residents
-    const activeContracts = [
-      { id: 'HD-2026-0001', customer_id: 'u-5', customer_name: 'Lê Lâm Trí Đức', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
-      { id: 'HD-2026-0002', customer_id: 'u-mock-mon-101', customer_name: 'Nguyễn Văn Hải', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
-      { id: 'HD-2026-0003', customer_id: 'u-mock-mon-102', customer_name: 'Trần Thị Thu', room_id: 'r-2', room_name: 'Phòng 102 (Nữ)', rent_price: 2000000, period: '06/2026' },
-      { id: 'HD-2026-0004', customer_id: 'u-mock-mon-104', customer_name: 'Đinh Thị Hoa', room_id: 'r-4', room_name: 'Phòng 202 (Nữ)', rent_price: 1200000, period: '06/2026' },
-      { id: 'HD-2026-0005', customer_id: 'u-mock-mon-105', customer_name: 'Vũ Tú Anh', room_id: 'r-5', room_name: 'Phòng 103 (Nam)', rent_price: 1600000, period: '06/2026' },
-    ];
-    setContracts(activeContracts);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [liveInvoices, liveContracts] = await Promise.all([
+          accountantService.fetchMonthlyInvoices(email),
+          accountantService.fetchActiveContracts(email)
+        ]);
+
+        setInvoices(mapMonthlyInvoices(liveInvoices));
+        setContracts(liveContracts || []);
+      } catch (err) {
+        console.warn('[AccountantMonthly] Failed to load from backend, falling back to mock:', err);
+        const db = getMockDB();
+        setInvoices(db.monthly_invoices || []);
+        
+        const mockContracts = [
+          { id: 'HD-2026-0001', customer_id: 'u-5', customer_name: 'Lê Lâm Trí Đức', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
+          { id: 'HD-2026-0002', customer_id: 'u-mock-mon-101', customer_name: 'Nguyễn Văn Hải', room_id: 'r-1', room_name: 'Phòng 101 (Nam)', rent_price: 1500000, period: '06/2026' },
+          { id: 'HD-2026-0003', customer_id: 'u-mock-mon-102', customer_name: 'Trần Thị Thu', room_id: 'r-2', room_name: 'Phòng 102 (Nữ)', rent_price: 2000000, period: '06/2026' },
+          { id: 'HD-2026-0004', customer_id: 'u-mock-mon-104', customer_name: 'Đinh Thị Hoa', room_id: 'r-4', room_name: 'Phòng 202 (Nữ)', rent_price: 1200000, period: '06/2026' },
+          { id: 'HD-2026-0005', customer_id: 'u-mock-mon-105', customer_name: 'Vũ Tú Anh', room_id: 'r-5', room_name: 'Phòng 103 (Nam)', rent_price: 1600000, period: '06/2026' },
+        ];
+        setContracts(mockContracts);
+      }
+    };
+    loadData();
+  }, [user]);
 
   const selectedContract = contracts.find(c => c.id === selectedContractId);
 
+  const loadContractIncidentals = async (contractId: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      const contractIncidentals = await accountantService.fetchContractIncidentals(email, contractId);
+      // Bo qua cac khoan da 'billed' (da duoc tinh vao mot hoa don truoc do) — tranh tinh trung phi cho ky nay.
+      setIncidentals((contractIncidentals || [])
+        .filter((c: any) => c.status !== 'billed')
+        .map((c: any) => ({
+          id: c.id,
+          name: c.cost_name,
+          amount: Number(c.penalty_amount) || 0,
+          confirmed: c.status !== 'pending',
+          dateRecorded: c.recorded_date
+        })));
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to load contract incidentals:', err);
+      setIncidentals([]);
+    }
+  };
+
   useEffect(() => {
     if (selectedContract) {
-      const db = getMockDB();
-      // Load service subscriptions for this customer
-      const subs = db.service_subscriptions?.filter(
-        (s: ServiceSubscription) => s.customer_id === selectedContract.customer_id && s.status === 'active'
-      ) || [];
-      setSubscriptions(subs);
+      const fetchReading = async () => {
+        const email = user?.email || 'accountant@homestay.vn';
+        try {
+          const reading = await accountantService.fetchLatestMeterReading(email, selectedContract.room_id);
+          if (reading) {
+            setElecOld(reading.end_electricity);
+            setElecNew(reading.end_electricity + 85);
+            setWaterOld(reading.end_water);
+            setWaterNew(reading.end_water + 6);
+          } else {
+            // Chua tung ghi chi so cho phong nay (lan lap hoa don dau tien) -> bat dau tu 0.
+            setElecOld(0);
+            setElecNew(85);
+            setWaterOld(0);
+            setWaterNew(6);
+          }
+        } catch (err) {
+          setElecOld(0);
+          setElecNew(85);
+          setWaterOld(0);
+          setWaterNew(6);
+        }
+      };
+      fetchReading();
 
-      // Determine initial utility index values based on room or customer ID hash for mock simulation
-      const oldE = 1200 + (selectedContract.id === 'HD-2026-0001' ? 80 : 40);
-      const oldW = 45 + (selectedContract.id === 'HD-2026-0001' ? 8 : 4);
-      setElecOld(oldE);
-      setElecNew(oldE + 85);
-      setWaterOld(oldW);
-      setWaterNew(oldW + 6);
+      const fetchServices = async () => {
+        const email = user?.email || 'accountant@homestay.vn';
+        try {
+          const apiSubs = await accountantService.fetchContractServices(email, selectedContract.id);
+          const mappedSubs = (apiSubs || []).map((sub: any) => ({
+            id: sub.service_id,
+            service_name: sub.services?.name || 'Dịch vụ',
+            monthly_cost: Number(sub.amount || sub.services?.price || 0),
+            customer_id: selectedContract.customer_id,
+            status: 'active'
+          }));
+          setSubscriptions(mappedSubs);
+        } catch (err) {
+          console.warn('[AccountantMonthly] Failed to fetch services from backend, falling back to mock DB:', err);
+          const db = getMockDB();
+          const subs = db.service_subscriptions?.filter(
+            (s: ServiceSubscription) => s.customer_id === selectedContract.customer_id && s.status === 'active'
+          ) || [];
+          setSubscriptions(subs);
+        }
+      };
+      fetchServices();
 
-      // Pre-populate some unconfirmed incidentals for specific contracts for A4 flow
-      if (selectedContract.customer_id === 'u-5') {
-        setIncidentals([
-          { id: 'CPPS-8821', name: 'Đền bù làm hỏng vòi sen tắm (báo cáo bởi Quản lý)', amount: 150000, confirmed: false, dateRecorded: '2026-06-05' }
-        ]);
-      } else {
-        setIncidentals([]);
-      }
+      loadContractIncidentals(selectedContract.id);
     }
   }, [selectedContractId]);
 
@@ -113,17 +246,30 @@ export default function AccountantMonthlyPage() {
 
   const hasUnconfirmedIncidentals = incidentals.some(inc => !inc.confirmed);
   
-  const handleConfirmAllIncidentals = () => {
-    setIncidentals(prev => prev.map(inc => ({ ...inc, confirmed: true })));
+  const handleConfirmAllIncidentals = async () => {
+    const email = user?.email || 'accountant@homestay.vn';
+    const pendingIds = incidentals.filter(inc => !inc.confirmed).map(inc => inc.id);
+    try {
+      await Promise.all(pendingIds.map(id => accountantService.confirmContractIncidental(email, id)));
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to confirm all incidentals:', err);
+    }
+    if (selectedContract) await loadContractIncidentals(selectedContract.id);
   };
 
-  const handleConfirmIncidental = (id: string) => {
-    setIncidentals(prev => prev.map(inc => inc.id === id ? { ...inc, confirmed: true } : inc));
+  const handleConfirmIncidental = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmContractIncidental(email, id);
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to confirm incidental:', err);
+    }
+    if (selectedContract) await loadContractIncidentals(selectedContract.id);
   };
 
   const handleAddIncidental = () => {
     setSelectedIncidentalType('voi_sen');
-    setNewIncidentalCode('CPPS-8821');
+    setNewIncidentalCode(`CPPS-8821-${Math.floor(1000 + Math.random() * 9000)}`);
     setNewIncidentalName('Đền bù làm hỏng vòi sen tắm');
     setNewIncidentalAmount(150000);
     setNewIncidentalStatus('confirmed');
@@ -140,34 +286,56 @@ export default function AccountantMonthlyPage() {
         setNewIncidentalName('');
         setNewIncidentalAmount(0);
       } else {
-        setNewIncidentalCode(standard.code);
+        setNewIncidentalCode(`${standard.code}-${Math.floor(1000 + Math.random() * 9000)}`);
         setNewIncidentalName(standard.label);
         setNewIncidentalAmount(standard.amount);
       }
     }
   };
 
-  const handleSubmitIncidental = (e: React.FormEvent) => {
+  const handleSubmitIncidental = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doSubmitIncidental());
+  };
+
+  const doSubmitIncidental = async () => {
     const finalName = selectedIncidentalType === 'other' ? newIncidentalName : STANDARD_INCIDENTALS.find(item => item.value === selectedIncidentalType)?.label;
-    if (!finalName || !finalName.trim()) return;
+    if (!finalName || !finalName.trim() || !selectedContract) return;
 
-    setIncidentals(prev => [...prev, {
-      id: newIncidentalCode.trim() || `CPPS-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: finalName,
-      amount: newIncidentalAmount,
-      confirmed: newIncidentalStatus === 'confirmed',
-      dateRecorded: newIncidentalDate
-    }]);
-    setShowAddIncidentalModal(false);
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.createContractIncidental(email, {
+        id: newIncidentalCode.trim() || `CPPS-${Math.floor(1000 + Math.random() * 9000)}`,
+        contractId: selectedContract.id,
+        costName: finalName,
+        amount: newIncidentalAmount,
+        status: newIncidentalStatus,
+        recordedDate: newIncidentalDate
+      });
+      setShowAddIncidentalModal(false);
+      await loadContractIncidentals(selectedContract.id);
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to create incidental:', err);
+    }
   };
 
-  const handleDeleteIncidental = (id: string) => {
-    setIncidentals(prev => prev.filter(inc => inc.id !== id));
+  const handleDeleteIncidental = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.deleteContractIncidental(email, id);
+    } catch (err) {
+      console.warn('[AccountantMonthly] Failed to delete incidental:', err);
+    }
+    if (selectedContract) await loadContractIncidentals(selectedContract.id);
   };
 
-  const handleCreateMonthlyInvoice = (e: React.FormEvent) => {
+  // Khoa chong double-click: tranh lap trung hoa don dinh ky.
+  const handleCreateMonthlyInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doCreateMonthlyInvoice());
+  };
+
+  const doCreateMonthlyInvoice = async () => {
     if (!selectedContract) return;
 
     if (hasUnconfirmedIncidentals) {
@@ -175,57 +343,100 @@ export default function AccountantMonthlyPage() {
       return;
     }
 
-    const db = getMockDB();
-    const invoiceId = `MON-${Date.now().toString().slice(-4)}`;
-    const newInvoice: MonthlyInvoice = {
-      id: invoiceId,
-      customer_id: selectedContract.customer_id,
-      customer_name: selectedContract.customer_name,
-      room_id: selectedContract.room_id,
-      room_name: selectedContract.room_name,
-      period: selectedPeriod,
-      rent_amount: rentAmount,
-      electricity_kwh: elecUse,
-      electricity_cost: elecCost,
-      water_m3: waterUse,
-      water_cost: waterCost,
-      services_cost: servicesCost,
-      total: totalCost,
-      due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 10).toISOString().split('T')[0],
-      status: 'pending',
-      created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
-    };
+    const email = user?.email || 'accountant@homestay.vn';
 
-    db.monthly_invoices = [newInvoice, ...(db.monthly_invoices || [])];
-    saveMockDB(db);
-    
-    // Simulate updating contract next billing period
-    const updatedContracts = contracts.map(c => {
-      if (c.id === selectedContract.id) {
-        return { ...c, period: '07/2026' };
-      }
-      return c;
-    });
-    setContracts(updatedContracts);
-    setInvoices(db.monthly_invoices);
+    try {
+      await accountantService.createMonthlyInvoice(email, {
+        contractId: selectedContract.id,
+        roomId: selectedContract.room_id,
+        billingPeriod: toApiPeriod(selectedContract.period),
+        prevElectricity: elecOld,
+        newElectricity: elecNew,
+        prevWater: waterOld,
+        newWater: waterNew,
+        rentPrice: rentAmount,
+        servicePrice: servicesCost,
+        note: JSON.stringify({ incidentals })
+      });
 
-    // Reset fields
-    setSelectedContractId('');
-    setIncidentals([]);
-    
-    // Switch to invoices list tab
-    setActiveTab('list');
-    
-    alert(`Lập hóa đơn định kỳ thành công! Mã hóa đơn: ${invoiceId}`);
+      alert(`Lập hóa đơn định kỳ thành công!`);
+
+      // Refresh danh sach hoa don + hop dong active (ky thanh toan tiep theo se duoc backend tinh lai dung
+      // dua tren chi so dien nuoc vua ghi nhan, khong con can gia lap o phia client nua).
+      const [liveInvoices, liveContracts] = await Promise.all([
+        accountantService.fetchMonthlyInvoices(email),
+        accountantService.fetchActiveContracts(email)
+      ]);
+      setInvoices(mapMonthlyInvoices(liveInvoices));
+      setContracts(liveContracts || []);
+
+      setSelectedContractId('');
+      setIncidentals([]);
+      setActiveTab('list');
+    } catch (err: any) {
+      console.warn('[AccountantMonthly] Failed to create live invoice, falling back to mock:', err);
+      const db = getMockDB();
+      const invoiceId = `MON-${Date.now().toString().slice(-4)}`;
+      const newInvoice: MonthlyInvoice = {
+        id: invoiceId,
+        customer_id: selectedContract.customer_id,
+        customer_name: selectedContract.customer_name,
+        room_id: selectedContract.room_id,
+        room_name: selectedContract.room_name,
+        period: selectedPeriod,
+        rent_amount: rentAmount,
+        electricity_kwh: elecUse,
+        electricity_cost: elecCost,
+        water_m3: waterUse,
+        water_cost: waterCost,
+        services_cost: servicesCost,
+        total: totalCost,
+        due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 10).toISOString().split('T')[0],
+        status: 'pending',
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      };
+
+      db.monthly_invoices = [newInvoice, ...(db.monthly_invoices || [])];
+      saveMockDB(db);
+      
+      const updatedContracts = contracts.map(c => {
+        if (c.id === selectedContract.id) {
+          return { ...c, period: '07/2026' };
+        }
+        return c;
+      });
+      setContracts(updatedContracts);
+      setInvoices(db.monthly_invoices);
+
+      setSelectedContractId('');
+      setIncidentals([]);
+      setActiveTab('list');
+      alert(`Lập hóa đơn định kỳ thành công (Mock DB)! Mã hóa đơn: ${invoiceId}`);
+    }
   };
 
-  const handleConfirmPayment = (id: string) => {
-    const res = mockSupabase.from('monthly_invoices').update(id, { status: 'paid' });
-    if (res.data) {
-      const db = getMockDB();
-      setInvoices(db.monthly_invoices || []);
+  const handleConfirmPayment = async (id: string) => {
+    await guard(() => doConfirmPayment(id));
+  };
+
+  const doConfirmPayment = async (id: string) => {
+    const email = user?.email || 'accountant@homestay.vn';
+    try {
+      await accountantService.confirmInvoicePayment(email, id, 'transfer');
+      const liveInvoices = await accountantService.fetchMonthlyInvoices(email);
+      setInvoices(mapMonthlyInvoices(liveInvoices));
       if (selectedInvoice && selectedInvoice.id === id) {
         setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
+      }
+    } catch (err) {
+      console.warn('[AccountantMonthly] Payment confirm failed, falling back to mock:', err);
+      const res = mockSupabase.from('monthly_invoices').update(id, { status: 'paid' });
+      if (res.data) {
+        const db = getMockDB();
+        setInvoices(db.monthly_invoices || []);
+        if (selectedInvoice && selectedInvoice.id === id) {
+          setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
+        }
       }
     }
   };
@@ -233,21 +444,24 @@ export default function AccountantMonthlyPage() {
   // Filtered List
   const filteredInvoices = invoices.filter(inv => {
     const matchesPeriod = inv.period === selectedPeriod;
+    const matchesBranch = selectedBranch === 'all' ? true : inv.branch_id === selectedBranch;
     const matchesStatus = selectedStatus === 'all' ? true : inv.status === selectedStatus;
-    const matchesSearch = 
+    const matchesSearch =
       inv.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.room_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesPeriod && matchesStatus && matchesSearch;
+    return matchesPeriod && matchesBranch && matchesStatus && matchesSearch;
   });
 
   // Filtered Contracts for Left List
   const filteredContracts = contracts.filter(c => {
-    const matchesSearch = 
+    const matchesBranch = selectedBranch === 'all' ? true : c.branch_id === selectedBranch;
+    const matchesSearch =
       c.customer_name.toLowerCase().includes(contractSearchQuery.toLowerCase()) ||
       c.room_name.toLowerCase().includes(contractSearchQuery.toLowerCase()) ||
       c.id.toLowerCase().includes(contractSearchQuery.toLowerCase());
-    return matchesSearch;
+    const matchesPeriod = toApiPeriod(c.period) <= toApiPeriod(selectedPeriod);
+    return matchesBranch && matchesSearch && matchesPeriod;
   });
 
   // Financial Stats
@@ -256,15 +470,25 @@ export default function AccountantMonthlyPage() {
   const debtMonthlySum = expectedMonthlySum - paidMonthlySum;
   const paymentRate = expectedMonthlySum > 0 ? ((paidMonthlySum / expectedMonthlySum) * 100).toFixed(1) : '0';
 
-  const periodOptions = [
-    { value: '06/2026', label: 'Tháng 06/2026' },
-    { value: '05/2026', label: 'Tháng 05/2026' }
-  ];
+  // Cac ky thanh toan thuc te xuat hien trong du lieu da tai (khong hardcode 2 ky co dinh nua).
+  const periodOptions = Array.from(new Set([
+    ...invoices.map(inv => inv.period).filter(Boolean),
+    ...contracts.map(c => c.period).filter(Boolean),
+    selectedPeriod
+  ]))
+    .sort((a, b) => toApiPeriod(b).localeCompare(toApiPeriod(a)))
+    .map(p => ({ value: p, label: `Tháng ${p}` }));
 
+  // Cac chi nhanh thuc te xuat hien trong du lieu da tai (khong hardcode ten/id chi nhanh gia nua).
   const branchOptions = [
     { value: 'all', label: 'Tất cả chi nhánh' },
-    { value: 'b1', label: 'Chi nhánh Q1' },
-    { value: 'b2', label: 'Chi nhánh Thủ Đức' }
+    ...Array.from(
+      new Map(
+        [...invoices, ...contracts]
+          .filter((x: any) => x.branch_id && x.branch_name)
+          .map((x: any) => [x.branch_id, x.branch_name])
+      ).entries()
+    ).map(([id, name]) => ({ value: id as string, label: name as string }))
   ];
 
   const statusOptions = [
@@ -275,7 +499,7 @@ export default function AccountantMonthlyPage() {
   ];
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md relative">
+    <div className="space-y-6 text-[#1b1c1c] relative" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
@@ -289,6 +513,7 @@ export default function AccountantMonthlyPage() {
             options={periodOptions}
             theme="accountant"
             className="w-48"
+            triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
           />
           <CustomSelect
             value={selectedBranch}
@@ -296,6 +521,7 @@ export default function AccountantMonthlyPage() {
             options={branchOptions}
             theme="accountant"
             className="w-44"
+            triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
           />
           <CustomSelect
             value={selectedStatus}
@@ -303,6 +529,7 @@ export default function AccountantMonthlyPage() {
             options={statusOptions}
             theme="accountant"
             className="w-48"
+            triggerClassName="h-14 bg-[#F5F2EE] border-none rounded-2xl"
           />
         </div>
       </div>
@@ -383,11 +610,11 @@ export default function AccountantMonthlyPage() {
                     }`}
                   >
                     <div className="flex justify-between items-start">
-                      <span className="font-mono text-xs font-bold text-[#5a462d]">{c.id}</span>
+                      <span className=" text-xs font-bold text-[#5a462d]">{formatShortId(c.id, 'contract')}</span>
                       <span className="text-[10px] bg-[#e4e2e1] text-[#4e453d] font-bold px-1.5 py-0.5 rounded">Tháng {c.period}</span>
                     </div>
                     <h4 className="font-semibold text-sm mt-1 text-[#1b1c1c]">{c.customer_name}</h4>
-                    <div className="flex justify-between text-xs text-[#5e5f5d] mt-2 font-mono">
+                    <div className="flex justify-between text-xs text-[#5e5f5d] mt-2 ">
                       <span>{c.room_name}</span>
                       <span className="font-bold text-[#5a462d]">{c.rent_price.toLocaleString('vi-VN')} đ</span>
                     </div>
@@ -444,11 +671,11 @@ export default function AccountantMonthlyPage() {
                       </div>
                       <div>
                         <span className="text-[#5e5f5d] block">Kỳ thanh toán</span>
-                        <span className="font-semibold text-sm text-[#1b1c1c] font-mono">Tháng {selectedPeriod}</span>
+                        <span className="font-semibold text-sm text-[#1b1c1c] ">Tháng {selectedPeriod}</span>
                       </div>
                       <div>
                         <span className="text-[#5e5f5d] block">Tiền phòng định kỳ</span>
-                        <span className="font-semibold text-sm text-[#5a462d] font-mono">{rentAmount.toLocaleString('vi-VN')} đ</span>
+                        <span className="font-semibold text-sm text-[#5a462d] ">{rentAmount.toLocaleString('vi-VN')} đ</span>
                       </div>
                     </div>
                   </div>
@@ -467,7 +694,7 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={elecOld}
                               readOnly
-                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs cursor-not-allowed"
+                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -476,15 +703,15 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={elecNew}
                               onChange={(e) => setElecNew(parseInt(e.target.value) || 0)}
-                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                             />
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-xs pt-1 border-t border-[#eee7e1] text-[#5e5f5d]">
-                          <span>Tiêu thụ: <strong className="font-mono text-[#1b1c1c]">{elecUse} kWh</strong></span>
-                          <span>Đơn giá: <strong className="font-mono text-[#1b1c1c]">3,500đ</strong></span>
+                          <span>Tiêu thụ: <strong className=" text-[#1b1c1c]">{elecUse} kWh</strong></span>
+                          <span>Đơn giá: <strong className=" text-[#1b1c1c]">3,500đ</strong></span>
                         </div>
-                        <div className="text-right text-xs font-bold text-[#5a462d] font-mono">
+                        <div className="text-right text-xs font-bold text-[#5a462d] ">
                           Thành tiền: {elecCost.toLocaleString('vi-VN')} đ
                         </div>
                       </div>
@@ -499,7 +726,7 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={waterOld}
                               readOnly
-                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs cursor-not-allowed"
+                              className="w-full bg-[#e4e2e1] text-[#5e5f5d] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -508,15 +735,15 @@ export default function AccountantMonthlyPage() {
                               type="number"
                               value={waterNew}
                               onChange={(e) => setWaterNew(parseInt(e.target.value) || 0)}
-                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right font-mono text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
+                              className="w-full bg-white text-[#1b1c1c] border border-[#d1c4b9] rounded py-1 px-2.5 text-right  text-xs focus:ring-1 focus:ring-[#5a462d] focus:border-[#5a462d]"
                             />
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-xs pt-1 border-t border-[#eee7e1] text-[#5e5f5d]">
-                          <span>Tiêu thụ: <strong className="font-mono text-[#1b1c1c]">{waterUse} m³</strong></span>
-                          <span>Đơn giá: <strong className="font-mono text-[#1b1c1c]">15,000đ</strong></span>
+                          <span>Tiêu thụ: <strong className=" text-[#1b1c1c]">{waterUse} m³</strong></span>
+                          <span>Đơn giá: <strong className=" text-[#1b1c1c]">15,000đ</strong></span>
                         </div>
-                        <div className="text-right text-xs font-bold text-[#5a462d] font-mono">
+                        <div className="text-right text-xs font-bold text-[#5a462d] ">
                           Thành tiền: {waterCost.toLocaleString('vi-VN')} đ
                         </div>
                       </div>
@@ -530,18 +757,18 @@ export default function AccountantMonthlyPage() {
                       {subscriptions.map((s) => (
                         <div key={s.id} className="flex justify-between items-center py-1 border-b border-[#f0eded] border-dashed">
                           <span className="text-[#1b1c1c]">{s.service_name}</span>
-                          <span className="font-mono font-bold text-[#4e453d]">{s.monthly_cost.toLocaleString('vi-VN')} đ</span>
+                          <span className=" font-bold text-[#4e453d]">{s.monthly_cost.toLocaleString('vi-VN')} đ</span>
                         </div>
                       ))}
                       {subscriptions.length === 0 && (
                         <div className="flex justify-between items-center py-1 border-b border-[#f0eded] border-dashed">
                           <span className="text-[#1b1c1c]">Dịch vụ mặc định (Wifi, Rác)</span>
-                          <span className="font-mono font-bold text-[#4e453d]">150.000 đ</span>
+                          <span className=" font-bold text-[#4e453d]">150.000 đ</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center pt-2 font-bold text-[#5a462d]">
                         <span>Tổng tiền dịch vụ:</span>
-                        <span className="font-mono">{servicesCost.toLocaleString('vi-VN')} đ</span>
+                        <span className="">{servicesCost.toLocaleString('vi-VN')} đ</span>
                       </div>
                     </div>
                   </div>
@@ -577,14 +804,14 @@ export default function AccountantMonthlyPage() {
                               )}
                               <span className="font-sans font-bold text-[#1b1c1c] text-xs">{inc.name}</span>
                             </div>
-                            <div className="text-[10px] text-[#5e5f5d] font-mono flex items-center gap-3">
-                              <span>Mã: <strong className="text-[#5a462d]">{inc.id}</strong></span>
+                            <div className="text-[10px] text-[#5e5f5d]  flex items-center gap-3">
+                              <span>Mã: <strong className="text-[#5a462d]">{formatShortId(inc.id, 'invoice')}</strong></span>
                               <span className="text-[#d1c4b9]">•</span>
                               <span>Ngày sự cố: <strong>{inc.dateRecorded || new Date().toISOString().split('T')[0]}</strong></span>
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-bold text-[#5a462d] text-xs font-mono">{inc.amount.toLocaleString('vi-VN')} đ</span>
+                            <span className="font-bold text-[#5a462d] text-xs ">{inc.amount.toLocaleString('vi-VN')} đ</span>
                             {!inc.confirmed && (
                               <button
                                 type="button"
@@ -616,26 +843,26 @@ export default function AccountantMonthlyPage() {
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between">
                         <span className="text-[#5e5f5d]">Tiền phòng:</span>
-                        <span className="font-mono text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-[#1b1c1c]">{rentAmount.toLocaleString('vi-VN')} đ</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[#5e5f5d]">Tiền điện nước:</span>
-                        <span className="font-mono text-[#1b1c1c]">{(elecCost + waterCost).toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-[#1b1c1c]">{(elecCost + waterCost).toLocaleString('vi-VN')} đ</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[#5e5f5d]">Tiền dịch vụ đã đăng ký:</span>
-                        <span className="font-mono text-[#1b1c1c]">{servicesCost.toLocaleString('vi-VN')} đ</span>
+                        <span className=" text-[#1b1c1c]">{servicesCost.toLocaleString('vi-VN')} đ</span>
                       </div>
                       {incidentalsCost > 0 && (
                         <div className="flex justify-between">
                           <span className="text-[#5e5f5d]">Phí phát sinh trong kỳ:</span>
-                          <span className="font-mono text-[#ba1a1a]">+{incidentalsCost.toLocaleString('vi-VN')} đ</span>
+                          <span className=" text-[#ba1a1a]">+{incidentalsCost.toLocaleString('vi-VN')} đ</span>
                         </div>
                       )}
                       <div className="h-px bg-[#d1c4b9] my-2"></div>
                       <div className="flex justify-between items-center text-sm font-bold text-[#5a462d]">
                         <span>Tổng tiền cần thanh toán:</span>
-                        <span className="text-lg font-mono">{totalCost.toLocaleString('vi-VN')} đ</span>
+                        <span className="text-lg ">{totalCost.toLocaleString('vi-VN')} đ</span>
                       </div>
                     </div>
 
@@ -649,10 +876,11 @@ export default function AccountantMonthlyPage() {
                       </button>
                       <button
                         type="submit"
-                        className="bg-[#5a462d] text-white font-bold py-2 px-5 rounded text-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        disabled={isSubmitting}
+                        className="bg-[#5a462d] text-white font-bold py-2 px-5 rounded text-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Receipt className="w-4 h-4" />
-                        Lập hóa đơn định kỳ
+                        {isSubmitting ? 'Đang lập...' : 'Lập hóa đơn định kỳ'}
                       </button>
                     </div>
                   </div>
@@ -706,10 +934,12 @@ export default function AccountantMonthlyPage() {
                     <th className="p-3 text-right">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#d1c4b9] font-mono text-xs">
+                <tbody className="divide-y divide-[#d1c4b9]  text-xs">
                   {filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-[#f6f3f2] cursor-pointer" onClick={() => { setSelectedInvoice(inv); setDrawerOpen(true); }}>
-                      <td className="p-3 font-bold text-[#5a462d]">{inv.id}</td>
+                      <td className="p-3 font-bold text-[#5a462d]" title={inv.id}>
+                        {formatShortId(inv.id, 'invoice')}
+                      </td>
                       <td className="p-3 font-sans font-medium text-[#1b1c1c]">{inv.customer_name}</td>
                       <td className="p-3 font-sans text-[#4e453d]">{inv.room_name}</td>
                       <td className="p-3 text-right">{inv.rent_amount.toLocaleString('vi-VN')}</td>
@@ -770,7 +1000,7 @@ export default function AccountantMonthlyPage() {
             <div className="p-6 border-b border-[#d1c4b9] flex justify-between items-center bg-[#fbf9f8]">
               <div>
                 <h3 className="font-headline-sm text-base text-[#5a462d] font-bold">Chi tiết Hóa đơn</h3>
-                <p className="font-mono text-xs text-[#5e5f5d] mt-1">#{selectedInvoice.id}</p>
+                <p className=" text-xs text-[#5e5f5d] mt-1">#{formatShortId(selectedInvoice.id, 'invoice')}</p>
               </div>
               <button onClick={() => setDrawerOpen(false)} className="p-1 text-[#5e5f5d] hover:bg-[#e4e2e1] rounded-full cursor-pointer">
                 <X className="w-5 h-5" />
@@ -804,7 +1034,7 @@ export default function AccountantMonthlyPage() {
 
               <div className="border-t border-[#d1c4b9] pt-4">
                 <h4 className="font-label-caps text-[11px] text-[#5a462d] mb-2 font-bold uppercase tracking-wider font-label-caps">Chi tiết phí</h4>
-                <div className="space-y-2 font-mono text-xs">
+                <div className="space-y-2  text-xs">
                   <div className="flex justify-between text-sm">
                     <span className="font-sans font-medium text-[#1b1c1c]">Tiền phòng:</span>
                     <span>{selectedInvoice.rent_amount.toLocaleString('vi-VN')} đ</span>
@@ -819,16 +1049,27 @@ export default function AccountantMonthlyPage() {
                       <span>{selectedInvoice.water_cost.toLocaleString('vi-VN')} đ</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Dịch vụ khác:</span>
+                      <span>Dịch vụ cố định:</span>
                       <span>{selectedInvoice.services_cost.toLocaleString('vi-VN')} đ</span>
                     </div>
+                    {selectedInvoice.incidentals && selectedInvoice.incidentals.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-dashed border-[#d1c4b9]/50 space-y-1">
+                        <div className="text-[10px] font-bold text-[#5a462d] uppercase tracking-wider mb-1">Phí phát sinh trong kỳ:</div>
+                        {selectedInvoice.incidentals.map((inc) => (
+                          <div key={inc.id} className="flex justify-between text-[#ba1a1a]">
+                            <span>• {inc.name}:</span>
+                            <span>+{inc.amount.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="p-4 bg-[#f0eded] border border-[#d1c4b9] rounded flex justify-between items-center">
                 <span className="font-bold text-[#1b1c1c]">Tổng cộng:</span>
-                <span className="text-xl font-bold text-[#5a462d] font-mono">{selectedInvoice.total.toLocaleString('vi-VN')} VND</span>
+                <span className="text-xl font-bold text-[#5a462d] ">{selectedInvoice.total.toLocaleString('vi-VN')} VND</span>
               </div>
             </div>
 
@@ -920,11 +1161,10 @@ export default function AccountantMonthlyPage() {
                 <input
                   type="text"
                   required
-                  disabled={selectedIncidentalType !== 'other'}
                   value={newIncidentalCode}
                   onChange={(e) => setNewIncidentalCode(e.target.value)}
                   placeholder="Ví dụ: CPPS-1021"
-                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono disabled:opacity-60 disabled:bg-[#f3ede8]"
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]"
                 />
               </div>
 
@@ -937,11 +1177,10 @@ export default function AccountantMonthlyPage() {
                   type="number"
                   required
                   min="0"
-                  disabled={selectedIncidentalType !== 'other'}
                   value={newIncidentalAmount || ''}
                   onChange={(e) => setNewIncidentalAmount(parseInt(e.target.value) || 0)}
                   placeholder="Nhập số tiền..."
-                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono disabled:opacity-60 disabled:bg-[#f3ede8]"
+                  className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-3 px-5 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]"
                 />
               </div>
 
@@ -965,15 +1204,13 @@ export default function AccountantMonthlyPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-[#4e453c] uppercase tracking-wider">
-                    Ngày ghi nhận sự cố <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
+                  <CustomDatePicker
+                    label="Ngày ghi nhận sự cố"
+                    required={true}
                     value={newIncidentalDate}
-                    onChange={(e) => setNewIncidentalDate(e.target.value)}
-                    className="w-full bg-[#fbf9f8] border border-[#d1c4b9] rounded-24 py-2.5 px-4 text-xs focus:outline-none focus:ring-2 focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17] font-mono"
+                    onChange={setNewIncidentalDate}
+                    variant="brown"
+                    triggerClassName="bg-[#fbf9f8] border-[#d1c4b9] rounded-24 py-2.5 px-4 text-xs focus:border-[#5a462d] focus:ring-[#5a462d]/10 text-[#1e1b17]"
                   />
                 </div>
               </div>
@@ -989,9 +1226,10 @@ export default function AccountantMonthlyPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#5a462d] text-white hover:opacity-90 py-3 rounded-24 text-xs font-bold transition-all cursor-pointer shadow-sm hover:shadow"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-[#5a462d] text-white hover:opacity-90 py-3 rounded-24 text-xs font-bold transition-all cursor-pointer shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Xác nhận thêm
+                  {isSubmitting ? 'Đang xử lý...' : 'Xác nhận thêm'}
                 </button>
               </div>
             </form>

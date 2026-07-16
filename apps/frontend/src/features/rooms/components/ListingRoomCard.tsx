@@ -14,6 +14,12 @@ interface Room {
   amenities: string[];
   status: string;
   image_url: string;
+  available_beds_count?: number;
+  branches?: {
+    id: string;
+    name: string;
+    address: string;
+  };
 }
 
 interface Props {
@@ -22,21 +28,13 @@ interface Props {
 
 export default function ListingRoomCard({ room }: Props) {
   const navigate = useNavigate();
-  const isAvailable = room.status === 'available' || room.status === 'partial';
-  const availableBeds = room.capacity - room.current_occupants;
+  const availableBeds = Math.max(room.available_beds_count ?? (room.capacity - room.current_occupants), 0);
+  const isAvailable = (room.status === 'available' || room.status === 'partial') && availableBeds > 0;
   
   // Tag style based on status
   const tagBg = availableBeds === room.capacity ? 'bg-status-success' : 'bg-status-warning';
   const tagText = availableBeds === room.capacity ? 'Sẵn sàng' : `Còn ${availableBeds} giường`;
 
-  const getBranchName = (id: string) => {
-    const map: Record<string, string> = {
-      'b-1': 'Chi nhánh Quận 1',
-      'b-2': 'Chi nhánh Quận 7',
-      'b-3': 'Thủ Đức - Làng Đại Học'
-    };
-    return map[id] || 'Chi nhánh khác';
-  };
 
   const getAmenityIcon = (am: string) => {
     switch (am) {
@@ -75,24 +73,25 @@ export default function ListingRoomCard({ room }: Props) {
             </span>
           </div>
         )}
-        <div className="absolute top-4 right-4 flex flex-col gap-2">
-          <button className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-primary hover:bg-white transition-colors">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>favorite</span>
-          </button>
-        </div>
+
       </div>
       
       <div className="p-6 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <p className="text-[12px] text-primary font-semibold mb-1 uppercase tracking-tight">{getBranchName(room.branch_id)}</p>
+            <p className="text-[12px] text-primary font-semibold mb-1 uppercase tracking-tight">{room.branches?.name || 'Chi nhánh khác'}</p>
             <h3 className="font-headline-md text-[20px] leading-tight text-on-surface">{room.name}</h3>
           </div>
         </div>
         
-        <p className="text-on-surface-variant font-body-md text-sm mb-4">
-          Phòng {room.room_type === 'Studio' ? 'đơn' : room.room_type === 'Twin' ? 'đôi' : 'Dorm'} • Sức chứa {room.capacity} người
-        </p>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-on-surface-variant font-body-md text-sm">
+            Phòng {room.room_type === 'Studio' ? 'đơn' : room.room_type === 'Twin' ? 'đôi' : 'Dorm'}
+          </span>
+          <span className="inline-flex items-center bg-primary/10 text-primary text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+            Sức chứa {room.capacity} người
+          </span>
+        </div>
         
         <div className="flex flex-wrap gap-2 mb-6">
           {room.amenities.slice(0, 3).map((am, idx) => (
@@ -117,7 +116,7 @@ export default function ListingRoomCard({ room }: Props) {
             </div>
             <div className="text-right">
               {isAvailable ? (
-                <p className="text-[12px] text-status-success font-medium">Cần {availableBeds} khách</p>
+                <p className="text-[12px] text-status-success font-medium">Còn {availableBeds} giường</p>
               ) : (
                 <p className="text-[12px] text-error font-medium">Đã hết chỗ</p>
               )}

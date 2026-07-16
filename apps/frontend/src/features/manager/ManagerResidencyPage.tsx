@@ -1,5 +1,7 @@
+import { formatShortId } from '../../lib/utils';
 import { useEffect, useState, useMemo } from 'react';
-import { getMockDB, saveMockDB, ResidencyCheck } from '../../lib/supabaseClient';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { ResidencyCheck } from '../../lib/supabaseClient';
 
 const T = {
   bg: '#FAF9F6', surface: '#FFFFFF', sidebar: '#FAF2EC',
@@ -38,6 +40,7 @@ const COMPLIANCE_RULES = [
 ];
 
 export default function ManagerResidencyPage() {
+  const { isSubmitting, guard } = useSubmitLock();
   const [records, setRecords] = useState<ResidencyCheck[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -49,32 +52,116 @@ export default function ManagerResidencyPage() {
   const [confirmingGroup, setConfirmingGroup] = useState(false);
   const [showRejectedWarningModal, setShowRejectedWarningModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // TH3 đổi đại diện: khi đại diện gốc rớt, backend trả 409 kèm danh sách ứng viên (người đạt).
+  const [repCandidates, setRepCandidates] = useState<Array<{ user_id: string; name: string }>>([]);
+  const [showRepPicker, setShowRepPicker] = useState(false);
+  const [chosenRepUserId, setChosenRepUserId] = useState<string | null>(null);
   
   const isReadOnly = selectedMember?.status === 'approved' || selectedMember?.status === 'rejected';
 
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    // Auth that cua kyen: uu tien gui access_token Supabase ma authStore luu sau khi login.
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      };
+    }
+    try {
+      const tokenKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      if (tokenKey) {
+        const sessionData = JSON.parse(localStorage.getItem(tokenKey) || '{}');
+        const token = sessionData.access_token;
+        if (token) {
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+
+      // Mock session fallback for frontend mock login
+      const mockUserStr = localStorage.getItem('homestay_session_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (mockUser && mockUser.email) {
+          const email = mockUser.email.toLowerCase();
+          let uid = mockUser.id || 'e002e002-e002-e002-e002-e002e002e002';
+          let role = mockUser.role || 'manager';
+          
+          if (email.includes('manager')) {
+            uid = 'e002e002-e002-e002-e002-e002e002e002';
+            role = 'manager';
+          } else if (email.includes('sale')) {
+            uid = 'e001e001-e001-e001-e001-e001e001e001';
+            role = 'sale';
+          } else if (email.includes('accountant') || email.includes('ketoan')) {
+            uid = 'e003e003-e003-e003-e003-e003e003e003';
+            role = 'accountant';
+          } else if (email.includes('admin')) {
+            uid = 'e004e004-e004-e004-e004-e004e004e004';
+            role = 'admin';
+          }
+          
+          let emailVal = mockUser.email;
+          if (emailVal.includes('@homestay.com')) {
+            emailVal = emailVal.replace('.com', '.vn');
+          }
+          const mockToken = `mock-token-${uid}-${role}-${emailVal}`;
+          return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mockToken}`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Error getting auth token:', err);
+    }
+    return { 'Content-Type': 'application/json' };
+  };
+
+  const fetchResidencyChecks = async () => {
+    setIsLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/residency`, { headers });
+      const result = await res.json();
+      if (result.success) {
+        setRecords(result.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching residency:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const db = getMockDB();
-    setRecords(db.residency_checks || []);
-    setTimeout(() => setIsLoading(false), 400);
+    fetchResidencyChecks();
   }, []);
 
-  // Group records by room_id + create deposit ref
+  // Gom bản ghi cư trú theo PHIẾU CỌC THẬT (deposit_ref) — mỗi phiếu cọc nhóm = 1 nhóm.
+  // Fallback theo room_id cho dữ liệu cũ thiếu deposit_ref.
   const groups = useMemo<RoomGroup[]>(() => {
     const map: Record<string, ResidencyCheck[]> = {};
     records.forEach(r => {
-      if (!map[r.room_id]) map[r.room_id] = [];
-      map[r.room_id].push(r);
+      const key = r.deposit_ref || r.room_id;
+      if (!map[key]) map[key] = [];
+      map[key].push(r);
     });
-    return Object.entries(map).map(([room_id, members], i) => {
+    return Object.entries(map).map(([key, members]) => {
       const allPending = members.every(m => m.status === 'pending');
-      const allConfirmed = members.every(m => m.confirmed);
-      const group_status = allPending 
-        ? 'pending' 
-        : (allConfirmed ? 'completed' : 'partial');
+      const allEvaluated = members.every(m => m.status === 'approved' || m.status === 'rejected');
+      const group_status = allPending
+        ? 'pending'
+        : (allEvaluated ? 'completed' : 'partial');
       return {
-        room_id,
+        room_id: members[0].room_id,
         room_name: members[0].room_name,
-        deposit_ref: `MGR-DEP-${2000 + i + 1}`,
+        deposit_ref: members[0].deposit_ref || key,
         members,
         group_status,
       };
@@ -128,35 +215,50 @@ export default function ManagerResidencyPage() {
     setMemberResult(null);
   };
 
-  const saveMemberResult = (newStatus: 'approved' | 'rejected') => {
+  // Khoa chong double-click: tranh gui trung ket qua tham dinh cu tru.
+  const saveMemberResult = async (newStatus: 'approved' | 'rejected') => {
+    await guard(() => doSaveMemberResult(newStatus));
+  };
+
+  const doSaveMemberResult = async (newStatus: 'approved' | 'rejected') => {
     if (!selectedMember) return;
-    const db = getMockDB();
-    const updated = db.residency_checks.map((r: ResidencyCheck) =>
-      r.id === selectedMember.id
-        ? { ...r, status: newStatus, checklist, violation_note: violationNote }
-        : r
-    );
-    db.residency_checks = updated;
-    saveMockDB(db);
-    setRecords(updated);
-    // Update in selected group too
-    if (selectedGroup) {
-      const updatedMembers = selectedGroup.members.map(m =>
-        m.id === selectedMember.id ? { ...m, status: newStatus, checklist, violation_note: violationNote } : m
-      );
-      const allPending = updatedMembers.every(m => m.status === 'pending');
-      const allConfirmed = updatedMembers.every(m => m.confirmed);
-      const group_status = allPending 
-        ? 'pending' 
-        : (allConfirmed ? 'completed' : 'partial');
-      setSelectedGroup({
-        ...selectedGroup,
-        members: updatedMembers,
-        group_status,
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/residency/${selectedMember.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: newStatus,
+          checklist,
+          violation_note: violationNote
+        })
       });
+      const result = await res.json();
+      if (result.success) {
+        // Refresh residency records
+        await fetchResidencyChecks();
+        
+        setSelectedMember(prev => prev ? { ...prev, status: newStatus, checklist, violation_note: violationNote } : null);
+        setMemberResult(newStatus);
+        
+        // Re-align selectedGroup
+        if (selectedGroup) {
+          const updatedMembers = selectedGroup.members.map(m =>
+            m.id === selectedMember.id ? { ...m, status: newStatus, checklist, violation_note: violationNote } : m
+          );
+          const allPending = updatedMembers.every(m => m.status === 'pending');
+          const allEvaluated = updatedMembers.every(m => m.status === 'approved' || m.status === 'rejected');
+          const group_status = allPending ? 'pending' : (allEvaluated ? 'completed' : 'partial');
+          setSelectedGroup({
+            ...selectedGroup,
+            members: updatedMembers,
+            group_status,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error saving member result:', err);
     }
-    setSelectedMember(prev => prev ? { ...prev, status: newStatus, checklist, violation_note: violationNote } : null);
-    setMemberResult(newStatus);
   };
 
   const handleConfirmGroupClick = () => {
@@ -168,56 +270,119 @@ export default function ManagerResidencyPage() {
     }
   };
 
-  const handleCancelDeposit = () => {
-    if (!selectedGroup) return;
-    const db = getMockDB();
-    
-    // 1. Remove all members of this group from residency_checks so it doesn't show in the table anymore
-    const updatedChecks = db.residency_checks.filter((r: ResidencyCheck) => 
-      r.room_id !== selectedGroup.room_id
-    );
-    db.residency_checks = updatedChecks;
-    
-    // 2. Find and update the corresponding ManagerDeposit status to 'rejected'
-    if (db.manager_deposits) {
-      db.manager_deposits = db.manager_deposits.map((d: any) => 
-        d.id === selectedGroup.deposit_ref ? { ...d, status: 'rejected' } : d
-      );
-    }
-    
-    saveMockDB(db);
-    setRecords(updatedChecks);
-    
-    // 3. Reset states to close everything
-    setShowRejectedWarningModal(false);
-    setSelectedGroup(null);
-    setSelectedMember(null);
+  const handleCancelDeposit = async () => {
+    await guard(() => doCancelDeposit());
   };
 
-  const handleConfirmGroup = () => {
+  const doCancelDeposit = async () => {
     if (!selectedGroup) return;
-    const db = getMockDB();
-    
-    // Set confirmed = true for all members of this group
-    const updatedChecks = db.residency_checks.map((r: ResidencyCheck) => 
-      r.room_id === selectedGroup.room_id ? { ...r, confirmed: true } : r
-    );
-    db.residency_checks = updatedChecks;
-    
-    // Update ManagerDeposit status to 'approved' if confirmed
-    if (db.manager_deposits) {
-      db.manager_deposits = db.manager_deposits.map((d: any) => 
-        d.id === selectedGroup.deposit_ref ? { ...d, status: 'approved' } : d
-      );
+    try {
+      const headers = await getAuthHeaders();
+      // 1. Update the deposit status to 'rejected'
+      await fetch(`${API_BASE}/deposits/${selectedGroup.deposit_ref}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: 'rejected',
+          reviewer_note: 'Từ chối kiểm tra điều kiện lưu trú'
+        })
+      });
+
+      // 2. Also update all residency checks in this group to 'rejected'
+      await Promise.all(selectedGroup.members.map(async (m) => {
+        return fetch(`${API_BASE}/residency/${m.id}/status`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            status: 'rejected',
+            violation_note: 'Hủy phiếu đặt cọc'
+          })
+        });
+      }));
+
+      // 3. Refresh data
+      await fetchResidencyChecks();
+      
+      setShowRejectedWarningModal(false);
+      setSelectedGroup(null);
+      setSelectedMember(null);
+    } catch (err) {
+      console.error('Error cancelling deposit:', err);
     }
-    
-    saveMockDB(db);
-    setRecords(updatedChecks);
-    
-    setConfirmingGroup(false);
-    setShowRejectedWarningModal(false);
-    setSelectedGroup(null);
-    setSelectedMember(null);
+  };
+
+  const handleConfirmGroup = async () => {
+    await guard(() => doConfirmGroup());
+  };
+
+  const doConfirmGroup = async (newRepUserId?: string) => {
+    if (!selectedGroup) return;
+    try {
+      const headers = await getAuthHeaders();
+      // 1. Update all non-rejected members to approved status
+      await Promise.all(selectedGroup.members.map(async (m) => {
+        if (m.status === 'rejected') return;
+        return fetch(`${API_BASE}/residency/${m.id}/status`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            status: 'approved',
+            checklist: {
+              valid_documents: true,
+              info_matches: true,
+              age_verified: true,
+              no_violation: true
+            }
+          })
+        });
+      }));
+
+      // 1b. TH3: chốt nhóm — hoàn cọc 1 phần cho đại diện + nhả giường người rớt (no-op nếu TH1).
+      //     Nếu ĐẠI DIỆN gốc rớt và chưa chọn người thay → 409, hiện ô chọn đại diện mới.
+      const finalizeRes = await fetch(`${API_BASE}/residency/finalize`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          deposit_id: selectedGroup.deposit_ref,
+          new_representative_user_id: newRepUserId
+        })
+      });
+      if (finalizeRes.status === 409) {
+        const body = await finalizeRes.json().catch(() => ({} as any));
+        if (body?.code === 'REPRESENTATIVE_REJECTED') {
+          const candIds: string[] = body.candidates || [];
+          const cands = candIds
+            .map((uid) => selectedGroup.members.find((mm) => mm.customer_id === uid))
+            .filter(Boolean)
+            .map((mm) => ({ user_id: (mm as ResidencyCheck).customer_id, name: (mm as ResidencyCheck).customer_name }));
+          setRepCandidates(cands);
+          setChosenRepUserId(cands[0]?.user_id ?? null);
+          setShowRepPicker(true);
+          return; // chờ manager chọn đại diện mới rồi gọi lại doConfirmGroup(uid)
+        }
+      }
+
+      // 2. Update deposit status to 'paid' (approved)
+      await fetch(`${API_BASE}/deposits/${selectedGroup.deposit_ref}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          status: 'paid',
+          reviewer_note: 'Đạt điều kiện lưu trú'
+        })
+      });
+
+      // 3. Refresh data
+      await fetchResidencyChecks();
+
+      setShowRepPicker(false);
+      setConfirmingGroup(false);
+      setShowRejectedWarningModal(false);
+      setSelectedGroup(null);
+      setSelectedMember(null);
+    } catch (err) {
+      console.error('Error confirming group:', err);
+    }
   };
 
   const eligibleMembers = selectedGroup?.members.filter(m => m.status === 'approved') || [];
@@ -240,7 +405,7 @@ export default function ManagerResidencyPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: T.text }} className="animate-fade-in-up">
+    <div style={{ fontFamily: "'Lexend', sans-serif", color: T.text }} className="animate-fade-in-up">
 
       {/* ── Header ── */}
       <div className="mb-6">
@@ -328,13 +493,13 @@ export default function ManagerResidencyPage() {
         <div className="overflow-x-auto">
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '14%' }} /> {/* Phiếu đặt cọc */}
-              <col style={{ width: '16%' }} /> {/* Phòng */}
-              <col style={{ width: '13%' }} /> {/* Số thành viên */}
-              <col style={{ width: '22%' }} /> {/* Đạt / Chờ / Không đạt */}
-              <col style={{ width: '12%' }} /> {/* Tiến độ */}
-              <col style={{ width: '13%' }} /> {/* Trạng thái */}
-              <col style={{ width: '10%' }} /> {/* Action */}
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: T.bg }}>
@@ -345,7 +510,7 @@ export default function ManagerResidencyPage() {
                 }}>Phiếu cọc</th>
                 {['Phòng', 'Thành viên', 'Kết quả thẩm định', 'Tiến độ', 'Trạng thái'].map(h => (
                   <th key={h} style={{
-                    padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                    padding: '14px 16px', textAlign: h === 'Kết quả thẩm định' ? 'center' : 'left', fontSize: 11, fontWeight: 700,
                     color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                     borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
                   }}>{h}</th>
@@ -354,7 +519,7 @@ export default function ManagerResidencyPage() {
                   padding: '14px 24px 14px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700,
                   color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8,
                   borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap'
-                }}></th>
+                }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -397,13 +562,13 @@ export default function ManagerResidencyPage() {
                   <tr key={g.room_id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150"
                     onClick={() => openGroup(g)}>
-                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{g.deposit_ref}</td>
+                    <td style={{ padding: '14px 16px 14px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>{formatShortId(g.deposit_ref, 'deposit')}</td>
                     <td style={{ padding: '14px 16px' }}>
                       <p style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.room_name}</p>
                     </td>
                     <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 600, color: T.textMuted, whiteSpace: 'nowrap' }}>{total} thành viên</td>
                     <td style={{ padding: '14px 16px' }}>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
                         <span style={{ fontSize: 11, fontWeight: 700, color: T.sage, background: T.sageBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.sage}1A` }}>{approved} đạt</span>
                         {pending > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.amber, background: T.amberBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.amber}1A` }}>{pending} chờ</span>}
                         {rejected > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: T.red, background: T.redBg, padding: '2px 7px', borderRadius: 20, border: `1px solid ${T.red}1A` }}>{rejected} không đạt</span>}
@@ -454,7 +619,7 @@ export default function ManagerResidencyPage() {
               position: 'absolute', right: 0, top: 0, bottom: 0, width: selectedMember ? 460 : 580, maxWidth: '95vw',
               background: T.surface, borderLeft: 'none', display: 'flex', flexDirection: 'column',
               boxShadow: '-8px 0 48px rgba(111,88,60,0.18)', transition: 'width 0.3s ease, border-radius 0.3s ease',
-              borderTopLeftRadius: 28, borderBottomLeftRadius: 28, overflow: 'hidden',
+              borderTopLeftRadius: selectedMember ? 0 : 28, borderBottomLeftRadius: selectedMember ? 0 : 28, overflow: 'hidden',
               animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
             }}
             onClick={e => e.stopPropagation()}>
@@ -468,7 +633,7 @@ export default function ManagerResidencyPage() {
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5 }}>Kiểm tra điều kiện lưu trú</p>
                   </div>
                   <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 22, fontWeight: 800, color: T.text }}>{selectedGroup.room_name}</h3>
-                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {selectedGroup.deposit_ref} • {selectedGroup.members.length} thành viên</p>
+                  <p style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>Phiếu cọc: {formatShortId(selectedGroup.deposit_ref, 'deposit')}, {selectedGroup.members.length} thành viên</p>
                 </div>
                 <button onClick={() => { setSelectedGroup(null); setSelectedMember(null); }}
                   style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -498,7 +663,7 @@ export default function ManagerResidencyPage() {
             {/* Member List */}
             <div style={{ flex: 1, overflowY: 'auto', padding: 20 }} className="space-y-3">
               <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
-                Danh sách thành viên trong nhóm
+                {selectedGroup.members.length > 1 ? 'Danh sách thành viên trong nhóm' : 'Cá nhân cần xét duyệt'}
               </p>
 
               {selectedGroup.members.map((member, idx) => {
@@ -526,9 +691,9 @@ export default function ManagerResidencyPage() {
                           <p style={{ fontFamily: "'Lexend', sans-serif", fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 2 }}>{member.customer_name}</p>
                           <div className="flex flex-wrap gap-x-3 gap-y-1">
                             <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>{member.customer_phone}</span>
-                            <span style={{ fontSize: 11, color: T.textFaint }}>• {age} tuổi</span>
+                            <span style={{ fontSize: 11, color: T.textFaint }}>{age} tuổi</span>
                             <span style={{ fontSize: 11, color: member.nationality === 'foreign' ? T.amber : T.sage, fontWeight: 600 }}>
-                              • {member.nationality === 'foreign' ? '🌐 Nước ngoài' : '🇻🇳 Việt Nam'}
+                              {member.nationality === 'foreign' ? 'Nước ngoài' : 'Việt Nam'}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -591,9 +756,9 @@ export default function ManagerResidencyPage() {
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <p style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 10 }}>Xác nhận ghi nhận kết quả kiểm tra</p>
                 <div style={{ background: T.bg, borderRadius: 16, padding: '12px 14px', marginBottom: 12, fontSize: 12, color: T.textMuted, lineHeight: 1.7, border: `1px solid ${T.border}` }}>
-                  <p>• <strong>{eligibleMembers.length}</strong> thành viên đủ điều kiện sẽ được xác định trong danh sách ký hợp đồng.</p>
-                  <p>• <strong>{selectedGroup.members.length - eligibleMembers.length}</strong> thành viên không đạt sẽ bị loại khỏi danh sách.</p>
-                  <p>• Kết quả sẽ được ghi vào CSDL và thông báo cho nhân viên Sale.</p>
+                  <p>- <strong>{eligibleMembers.length}</strong> thành viên đủ điều kiện sẽ được xác định trong danh sách ký hợp đồng.</p>
+                  <p>- <strong>{selectedGroup.members.length - eligibleMembers.length}</strong> thành viên không đạt sẽ bị loại khỏi danh sách.</p>
+                  <p>- Kết quả sẽ được ghi vào CSDL và thông báo cho nhân viên Sale.</p>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirmingGroup(false)}
@@ -623,12 +788,11 @@ export default function ManagerResidencyPage() {
               onClick={e => e.stopPropagation()}>
 
               {/* Sub-drawer Header */}
-              <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
+              <div style={{ padding: '20px 24px', borderBottom: `1px solid ${T.border}`, background: T.sidebar }}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 800, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Thẩm định thành viên</p>
                     <h3 style={{ fontFamily: "'Lexend', sans-serif", fontSize: 19, fontWeight: 800, color: T.text }}>{selectedMember.customer_name}</h3>
-                    <p style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedMember.id} • {selectedMember.room_name}</p>
                   </div>
                   <button onClick={() => setSelectedMember(null)}
                     style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
@@ -636,38 +800,10 @@ export default function ManagerResidencyPage() {
                     <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.textMuted }}>close</span>
                   </button>
                 </div>
-
-                {/* Current status */}
-                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ background: STATUS_CFG[selectedMember.status].bg, color: STATUS_CFG[selectedMember.status].text, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${STATUS_CFG[selectedMember.status].text}1A` }}>
-                    {STATUS_CFG[selectedMember.status].label}
-                  </span>
-                  {memberResult && (
-                    <span style={{ background: memberResult === 'approved' ? T.sageBg : T.redBg, color: memberResult === 'approved' ? T.sage : T.red, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${memberResult === 'approved' ? T.sage : T.red}1A` }}>
-                      ✓ Vừa cập nhật
-                    </span>
-                  )}
-                </div>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="space-y-6">
 
-                {/* ID Images */}
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Ảnh giấy tờ tùy thân</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div style={{ background: T.bg, borderRadius: 16, padding: 8, border: `1px solid ${T.border}` }}>
-                      <p style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', textAlign: 'center' }}>Mặt trước</p>
-                      <img src={selectedMember.front_image_url} alt="Front" style={{ width: '100%', borderRadius: 12, objectFit: 'cover', height: 110 }} />
-                    </div>
-                    {selectedMember.back_image_url && (
-                      <div style={{ background: T.bg, borderRadius: 16, padding: 8, border: `1px solid ${T.border}` }}>
-                        <p style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', textAlign: 'center' }}>Mặt sau</p>
-                        <img src={selectedMember.back_image_url} alt="Back" style={{ width: '100%', borderRadius: 12, objectFit: 'cover', height: 110 }} />
-                      </div>
-                    )}
-                  </div>
-                </div>
 
                 {/* Info Panel */}
                 <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18 }}>
@@ -679,6 +815,8 @@ export default function ManagerResidencyPage() {
                       { label: 'Ngày sinh', val: `${selectedMember.dob} (${getAgeFromDob(selectedMember.dob)} tuổi)` },
                       { label: 'Loại giấy tờ', val: selectedMember.id_type === 'cccd' ? 'CCCD/CMND' : selectedMember.id_type === 'passport' ? 'Hộ chiếu' : 'Khác' },
                       { label: 'Số giấy tờ', val: selectedMember.id_number },
+                      { label: 'Địa chỉ thường trú', val: selectedMember.permanent_address || 'Chưa cập nhật' },
+                      { label: 'Mục đích cư trú', val: selectedMember.purpose || 'Chưa cập nhật' },
                       { label: 'Quốc tịch', val: selectedMember.nationality === 'foreign' ? '🌐 Nước ngoài (cần TT tạm trú)' : '🇻🇳 Việt Nam' },
                       { label: 'Phòng đăng ký', val: selectedMember.room_name },
                     ].map((row, i) => (
@@ -788,7 +926,7 @@ export default function ManagerResidencyPage() {
                   <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', gap: 10 }}>
                     <button
                       onClick={() => saveMemberResult('approved')}
-                      disabled={!isChecklistComplete}
+                      disabled={!isChecklistComplete || isSubmitting}
                       style={{
                         flex: 2, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: 12,
                         fontSize: 13, fontWeight: 700, cursor: isChecklistComplete ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -800,7 +938,7 @@ export default function ManagerResidencyPage() {
                     </button>
                     <button
                       onClick={() => saveMemberResult('rejected')}
-                      disabled={isRejectionDisabled}
+                      disabled={isRejectionDisabled || isSubmitting}
                       style={{
                         flex: 1,
                         background: isRejectionDisabled ? '#FFF0F0' : T.redBg,
@@ -825,7 +963,7 @@ export default function ManagerResidencyPage() {
                   <button onClick={() => setSelectedMember(null)}
                     style={{ width: '100%', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 700, color: T.textMuted, cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
                     className="hover:bg-gray-200 active:scale-[0.98]">
-                    ← Quay lại danh sách nhóm
+                    ← Quay lại danh sách
                   </button>
                 </div>
               )}
@@ -856,7 +994,7 @@ export default function ManagerResidencyPage() {
             </div>
             
             <p style={{ fontSize: 13, color: T.textMuted, lineHeight: 1.6 }}>
-              Trong nhóm phòng <strong>{selectedGroup.room_name}</strong> (Phiếu cọc <strong>{selectedGroup.deposit_ref}</strong>), có thành viên không đạt yêu cầu thẩm định lưu trú.
+              Trong nhóm phòng <strong>{selectedGroup.room_name}</strong> (Phiếu cọc <strong>{formatShortId(selectedGroup.deposit_ref, 'deposit')}</strong>), có thành viên không đạt yêu cầu thẩm định lưu trú.
             </p>
 
             <div style={{ background: T.bg, borderRadius: 16, padding: 14, border: `1px solid ${T.border}` }} className="space-y-3.5">
@@ -902,9 +1040,53 @@ export default function ManagerResidencyPage() {
               </button>
               <button 
                 onClick={handleConfirmGroup}
-                disabled={eligibleMembers.length === 0}
+                disabled={eligibleMembers.length === 0 || isSubmitting}
                 style={{ flex: 1.5, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: eligibleMembers.length === 0 ? 0.5 : 1 }}>
                 Tiếp tục lập hợp đồng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TH3 — Đại diện nhóm rớt cư trú: chọn đại diện MỚI trong số thành viên còn lại (đã đạt) */}
+      {showRepPicker && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
+          <div style={{ background: T.surface, borderRadius: 16, padding: 24, maxWidth: 440, width: '100%', border: `1px solid ${T.border}` }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 6 }}>
+              <span className="material-symbols-outlined" style={{ color: T.amber }}>manage_accounts</span>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: T.text }}>Chọn đại diện nhóm mới</h3>
+            </div>
+            <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 14 }}>
+              Người đại diện cũ không đạt điều kiện lưu trú. Vui lòng chọn một đại diện mới trong số
+              thành viên còn lại — đây sẽ là người đứng tên hợp đồng và nhận tiền hoàn cọc.
+            </p>
+            <div className="space-y-2" style={{ marginBottom: 18 }}>
+              {repCandidates.map((c) => (
+                <label key={c.user_id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 12, cursor: 'pointer',
+                    border: `1.5px solid ${chosenRepUserId === c.user_id ? T.sage : T.border}`,
+                    background: chosenRepUserId === c.user_id ? T.sageBg : T.surface }}>
+                  <input type="radio" name="new-rep" checked={chosenRepUserId === c.user_id}
+                    onChange={() => setChosenRepUserId(c.user_id)} />
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: T.text }}>{c.name}</span>
+                </label>
+              ))}
+              {repCandidates.length === 0 && (
+                <p style={{ fontSize: 12.5, color: T.red, fontStyle: 'italic' }}>Không có thành viên đạt điều kiện để làm đại diện.</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowRepPicker(false); setChosenRepUserId(null); }}
+                style={{ flex: 1, background: T.primaryLight, color: T.primary, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Hủy
+              </button>
+              <button
+                onClick={() => { if (chosenRepUserId) guard(() => doConfirmGroup(chosenRepUserId)); }}
+                disabled={!chosenRepUserId || isSubmitting}
+                style={{ flex: 1.5, background: T.sage, color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !chosenRepUserId ? 0.5 : 1 }}>
+                Xác nhận & tiếp tục
               </button>
             </div>
           </div>

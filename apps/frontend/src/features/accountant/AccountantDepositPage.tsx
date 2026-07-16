@@ -1,23 +1,26 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, CreditCard, Save, Eye, QrCode, CheckCircle2
+  Search, Save, Eye, CheckCircle2
 } from 'lucide-react';
-import { mockSupabase, getMockDB, saveMockDB, DepositInvoice, Profile, Room, CustomerDepositRequest } from '../../lib/supabaseClient';
+import { DepositInvoice, CustomerDepositRequest } from '../../lib/supabaseClient';
 import CustomSelect from '../../components/ui/CustomSelect';
 import InvoiceDetailDrawer from '../../components/ui/InvoiceDetailDrawer';
+import { useAuthStore } from '../../stores/authStore';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { accountantService } from './services/accountant.service';
+import { formatShortId } from '../../lib/utils';
 
 export default function AccountantDepositPage() {
+  const { user } = useAuthStore();
+  const { isSubmitting, guard } = useSubmitLock();
   const [invoices, setInvoices] = useState<DepositInvoice[]>([]);
-  const [customers, setCustomers] = useState<Profile[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [depositRequests, setDepositRequests] = useState<CustomerDepositRequest[]>([]);
   
   const [selectedRequestId, setSelectedRequestId] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [amount, setAmount] = useState('');
-  const [deadlineType, setDeadlineType] = useState('24h');
-  const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'cash'>('transfer');
+  const deadlineType = '24h';
   const [note, setNote] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,12 +42,63 @@ export default function AccountantDepositPage() {
 
   // Load initial data
   useEffect(() => {
-    const db = getMockDB();
-    setInvoices(db.deposit_invoices || []);
-    setCustomers(db.profiles?.filter((p: Profile) => p.role === 'customer') || []);
-    setRooms(db.rooms?.filter((r: Room) => r.status === 'available' || r.status === 'partial') || []);
-    setDepositRequests(db.customer_deposit_requests || []);
-  }, []);
+    const loadData = async () => {
+      const email = user?.email || 'accountant@homestay.vn';
+      try {
+        const [pendingRequests, depInvoices] = await Promise.all([
+          accountantService.fetchPendingDepositRequests(email),
+          accountantService.fetchDepositInvoices(email)
+        ]);
+
+        const mappedRequests = (pendingRequests || []).map((req: any) => {
+          const kh = req.rental_registrations?.customers || {};
+          const prof = kh.profiles || {};
+          return {
+            id: req.id,
+            customer_id: kh.user_id || req.customer_id,
+            customer_name: prof.full_name || req.customer_name || 'Khách hàng',
+            customer_phone: prof.phone || req.customer_phone || '',
+            room_id: req.room_id,
+            room_name: req.rooms?.name || req.room_name || 'Phòng',
+            room_image_url: req.room_image_url || '',
+            branch_name: req.rooms?.branches?.name || req.branch_name || '',
+            viewing_schedule_id: req.viewing_schedule_id || '',
+            deposit_amount: req.deposit_amount,
+            expected_move_in_date: req.expected_move_in_date || '',
+            status: req.status,
+            note: req.note || '',
+            created_at: req.created_at || ''
+          };
+        });
+
+        const mappedInvoices = (depInvoices || []).map((inv: any) => {
+          const req = inv.deposit_requests || {};
+          const rawDeadline = inv.deadline || req.payment_deadline || '';
+          const rawCreatedAt = inv.created_at || req.created_at || '';
+          return {
+            id: inv.id,
+            customer_id: inv.customer_id || req.customer_id,
+            customer_name: inv.customer_name || 'Khách hàng',
+            room_id: inv.room_id || req.room_id,
+            room_name: inv.room_name || req.rooms?.name || 'Phòng',
+            amount: inv.amount,
+            deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
+            payment_method: inv.payment_method,
+            status: inv.status,
+            created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
+            note: inv.note
+          };
+        });
+
+        setDepositRequests(mappedRequests);
+        setInvoices(mappedInvoices);
+      } catch (err) {
+        console.error('[AccountantDeposit] Failed to fetch backend data:', err);
+        setToastMessage('Không thể tải dữ liệu hóa đơn cọc từ hệ thống thật.');
+      }
+    };
+    loadData();
+  }, [user]);
 
   const handleSelectRequest = (req: CustomerDepositRequest) => {
     setSelectedRequestId(req.id);
@@ -59,88 +113,103 @@ export default function AccountantDepositPage() {
     setSelectedCustomerId('');
     setSelectedRoomId('');
     setAmount('');
-    setDeadlineType('24h');
-    setPaymentMethod('transfer');
     setNote('');
   };
 
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  // Khóa chống double-click: chỉ cho 1 request lập hóa đơn chạy tại một thời điểm.
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    await guard(() => doCreateInvoice());
+  };
+
+  const doCreateInvoice = async () => {
     if (!selectedRequestId || !selectedCustomerId || !selectedRoomId) {
       setToastMessage('Vui lòng chọn phiếu đặt cọc trước!');
       return;
     }
 
-    const customer = customers.find(c => c.id === selectedCustomerId);
-    const room = rooms.find(r => r.id === selectedRoomId);
     const req = depositRequests.find(r => r.id === selectedRequestId);
     if (!req) return;
 
     const parsedAmount = parseInt(amount.replace(/\D/g, '')) || req.deposit_amount || 0;
-    
-    // Calculate deadline date
-    const deadlineDate = new Date();
-    if (deadlineType === '24h') {
-      deadlineDate.setDate(deadlineDate.getDate() + 1);
-    } else if (deadlineType === '48h') {
-      deadlineDate.setDate(deadlineDate.getDate() + 2);
-    } else {
-      deadlineDate.setDate(deadlineDate.getDate() + 3);
-    }
+    const email = user?.email || 'accountant@homestay.vn';
 
-    const newInvoice: Omit<DepositInvoice, 'id'> = {
-      customer_id: selectedCustomerId,
-      customer_name: customer?.full_name || req.customer_name,
-      room_id: selectedRoomId,
-      room_name: room?.name || req.room_name,
-      amount: parsedAmount,
-      deadline: deadlineDate.toISOString().replace('T', ' ').substring(0, 16),
-      payment_method: paymentMethod,
-      status: 'pending',
-      created_at: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      note: note || undefined
-    };
-
-    const res = mockSupabase.from('deposit_invoices').insert(newInvoice);
-    if (res.data) {
-      // Reload db state
-      const db = getMockDB();
-      setInvoices(db.deposit_invoices || []);
-      
-      // Update room status to deposited
-      const updatedRooms = db.rooms.map((r: Room) => {
-        if (r.id === selectedRoomId) {
-          return { ...r, status: 'deposited' };
-        }
-        return r;
+    try {
+      await accountantService.createDepositInvoice(email, {
+        requestId: selectedRequestId,
+        customerId: selectedCustomerId,
+        roomId: selectedRoomId,
+        amount: parsedAmount,
+        deadlineType,
+        note
       });
-      db.rooms = updatedRooms;
 
-      // Update deposit request status to 'invoice_created'
-      const updatedRequests = (db.customer_deposit_requests || []).map((r: CustomerDepositRequest) => {
-        if (r.id === selectedRequestId) {
-          return { ...r, status: 'invoice_created' };
-        }
-        return r;
-      });
-      db.customer_deposit_requests = updatedRequests;
-      
-      saveMockDB(db);
-      setRooms(updatedRooms.filter((r: Room) => r.status === 'available' || r.status === 'partial'));
-      setDepositRequests(updatedRequests);
-
-      // Reset form
-      handleResetForm();
       setToastMessage('Tạo hóa đơn cọc thành công.');
+      handleResetForm();
+
+      const pendingRequests = await accountantService.fetchPendingDepositRequests(email);
+      const depInvoices = await accountantService.fetchDepositInvoices(email);
+
+      const mappedRequests = (pendingRequests || []).map((req: any) => {
+        const kh = req.rental_registrations?.customers || {};
+        const prof = kh.profiles || {};
+        return {
+          id: req.id,
+          customer_id: kh.user_id || req.customer_id,
+          customer_name: prof.full_name || req.customer_name || 'Khách hàng',
+          customer_phone: prof.phone || req.customer_phone || '',
+          room_id: req.room_id,
+          room_name: req.rooms?.name || req.room_name || 'Phòng',
+          room_image_url: req.room_image_url || '',
+          branch_name: req.rooms?.branches?.name || req.branch_name || '',
+          viewing_schedule_id: req.viewing_schedule_id || '',
+          deposit_amount: req.deposit_amount,
+          expected_move_in_date: req.expected_move_in_date || '',
+          status: req.status,
+          note: req.note || '',
+          created_at: req.created_at || ''
+        };
+      });
+
+      const mappedInvoices = (depInvoices || []).map((inv: any) => {
+        const req = inv.deposit_requests || {};
+        const rawDeadline = inv.deadline || req.payment_deadline || '';
+        const rawCreatedAt = inv.created_at || req.created_at || '';
+        return {
+          id: inv.id,
+          customer_id: inv.customer_id || req.customer_id,
+          customer_name: inv.customer_name || 'Khách hàng',
+          room_id: inv.room_id || req.room_id,
+          room_name: inv.room_name || req.rooms?.name || 'Phòng',
+          amount: inv.amount,
+          deadline: rawDeadline.includes('T') ? rawDeadline.replace('T', ' ').substring(0, 16) : rawDeadline,
+          payment_method: inv.payment_method,
+          status: inv.status,
+          created_at: rawCreatedAt.includes('T') ? rawCreatedAt.replace('T', ' ').substring(0, 16) : rawCreatedAt,
+          note: inv.note
+        };
+      });
+
+      setDepositRequests(mappedRequests);
+      setInvoices(mappedInvoices);
+    } catch (err: any) {
+      console.error('[AccountantDeposit] Live API create invoice failed:', err);
+      setToastMessage(err?.message || 'Không thể tạo hóa đơn cọc trên hệ thống thật.');
+      return;
     }
   };
 
 
 
+
+
+  // DB dùng status 'unpaid' cho hóa đơn cọc chưa thu (mock DB cũ dùng 'pending') → gộp chung.
+  const isUnpaidStatus = (status: string) => status === 'unpaid' || status === 'pending';
+
   // Summaries
   const totalCount = invoices.length;
   const paidCount = invoices.filter(i => i.status === 'paid').length;
-  const pendingCount = invoices.filter(i => i.status === 'pending').length;
+  const pendingCount = invoices.filter(i => isUnpaidStatus(i.status)).length;
   const overdueCount = invoices.filter(i => i.status === 'overdue').length;
   const totalExpectedAmount = invoices
     .filter(i => i.status !== 'cancelled')
@@ -148,22 +217,25 @@ export default function AccountantDepositPage() {
 
   // Filtered Invoices History Table
   const filteredInvoices = invoices.filter(inv => {
-    const matchesSearch = 
+    const matchesSearch =
       inv.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.room_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = 
-      statusFilter === 'all' ? true : inv.status === statusFilter;
+
+    const matchesStatus =
+      statusFilter === 'all' ? true :
+      statusFilter === 'pending' ? isUnpaidStatus(inv.status) :
+      inv.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
-  // Filtered deposit requests: only status === 'confirmed'
+  // Phiếu cọc chờ lập hóa đơn: chấp nhận cả 'pending' lẫn 'confirmed' (chưa lập hóa đơn).
+  // 'invoice_created' bị loại vì đã có hóa đơn rồi, không cần hiện lại ở đây.
   const filteredRequests = useMemo(() => {
     return depositRequests.filter(req => {
-      if (req.status !== 'confirmed') return false;
-      
+      if (req.status !== 'pending' && req.status !== 'confirmed') return false;
+
       const query = requestSearchQuery.toLowerCase();
       const matchesSearch = 
         req.id.toLowerCase().includes(query) ||
@@ -175,19 +247,10 @@ export default function AccountantDepositPage() {
 
   const selectedRequest = depositRequests.find(r => r.id === selectedRequestId);
 
-  const deadlineOptions = [
-    { value: '24h', label: '24 giờ (Mặc định)' },
-    { value: '48h', label: '48 giờ' },
-    { value: '72h', label: '72 giờ' }
-  ];
 
-  const paymentOptions = [
-    { value: 'transfer', label: 'Chuyển khoản (Mã QR)' },
-    { value: 'cash', label: 'Tiền mặt' }
-  ];
 
   return (
-    <div className="space-y-6 text-[#1b1c1c] font-body-md">
+    <div className="space-y-6 text-[#1b1c1c]" style={{ fontFamily: "'Lexend', sans-serif" }}>
       <style>{`
         .accountant-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -274,8 +337,10 @@ export default function AccountantDepositPage() {
                     }`}
                   >
                     <div className="flex justify-between items-center mb-1">
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-[#E8EDE5] text-[#5F7D4E]">
-                        Đã xác nhận
+                      {/* Khách hàng tự gửi phiếu cọc qua app (status 'pending'); 'confirmed' là trạng thái
+                          dự phòng cho quy trình duyệt thủ công, hiện chưa có luồng nào trong hệ thống gán giá trị này. */}
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-[#FAF2E8] text-[#B9792B]">
+                        Chờ lập hóa đơn
                       </span>
                       <span className="text-xs font-bold text-[#5C4632] tabular-nums">
                         {req.deposit_amount.toLocaleString('vi-VN')} đ
@@ -293,7 +358,7 @@ export default function AccountantDepositPage() {
                       </div>
                       <div>
                         <span className="text-[#8A7563] mr-1">Ngày gửi:</span>
-                        <span className="font-mono text-[#5e5f5d]">
+                        <span className=" text-[#5e5f5d]">
                           {req.created_at.includes('T') ? new Date(req.created_at).toLocaleDateString('vi-VN') : req.created_at.substring(0, 10)}
                         </span>
                       </div>
@@ -349,28 +414,14 @@ export default function AccountantDepositPage() {
                   </div>
                 </div>
 
-                {/* Hạn thanh toán */}
-                <div>
-                  <label className="block font-label-caps text-[11px] text-[#5C4632] mb-1 font-bold uppercase tracking-wider">Hạn thanh toán</label>
-                  <CustomSelect
-                    value={deadlineType}
-                    onChange={setDeadlineType}
-                    options={deadlineOptions}
-                    theme="accountant"
-                    disabled={!selectedRequestId}
-                  />
-                </div>
-
-                {/* Phương thức thu */}
-                <div>
-                  <label className="block font-label-caps text-[11px] text-[#5C4632] mb-1 font-bold uppercase tracking-wider">Phương thức thu</label>
-                  <CustomSelect
-                    value={paymentMethod}
-                    onChange={(val) => setPaymentMethod(val as 'transfer' | 'cash')}
-                    options={paymentOptions}
-                    theme="accountant"
-                    disabled={!selectedRequestId}
-                  />
+                {/* Hạn thanh toán - Readonly info block */}
+                <div className="col-span-1 md:col-span-2">
+                  <div className="bg-[#5C4632]/5 border border-[#DCCFC0]/60 rounded-xl p-3 text-sm text-[#5C4632] transition-colors">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#8A7563] mb-0.5">Hạn thanh toán</div>
+                    <div className="font-semibold">
+                      {selectedRequest ? '24 giờ (Mặc định - Theo quy định)' : <span className="text-[#8A7563]/60 italic font-normal">Chưa chọn phiếu đặt cọc</span>}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Ghi chú */}
@@ -404,11 +455,11 @@ export default function AccountantDepositPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!selectedRequestId}
+                  disabled={!selectedRequestId || isSubmitting}
                   className="px-5 py-2 bg-[#5C4632] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.97] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Tạo hóa đơn</span>
+                  <span>{isSubmitting ? 'Đang xử lý...' : 'Tạo hóa đơn'}</span>
                 </button>
               </div>
             </form>
@@ -424,7 +475,7 @@ export default function AccountantDepositPage() {
                 <p className="text-xs text-[#8A7563] font-bold uppercase tracking-widest mt-1">HÓA ĐƠN ĐẶT CỌC GIỮ CHỖ</p>
               </div>
 
-              {/* Helper alert in the preview panel */}
+              {/* Helper alert in the preview */}
               {!selectedRequestId && (
                 <div className="mb-6 p-4 bg-[#FAF2E8]/40 border border-dashed border-[#B9792B]/40 rounded-xl text-center">
                   <p className="text-sm font-semibold text-[#B9792B]">Chưa chọn phiếu đặt cọc</p>
@@ -447,20 +498,18 @@ export default function AccountantDepositPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Hạn thanh toán:</span>
-                  <span className="font-mono font-semibold text-right">
+                  <span className="font-semibold text-right">
                     {selectedRequestId ? (() => {
                       const d = new Date();
-                      if (deadlineType === '24h') d.setDate(d.getDate() + 1);
-                      else if (deadlineType === '48h') d.setDate(d.getDate() + 2);
-                      else d.setDate(d.getDate() + 3);
+                      d.setDate(d.getDate() + 1);
                       return d.toLocaleDateString('vi-VN') + ' ' + d.toTimeString().substring(0, 5);
                     })() : <span className="text-[#8A7563]/60 italic font-normal">---</span>}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#5e5f5d]">Phương thức:</span>
-                  <span className="font-bold text-right">
-                    {selectedRequestId ? (paymentMethod === 'transfer' ? 'Chuyển khoản (QR)' : 'Tiền mặt') : <span className="text-[#8A7563]/60 italic font-normal">---</span>}
+                  <span className="font-semibold text-[#8A7563] text-right">
+                    {selectedRequestId ? 'Khách chọn khi thanh toán' : <span className="text-[#8A7563]/60 italic font-normal">---</span>}
                   </span>
                 </div>
               </div>
@@ -479,34 +528,12 @@ export default function AccountantDepositPage() {
             </div>
 
             {/* QR / Payment details */}
-            {selectedRequestId ? (
-              paymentMethod === 'transfer' ? (
-                <div className="flex flex-col items-center justify-center border border-[#DCCFC0] rounded-xl p-4 bg-white">
-                  <div className="w-24 h-24 bg-[#E7DED2]/60 flex items-center justify-center mb-2 border border-[#DCCFC0] rounded-lg">
-                    <QrCode className="w-16 h-16 text-[#8A7563]" />
-                  </div>
-                  <p className="font-label-caps text-[10px] text-[#8A7563] text-center font-bold uppercase tracking-wider">
-                    MÃ QR DEMO<br />
-                    <span className="text-[#5C4632]">(VietQR Placeholder)</span>
-                  </p>
-                </div>
-              ) : (
-                <div className="border border-[#DCCFC0] rounded-xl p-4 bg-[#f6f3f2] flex items-center gap-3">
-                  <div className="p-2 bg-[#5C4632] rounded text-white">
-                    <CreditCard className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[#5C4632]">THU TIỀN MẶT TRỰC TIẾP</p>
-                    <p className="text-[11px] text-[#8A7563]">Kế toán thu trực tiếp và bàn giao phiếu thu giấy.</p>
-                  </div>
-                </div>
-              )
-            ) : (
-              <div className="border border-dashed border-[#DCCFC0] rounded-xl p-6 bg-[#f6f3f2]/40 flex flex-col items-center justify-center text-center">
-                <span className="material-symbols-outlined text-[#8A7563]/60 text-4xl mb-2">qr_code_scanner</span>
-                <p className="text-xs text-[#8A7563]">Chờ thông tin thanh toán...</p>
-              </div>
-            )}
+            <div className="border border-dashed border-[#DCCFC0] rounded-xl p-4 bg-[#f6f3f2]/40 flex flex-col items-center justify-center text-center">
+              <span className="material-symbols-outlined text-[#8A7563]/60 text-3xl mb-2">payments</span>
+              <p className="text-[11px] text-[#8A7563] max-w-[220px] leading-relaxed">
+                Phương thức thanh toán và mã QR chuyển khoản sẽ do khách hàng tự chọn khi thực hiện trên ứng dụng.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -532,17 +559,20 @@ export default function AccountantDepositPage() {
             </div>
             
             {/* Filter Status */}
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-[#DCCFC0] rounded text-xs py-1.5 px-3 focus:outline-none focus:border-[#5C4632] cursor-pointer"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ thanh toán</option>
-              <option value="paid">Đã thanh toán</option>
-              <option value="overdue">Quá hạn</option>
-              <option value="cancelled">Hủy</option>
-            </select>
+              onChange={setStatusFilter}
+              theme="accountant"
+              className="w-40"
+              triggerClassName="py-1.5 text-xs"
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'pending', label: 'Chờ thanh toán' },
+                { value: 'paid', label: 'Đã thanh toán' },
+                { value: 'overdue', label: 'Quá hạn' },
+                { value: 'cancelled', label: 'Hủy' },
+              ]}
+            />
           </div>
         </div>
 
@@ -562,11 +592,13 @@ export default function AccountantDepositPage() {
             <tbody className="divide-y divide-[#E7DED2]">
               {filteredInvoices.slice(0, 15).map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#5C4632]/5 transition-colors border-l-2 border-l-transparent hover:border-l-[#5C4632]">
-                  <td className="p-4 font-mono font-bold text-[#5C4632] text-sm text-left">{inv.id}</td>
+                  <td className="p-4  font-bold text-[#5C4632] text-sm text-left" title={inv.id}>
+                    {formatShortId(inv.id, 'deposit')}
+                  </td>
                   <td className="p-4 text-sm font-medium text-[#1b1c1c] text-left">{inv.customer_name}</td>
                   <td className="p-4 text-xs text-[#8A7563] text-center">{inv.room_name}</td>
-                  <td className="p-4 text-center font-mono font-medium text-[#1b1c1c] text-sm">{inv.amount.toLocaleString('vi-VN')} ₫</td>
-                  <td className="p-4 text-xs font-mono text-[#8A7563] leading-tight text-left">
+                  <td className="p-4 text-center  font-medium text-[#1b1c1c] text-sm">{inv.amount.toLocaleString('vi-VN')} ₫</td>
+                  <td className="p-4 text-xs  text-[#8A7563] leading-tight text-left">
                     {(() => {
                       const parts = inv.deadline.split(' ');
                       return (
@@ -580,19 +612,20 @@ export default function AccountantDepositPage() {
                   <td className="p-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       inv.status === 'paid' ? 'bg-[#E8EDE5] text-[#5F7D4E]' :
-                      inv.status === 'pending' ? 'bg-[#FAF2E8] text-[#B9792B]' :
+                      isUnpaidStatus(inv.status) ? 'bg-[#FAF2E8] text-[#B9792B]' :
                       inv.status === 'overdue' ? 'bg-[#F8EAE8] text-[#A94F4F]' :
+                      inv.status === 'cancelled' ? 'bg-[#ECEAE6] text-[#8A7563]' :
                       'bg-[#ECEAE6] text-[#8A7563]'
                     }`}>
                       {inv.status === 'paid' ? 'Đã thu' :
-                       inv.status === 'pending' ? 'Chờ TT' :
-                       inv.status === 'overdue' ? 'Quá hạn' : 'Hủy'}
+                       isUnpaidStatus(inv.status) ? 'Chờ TT' :
+                       inv.status === 'overdue' ? 'Quá hạn' :
+                       inv.status === 'cancelled' ? 'Hủy' : inv.status}
                     </span>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
-
-                      <button 
+                      <button
                         onClick={() => { setSelectedDetailInvoice(inv); setIsDrawerOpen(true); }}
                         className="p-1 hover:bg-[#E7DED2]/60 hover:text-[#5C4632] rounded text-[#8A7563] transition-colors cursor-pointer active:scale-[0.93]"
                       >
