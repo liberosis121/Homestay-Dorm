@@ -2,6 +2,7 @@ import { formatShortId } from '../../lib/utils';
 import { useState, useEffect, useMemo } from "react";
 import { fetchAdminCustomers, toggleCustomerLockApi, createCustomerApi } from "./services/admin.service";
 import CustomSelect from "../../components/ui/CustomSelect";
+import { ModalPortal } from "../../components/ui/ModalPortal";
 
 // ─── ADMIN DESIGN TOKENS (Timber Earth Harmony) ───────────────────
 const A = {
@@ -719,13 +720,14 @@ export default function AdminUsersPage() {
 
       {/* ── DRAWER ── */}
       {selectedCustomer && (
-        <div
-          className="fixed inset-0 z-50 flex justify-end transition-opacity duration-300"
-          style={{ background: `${A.primary}66` }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedCustomer(null);
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex justify-end transition-opacity duration-300"
+            style={{ background: `${A.primary}66` }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedCustomer(null);
+            }}
+          >
           <div
             className="w-full max-w-[480px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
             style={{ background: A.surface }}
@@ -1021,17 +1023,19 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* ── ADD MODAL (minimal) ── */}
       {showAddModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
-          style={{ background: `rgba(0, 0, 0, 0.4)` }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSubmitting) handleCloseAddModal();
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+            style={{ background: `rgba(0, 0, 0, 0.4)` }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !isSubmitting) handleCloseAddModal();
+            }}
+          >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1185,18 +1189,20 @@ export default function AdminUsersPage() {
             </div>
           </form>
         </div>
+        </ModalPortal>
       )}
 
       {confirmLockCustomer && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-          style={{
-            background: "rgba(0, 0, 0, 0.4)",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setConfirmLockCustomer(null);
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+            style={{
+              background: "rgba(0, 0, 0, 0.4)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setConfirmLockCustomer(null);
+            }}
+          >
           <div
             className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4 transform transition-all border animate-fade-in-up"
             style={{
@@ -1290,6 +1296,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <style>{`

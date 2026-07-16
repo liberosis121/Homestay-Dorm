@@ -306,12 +306,12 @@ function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fff8f3] text-[#1e1b17] flex relative font-body-md selection:bg-[#6f583c]/20 selection:text-[#6f583c]">
+    <div className="h-screen bg-[#fff8f3] text-[#1e1b17] flex relative font-body-md selection:bg-[#6f583c]/20 selection:text-[#6f583c]">
       
       {/* ----------------------------------------------------
           SIDEBAR (Desktop)
          ---------------------------------------------------- */}
-      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col shrink-0 relative z-30 shadow-lg shadow-[#6f583c]/5">
+      <aside className="w-64 bg-[#faf2ec] border-r border-[#d1c4b9] hidden md:flex flex-col shrink-0 shadow-lg shadow-[#6f583c]/5">
         <div className="p-6 border-b border-[#d1c4b9] flex items-center gap-3">
           <div className="p-2 bg-[#4a6549]/10 rounded-xl text-[#4a6549] border border-[#4a6549]/20 flex items-center justify-center shrink-0">
             <span 
@@ -420,10 +420,10 @@ function DashboardLayout() {
       {/* ----------------------------------------------------
           MAIN CONTENT CONTAINER
          ---------------------------------------------------- */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#fff8f3]">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#fff8f3] h-full">
         
         {/* HEADER */}
-        <header className="h-20 border-b border-[#d1c4b9] flex items-center justify-between px-6 bg-white/80 backdrop-blur-xl relative z-20 transition-all">
+        <header className="h-20 border-b border-[#d1c4b9] flex items-center justify-between px-6 bg-white/80 backdrop-blur-xl transition-all">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setMobileMenuOpen(true)}
@@ -493,7 +493,7 @@ function DashboardLayout() {
         </header>
 
         {/* PAGE BODY */}
-        <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto min-h-0">
           <Routes>
             <Route path="/" element={location.pathname === '/profile' ? (user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />) : <DashboardDispatcher />} />
             <Route path="/profile" element={user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />} />

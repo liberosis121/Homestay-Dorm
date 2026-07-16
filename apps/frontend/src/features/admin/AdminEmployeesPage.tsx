@@ -1,6 +1,7 @@
 import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from "react";
 import CustomSelect from "../../components/ui/CustomSelect";
+import { ModalPortal } from "../../components/ui/ModalPortal";
 import {
   fetchAdminEmployees,
   createEmployeeApi,
@@ -683,13 +684,14 @@ export default function AdminEmployeesPage() {
 
       {/* Drawer */}
       {selected && (
-        <div
-          className="fixed inset-0 z-50 flex justify-end"
-          style={{ background: `${A.primary}66` }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelected(null);
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex justify-end"
+            style={{ background: `${A.primary}66` }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelected(null);
+            }}
+          >
           <div
             className="w-full max-w-[440px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
             style={{ background: A.surface }}
@@ -824,17 +826,19 @@ export default function AdminEmployeesPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Add Modal */}
       {showAddModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: `${A.primary}66` }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleCloseAddModal();
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: `${A.primary}66` }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleCloseAddModal();
+            }}
+          >
           <div
             className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4"
             style={{ background: A.surface }}
@@ -957,18 +961,20 @@ export default function AdminEmployeesPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {confirmLockEmployee && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-          style={{
-            background: "rgba(0, 0, 0, 0.4)",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setConfirmLockEmployee(null);
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+            style={{
+              background: "rgba(0, 0, 0, 0.4)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setConfirmLockEmployee(null);
+            }}
+          >
           <div
             className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4 transform transition-all border animate-fade-in-up"
             style={{
@@ -1062,6 +1068,7 @@ export default function AdminEmployeesPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <style>{`
