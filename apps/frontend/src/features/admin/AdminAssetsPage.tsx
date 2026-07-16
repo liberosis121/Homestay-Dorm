@@ -1,6 +1,7 @@
 import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import { ModalPortal } from '../../components/ui/ModalPortal';
 import {
   fetchAdminAssets,
   createAssetApi,
@@ -554,9 +555,10 @@ export default function AdminAssetsPage() {
 
       {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-          style={{ background: `${A.primary}66` }}
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+            style={{ background: `${A.primary}66` }}
+            onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto transform transition-all border animate-fade-in-up"
             style={{ background: A.surface, borderColor: A.border }}>
 
@@ -790,6 +792,7 @@ export default function AdminAssetsPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <style>{`

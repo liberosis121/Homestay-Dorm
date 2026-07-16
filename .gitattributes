@@ -1,0 +1,5 @@
+# Loai bo file SQL database dump khoi thong ke ngon ngu cua GitHub
+documents/HomestayDorm_Database_Script.sql linguist-detectable=false
+
+# Loai bo cac file migrations cua Supabase khoi thong ke ngon ngu
+supabase/migrations/*.sql linguist-detectable=false

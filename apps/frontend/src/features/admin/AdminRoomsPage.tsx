@@ -2,6 +2,7 @@ import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import { ModalPortal } from '../../components/ui/ModalPortal';
 import {
   fetchAdminRooms,
   createRoomApi,
@@ -721,9 +722,10 @@ export default function AdminRoomsPage() {
 
       {/* Drawer */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end"
-          style={{ background: "rgba(0, 0, 0, 0.4)" }}
-          onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex justify-end"
+            style={{ background: "rgba(0, 0, 0, 0.4)" }}
+            onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
           <div className="w-full max-w-[440px] h-full shadow-2xl flex flex-col animate-[slideInRight_0.3s_ease-out]"
             style={{ background: A.surface }}>
             <div className="px-6 py-4 flex items-center justify-between"
@@ -1015,13 +1017,15 @@ export default function AdminRoomsPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Add Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-          style={{ background: "rgba(0, 0, 0, 0.4)" }}
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+            style={{ background: "rgba(0, 0, 0, 0.4)" }}
+            onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
             style={{ background: A.surface }}>
             <div className="flex items-center justify-between">
@@ -1136,6 +1140,7 @@ export default function AdminRoomsPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <style>{`
