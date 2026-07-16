@@ -182,6 +182,35 @@ export const authService = {
   },
 
   /**
+   * Làm mới phiên đăng nhập bằng refresh_token (cấp access_token mới khi JWT cũ hết hạn ~1 giờ).
+   * Nhờ đó nhân viên/khách không bị đá về trang login giữa chừng khi đang dùng.
+   *
+   * @param refreshToken - refresh_token đã lưu ở client lúc đăng nhập
+   */
+  refresh: async (refreshToken: string) => {
+    if (!refreshToken) {
+      const err: any = new Error('Thiếu refresh token.');
+      err.status = 400;
+      throw err;
+    }
+    // Dùng client tạm (không dính session singleton) để đổi refresh_token lấy phiên mới.
+    const authClient = getAuthClient();
+    const { data, error } = await authClient.auth.refreshSession({ refresh_token: refreshToken });
+    if (error || !data.session) {
+      const err: any = new Error(error?.message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      err.status = 401;
+      throw err;
+    }
+    return {
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_at: data.session.expires_at,
+      },
+    };
+  },
+
+  /**
    * Đăng xuất người dùng.
    * Do JWT là stateless, phía server chỉ cần gọi signOut của Supabase để xóa session phía cloud.
    * Client có trách nhiệm xóa token khỏi bộ nhớ.

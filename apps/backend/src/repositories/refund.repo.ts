@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { getBedsByDepositIds, singleBedIdFromBeds } from '../utils/deposit-beds';
+import { getBedsByContractIds, contractDepositFromBeds } from '../utils/contract-beds';
 
 export const refundRepo = {
   /**
@@ -52,6 +53,9 @@ export const refundRepo = {
 
     // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
     const bedsByDeposit = await getBedsByDepositIds((depositReqs || []).map(dr => dr.id));
+    // Giuong THUC SU cua hop dong (contract_beds) — dung de tinh COC THUC TE cua HD (TH3 nhom co
+    // nguoi rot: chi tinh giuong nguoi dat, khong tinh ca coc nhom goc da hoan phan nguoi rot).
+    const bedsByContract = await getBedsByContractIds(contractIds);
 
     // 4. Fetch rooms
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
@@ -90,7 +94,8 @@ export const refundRepo = {
 
         mappedContract = {
           ...contract,
-          deposit_amount: req?.deposit_amount || contract.rent_price || 0,
+          // Coc thuc te cua HD = giuong HD × 2 thang (fallback coc goc phieu neu nguyen phong).
+          deposit_amount: contractDepositFromBeds(bedsByContract[contract.id], req?.deposit_amount || contract.rent_price || 0),
           room_id: req?.room_id || '',
           bed_id: (req ? singleBedIdFromBeds(bedsByDeposit[req.id]) : null) || '',
           customer_name: customer?.full_name || 'Khách hàng',
@@ -288,6 +293,8 @@ export const refundRepo = {
 
     // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
     const bedsByDeposit = await getBedsByDepositIds((depositReqs || []).map(dr => dr.id));
+    // Giuong THUC SU cua hop dong — dung de tinh coc thuc te cua HD (nhat quan voi getPendingCheckouts).
+    const bedsByContract = await getBedsByContractIds(contractIds);
 
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
     const { data: rooms } = roomIds.length > 0
@@ -326,7 +333,7 @@ export const refundRepo = {
 
           mappedContract = {
             ...contract,
-            deposit_amount: depReq?.deposit_amount || contract.rent_price || 0,
+            deposit_amount: contractDepositFromBeds(bedsByContract[contract.id], depReq?.deposit_amount || contract.rent_price || 0),
             room_id: depReq?.room_id || '',
             bed_id: (depReq ? singleBedIdFromBeds(bedsByDeposit[depReq.id]) : null) || '',
             customer_name: customer?.full_name || 'Khách hàng',

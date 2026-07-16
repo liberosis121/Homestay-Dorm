@@ -103,6 +103,24 @@ router.post('/login', async (req, res) => {
 });
 
 /**
+ * 🔗 POST /api/auth/refresh
+ * 📝 Làm mới access_token khi JWT cũ hết hạn (dùng refresh_token). Public — không qua requireAuth.
+ * 📥 Body input: { refresh_token }
+ */
+router.post('/refresh', async (req, res) => {
+  try {
+    const refreshToken = req.body?.refresh_token;
+    if (!refreshToken) {
+      return sendError(res, null, 'Thiếu refresh token.', 400);
+    }
+    const result = await authService.refresh(refreshToken);
+    return sendSuccess(res, result, 'Làm mới phiên đăng nhập thành công!');
+  } catch (error: any) {
+    return sendError(res, error, error.message || 'Không thể làm mới phiên đăng nhập.', error.status || 401);
+  }
+});
+
+/**
  * 🔗 POST /api/auth/forgot-password
  * 📝 Gửi email đặt lại mật khẩu cho tài khoản.
  * 📥 Body input: { email }

@@ -181,10 +181,25 @@ export const payoutRepo = {
         }
       }
 
+      // Hoan coc mot phan TH3: tach thong tin tu note de ke toan hien thi dung "Tien coc ban dau"
+      // (khong con fallback cung 2 trieu) va biet day la phieu hoan coc cho nguoi rot (khong thanh ly HD).
+      const invNote = parseInvoiceNote(inv.note);
+      const isGroupPartialRefund = invNote.source === 'group_residency_partial';
+
+      // Ma doi soat de hien thi: hoan coc qua hop dong dung reconciliation_id (REF-xxx) that;
+      // hoan coc do HUY PHIEU COC (chua ky HD) khong co reconciliation nhung van co ma doi soat
+      // luu trong note (reconciliation_code) -> dung ma do de cot "Ma doi soat" khong bi bo trong.
+      const displayReconciliationId = inv.reconciliation_id || invNote.reconciliation_code || null;
+
       return {
         ...inv,
+        reconciliation_id: displayReconciliationId,
         customer_name: mappedRec?.checkouts?.contracts?.customer_name || mappedDirectContract?.customer_name || depositCustomerName || 'Khách hàng',
         room_name: mappedRec?.checkouts?.contracts?.rooms?.name || mappedDirectContract?.rooms?.name || depositRoomName || 'Phòng',
+        deposit_original: isGroupPartialRefund
+          ? (Number(invNote.original_deposit) || Number(inv.amount) || 0)
+          : undefined,
+        is_group_partial_refund: isGroupPartialRefund,
         // Phang hoa branch_id de service loc theo chi nhanh cua ke toan (xem utils/branch-scope).
         branch_id:
           (mappedRec as any)?.checkouts?.contracts?.rooms?.branches?.id ||

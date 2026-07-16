@@ -280,6 +280,10 @@ export interface PayoutRecord {
   paid_at?: string;
   created_at: string;
   is_liquidated?: boolean;
+  /** Tien coc goc phan nguoi rot — chi co voi phieu hoan coc mot phan cua nhom (TH3). */
+  deposit_original?: number;
+  /** Phieu hoan coc mot phan cho nguoi rot dieu kien luu tru (chua co hop dong -> khong thanh ly HD). */
+  is_group_partial_refund?: boolean;
 }
 
 // ─── Manager Phase Interfaces ────────────────────────────────────────────────
@@ -333,6 +337,7 @@ export interface ResidencyCheck {
   permanent_address?: string;
   purpose?: string;
   deposit_ref?: string;   // Mã phiếu cọc THẬT (dùng để gom nhóm + thao tác lên cọc)
+  deposit_status?: string; // Trạng thái phiếu cọc: 'paid' | 'rejected' | 'cancelled' | 'refunded'...
 }
 
 export interface AssetHandover {

@@ -3,7 +3,7 @@ import { residencyService } from './residency.service';
 import { handoverRepo } from '../repositories/handover.repo';
 import { supabase } from '../utils/supabase';
 import { CONTRACT_STATUS } from '../types/constants';
-import { getBedsByContractIds } from '../utils/contract-beds';
+import { getBedsByContractIds, contractDepositFromBeds } from '../utils/contract-beds';
 import crypto from 'crypto';
 
 export const managerContractService = {
@@ -176,7 +176,7 @@ export const managerContractService = {
         is_group_full_room: depBeds.length === 0 && Number((reg as any)?.occupants_count) > 1,
         branch_id: room.branch_id,
         branch_name: branch?.name || 'Chi nhánh',
-        deposit_amount: dep.deposit_amount || contract.rent_price || 0,
+        deposit_amount: contractDepositFromBeds(depBeds, dep.deposit_amount || contract.rent_price || 0),
         type: 'checkout'
       };
     }).filter(Boolean);
@@ -214,7 +214,7 @@ export const managerContractService = {
         is_group_full_room: depBeds.length === 0 && Number((reg as any)?.occupants_count) > 1,
         branch_id: room.branch_id,
         branch_name: branch?.name || 'Chi nhánh',
-        deposit_amount: dep.deposit_amount || contract.rent_price || 0,
+        deposit_amount: contractDepositFromBeds(depBeds, dep.deposit_amount || contract.rent_price || 0),
         type: 'checkin'
       };
     }).filter(Boolean);

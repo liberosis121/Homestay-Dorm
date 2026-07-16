@@ -24,7 +24,12 @@ interface RoomGroup {
   deposit_ref: string;
   members: ResidencyCheck[];
   group_status: 'pending' | 'partial' | 'completed';
+  deposit_status: string;   // trạng thái phiếu cọc
+  is_cancelled: boolean;    // phiếu cọc đã bị hủy (rejected/cancelled/refunded)
 }
+
+// Phiếu cọc đã bị hủy → nhóm là trạng thái CUỐI, không cho xác nhận / hủy lại.
+const CANCELLED_DEPOSIT_STATUSES = ['rejected', 'cancelled', 'refunded'];
 
 const CHECKLIST_META = [
   { key: 'valid_documents' as const, label: 'Giấy tờ tùy thân hợp lệ (CCCD/Hộ chiếu còn hiệu lực)', icon: 'badge', shortLabel: 'Giấy tờ' },
@@ -158,12 +163,16 @@ export default function ManagerResidencyPage() {
       const group_status = allPending
         ? 'pending'
         : (allEvaluated ? 'completed' : 'partial');
+      const deposit_status = members[0].deposit_status || '';
+      const is_cancelled = CANCELLED_DEPOSIT_STATUSES.includes(deposit_status);
       return {
         room_id: members[0].room_id,
         room_name: members[0].room_name,
         deposit_ref: members[0].deposit_ref || key,
         members,
         group_status,
+        deposit_status,
+        is_cancelled,
       };
     });
   }, [records]);
@@ -388,6 +397,8 @@ export default function ManagerResidencyPage() {
   const eligibleMembers = selectedGroup?.members.filter(m => m.status === 'approved') || [];
   const allChecked = selectedGroup ? selectedGroup.members.every(m => m.status !== 'pending') : false;
   const isGroupConfirmed = selectedGroup ? selectedGroup.members.every(m => m.confirmed) : false;
+  // Phiếu cọc đã bị hủy → nhóm ở trạng thái CUỐI: không cho xác nhận kết quả / hủy lại.
+  const isGroupCancelled = selectedGroup?.is_cancelled === true;
 
   const isChecklistComplete = selectedMember
     ? checklist.valid_documents && checklist.info_matches && checklist.age_verified && checklist.no_violation
@@ -552,11 +563,13 @@ export default function ManagerResidencyPage() {
                 const rejected = g.members.filter(m => m.status === 'rejected').length;
                 const total = g.members.length;
                 const pct = Math.round(((approved + rejected) / total) * 100);
-                const gStatusCfg = g.group_status === 'completed'
-                  ? { label: 'Hoàn tất', bg: T.sageBg, color: T.sage }
-                  : g.group_status === 'partial'
-                    ? { label: 'Đang thẩm định', bg: T.blueBg, color: T.blue }
-                    : { label: 'Chờ kiểm tra', bg: T.amberBg, color: T.amber };
+                const gStatusCfg = g.is_cancelled
+                  ? { label: 'Đã hủy', bg: T.redBg, color: T.red }
+                  : g.group_status === 'completed'
+                    ? { label: 'Hoàn tất', bg: T.sageBg, color: T.sage }
+                    : g.group_status === 'partial'
+                      ? { label: 'Đang thẩm định', bg: T.blueBg, color: T.blue }
+                      : { label: 'Chờ kiểm tra', bg: T.amberBg, color: T.amber };
 
                 return (
                   <tr key={g.room_id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
@@ -715,8 +728,23 @@ export default function ManagerResidencyPage() {
               })}
             </div>
 
+            {/* Đã hủy phiếu cọc — trạng thái cuối, không cho thao tác lại */}
+            {isGroupCancelled && (
+              <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
+                <div style={{ background: T.redBg, borderRadius: 16, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${T.red}1A` }}>
+                  <span className="material-symbols-outlined" style={{ color: T.red }}>block</span>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: T.red }}>Phiếu cọc đã bị hủy</p>
+                    <p style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2, fontWeight: 500 }}>
+                      Nhóm này đã được xử lý (hủy phiếu cọc &amp; đánh dấu không đạt). Không thể xác nhận lại kết quả kiểm tra.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Confirm Group Footer */}
-            {allChecked && !confirmingGroup && !isGroupConfirmed && (
+            {!isGroupCancelled && allChecked && !confirmingGroup && !isGroupConfirmed && (
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <div style={{ background: eligibleMembers.length > 0 ? T.sageBg : T.redBg, borderRadius: 16, padding: '12px 14px', marginBottom: 12, border: `1px solid ${eligibleMembers.length > 0 ? T.sage : T.red}1A` }}>
                   <p style={{ fontSize: 13, fontWeight: 800, color: eligibleMembers.length > 0 ? T.sage : T.red, display: 'flex', alignItems: 'center', gap: 6 }}>

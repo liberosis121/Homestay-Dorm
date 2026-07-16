@@ -271,6 +271,7 @@ function DashboardLayout() {
             { path: '/rooms', label: 'Tra cứu & Thuê phòng', icon: Compass },
             { path: '/customer/services', label: 'Dịch vụ & Bảng giá', icon: Zap },
             { path: '/customer/viewing-schedules', label: 'Lịch xem phòng của tôi', icon: Calendar },
+            { path: '/customer/invoices', label: 'Hóa đơn & Thanh toán', icon: CreditCard },
             { path: '/customer/deposit-history', label: 'Lịch sử đặt cọc', icon: Receipt }
           ];
         }
