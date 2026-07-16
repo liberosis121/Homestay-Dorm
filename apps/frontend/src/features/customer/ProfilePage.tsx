@@ -525,6 +525,11 @@ export default function ProfilePage() {
                     <Link to="/customer/viewing-schedules" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Calendar className="w-5 h-5" /> Lịch xem phòng của tôi
                     </Link>
+                    {/* Hóa đơn của tôi: khách mới vẫn cần xem hóa đơn hoàn cọc khi phiếu cọc bị hủy
+                        (không đủ điều kiện lưu trú, chưa lập hợp đồng) do kế toán chi hoàn. */}
+                    <Link to="/customer/invoices" state={{ from: '/profile' }} className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
+                      <CreditCard className="w-5 h-5" /> Hóa đơn &amp; Thanh toán
+                    </Link>
                     <Link to="/customer/deposit-history" className="flex items-center gap-3 px-5 py-3.5 rounded-24 text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md">
                       <Receipt className="w-5 h-5" /> Lịch sử đặt cọc
                     </Link>

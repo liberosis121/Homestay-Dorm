@@ -337,6 +337,7 @@ export interface ResidencyCheck {
   permanent_address?: string;
   purpose?: string;
   deposit_ref?: string;   // Mã phiếu cọc THẬT (dùng để gom nhóm + thao tác lên cọc)
+  deposit_status?: string; // Trạng thái phiếu cọc: 'paid' | 'rejected' | 'cancelled' | 'refunded'...
 }
 
 export interface AssetHandover {

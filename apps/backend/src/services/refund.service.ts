@@ -88,8 +88,12 @@ export const refundService = {
       throw dup;
     }
 
-    // 4. Tao hoa don hoan coc (gan deposit_id, khong co contract/reconciliation)
+    // 4. Tao hoa don hoan coc (gan deposit_id, khong co contract/reconciliation).
+    // Hoan coc do HUY PHIEU COC (chua ky HD) van la nghiep vu doi soat hoan tra -> sinh MA DOI SOAT
+    // rieng (REF-xxxxxx) luu trong note de ke toan co ma tham chieu o danh sach Lenh chi (giong hoan
+    // coc qua hop dong). Khong tao ban ghi refund_reconciliations vi bang do rang buoc theo checkout.
     const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
+    const reconciliationCode = 'REF-' + Math.floor(100000 + Math.random() * 900000);
     const { data: invoice, error: invErr } = await supabase
       .from('invoices')
       .insert({
@@ -104,6 +108,7 @@ export const refundService = {
         staff_id: data.staffId,
         note: JSON.stringify({
           source: 'pre_contract_cancellation',
+          reconciliation_code: reconciliationCode,
           original_deposit: data.originalDeposit,
           refund_rate: data.refundRate,
           total_deductions: data.totalDeductions,

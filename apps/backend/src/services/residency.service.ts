@@ -120,12 +120,20 @@ export const residencyService = {
       return ids;
     };
 
-    // Helper: resolve phieu coc DA THANH TOAN gan nhat cua 1 CCCD (dai dien lan thanh vien nhom).
-    const paidDepositByCccd = (cccd: string) => {
+    // Helper: resolve phieu coc cua 1 CCCD (dai dien lan thanh vien nhom).
+    // Uu tien phieu DA THANH TOAN (paid); neu khong con phieu paid — vi da bi HUY sau khi
+    // tham dinh cu tru rot (deposit_requests.status = 'rejected'/'cancelled'/'refunded') — thi
+    // lay phieu da-huy gan nhat. Nho vay man Kiem tra cu tru van hien dung MA PHIEU COC + TEN
+    // PHONG cua phieu cu, thay vi roi ve "unknown"/"Phong chua xep".
+    const CANCELLED_DEPOSIT_STATUSES = ['rejected', 'cancelled', 'refunded'];
+    const depositByCccd = (cccd: string) => {
       const regIds = regIdsForCccd(cccd);
-      return (deposits || [])
-        .filter(d => regIds.has(d.registration_id) && d.status === 'paid')
-        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
+      const mine = (deposits || [])
+        .filter(d => regIds.has(d.registration_id))
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      return mine.find(d => d.status === 'paid')
+        || mine.find(d => CANCELLED_DEPOSIT_STATUSES.includes(d.status))
+        || null;
     };
 
     // 3. Map into frontend format
@@ -134,7 +142,7 @@ export const residencyService = {
       // Uu tien phieu coc qua hop dong; neu chua co HD (buoc 9) thi resolve phieu coc qua CCCD.
       const dep = (contract.deposit_id
         ? deposits?.find(d => d.id === contract.deposit_id)
-        : paidDepositByCccd(res.cccd)) || {};
+        : depositByCccd(res.cccd)) || {};
       const customer = customers?.find(c => c.cccd === res.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
 
@@ -164,6 +172,9 @@ export const residencyService = {
         status: res.check_result || 'pending',
         confirmed: isApproved,
         deposit_ref: contract.deposit_id || dep.id || '',
+        // Trang thai phieu coc — de FE biet phieu da bi HUY (rejected/cancelled/refunded) va
+        // khong cho xac nhan lai ket qua kiem tra cho nhom da huy.
+        deposit_status: dep.status || '',
         permanent_address: res.permanent_address || '',
         purpose: res.purpose || ''
       };
@@ -482,6 +493,9 @@ export const residencyService = {
     let createdRefundInvoiceId: string | null = null;
     if (refundAmount > 0 && !existingPartialRefund) {
       const invoiceId = 'HDTT-' + Math.floor(100000 + Math.random() * 900000);
+      // Ma doi soat rieng cho phieu hoan coc mot phan (khong co refund_reconciliations) — de ke toan
+      // co ma tham chieu o danh sach Lenh chi thay vi bo trong.
+      const reconciliationCode = 'REF-' + Math.floor(100000 + Math.random() * 900000);
       const { error: refundError } = await supabase
         .from('invoices')
         .insert({
@@ -496,6 +510,7 @@ export const residencyService = {
           staff_id: dep.staff_id || null,
           note: JSON.stringify({
             source: 'group_residency_partial',
+            reconciliation_code: reconciliationCode,
             removed_count: rejectedUserIds.length,
             remaining_count: remainingCount,
             released_bed_ids: releasedBedIds,
