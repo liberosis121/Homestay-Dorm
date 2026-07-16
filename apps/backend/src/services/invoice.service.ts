@@ -193,14 +193,23 @@ export const invoiceService = {
         && inv.reconciliation_id === null
         && inv.deposit_id !== null
         && invoiceNote.source === 'group_residency_partial';
+      // Hoan coc do HUY PHIEU COC (chua ky HD): hoa don refund gan deposit_id, khong co reconciliation.
+      // Van la "Hoan coc" (tien tra lai khach), KHONG phai phi phat sinh.
+      const isCancellationRefund =
+        inv.invoice_type === 'refund'
+        && inv.reconciliation_id === null
+        && inv.deposit_id !== null
+        && invoiceNote.source === 'pre_contract_cancellation';
       const isDeposit = inv.invoice_type === 'deposit' && inv.deposit_id !== null;
-      const isRefund = (inv.invoice_type === 'refund' && inv.reconciliation_id !== null) || isGroupResidencyPartialRefund;
+      const isRefund = (inv.invoice_type === 'refund' && inv.reconciliation_id !== null)
+        || isGroupResidencyPartialRefund
+        || isCancellationRefund;
       const isCheckin = isCheckinInvoice(inv);
       const isMonthly = inv.invoice_type === 'monthly' && !isCheckin;
       const isRentInvoice = isMonthly || isCheckin;
       const isService = inv.invoice_type === 'service' || (inv.invoice_type === 'deposit' && inv.deposit_id === null);
       const isIncidentalCost = inv.invoice_type === 'liquidation'
-        || (inv.invoice_type === 'refund' && inv.reconciliation_id === null && !isGroupResidencyPartialRefund);
+        || (inv.invoice_type === 'refund' && inv.reconciliation_id === null && !isGroupResidencyPartialRefund && !isCancellationRefund);
 
       // Billing Period
       let rawPeriod = '';
@@ -276,6 +285,8 @@ export const invoiceService = {
         serviceDetails = 'Phí đăng ký dịch vụ phát sinh';
       } else if (isGroupResidencyPartialRefund) {
         serviceDetails = 'Hoàn cọc do loại thành viên không đạt điều kiện lưu trú';
+      } else if (isCancellationRefund) {
+        serviceDetails = 'Hoàn cọc do hủy phiếu cọc (chưa lập hợp đồng thuê)';
       }
 
       // Hạn thanh toán được CHỐT lúc lập hóa đơn (invoices.due_date) — dùng chung cho khách hàng,
