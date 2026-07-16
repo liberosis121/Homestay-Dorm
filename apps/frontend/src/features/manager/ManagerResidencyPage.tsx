@@ -737,7 +737,7 @@ export default function ManagerResidencyPage() {
                   style={{ width: '100%', background: T.primary, color: '#fff', border: 'none', borderRadius: 12, padding: 13, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s ease-in-out' }}
                   className="hover:opacity-90 active:scale-[0.98]">
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>send</span>
-                  Xác nhận kết quả kiểm tra cho nhóm
+                  {selectedGroup.members.length > 1 ? 'Xác nhận kết quả kiểm tra cho nhóm' : 'Xác nhận kết quả kiểm tra cho khách hàng'}
                 </button>
               </div>
             )}
@@ -746,7 +746,9 @@ export default function ManagerResidencyPage() {
               <div style={{ padding: '16px 20px', borderTop: `1px solid ${T.border}`, background: T.sidebar }}>
                 <div style={{ background: T.sageBg, borderRadius: 16, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${T.sage}1A` }}>
                   <span className="material-symbols-outlined" style={{ color: T.sage }}>verified</span>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: T.sage }}>Đã xác nhận kết quả kiểm tra cho nhóm</p>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: T.sage }}>
+                    {selectedGroup.members.length > 1 ? 'Đã xác nhận kết quả kiểm tra cho nhóm' : 'Đã xác nhận kết quả kiểm tra cho khách hàng'}
+                  </p>
                 </div>
               </div>
             )}
