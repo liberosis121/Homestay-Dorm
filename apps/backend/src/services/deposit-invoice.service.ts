@@ -46,7 +46,11 @@ export const depositInvoiceService = {
     const invoiceData = {
       id: invoiceId,
       amount: data.amount,
-      status: 'pending',
+      // 'unpaid' = hoa don coc VUA LAP, cho KHACH thanh toan (hien nut "Thanh toan" ben Ho so).
+      // KHONG dung 'pending' o buoc nay: 'pending' mang nghia "khach da nop minh chung, cho ke toan
+      // xac nhan" (invoiceService.submitDepositPaymentEvidence moi chuyen sang 'pending'). Dung 'pending'
+      // ngay luc lap se khien FE an nut thanh toan (InvoiceTable bo qua trang thai 'pending').
+      status: 'unpaid',
       invoice_type: 'deposit',
       payment_method: data.paymentMethod || null,
       payment_time: null,
