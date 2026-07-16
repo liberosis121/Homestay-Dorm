@@ -1,6 +1,7 @@
 import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from "react";
 import CustomSelect from "../../components/ui/CustomSelect";
+import { ModalPortal } from "../../components/ui/ModalPortal";
 import {
   fetchAdminBranches,
   createBranchApi,
@@ -470,13 +471,14 @@ export default function AdminBranchesPage() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: `${A.primary}66` }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowModal(false);
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: `${A.primary}66` }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowModal(false);
+            }}
+          >
           <div
             className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
             style={{ background: A.surface }}
@@ -572,17 +574,19 @@ export default function AdminBranchesPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {confirmStatusBranch && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-          style={{
-            background: "rgba(0, 0, 0, 0.4)",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setConfirmStatusBranch(null);
-          }}
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+            style={{
+              background: "rgba(0, 0, 0, 0.4)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setConfirmStatusBranch(null);
+            }}
         >
           <div
             className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4 transform transition-all border animate-fade-in-up"
@@ -677,6 +681,7 @@ export default function AdminBranchesPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <style>{`

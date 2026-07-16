@@ -1,4 +1,5 @@
 import { X, Printer, Check } from 'lucide-react';
+import { ModalPortal } from './ModalPortal';
 
 export interface InvoiceDetailDrawerProps {
   isOpen: boolean;
@@ -90,7 +91,7 @@ export default function InvoiceDetailDrawer({
   );
 
   return (
-    <>
+    <ModalPortal>
       {/* Overlay Backdrop */}
       <div 
         className="fixed inset-0 bg-black/40 z-[999] backdrop-blur-xs transition-opacity duration-200 animate-in fade-in"
@@ -439,6 +440,6 @@ export default function InvoiceDetailDrawer({
           )}
         </div>
       </div>
-    </>
+    </ModalPortal>
   );
 }

@@ -1,6 +1,7 @@
 import { formatShortId } from '../../lib/utils';
 import { useState, useMemo, useEffect } from 'react';
 import CustomSelect from '../../components/ui/CustomSelect';
+import { ModalPortal } from '../../components/ui/ModalPortal';
 import {
   fetchAdminServices,
   createServiceApi,
@@ -453,9 +454,10 @@ export default function AdminServicesPage() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-          style={{ background: "rgba(0, 0, 0, 0.4)" }}
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-350"
+            style={{ background: "rgba(0, 0, 0, 0.4)" }}
+            onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
             style={{ background: A.surface }}>
             <div className="flex items-center justify-between">
@@ -553,18 +555,20 @@ export default function AdminServicesPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {confirmStatusService && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-          style={{
-            background: "rgba(0, 0, 0, 0.4)",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setConfirmStatusService(null);
-          }}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+            style={{
+              background: "rgba(0, 0, 0, 0.4)",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setConfirmStatusService(null);
+            }}
+          >
           <div
             className="w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-4 transform transition-all border animate-fade-in-up"
             style={{
@@ -664,6 +668,7 @@ export default function AdminServicesPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <style>{`
