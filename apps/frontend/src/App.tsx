@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { 
   Home, 
@@ -24,53 +24,68 @@ import {
   Search
 } from 'lucide-react';
 import { useAuthStore } from './stores/authStore';
+// ─── TẢI TĨNH: những trang cần có ngay ở lần vào đầu tiên ─────────────────────
+// Giữ 3 trang này ở dạng import thường để khách vào lần đầu không thấy màn hình chờ.
 import LandingPage from './features/landing/LandingPage';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
-import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
-import OTPVerificationPage from './features/auth/OTPVerificationPage';
-import ResetPasswordPage from './features/auth/ResetPasswordPage';
-import AuthCallbackPage from './features/auth/AuthCallbackPage';
-import ProfilePage from './features/customer/ProfilePage';
-import StaffProfilePage from './features/staff/StaffProfilePage';
-import RoomsPage from './features/rooms/RoomsPage';
-import RoomDetailPage from './features/rooms/RoomDetailPage';
-import { RegisterLeasePage } from './features/customer/RegisterLeasePage';
-import { GroupRegistrationPage } from './features/customer/GroupRegistrationPage';
-import DepositRegistrationPage from './features/customer/DepositRegistrationPage';
-import ViewingSchedulePage from './features/customer/ViewingSchedulePage';
-import DepositHistoryPage from './features/customer/DepositHistoryPage';
-import CustomerContractsPage from './features/customer/CustomerContractsPage';
-import CustomerServicesPage from './features/customer/CustomerServicesPage';
-import InvoicesDashboardPage from './features/customer/InvoicesDashboardPage';
-import InvoicePaymentPage from './features/customer/InvoicePaymentPage';
-import CustomerCheckoutPage from './features/customer/CustomerCheckoutPage';
 
-import SaleDashboardPage from './features/sale/SaleDashboardPage';
-import SaleSchedulesPage from './features/sale/SaleSchedulesPage';
-import CustomerLookupPage from './features/sale/CustomerLookupPage';
-import SaleContractsPage from './features/sale/SaleContractsPage';
-import AccountantDashboardPage from './features/accountant/AccountantDashboardPage';
-import AccountantDepositPage from './features/accountant/AccountantDepositPage';
-import AccountantCheckinPage from './features/accountant/AccountantCheckinPage';
-import AccountantMonthlyPage from './features/accountant/AccountantMonthlyPage';
-import AccountantRefundsPage from './features/accountant/AccountantRefundsPage';
-import AccountantPayoutsPage from './features/accountant/AccountantPayoutsPage';
-import AdminUsersPage from './features/admin/AdminUsersPage';
-import AdminEmployeesPage from './features/admin/AdminEmployeesPage';
-import AdminBranchesPage from './features/admin/AdminBranchesPage';
-import AdminRoomsPage from './features/admin/AdminRoomsPage';
-import AdminServicesPage from './features/admin/AdminServicesPage';
-import AdminConditionsPage from './features/admin/AdminConditionsPage';
-import AdminAssetsPage from './features/admin/AdminAssetsPage';
-import AdminDashboardPage from './features/admin/AdminDashboardPage';
-import ManagerDashboardPage from './features/manager/ManagerDashboardPage';
-import ManagerRoomsPage from './features/manager/ManagerRoomsPage';
-import ManagerDepositsPage from './features/manager/ManagerDepositsPage';
-import ManagerResidencyPage from './features/manager/ManagerResidencyPage';
-import ManagerHandoversPage from './features/manager/ManagerHandoversPage';
-import ManagerAssetsPage from './features/manager/ManagerAssetsPage';
-import ManagerContractsPage from './features/manager/ManagerContractsPage';
+// ─── TẢI ĐỘNG (code splitting) ────────────────────────────────────────────────
+// Trước đây toàn bộ 40+ trang của cả 5 vai trò được gom vào MỘT bundle duy nhất, nên
+// khách hàng đăng nhập vẫn phải tải trọn code của admin, manager, kế toán và sale.
+// `lazy()` tách mỗi trang thành một file riêng, chỉ tải khi người dùng thực sự mở trang đó.
+//
+// Lưu ý: `lazy()` yêu cầu module có DEFAULT export. RegisterLeasePage và
+// GroupRegistrationPage chỉ có named export nên phải bọc lại thủ công ở dưới.
+const ForgotPasswordPage = lazy(() => import('./features/auth/ForgotPasswordPage'));
+const OTPVerificationPage = lazy(() => import('./features/auth/OTPVerificationPage'));
+const ResetPasswordPage = lazy(() => import('./features/auth/ResetPasswordPage'));
+const AuthCallbackPage = lazy(() => import('./features/auth/AuthCallbackPage'));
+const ProfilePage = lazy(() => import('./features/customer/ProfilePage'));
+const StaffProfilePage = lazy(() => import('./features/staff/StaffProfilePage'));
+const RoomsPage = lazy(() => import('./features/rooms/RoomsPage'));
+const RoomDetailPage = lazy(() => import('./features/rooms/RoomDetailPage'));
+const RegisterLeasePage = lazy(() =>
+  import('./features/customer/RegisterLeasePage').then(m => ({ default: m.RegisterLeasePage }))
+);
+const GroupRegistrationPage = lazy(() =>
+  import('./features/customer/GroupRegistrationPage').then(m => ({ default: m.GroupRegistrationPage }))
+);
+const DepositRegistrationPage = lazy(() => import('./features/customer/DepositRegistrationPage'));
+const ViewingSchedulePage = lazy(() => import('./features/customer/ViewingSchedulePage'));
+const DepositHistoryPage = lazy(() => import('./features/customer/DepositHistoryPage'));
+const CustomerContractsPage = lazy(() => import('./features/customer/CustomerContractsPage'));
+const CustomerServicesPage = lazy(() => import('./features/customer/CustomerServicesPage'));
+const InvoicesDashboardPage = lazy(() => import('./features/customer/InvoicesDashboardPage'));
+const InvoicePaymentPage = lazy(() => import('./features/customer/InvoicePaymentPage'));
+const CustomerCheckoutPage = lazy(() => import('./features/customer/CustomerCheckoutPage'));
+
+const SaleDashboardPage = lazy(() => import('./features/sale/SaleDashboardPage'));
+const SaleSchedulesPage = lazy(() => import('./features/sale/SaleSchedulesPage'));
+const CustomerLookupPage = lazy(() => import('./features/sale/CustomerLookupPage'));
+const SaleContractsPage = lazy(() => import('./features/sale/SaleContractsPage'));
+const AccountantDashboardPage = lazy(() => import('./features/accountant/AccountantDashboardPage'));
+const AccountantDepositPage = lazy(() => import('./features/accountant/AccountantDepositPage'));
+const AccountantCheckinPage = lazy(() => import('./features/accountant/AccountantCheckinPage'));
+const AccountantMonthlyPage = lazy(() => import('./features/accountant/AccountantMonthlyPage'));
+const AccountantRefundsPage = lazy(() => import('./features/accountant/AccountantRefundsPage'));
+const AccountantPayoutsPage = lazy(() => import('./features/accountant/AccountantPayoutsPage'));
+const AdminUsersPage = lazy(() => import('./features/admin/AdminUsersPage'));
+const AdminEmployeesPage = lazy(() => import('./features/admin/AdminEmployeesPage'));
+const AdminBranchesPage = lazy(() => import('./features/admin/AdminBranchesPage'));
+const AdminRoomsPage = lazy(() => import('./features/admin/AdminRoomsPage'));
+const AdminServicesPage = lazy(() => import('./features/admin/AdminServicesPage'));
+const AdminConditionsPage = lazy(() => import('./features/admin/AdminConditionsPage'));
+const AdminAssetsPage = lazy(() => import('./features/admin/AdminAssetsPage'));
+const AdminDashboardPage = lazy(() => import('./features/admin/AdminDashboardPage'));
+const ManagerDashboardPage = lazy(() => import('./features/manager/ManagerDashboardPage'));
+const ManagerRoomsPage = lazy(() => import('./features/manager/ManagerRoomsPage'));
+const ManagerDepositsPage = lazy(() => import('./features/manager/ManagerDepositsPage'));
+const ManagerResidencyPage = lazy(() => import('./features/manager/ManagerResidencyPage'));
+const ManagerHandoversPage = lazy(() => import('./features/manager/ManagerHandoversPage'));
+const ManagerAssetsPage = lazy(() => import('./features/manager/ManagerAssetsPage'));
+const ManagerContractsPage = lazy(() => import('./features/manager/ManagerContractsPage'));
+
 import Navbar from './components/ui/Navbar';
 import Footer from './components/ui/Footer';
 import ConfirmLogoutModal from './components/ui/ConfirmLogoutModal';
@@ -82,6 +97,27 @@ function ScrollToTop() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [pathname]);
   return null;
+}
+
+/**
+ * Màn hình chờ trong lúc tải file của một trang được tách (xem phần lazy ở đầu file).
+ * Cố ý giữ tối giản và cùng tông nền với app để việc chuyển trang không bị "nháy" —
+ * với mạng bình thường thì nó chỉ xuất hiện trong tích tắc ở lần đầu mở mỗi trang.
+ */
+function PageFallback() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '60vh', width: '100%', background: 'transparent'
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: '50%',
+        border: '3px solid #E7DED2', borderTopColor: '#5C4632',
+        animation: 'spin 0.7s linear infinite'
+      }} />
+      <style>{'@keyframes spin { to { transform: rotate(360deg); } }'}</style>
+    </div>
+  );
 }
 
 // App Wrapper — khởi tạo phiên làm việc khi ứng dụng mở lần đầu
@@ -103,6 +139,8 @@ function AppRoutes() {
   return (
     <>
       <ScrollToTop />
+      {/* Suspense bắt buộc phải bọc ngoài các route dùng lazy() ở đầu file. */}
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         {/* Chỉ khớp ĐÚNG trang gốc "/". Trước đây dùng "/*" khiến route này nuốt hết
             mọi /customer/* (viewing-schedules, deposit-history, ...) và đá khách về
@@ -134,6 +172,7 @@ function AppRoutes() {
           element={user ? (user.role === 'customer' ? <CustomerLayout /> : <DashboardLayout />) : <Navigate to="/login" replace />} 
         />
       </Routes>
+      </Suspense>
       <ConfirmLogoutModal />
     </>
   );
@@ -153,6 +192,7 @@ function CustomerLayout() {
       <Navbar />
 
       <main className="flex-1 bg-background pt-24 pb-16">
+        <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<ProfilePage />} />
           <Route path="/customer/register-lease" element={<RegisterLeasePage />} />
@@ -166,6 +206,7 @@ function CustomerLayout() {
           <Route path="/customer/checkout-request" element={<CustomerCheckoutPage />} />
           <Route path="*" element={<ProfilePage />} />
         </Routes>
+        </Suspense>
       </main>
       
       {/* Footer */}
@@ -495,6 +536,7 @@ function DashboardLayout() {
 
         {/* PAGE BODY */}
         <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto min-h-0">
+          <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/" element={location.pathname === '/profile' ? (user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />) : <DashboardDispatcher />} />
             <Route path="/profile" element={user.role === 'customer' ? <ProfilePage /> : <StaffProfilePage />} />
@@ -531,6 +573,7 @@ function DashboardLayout() {
             {/* Fallback route for unimplemented layout pages */}
             <Route path="*" element={<PlaceholderPage />} />
           </Routes>
+          </Suspense>
         </main>
       </div>
     </div>
