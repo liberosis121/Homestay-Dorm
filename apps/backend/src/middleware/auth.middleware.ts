@@ -6,6 +6,21 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../utils/supabase';
 import { UserRole } from '../types/constants';
+import { TtlCache, getJwtRemainingMs } from '../utils/ttl-cache';
+
+// ─── CACHE XAC THUC ───────────────────────────────────────────────────────────
+// Moi request truoc day ton 1-2 round-trip toi Supabase chi de biet "ai day, vai tro gi",
+// trong khi cau tra loi gan nhu khong doi trong suot phien lam viec. Cache ngan han bo
+// duoc phan lon so do ma van giu nguyen logic xac thuc ben duoi.
+//
+// DANH DOI da biet: doi vai tro / khoa tai khoan se co hieu luc CHAM toi da bang TTL duoi
+// day. Muon co hieu luc ngay thi goi invalidateProfileCache(userId) o cho cap nhat profile.
+const AUTH_TTL_MS = 60_000;
+const authUserCache = new TtlCache<{ id: string; email: string }>(AUTH_TTL_MS);
+const profileCache = new TtlCache<any>(AUTH_TTL_MS);
+
+/** Xoa cache profile cua mot user — goi khi doi vai tro/thong tin de khoi phai cho het TTL. */
+export const invalidateProfileCache = (userId: string) => profileCache.delete(userId);
 
 // ============================================================
 // MIDDLEWARE 1: requireAuth — Xác thực đăng nhập
@@ -48,6 +63,13 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     let user: any = null;
     let authError: any = null;
 
+    // Da xac thuc token nay gan day roi -> dung lai, khoi goi Supabase.
+    const cachedUser = authUserCache.get(token);
+    if (cachedUser) {
+      req.user = cachedUser as any;
+      return next();
+    }
+
     if (token.startsWith('mock-token-')) {
       // Token cầu nối: phần còn lại sau prefix chính là email đăng nhập.
       const tokenPayload = token.replace('mock-token-', '');
@@ -86,6 +108,16 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
     // Bước 4: Gán thông tin user vào request để các middleware/route sau dùng
     req.user = user;
+
+    // Cache lai ket qua. Voi JWT that, khong bao gio cache qua thoi diem token het han —
+    // neu khong se co cua so ngan chap nhan token da qua han.
+    const remainingMs = token.startsWith('mock-token-') ? null : getJwtRemainingMs(token);
+    authUserCache.set(
+      token,
+      { id: user.id, email: user.email },
+      remainingMs != null ? remainingMs : undefined
+    );
+
     next(); // Cho phép tiếp tục xử lý
   } catch (err) {
     return res.status(500).json({
@@ -128,17 +160,26 @@ export const requireRole = (...roles: UserRole[]) => {
 
       // Query bảng profiles để lấy role của user hiện tại
       // (Supabase Auth không lưu role → chúng ta tự quản lý trong bảng profiles)
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('id, role, full_name, phone, avatar_url')
-        .eq('id', req.user.id)
-        .single(); // .single() = chỉ lấy 1 bản ghi, nếu không có thì error
+      // Cache theo user id: cung mot nguoi dung goi nhieu API lien tuc thi chi tra phi
+      // truy van nay 1 lan trong moi chu ky TTL.
+      let profile = profileCache.get(req.user.id);
 
-      if (error || !profile) {
-        return res.status(403).json({
-          success: false,
-          message: 'Không tìm thấy hồ sơ người dùng trong hệ thống.',
-        });
+      if (!profile) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, role, full_name, phone, avatar_url')
+          .eq('id', req.user.id)
+          .single(); // .single() = chỉ lấy 1 bản ghi, nếu không có thì error
+
+        if (error || !data) {
+          return res.status(403).json({
+            success: false,
+            message: 'Không tìm thấy hồ sơ người dùng trong hệ thống.',
+          });
+        }
+        profile = data;
+        // Chi cache khi tim thay — truong hop khong thay khong cache de lan sau con thu lai.
+        profileCache.set(req.user.id, data);
       }
 
       // Kiểm tra role có nằm trong danh sách được phép không
