@@ -1,5 +1,5 @@
 import { formatShortId } from '../../lib/utils';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { ManagerDeposit } from '../../lib/supabaseClient';
 
@@ -62,6 +62,10 @@ export default function ManagerDepositsPage() {
   const [search, setSearch] = useState('');
   const [reviewerNote, setReviewerNote] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Anh minh chung tai rieng khi mo drawer (khong di kem danh sach nua — xem openDrawer).
+  const [evidenceUrl, setEvidenceUrl] = useState<string>('');
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const evidenceRequestRef = useRef<string | null>(null);
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/manager`;
 
@@ -167,10 +171,48 @@ export default function ManagerDepositsPage() {
     });
   }, [deposits, filterStatus, filterType, search]);
 
+  /**
+   * Tai anh minh chung cua RIENG phieu dang mo.
+   * Truoc day anh base64 di kem GET /deposits nen moi lan vao trang deu keo theo vai MB
+   * du nguoi dung khong mo tam nao. Gio chi tai dung luc can.
+   */
+  const loadEvidence = async (dep: ManagerDeposit) => {
+    // Danh dau phieu dang duoc yeu cau: nguoi dung co the bam sang phieu khac truoc khi
+    // response ve, khi do phai bo qua ket qua cu de khong gan nham anh.
+    evidenceRequestRef.current = dep.id;
+    setEvidenceUrl('');
+
+    // Du lieu mock cu van dinh kem san URL anh -> dung luon, khoi goi API.
+    if (dep.bill_image_url) {
+      setEvidenceUrl(dep.bill_image_url);
+      setEvidenceLoading(false);
+      return;
+    }
+    // Backend da bao truoc phieu nay khong co anh -> hien o trong ngay, khoi goi API.
+    if (dep.has_evidence === false) {
+      setEvidenceLoading(false);
+      return;
+    }
+
+    setEvidenceLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/deposits/${dep.id}/evidence`, { headers });
+      const result = await res.json();
+      if (evidenceRequestRef.current !== dep.id) return;
+      if (result.success) setEvidenceUrl(result.data?.evidence_url || '');
+    } catch (err) {
+      console.error('Error fetching deposit evidence:', err);
+    } finally {
+      if (evidenceRequestRef.current === dep.id) setEvidenceLoading(false);
+    }
+  };
+
   const openDrawer = (dep: ManagerDeposit) => {
     setSelected(dep);
     setReviewerNote(dep.reviewer_note || '');
     setDrawerOpen(true);
+    loadEvidence(dep);
   };
 
   const getBedDisplay = (dep: ManagerDeposit) => {
@@ -494,8 +536,13 @@ export default function ManagerDepositsPage() {
                 <div style={{ padding: '10px 16px', borderBottom: `1px solid ${T.border}` }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase' }}>Ảnh bill chuyển khoản</p>
                 </div>
-                {selected.bill_image_url ? (
-                  <img src={selected.bill_image_url} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
+                {evidenceLoading ? (
+                  <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textFaint }}>
+                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 36, display: 'block', marginBottom: 6 }}>progress_activity</span>
+                    <p style={{ fontSize: 12 }}>Đang tải ảnh minh chứng…</p>
+                  </div>
+                ) : evidenceUrl ? (
+                  <img src={evidenceUrl} alt="Bill" style={{ width: '100%', objectFit: 'cover', maxHeight: 190 }} />
                 ) : (
                   <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textFaint }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 6 }}>image_not_supported</span>

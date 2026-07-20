@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { calculateCurrentDepositMonthlyRent } from '../utils/group-refund';
+import { INVOICE_LIST_COLUMNS } from '../types/constants';
 
 const parseInvoiceNote = (note: string | null | undefined): Record<string, any> => {
   if (!note) return {};
@@ -16,6 +17,7 @@ const buildManagerReviewNote = (status: string, reviewerNote?: string) => JSON.s
   reviewer_note: reviewerNote || '',
   reviewed_at: new Date().toISOString()
 });
+
 
 export const managerDepositService = {
   getDeposits: async (filters?: { status?: string; search?: string }, managerId?: string) => {
@@ -36,14 +38,20 @@ export const managerDepositService = {
       { data: rooms },
       { data: beds },
       { data: registrations },
-      { data: customers }
+      { data: customers },
+      { data: invoicesWithEvidence }
     ] = await Promise.all([
-      supabase.from('invoices').select('*').eq('invoice_type', 'deposit'),
+      supabase.from('invoices').select(INVOICE_LIST_COLUMNS).eq('invoice_type', 'deposit'),
       supabase.from('rooms').select('*'),
       supabase.from('beds').select('*'),
       supabase.from('rental_registrations').select('*'),
-      supabase.from('customers').select('*')
+      supabase.from('customers').select('*'),
+      // Chi lay ID cua nhung hoa don CO anh minh chung (payload khong dang ke) de FE biet
+      // truoc nen hien anh hay hien o trong, ma khong phai keo ca anh ve.
+      supabase.from('invoices').select('id').eq('invoice_type', 'deposit').not('evidence_url', 'is', null)
     ]);
+
+    const evidenceInvoiceIds = new Set((invoicesWithEvidence || []).map((r: any) => r.id));
 
     // Bo sung du lieu cho coc NHOM: danh sach giuong (deposit_beds) + thanh vien nhom.
     const depositIds = deposits.map((d) => d.id);
@@ -220,7 +228,10 @@ export const managerDepositService = {
           contract_occupants_count: contractOccupantsCount,
           has_rejected_occupant: hasRejectedOccupant,
           deposit_date: dep.deposit_time || dep.created_at,
-          bill_image_url: (invoice as any).evidence_url || '',
+          // Anh minh chung KHONG di kem danh sach nua (xem INVOICE_LIST_COLUMNS).
+          // FE tai rieng qua GET /manager/deposits/:id/evidence khi mo drawer chi tiet.
+          bill_image_url: '',
+          has_evidence: !!(invoice as any).id && evidenceInvoiceIds.has((invoice as any).id),
           bank_name: (invoice as any).payment_method === 'transfer' ? 'Chuyển khoản' : ((invoice as any).payment_method || 'Tiền mặt'),
           account_number: (invoice as any).reconciliation_id || '',
           status: frontendStatus,
@@ -251,6 +262,26 @@ export const managerDepositService = {
     }
 
     return result;
+  },
+
+  /**
+   * Anh minh chung chuyen khoan cua MOT phieu coc — tach khoi danh sach de danh sach khong
+   * phai cong them vai MB base64 (xem INVOICE_LIST_COLUMNS).
+   *
+   * Lay hoa don MOI NHAT cua phieu, dung dung tieu chi ma getDeposits dung khi dung
+   * newestInvoiceByDeposit — neu khac nhau thi anh hien ra se khong khop voi trang thai
+   * duyet dang hien tren cung drawer.
+   */
+  getDepositEvidence: async (depositId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('evidence_url')
+      .eq('invoice_type', 'deposit')
+      .eq('deposit_id', depositId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return (data && data[0] ? (data[0] as any).evidence_url : null) || null;
   },
 
   updateStatus: async (id: string, newStatus: string, reviewerNote?: string) => {

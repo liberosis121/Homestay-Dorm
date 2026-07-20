@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { getBedsByDepositIds } from '../utils/deposit-beds';
+import { INVOICE_LIST_COLUMNS } from '../types/constants';
 
 export const depositInvoiceRepo = {
   /**
@@ -104,7 +105,9 @@ export const depositInvoiceRepo = {
   getDepositInvoices: async () => {
     const { data: invoices, error } = await supabase
       .from('invoices')
-      .select('*')
+      // KHONG dung select('*'): se keo theo `evidence_url` (anh base64, co ban ghi 781 KB)
+      // trong khi man hinh ke toan khong he hien anh nay. Xem INVOICE_LIST_COLUMNS.
+      .select(INVOICE_LIST_COLUMNS)
       .eq('invoice_type', 'deposit')
       // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
       .order('created_at', { ascending: false });
