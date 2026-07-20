@@ -12,6 +12,27 @@ const T = {
 
 interface KPI { label: string; value: string | number; sub: string; color: string; bg: string; icon: string; }
 
+/**
+ * Thời điểm phát sinh của yêu cầu chờ xử lý. Trước đây hiển thị chuỗi cứng "Mới nhận"
+ * nên phiếu tồn hàng tuần cũng trông như vừa đến.
+ * Chuỗi chỉ có ngày ('2026-07-14') được dựng theo giờ địa phương — new Date() hiểu là
+ * 00:00 UTC nên sẽ bịa ra giờ 07:00 ở múi giờ VN.
+ */
+const formatActivityTime = (value?: string | null): string => {
+  if (!value) return 'Chưa rõ thời gian';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('vi-VN', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  }
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return 'Chưa rõ thời gian';
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+};
+
 export default function ManagerDashboardPage() {
   const { user } = useAuthStore();
   const [kpis, setKpis] = useState<KPI[]>([]);
@@ -161,17 +182,24 @@ export default function ManagerDashboardPage() {
           },
         ]);
 
+        // Mỗi nhóm phải TỰ SẮP XẾP mới nhất trước rồi mới cắt hạn mức. Cắt theo thứ tự
+        // API trả về (như trước đây) sẽ giữ nhầm bản ghi cũ và bỏ sót bản ghi mới nhất.
+        const newestFirst = (list: any[]) =>
+          [...list].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+
         const activities = [
-          ...deposits.filter((d: any) => d.status === 'pending').slice(0, 3).map((d: any) => ({
-            icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, badges: [d.room_name, `${(d.amount / 1000000).toFixed(1)}Mđ`], time: 'Mới nhận', link: '/manager/deposits'
+          ...newestFirst(deposits.filter((d: any) => d.status === 'pending')).slice(0, 3).map((d: any) => ({
+            icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, badges: [d.room_name, `${((Number(d.amount) || 0) / 1000000).toFixed(1)}Mđ`], time: d.created_at || null, link: '/manager/deposits'
           })),
-          ...handovers.filter((h: any) => h.status === 'pending' || h.status === 'partial').slice(0, 2).map((h: any) => ({
-            icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, badges: [h.room_name], time: 'Mới nhận', link: '/manager/handovers'
+          ...newestFirst(handovers.filter((h: any) => h.status === 'pending' || h.status === 'partial')).slice(0, 2).map((h: any) => ({
+            icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, badges: [h.room_name], time: h.created_at || null, link: '/manager/handovers'
           })),
-          ...residency.filter((r: any) => r.status === 'pending').slice(0, 2).map((r: any) => ({
-            icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, badges: [r.room_name, `CCCD: ${r.id_number}`], time: 'Mới nhận', link: '/manager/residency-checks'
+          ...newestFirst(residency.filter((r: any) => r.status === 'pending')).slice(0, 2).map((r: any) => ({
+            icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, badges: [r.room_name, `CCCD: ${r.id_number}`], time: r.created_at || null, link: '/manager/residency-checks'
           })),
-        ].slice(0, 6);
+        ]
+          .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
+          .slice(0, 6);
         setRecentActivity(activities);
       } catch (err) {
         console.error('Error loading dashboard data:', err);
@@ -319,7 +347,7 @@ export default function ManagerDashboardPage() {
                     </span>
                   ))}
                 </div>
-                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 6 }}>{act.time}</span>
+                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 6 }}>{formatActivityTime(act.time)}</span>
               </div>
               <div style={{
                 opacity: 0,
