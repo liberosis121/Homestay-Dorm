@@ -8,8 +8,11 @@ export const checkinInvoiceService = {
    * Lay danh sach hoa don nhan phong — CHI trong chi nhanh cua ke toan.
    */
   getInvoices: async (staffUserId?: string) => {
-    const invoices = await checkinInvoiceRepo.getCheckinInvoices();
-    const branchId = await getStaffBranchId(staffUserId);
+    // Hai lenh doc doc lap nhau -> chay song song, bot 1 luot di-ve Supabase.
+    const [invoices, branchId] = await Promise.all([
+      checkinInvoiceRepo.getCheckinInvoices(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(invoices, branchId, (i: any) => i.branch_id);
   },
 

@@ -8,8 +8,12 @@ export const refundService = {
    * Lay cac don yeu cau tra phong chua doi soat — CHI trong chi nhanh cua ke toan.
    */
   getPendingCheckouts: async (staffUserId?: string) => {
-    const checkouts = await refundRepo.getPendingCheckouts();
-    const branchId = await getStaffBranchId(staffUserId);
+    // Tra cuu chi nhanh chi phu thuoc staffUserId, khong lien quan gi toi danh sach ben tren
+    // -> chay song song thay vi xep hang, bot duoc 1 luot di-ve Supabase moi request.
+    const [checkouts, branchId] = await Promise.all([
+      refundRepo.getPendingCheckouts(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(checkouts, branchId, (c: any) => c.branch_id);
   },
 
@@ -17,8 +21,10 @@ export const refundService = {
    * Lay cac ban doi soat hoan coc — CHI trong chi nhanh cua ke toan.
    */
   getReconciliations: async (staffUserId?: string) => {
-    const reconciliations = await refundRepo.getRefundReconciliations();
-    const branchId = await getStaffBranchId(staffUserId);
+    const [reconciliations, branchId] = await Promise.all([
+      refundRepo.getRefundReconciliations(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(reconciliations, branchId, (r: any) => r.branch_id);
   },
 
@@ -26,8 +32,10 @@ export const refundService = {
    * Lay danh sach ung vien hoan coc khi chua ky hop dong (hoan 80%) — CHI trong chi nhanh.
    */
   getCancellationRefunds: async (staffUserId?: string) => {
-    const refunds = await refundRepo.getCancellationRefunds();
-    const branchId = await getStaffBranchId(staffUserId);
+    const [refunds, branchId] = await Promise.all([
+      refundRepo.getCancellationRefunds(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(refunds, branchId, (r: any) => r.branch_id);
   },
 

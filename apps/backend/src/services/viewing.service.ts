@@ -214,8 +214,11 @@ export const viewingService = {
    * (Admin khong bi gioi han — xem utils/branch-scope.)
    */
   getAllSchedules: async (staffUserId?: string) => {
-    const schedules = await viewingRepo.getAllSchedules();
-    const branchId = await getStaffBranchId(staffUserId);
+    // Hai lenh doc doc lap nhau -> chay song song, bot 1 luot di-ve Supabase.
+    const [schedules, branchId] = await Promise.all([
+      viewingRepo.getAllSchedules(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(schedules, branchId, (s: any) => s.rooms?.branches?.id);
   },
 

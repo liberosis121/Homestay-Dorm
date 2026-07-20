@@ -235,22 +235,39 @@ export interface ProfileDto {
   [key: string]: any; // Allow arbitrary fields from child tables (nhan_vien, khach_hang)
 }
 
-async function getLegacyDepositIdsByCustomerCccd(userId: string): Promise<string[]> {
+/**
+ * @param knownCccd CCCD nếu phía gọi ĐÃ có sẵn bản ghi customers (findById và /auth/me đều
+ *   đã đọc bảng này trước đó). Truyền vào để bỏ bớt 1 lượt truy vấn nằm ngay trên đường
+ *   găng của chuỗi customers → rental_registrations → deposit_requests → contracts.
+ *   Phân biệt rõ hai trường hợp: `undefined` = phía gọi không biết, phải tự tra;
+ *   `null` = phía gọi biết chắc khách KHÔNG có CCCD, khỏi tra cho tốn.
+ */
+async function getLegacyDepositIdsByCustomerCccd(
+  userId: string,
+  knownCccd?: string | null
+): Promise<string[]> {
   try {
-    const { data: customer, error: customerErr } = await supabase
-      .from('customers')
-      .select('cccd')
-      .eq('user_id', userId)
-      .maybeSingle();
+    let cccd: string | null | undefined = knownCccd;
 
-    if (customerErr || !customer || !customer.cccd) {
+    if (cccd === undefined) {
+      const { data: customer, error: customerErr } = await supabase
+        .from('customers')
+        .select('cccd')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (customerErr) return [];
+      cccd = customer?.cccd ?? null;
+    }
+
+    if (!cccd) {
       return [];
     }
 
     const { data: regs, error: regsErr } = await supabase
       .from('rental_registrations')
       .select('id')
-      .eq('cccd', customer.cccd);
+      .eq('cccd', cccd);
 
     if (regsErr || !regs || regs.length === 0) {
       return [];
@@ -273,69 +290,112 @@ async function getLegacyDepositIdsByCustomerCccd(userId: string): Promise<string
   }
 }
 
-async function getVisibleContractsForCustomer(userId: string, status?: string): Promise<any[]> {
+/**
+ * Gộp các lời gọi TRÙNG NHAU đang chạy CÙNG LÚC.
+ *
+ * `getRentingRoomName`, `hasContractHistory`, `getCustomerStayStatus` đều cần đúng cùng
+ * một danh sách hợp đồng của khách. Trước đây mỗi hàm tự chạy lại nguyên chuỗi truy vấn
+ * -> cùng một dữ liệu bị lấy 3 lần. Ở đây chỉ chia sẻ Promise ĐANG BAY: khi nó xong thì
+ * key bị xoá ngay, nên KHÔNG có chuyện phục vụ dữ liệu cũ ở lần gọi sau.
+ */
+const inFlightVisibleContracts = new Map<string, Promise<any[]>>();
+
+async function getVisibleContractsForCustomer(
+  userId: string,
+  status?: string,
+  knownCccd?: string | null
+): Promise<any[]> {
+  // Key KHÔNG gồm knownCccd: cccd vốn suy ra từ userId nên hai lời gọi cùng (userId, status)
+  // luôn cho cùng kết quả, dù bên nào có sẵn cccd hay không.
+  const key = `${userId}::${status ?? ''}`;
+  const existing = inFlightVisibleContracts.get(key);
+  if (existing) return existing;
+
+  const pending = loadVisibleContractsForCustomer(userId, status, knownCccd)
+    .finally(() => inFlightVisibleContracts.delete(key));
+  inFlightVisibleContracts.set(key, pending);
+  return pending;
+}
+
+async function loadVisibleContractsForCustomer(
+  userId: string,
+  status?: string,
+  knownCccd?: string | null
+): Promise<any[]> {
   const contractsById = new Map<string, any>();
 
-  const { data: links, error: linkErr } = await supabase
-    .from('contract_customers')
-    .select('contract_id')
-    .eq('customer_user_id', userId);
+  // Hợp đồng "liên kết" và hợp đồng "legacy" là hai nhánh ĐỘC LẬP — trước đây chạy nối
+  // tiếp nên phải chờ hết nhánh này mới sang nhánh kia. Chạy song song, kết quả gộp vào
+  // cùng một Map như cũ nên thứ tự ưu tiên không đổi (legacy vẫn ghi đè sau).
+  const [linkedContracts, legacyContracts] = await Promise.all([
+    (async () => {
+      const { data: links, error: linkErr } = await supabase
+        .from('contract_customers')
+        .select('contract_id')
+        .eq('customer_user_id', userId);
 
-  if (linkErr) {
-    console.error('Error resolving customer contract links:', linkErr);
+      if (linkErr) {
+        console.error('Error resolving customer contract links:', linkErr);
+      }
+
+      const linkedContractIds = Array.from(new Set((links || [])
+        .map((link: any) => link.contract_id)
+        .filter(Boolean)));
+
+      if (linkedContractIds.length === 0) return [];
+
+      let query = supabase
+        .from('contracts')
+        .select('id, deposit_id, status, created_date, start_date, end_date')
+        .in('id', linkedContractIds);
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data, error: contractErr } = await query;
+      if (contractErr) {
+        console.error('Error resolving linked customer contracts:', contractErr);
+      }
+      return data || [];
+    })(),
+    (async () => {
+      const legacyDepositIds = await getLegacyDepositIdsByCustomerCccd(userId, knownCccd);
+      if (legacyDepositIds.length === 0) return [];
+
+      let query = supabase
+        .from('contracts')
+        .select('id, deposit_id, status, created_date, start_date, end_date')
+        .in('deposit_id', legacyDepositIds);
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data, error: legacyContractErr } = await query;
+      if (legacyContractErr) {
+        console.error('Error resolving legacy customer contracts:', legacyContractErr);
+      }
+      return data || [];
+    })()
+  ]);
+
+  for (const contract of linkedContracts) {
+    if (contract?.id) contractsById.set(contract.id, contract);
   }
-
-  const linkedContractIds = Array.from(new Set((links || [])
-    .map((link: any) => link.contract_id)
-    .filter(Boolean)));
-
-  if (linkedContractIds.length > 0) {
-    let query = supabase
-      .from('contracts')
-      .select('id, deposit_id, status, created_date, start_date, end_date')
-      .in('id', linkedContractIds);
-
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    const { data: linkedContracts, error: contractErr } = await query;
-    if (contractErr) {
-      console.error('Error resolving linked customer contracts:', contractErr);
-    }
-
-    for (const contract of linkedContracts || []) {
-      if (contract?.id) contractsById.set(contract.id, contract);
-    }
-  }
-
-  const legacyDepositIds = await getLegacyDepositIdsByCustomerCccd(userId);
-  if (legacyDepositIds.length > 0) {
-    let query = supabase
-      .from('contracts')
-      .select('id, deposit_id, status, created_date, start_date, end_date')
-      .in('deposit_id', legacyDepositIds);
-
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    const { data: legacyContracts, error: legacyContractErr } = await query;
-    if (legacyContractErr) {
-      console.error('Error resolving legacy customer contracts:', legacyContractErr);
-    }
-
-    for (const contract of legacyContracts || []) {
-      if (contract?.id) contractsById.set(contract.id, contract);
-    }
+  for (const contract of legacyContracts) {
+    if (contract?.id) contractsById.set(contract.id, contract);
   }
 
   return Array.from(contractsById.values());
 }
 
-export async function getRentingRoomName(userId: string): Promise<string | undefined> {
+export async function getRentingRoomName(
+  userId: string,
+  knownCccd?: string | null
+): Promise<string | undefined> {
   try {
-    const activeContracts = await getVisibleContractsForCustomer(userId, 'active');
+    const activeContracts = await getVisibleContractsForCustomer(userId, 'active', knownCccd);
     const activeDepositIds = activeContracts
       .map((contract: any) => contract.deposit_id)
       .filter(Boolean);
@@ -373,9 +433,12 @@ export async function getRentingRoomName(userId: string): Promise<string | undef
   }
 }
 
-export async function hasContractHistory(userId: string): Promise<boolean> {
+export async function hasContractHistory(
+  userId: string,
+  knownCccd?: string | null
+): Promise<boolean> {
   try {
-    const contracts = await getVisibleContractsForCustomer(userId);
+    const contracts = await getVisibleContractsForCustomer(userId, undefined, knownCccd);
     return contracts.length > 0;
   } catch (err) {
     console.error('Error checking contract history:', err);
@@ -462,9 +525,12 @@ async function getLatestCompletedCheckoutDate(contractIds: string[]): Promise<st
     .pop() || null;
 }
 
-export async function getCustomerStayStatus(userId: string): Promise<CustomerStayStatus> {
+export async function getCustomerStayStatus(
+  userId: string,
+  knownCccd?: string | null
+): Promise<CustomerStayStatus> {
   try {
-    const contracts = await getVisibleContractsForCustomer(userId);
+    const contracts = await getVisibleContractsForCustomer(userId, undefined, knownCccd);
     if (contracts.length === 0) return 'new';
 
     if (contracts.some((contract: any) => contract.status === 'active')) {
@@ -580,10 +646,20 @@ export const profileRepo = {
       }
 
       if (customer) {
-        const rentingRoomName = await getRentingRoomName(id);
-        const hasHistory = await hasContractHistory(id);
-        const stayStatus = await getCustomerStayStatus(id);
-        const checkoutAllowed = await canRequestCheckout(id);
+        // 4 hàm này ĐỘC LẬP với nhau và đều chỉ ĐỌC. Trước đây chúng xếp hàng nối tiếp,
+        // mà mỗi hàm lại tự chạy nguyên một chuỗi truy vấn con -> tổng cộng khoảng 20 lượt
+        // đi-về Supabase liên tiếp, đo được 1.8–2.2 giây cho một lần mở hồ sơ.
+        // Chạy song song + gộp lời gọi trùng (xem inFlightVisibleContracts) giữ nguyên
+        // kết quả nhưng chỉ còn tốn bằng nhánh chậm nhất.
+        // Bản ghi `customer` ngay trên đã có cccd -> truyền xuống để chuỗi con khỏi phải
+        // truy vấn lại bảng customers (bước đầu tiên nằm ngay trên đường găng).
+        const knownCccd = (customer as any).cccd ?? null;
+        const [rentingRoomName, hasHistory, stayStatus, checkoutAllowed] = await Promise.all([
+          getRentingRoomName(id, knownCccd),
+          hasContractHistory(id, knownCccd),
+          getCustomerStayStatus(id, knownCccd),
+          canRequestCheckout(id)
+        ]);
         return {
           ...profile,
           ...customer,

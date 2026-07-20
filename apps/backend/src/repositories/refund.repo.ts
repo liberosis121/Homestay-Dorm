@@ -19,66 +19,79 @@ export const refundRepo = {
 
     if (!checkouts || checkouts.length === 0) return [];
 
-    // 2. Fetch related contracts
+    // Cac buoc lay du lieu duoi day truoc kia chay NOI TIEP het (10 luot di-ve Supabase xep
+    // hang), du phan lon chung khong phu thuoc nhau. Nay gom thanh 5 TANG: trong moi tang cac
+    // truy van chay song song, tang sau chi cho tang truoc dung phan no thuc su can.
+    // Thu tu gop du lieu va toan bo logic ben duoi giu NGUYEN.
+
+    // ── Tang 2: tat ca chi can contractIds ───────────────────────────────────
     const contractIds = checkouts.map(ch => ch.contract_id).filter(Boolean);
-    const { data: contracts } = contractIds.length > 0
-      ? await supabase.from('contracts').select('*').in('id', contractIds)
-      : { data: [] as any[] };
+    const [contracts, incidentals, unpaidInvoices, refundInvoices, bedsByContract] = await Promise.all([
+      // 2. Fetch related contracts
+      contractIds.length > 0
+        ? supabase.from('contracts').select('*').in('id', contractIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      // 2b. Fetch cac khoan phi phat sinh / den bu hu hong that (incidental_costs) theo hop dong,
+      // de tu dong dien vao bang doi soat hoan coc thay vi de k- toan nhap tay.
+      contractIds.length > 0
+        ? supabase.from('incidental_costs').select('*').in('contract_id', contractIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      // 2c. Fetch cac hoa don dinh ky CHUA thanh toan (dien nuoc con no) theo hop dong.
+      contractIds.length > 0
+        ? supabase.from('invoices').select('contract_id, amount, status')
+            .eq('invoice_type', 'monthly').not('water_record_id', 'is', null)
+            .in('contract_id', contractIds).in('status', ['pending', 'unpaid']).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      // Fetch refund invoices containing the manager's check-out deductions notes.
+      // Chi doc contract_id + note -> KHONG select('*') de khoi keo theo cot evidence_url
+      // (anh base64, xem INVOICE_LIST_COLUMNS trong types/constants.ts).
+      contractIds.length > 0
+        ? supabase.from('invoices').select('contract_id, note')
+            .eq('invoice_type', 'refund')
+            .in('contract_id', contractIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      // Giuong THUC SU cua hop dong (contract_beds) — dung de tinh COC THUC TE cua HD (TH3 nhom co
+      // nguoi rot: chi tinh giuong nguoi dat, khong tinh ca coc nhom goc da hoan phan nguoi rot).
+      // Chi phu thuoc contractIds nen keo len chay cung tang nay.
+      getBedsByContractIds(contractIds)
+    ]);
 
-    // 2b. Fetch cac khoan phi phat sinh / den bu hu hong that (incidental_costs) theo hop dong,
-    // de tu dong dien vao bang doi soat hoan coc thay vi de k- toan nhap tay.
-    const { data: incidentals } = contractIds.length > 0
-      ? await supabase.from('incidental_costs').select('*').in('contract_id', contractIds)
-      : { data: [] as any[] };
-
-    // 2c. Fetch cac hoa don dinh ky CHUA thanh toan (dien nuoc con no) theo hop dong.
-    const { data: unpaidInvoices } = contractIds.length > 0
-      ? await supabase.from('invoices').select('contract_id, amount, status')
-          .eq('invoice_type', 'monthly').not('water_record_id', 'is', null)
-          .in('contract_id', contractIds).in('status', ['pending', 'unpaid'])
-      : { data: [] as any[] };
-
-    // Fetch refund invoices containing the manager's check-out deductions notes
-    const { data: refundInvoices } = contractIds.length > 0
-      ? await supabase.from('invoices').select('*')
-          .eq('invoice_type', 'refund')
-          .in('contract_id', contractIds)
-      : { data: [] as any[] };
-
+    // ── Tang 3: can contracts ────────────────────────────────────────────────
     // 3. Resolve deposit_requests to get room details
     const depositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
-    const { data: depositReqs } = depositIds.length > 0
-      ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
-      : { data: [] as any[] };
+    const depositReqs = depositIds.length > 0
+      ? await supabase.from('deposit_requests').select('*').in('id', depositIds).then(r => r.data || [])
+      : ([] as any[]);
 
-    // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
-    const bedsByDeposit = await getBedsByDepositIds((depositReqs || []).map(dr => dr.id));
-    // Giuong THUC SU cua hop dong (contract_beds) — dung de tinh COC THUC TE cua HD (TH3 nhom co
-    // nguoi rot: chi tinh giuong nguoi dat, khong tinh ca coc nhom goc da hoan phan nguoi rot).
-    const bedsByContract = await getBedsByContractIds(contractIds);
-
-    // 4. Fetch rooms
+    // ── Tang 4: tat ca chi can depositReqs ───────────────────────────────────
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
-    const { data: rooms } = roomIds.length > 0
-      ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
-      : { data: [] as any[] };
-
-    // 5. Fetch branches
-    const branchIds = (rooms || []).map(r => r.branch_id).filter(Boolean);
-    const { data: branches } = branchIds.length > 0
-      ? await supabase.from('branches').select('id, name').in('id', branchIds)
-      : { data: [] as any[] };
-
-    // 6. Fetch customer profiles
     const regIds = (depositReqs || []).map(dr => dr.registration_id).filter(Boolean);
-    const { data: regs } = regIds.length > 0
-      ? await supabase.from('rental_registrations').select('id, cccd').in('id', regIds)
-      : { data: [] as any[] };
+    const [bedsByDeposit, rooms, regs] = await Promise.all([
+      // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+      getBedsByDepositIds((depositReqs || []).map(dr => dr.id)),
+      // 4. Fetch rooms
+      roomIds.length > 0
+        ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      // 6a. Fetch registrations (de tra ra cccd cua khach)
+      regIds.length > 0
+        ? supabase.from('rental_registrations').select('id, cccd').in('id', regIds).then(r => r.data || [])
+        : Promise.resolve([] as any[])
+    ]);
 
+    // ── Tang 5: branches can rooms, customers can regs — doc lap nhau ────────
+    const branchIds = (rooms || []).map(r => r.branch_id).filter(Boolean);
     const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
-    const { data: customers } = cccds.length > 0
-      ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
-      : { data: [] as any[] };
+    const [branches, customers] = await Promise.all([
+      // 5. Fetch branches
+      branchIds.length > 0
+        ? supabase.from('branches').select('id, name').in('id', branchIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      // 6b. Fetch customer profiles
+      cccds.length > 0
+        ? supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds).then(r => r.data || [])
+        : Promise.resolve([] as any[])
+    ]);
 
     // 7. Map results in-memory
     return checkouts.map(checkout => {
@@ -277,48 +290,59 @@ export const refundRepo = {
 
     if (!reconciliations || reconciliations.length === 0) return [];
 
-    // 2. Fetch related checkouts
+    // Cung cach xu ly nhu getPendingCheckouts: gom 9 buoc noi tiep thanh cac TANG song song.
+    // Logic va thu tu gop du lieu giu NGUYEN.
+
+    // ── Tang 2: checkouts va deductions deu chi can `reconciliations` ────────
     const checkoutIds = reconciliations.map(r => r.checkout_id).filter(Boolean);
-    const { data: checkouts } = checkoutIds.length > 0
-      ? await supabase.from('checkouts').select('*').in('id', checkoutIds)
-      : { data: [] as any[] };
+    const recIds = reconciliations.map(r => r.id).filter(Boolean);
+    const [checkouts, deductions] = await Promise.all([
+      // 2. Fetch related checkouts
+      checkoutIds.length > 0
+        ? supabase.from('checkouts').select('*').in('id', checkoutIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      recIds.length > 0
+        ? supabase.from('deductions').select('*').in('reconciliation_id', recIds).then(r => r.data || [])
+        : Promise.resolve([] as any[])
+    ]);
 
-    // 3. Fetch related contracts
+    // ── Tang 3: ca hai chi can contractIds ───────────────────────────────────
     const contractIds = (checkouts || []).map(ch => ch.contract_id).filter(Boolean);
-    const { data: contracts } = contractIds.length > 0
-      ? await supabase.from('contracts').select('*').in('id', contractIds)
-      : { data: [] as any[] };
+    const [contracts, bedsByContract] = await Promise.all([
+      // 3. Fetch related contracts
+      contractIds.length > 0
+        ? supabase.from('contracts').select('*').in('id', contractIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      // Giuong THUC SU cua hop dong — dung de tinh coc thuc te cua HD (nhat quan voi getPendingCheckouts).
+      getBedsByContractIds(contractIds)
+    ]);
 
+    // ── Tang 4: can contracts ────────────────────────────────────────────────
     // 4. Resolve rooms and customer info
     const depositIds = (contracts || []).map(c => c.deposit_id).filter(Boolean);
-    const { data: depositReqs } = depositIds.length > 0
-      ? await supabase.from('deposit_requests').select('*').in('id', depositIds)
-      : { data: [] as any[] };
+    const depositReqs = depositIds.length > 0
+      ? await supabase.from('deposit_requests').select('*').in('id', depositIds).then(r => r.data || [])
+      : ([] as any[]);
 
-    // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
-    const bedsByDeposit = await getBedsByDepositIds((depositReqs || []).map(dr => dr.id));
-    // Giuong THUC SU cua hop dong — dung de tinh coc thuc te cua HD (nhat quan voi getPendingCheckouts).
-    const bedsByContract = await getBedsByContractIds(contractIds);
-
+    // ── Tang 5: tat ca chi can depositReqs ───────────────────────────────────
     const roomIds = (depositReqs || []).map(dr => dr.room_id).filter(Boolean);
-    const { data: rooms } = roomIds.length > 0
-      ? await supabase.from('rooms').select('id, name, branch_id').in('id', roomIds)
-      : { data: [] as any[] };
-
     const regIds = (depositReqs || []).map(dr => dr.registration_id).filter(Boolean);
-    const { data: regs } = regIds.length > 0
-      ? await supabase.from('rental_registrations').select('id, cccd').in('id', regIds)
-      : { data: [] as any[] };
+    const [bedsByDeposit, rooms, regs] = await Promise.all([
+      // Giuong giu cho tu bang noi deposit_beds (coc le = 1, nhom = N, nguyen phong = 0).
+      getBedsByDepositIds((depositReqs || []).map(dr => dr.id)),
+      roomIds.length > 0
+        ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds).then(r => r.data || [])
+        : Promise.resolve([] as any[]),
+      regIds.length > 0
+        ? supabase.from('rental_registrations').select('id, cccd').in('id', regIds).then(r => r.data || [])
+        : Promise.resolve([] as any[])
+    ]);
 
+    // ── Tang 6: can regs ─────────────────────────────────────────────────────
     const cccds = (regs || []).map(rg => rg.cccd).filter(Boolean);
-    const { data: customers } = cccds.length > 0
-      ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds)
-      : { data: [] as any[] };
-
-    const recIds = reconciliations.map(r => r.id).filter(Boolean);
-    const { data: deductions } = recIds.length > 0
-      ? await supabase.from('deductions').select('*').in('reconciliation_id', recIds)
-      : { data: [] as any[] };
+    const customers = cccds.length > 0
+      ? await supabase.from('customers').select('cccd, full_name, phone').in('cccd', cccds).then(r => r.data || [])
+      : ([] as any[]);
 
     // 5. Map in-memory
     const result = reconciliations.map(rec => {
