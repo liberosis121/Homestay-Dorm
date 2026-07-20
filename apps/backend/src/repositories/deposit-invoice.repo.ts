@@ -36,7 +36,8 @@ export const depositInvoiceRepo = {
     // Fetch song song các bang lien quan
     const [roomsRes, regsRes] = await Promise.all([
       roomIds.length > 0 ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds) : { data: [] },
-      regIds.length > 0 ? supabase.from('rental_registrations').select('id, cccd').in('id', regIds) : { data: [] }
+      // expected_move_in_date: ke toan can biet ngay KH du kien vao o de uu tien lap hoa don.
+      regIds.length > 0 ? supabase.from('rental_registrations').select('id, cccd, expected_move_in_date').in('id', regIds) : { data: [] }
     ]);
 
     const rooms = roomsRes.data || [];
@@ -71,6 +72,7 @@ export const depositInvoiceRepo = {
         rental_registrations: reg ? {
           id: reg.id,
           cccd: reg.cccd,
+          expected_move_in_date: reg.expected_move_in_date || null,
           customers: customer ? {
             user_id: customer.user_id,
             profiles: {

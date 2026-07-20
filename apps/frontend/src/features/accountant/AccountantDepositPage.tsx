@@ -10,6 +10,18 @@ import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { accountantService } from './services/accountant.service';
 import { formatShortId } from '../../lib/utils';
 
+/**
+ * Ngày dự kiến vào ở lưu dạng date-only ('2026-07-24'). Dựng Date theo giờ địa phương
+ * thay vì new Date(chuỗi) — chuỗi date-only bị hiểu là UTC nên có thể lùi 1 ngày.
+ * Định dạng khớp với dòng "Ngày gửi" bên cạnh (toLocaleDateString('vi-VN')).
+ */
+const formatMoveInDate = (value: string): string => {
+  if (value.includes('T')) return new Date(value).toLocaleDateString('vi-VN');
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString('vi-VN');
+};
+
 export default function AccountantDepositPage() {
   const { user } = useAuthStore();
   const { isSubmitting, guard } = useSubmitLock();
@@ -64,7 +76,8 @@ export default function AccountantDepositPage() {
             branch_name: req.rooms?.branches?.name || req.branch_name || '',
             viewing_schedule_id: req.viewing_schedule_id || '',
             deposit_amount: req.deposit_amount,
-            expected_move_in_date: req.expected_move_in_date || '',
+            // Trường này nằm trên rental_registrations, KHÔNG phải trên deposit_requests.
+            expected_move_in_date: req.rental_registrations?.expected_move_in_date || '',
             status: req.status,
             note: req.note || '',
             created_at: req.created_at || ''
@@ -164,7 +177,8 @@ export default function AccountantDepositPage() {
           branch_name: req.rooms?.branches?.name || req.branch_name || '',
           viewing_schedule_id: req.viewing_schedule_id || '',
           deposit_amount: req.deposit_amount,
-          expected_move_in_date: req.expected_move_in_date || '',
+          // Trường này nằm trên rental_registrations, KHÔNG phải trên deposit_requests.
+          expected_move_in_date: req.rental_registrations?.expected_move_in_date || '',
           status: req.status,
           note: req.note || '',
           created_at: req.created_at || ''
@@ -363,7 +377,12 @@ export default function AccountantDepositPage() {
                         </span>
                       </div>
                       <div className="text-right text-[#8A7563]">
-                        Dự kiến vào: {req.expected_move_in_date}
+                        Dự kiến vào:{' '}
+                        {req.expected_move_in_date ? (
+                          <span className="text-[#5e5f5d]">{formatMoveInDate(req.expected_move_in_date)}</span>
+                        ) : (
+                          <span className="italic">Chưa có</span>
+                        )}
                       </div>
                     </div>
                   </div>
