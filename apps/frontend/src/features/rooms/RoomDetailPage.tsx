@@ -304,6 +304,13 @@ export default function RoomDetailPage() {
     );
   }
 
+  // Giá tiền luôn lấy từ beds.price — đây là giá backend dùng để tính cọc/hợp đồng.
+  // room.price chỉ là giá catalog dùng cho bộ lọc và có thể lệch với giá giường thật.
+  const bedPrices = beds.map(b => Number(b.price) || 0).filter(p => p > 0);
+  const minBedPrice = bedPrices.length ? Math.min(...bedPrices) : room.price;
+  const maxBedPrice = bedPrices.length ? Math.max(...bedPrices) : room.price;
+  const hasMixedBedPrices = minBedPrice !== maxBedPrice;
+
   // Dummy gallery photos
   const galleryImages = [
     room.image_url,
@@ -383,14 +390,19 @@ export default function RoomDetailPage() {
 
             <div className="p-6 bg-surface-container-low border border-outline-variant/30 rounded-2xl shadow-sm">
               <p className="text-caption text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">
-                Đơn giá mỗi giường
+                {hasMixedBedPrices ? 'Giá giường từ' : 'Đơn giá mỗi giường'}
               </p>
               <div className="flex items-baseline gap-1">
                 <span className="font-headline-md text-headline-md text-primary font-bold">
-                  {room.price.toLocaleString('vi-VN')}đ
+                  {minBedPrice.toLocaleString('vi-VN')}đ
                 </span>
                 <span className="text-on-surface-variant text-sm">/tháng</span>
               </div>
+              {hasMixedBedPrices && (
+                <p className="text-caption text-on-surface-variant mt-1">
+                  Cao nhất {maxBedPrice.toLocaleString('vi-VN')}đ/tháng tuỳ vị trí giường
+                </p>
+              )}
             </div>
 
             <div className="flex items-start gap-3 p-4 bg-status-success/10 border border-status-success/20 rounded-2xl">

@@ -18,6 +18,7 @@ import CustomSelect from '../../../components/ui/CustomSelect';
 import { fetchLeaseRegistrationsApi } from '../services/sale.service';
 import { useAuthStore } from '../../../stores/authStore';
 import { CreateSchedulePayload } from '../store/useSaleScheduleStore';
+import { translateAmenityTokens } from '../../../lib/amenities';
 
 interface SaleRoom {
   id: string;
@@ -131,7 +132,9 @@ const parseCriteriaMeta = (value?: string): RegistrationCriteriaMeta | null => {
 
 const formatCriteriaNote = (value?: string, occupants = 1) => {
   const meta = parseCriteriaMeta(value);
-  if (!meta?.isGroup) return value || '';
+  // Phiếu cá nhân ghi tiện ích thẳng vào chuỗi. Các phiếu tạo trước đây lưu mã
+  // tiếng Anh ('AC', 'Private WC'...) nên phải dịch lúc hiển thị cho Sale.
+  if (!meta?.isGroup) return translateAmenityTokens(value || '');
   if (meta.displayNote) return meta.displayNote;
 
   return [
