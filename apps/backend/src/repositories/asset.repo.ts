@@ -27,6 +27,12 @@ export const assetRepo = {
       query = query.eq('branch_id', filters.branch_id);
     }
 
+    // Moi nhat len dau. Chot them serial_number cho thu tu on dinh giua cac tai san
+    // cung ngay mua (purchase_date chi co ngay).
+    query = query
+      .order('purchase_date', { ascending: false })
+      .order('serial_number', { ascending: false });
+
     const { data, error } = await query;
     if (error) throw error;
     return data || [];

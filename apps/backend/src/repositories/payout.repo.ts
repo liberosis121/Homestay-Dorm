@@ -21,7 +21,9 @@ export const payoutRepo = {
     const { data: invoices, error } = await supabase
       .from('invoices')
       .select('*')
-      .eq('invoice_type', 'refund');
+      .eq('invoice_type', 'refund')
+      // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`[PayoutRepo] Loi khi lay danh sach phieu chi hoan coc: ${error.message}`);
@@ -211,7 +213,11 @@ export const payoutRepo = {
     });
 
     // Sort descending in memory
-    return result.sort((a, b) => b.id.localeCompare(a.id));
+    // Moi nhat len dau theo THOI GIAN LAP (truoc day sort theo chuoi id -> vo nghia).
+    return result.sort((a, b) =>
+      String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      || String(b.id).localeCompare(String(a.id))
+    );
   },
 
   /**

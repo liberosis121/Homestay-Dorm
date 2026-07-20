@@ -145,7 +145,7 @@ export const handoverRepo = {
 
     // Assign virtual type based on chronological order per contract_id
     const contractHandoverCounts: Record<string, number> = {};
-    return mapped.map(item => {
+    const typed = mapped.map(item => {
       const contractId = item.contract_id;
       if (!contractHandoverCounts[contractId]) {
         contractHandoverCounts[contractId] = 1;
@@ -155,6 +155,11 @@ export const handoverRepo = {
         return { ...item, type: 'checkout' };
       }
     });
+
+    // CHI dao thu tu SAU KHI da gan type. Phep sort tang dan o tren la BAT BUOC: no quyet
+    // dinh bien ban nao la 'checkin' (dau tien) va 'checkout' (sau do) cua moi hop dong.
+    // Dao truoc do se lat nhan nhan phong <-> tra phong.
+    return typed.reverse();
   },
 
   findById: async (id: string) => {

@@ -24,6 +24,8 @@ export const managerDepositService = {
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
+    // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
+    query = query.order('created_at', { ascending: false });
     const { data: deposits, error: depErr } = await query;
     if (depErr) throw depErr;
     if (!deposits || deposits.length === 0) return [];
@@ -93,8 +95,21 @@ export const managerDepositService = {
 
     // 3. Merge related details into ManagerDeposit format expected by the frontend
     // NOTE: include ALL deposits even if no invoice exists yet (use graceful fallbacks)
+    // Mot phieu coc co the co NHIEU hoa don coc (khach thanh toan lai sau khi bi tu choi /
+    // yeu cau bo sung). Truoc day dung invoices.find() -> lay bat ky ban ghi nao Postgres
+    // tra ve truoc, nen trang thai duyet hien thi co the la cua hoa don CU.
+    // Chot tuong minh: luon lay hoa don MOI NHAT cua moi phieu.
+    const newestInvoiceByDeposit = new Map<string, any>();
+    for (const inv of invoices || []) {
+      if (!inv.deposit_id) continue;
+      const current = newestInvoiceByDeposit.get(inv.deposit_id);
+      if (!current || String(inv.created_at || '') > String(current.created_at || '')) {
+        newestInvoiceByDeposit.set(inv.deposit_id, inv);
+      }
+    }
+
     const result_all = deposits.map(dep => {
-        const invoice = invoices?.find(i => i.deposit_id === dep.id) ?? {};
+        const invoice = newestInvoiceByDeposit.get(dep.id) ?? {};
         const room = rooms?.find(r => r.id === dep.room_id) ?? {};
         const registration = registrations?.find(r => r.id === dep.registration_id) ?? {};
         const customer = customers?.find(c => c.cccd === registration.cccd) ?? {};

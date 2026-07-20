@@ -12,7 +12,9 @@ export const checkinInvoiceRepo = {
       .select('*')
       .in('invoice_type', ['checkin', 'monthly'])
       .is('water_record_id', null)
-      .not('contract_id', 'is', null);
+      .not('contract_id', 'is', null)
+      // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`[CheckinInvoiceRepo] Loi khi lay hoa don nhan phong: ${error.message}`);
@@ -106,7 +108,11 @@ export const checkinInvoiceRepo = {
     });
 
     // Sort descending by ID in memory
-    return result.sort((a, b) => b.id.localeCompare(a.id));
+    // Moi nhat len dau theo THOI GIAN LAP (truoc day sort theo chuoi id -> vo nghia).
+    return result.sort((a, b) =>
+      String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      || String(b.id).localeCompare(String(a.id))
+    );
   },
 
   /**

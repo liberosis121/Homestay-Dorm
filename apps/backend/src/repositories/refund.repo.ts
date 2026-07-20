@@ -265,7 +265,11 @@ export const refundRepo = {
     // 1. Fetch reconciliations
     const { data: reconciliations, error } = await supabase
       .from('refund_reconciliations')
-      .select('*');
+      .select('*')
+      // Moi nhat len dau. reconciliation_date chi co ngay nen chot them id de thu tu on dinh
+      // giua cac phieu cung ngay (khong bi doi cho moi lan goi).
+      .order('reconciliation_date', { ascending: false })
+      .order('id', { ascending: false });
 
     if (error) {
       throw new Error(`[RefundRepo] Loi khi lay danh sach doi soat: ${error.message}`);
@@ -375,8 +379,12 @@ export const refundRepo = {
       };
     });
 
-    // Sort descending by ID or reconciliation date in memory
-    return result.sort((a, b) => b.id.localeCompare(a.id));
+    // Moi nhat len dau theo NGAY DOI SOAT (truoc day sort theo chuoi id -> vo nghia).
+    // reconciliation_date chi co ngay nen chot them id cho thu tu on dinh.
+    return result.sort((a, b) =>
+      String(b.reconciliation_date || '').localeCompare(String(a.reconciliation_date || ''))
+      || String(b.id).localeCompare(String(a.id))
+    );
   },
 
   /**

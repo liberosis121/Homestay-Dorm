@@ -11,7 +11,9 @@ export const monthlyInvoiceRepo = {
       .from('invoices')
       .select('*')
       .eq('invoice_type', 'monthly')
-      .not('water_record_id', 'is', null);
+      .not('water_record_id', 'is', null)
+      // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`[MonthlyInvoiceRepo] Loi khi lay hoa don dinh ky: ${error.message}`);
@@ -126,7 +128,11 @@ export const monthlyInvoiceRepo = {
     });
 
     // Sort descending by ID in memory
-    return result.sort((a, b) => b.id.localeCompare(a.id));
+    // Moi nhat len dau theo THOI GIAN LAP (truoc day sort theo chuoi id -> vo nghia).
+    return result.sort((a, b) =>
+      String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      || String(b.id).localeCompare(String(a.id))
+    );
   },
 
   /**
@@ -142,7 +148,9 @@ export const monthlyInvoiceRepo = {
     const { data: contracts, error } = await supabase
       .from('contracts')
       .select('*')
-      .in('status', statuses);
+      .in('status', statuses)
+      // Moi nhat len dau de ke toan thay ngay hop dong vua ky khi lap hoa don.
+      .order('created_date', { ascending: false });
 
     if (error) {
       throw new Error(`[MonthlyInvoiceRepo] Loi khi lay hop dong active: ${error.message}`);

@@ -105,7 +105,9 @@ export const depositInvoiceRepo = {
     const { data: invoices, error } = await supabase
       .from('invoices')
       .select('*')
-      .eq('invoice_type', 'deposit');
+      .eq('invoice_type', 'deposit')
+      // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`[DepositInvoiceRepo] Loi khi lay hoa don coc: ${error.message}`);
@@ -188,8 +190,13 @@ export const depositInvoiceRepo = {
       };
     });
 
-    // Sort in-memory by ID descending
-    return result.sort((a, b) => b.id.localeCompare(a.id));
+    // Moi nhat len dau theo THOI GIAN LAP. Truoc day sort theo chuoi id giam dan, nhung id
+    // tron giua 'HDTT-xxx' va UUID nen thu tu ra vo nghia (khong theo thoi gian).
+    // Chot them id de thu tu on dinh khi trung created_at.
+    return result.sort((a, b) =>
+      String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      || String(b.id).localeCompare(String(a.id))
+    );
   },
 
   /**

@@ -224,6 +224,10 @@ export const managerContractRepo = {
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
+    // Moi nhat len dau. created_date chi co ngay nen chot them id cho thu tu on dinh.
+    query = query
+      .order('created_date', { ascending: false })
+      .order('id', { ascending: false });
     const { data: contracts, error: contractErr } = await query;
     if (contractErr) throw contractErr;
     if (!contracts || contracts.length === 0) return [];
