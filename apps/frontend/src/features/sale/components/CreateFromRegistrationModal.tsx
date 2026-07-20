@@ -31,6 +31,18 @@ interface SaleRoom {
   amenities?: string[];
   image_url?: string;
   status?: string;
+  available_beds_count?: number;
+}
+
+/** Một dòng trong bảng "Đối chiếu nhanh". */
+interface MatchCheck {
+  label: string;
+  ok: boolean;
+  need: string;
+  actual: string;
+  /** Mặc định "Khách"/"Phòng"; đổi cho các dòng là điều kiện hệ thống. */
+  needPrefix?: string;
+  actualPrefix?: string;
 }
 
 interface SaleBranch {
@@ -91,17 +103,65 @@ const maxBudget = (value?: string) => ({
   flexible: Number.POSITIVE_INFINITY,
 }[value || ''] ?? Number.POSITIVE_INFINITY);
 
+/**
+ * DB đang tồn tại SONG SONG hai quy ước giới tính:
+ *  - customers.gender: backend ghi tiếng Việt 'Nam'/'Nữ'/'Khác' (auth.service.ts),
+ *    nhưng dữ liệu seed cũ lại là 'male'/'female'.
+ *  - rooms.gender_type: luôn 'male'/'female'/'unisex'.
+ * Vì vậy phải quy về một chuẩn TRƯỚC KHI so sánh, nếu không 'Nam' và 'male' sẽ bị
+ * coi là lệch nhau dù hiển thị ra đều là "Nam".
+ * Đối chiếu với mapCustomerGenderToRoomType() bên backend (lease.service.ts).
+ */
+const normalizeGender = (value?: string): string => {
+  const g = (value || '').trim().toLowerCase();
+  if (!g) return '';
+  if (g === 'nam' || g === 'male') return 'male';
+  if (g === 'nữ' || g === 'nu' || g === 'female') return 'female';
+  if (g === 'unisex' || g === 'linh hoạt') return 'unisex';
+  if (g === 'group' || g === 'theo nhóm') return 'group';
+  return g;
+};
+
 const genderLabel = (value?: string) => ({
   male: 'Nam',
   female: 'Nữ',
   unisex: 'Linh hoạt',
   group: 'Theo nhóm',
-}[value || ''] || value || 'Không yêu cầu');
+}[normalizeGender(value)] || value || 'Không yêu cầu');
 
-const statusLabel = (value?: string) => ({
-  available: 'Còn trống',
-  occupied: 'Đã thuê',
-}[value || ''] || 'Chưa rõ');
+/**
+ * Trạng thái phòng KHÔNG phải giá trị trong bảng rooms: backend suy ra từ số giường
+ * trống (room.service.ts -> deriveRoomAvailability) và trả về 4 giá trị
+ * 'available' | 'partial' | 'occupied' | 'maintenance'.
+ *
+ * Lưu ý nghiệp vụ: 'occupied' chỉ có nghĩa "không còn giường nào trống" — có thể do
+ * giường mới đặt cọc, hoặc do phòng chưa khai báo giường — nên không được hiển thị
+ * là "Đã thuê".
+ */
+const roomStatusInfo = (value?: string, availableBeds?: number) => {
+  switch (value) {
+    case 'available':
+      return { label: 'Còn trống', tone: 'border-[#c8d9c0] bg-[#eef6ea] text-[#4f6f4a]' };
+    case 'partial':
+      return {
+        label: typeof availableBeds === 'number' ? `Còn ${availableBeds} giường` : 'Còn giường trống',
+        tone: 'border-[#c8d9c0] bg-[#eef6ea] text-[#4f6f4a]',
+      };
+    case 'occupied':
+      return { label: 'Hết giường', tone: 'border-[#e5bbbb] bg-[#f8eeee] text-[#9a3f3f]' };
+    case 'maintenance':
+      return { label: 'Bảo trì', tone: 'border-[#ead1a0] bg-[#fff7e7] text-[#8a6426]' };
+    default:
+      // Hiện luôn mã lạ thay vì nuốt lặng, để lần sau backend đổi enum là lộ ra ngay.
+      return {
+        label: value ? `Không xác định (${value})` : 'Không xác định',
+        tone: 'border-[#ddd6cc] bg-[#f4f1ec] text-[#6b6259]',
+      };
+  }
+};
+
+const statusLabel = (value?: string, availableBeds?: number) =>
+  roomStatusInfo(value, availableBeds).label;
 
 const formatDate = (value?: string) => {
   if (!value) return 'Chưa chọn';
@@ -307,14 +367,23 @@ export default function CreateFromRegistrationModal({
     const preferredAmenities = registration.preferred_amenities || [];
     const roomAmenities = room.amenities || [];
     const matchedAmenities = preferredAmenities.filter((item) => roomAmenities.includes(item)).length;
-    const checks = [
+    const checks: MatchCheck[] = [
       { label: 'Chi nhánh', ok: !registration.preferred_branch_id || room.branch_id === registration.preferred_branch_id, need: branchName(registration.preferred_branch_id), actual: branchName(room.branch_id) },
       { label: 'Loại phòng', ok: !registration.preferred_room_type || normalizeType(room.room_type) === normalizeType(registration.preferred_room_type), need: registration.preferred_room_type || 'Linh hoạt', actual: room.room_type },
       { label: 'Ngân sách', ok: !room.price || room.price <= maxBudget(registration.budget_range), need: budgetLabel(registration.budget_range), actual: money(room.price) },
       { label: 'Sức chứa tối đa', ok: (room.capacity || 0) >= (registration.occupants_count || 1), need: `${registration.occupants_count || 1} người`, actual: room.capacity ? `${room.capacity} người` : '—' },
-      { label: 'Giới tính', ok: room.gender_type === 'unisex' || registration.gender === 'group' || !registration.gender || (room.gender_type || '').toLowerCase() === (registration.gender || '').toLowerCase(), need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
+      { label: 'Giới tính', ok: normalizeGender(room.gender_type) === 'unisex' || normalizeGender(registration.gender) === 'group' || !normalizeGender(registration.gender) || normalizeGender(room.gender_type) === normalizeGender(registration.gender), need: genderLabel(registration.gender), actual: genderLabel(room.gender_type) },
       { label: 'Tiện ích', ok: preferredAmenities.length === 0 || matchedAmenities >= Math.ceil(preferredAmenities.length * 0.6), need: preferredAmenities.join(', ') || 'Không yêu cầu', actual: roomAmenities.join(', ') || 'Chưa có' },
-      { label: 'Trạng thái', ok: room.status === 'available', need: 'Còn trống', actual: statusLabel(room.status) },
+      // Đây là điều kiện hệ thống, KHÔNG phải nhu cầu khách nêu ra → dùng tiền tố riêng.
+      // 'partial' vẫn còn giường trống nên hoàn toàn xếp được lịch xem phòng.
+      {
+        label: 'Trạng thái',
+        ok: room.status === 'available' || room.status === 'partial',
+        need: 'Còn chỗ trống',
+        actual: statusLabel(room.status, room.available_beds_count),
+        needPrefix: 'Cần',
+        actualPrefix: 'Hiện tại',
+      },
     ];
     const score = checks.reduce((sum, item) => sum + (item.ok ? 1 : 0), 0);
     return {
@@ -418,7 +487,11 @@ export default function CreateFromRegistrationModal({
     onClose();
   };
 
-  const comparisonRoom = hoveredRoom || selectedRoom || suggestedRooms[0];
+  // Phòng đã chọn LUÔN thắng: trước đây hoveredRoom được ưu tiên nhưng không bao giờ
+  // được xoá, nên panel kẹt ở phòng vừa rê chuột qua dù Sale đã click phòng khác.
+  // Hover giờ chỉ dùng để xem trước khi CHƯA chọn phòng nào.
+  const comparisonRoom = selectedRoom || hoveredRoom || suggestedRooms[0];
+  const isPreviewingRoom = !selectedRoom && !!comparisonRoom;
   const allAmenities = Array.from(new Set(rooms.flatMap((room) => room.amenities || [])));
 
   return (
@@ -535,7 +608,7 @@ export default function CreateFromRegistrationModal({
                       {!isSale && <CustomSelect value={filters.branchId} onChange={(value) => setFilters((prev) => ({ ...prev, branchId: value }))} options={[{ value: '', label: 'Tất cả CN' }, ...branches.map((branch) => ({ value: branch.id, label: branch.name.replace('Chi nhánh ', '') }))]} className="w-full min-w-[150px] sm:w-[168px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[200px]" theme="sale" />}
                       <CustomSelect value={filters.roomType} onChange={(value) => setFilters((prev) => ({ ...prev, roomType: value }))} options={[{ value: '', label: 'Mọi loại phòng' }, ...Array.from(new Set(rooms.map((room) => room.room_type))).map((type) => ({ value: type, label: type }))]} className="w-full min-w-[140px] sm:w-[154px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[190px]" theme="sale" />
                       <CustomSelect value={filters.priceRange} onChange={(value) => setFilters((prev) => ({ ...prev, priceRange: value }))} options={[{ value: '', label: 'Mọi mức giá' }, { value: 'under_2m', label: 'Dưới 2tr' }, { value: '2m_5m', label: '2-5tr' }, { value: '5m_7m', label: '5-7tr' }]} className="w-full min-w-[150px] sm:w-[164px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[185px]" theme="sale" />
-                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'occupied', label: 'Đã thuê' }]} className="w-full min-w-[160px] sm:w-[178px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[205px]" theme="sale" />
+                      <CustomSelect value={filters.status} onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))} options={[{ value: '', label: 'Mọi trạng thái' }, { value: 'available', label: 'Còn trống' }, { value: 'partial', label: 'Còn giường trống' }, { value: 'occupied', label: 'Hết giường' }, { value: 'maintenance', label: 'Bảo trì' }]} className="w-full min-w-[160px] sm:w-[178px]" triggerClassName="rounded-lg border-[#d8cbb8] bg-[#fffdf9] px-3 py-1.5 min-h-[36px] text-[13px] shadow-sm hover:bg-[#f7f4ef] active:scale-[0.99]" dropdownClassName="min-w-[205px]" theme="sale" />
                     </div>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {allAmenities.map((amenity) => {
@@ -547,9 +620,10 @@ export default function CreateFromRegistrationModal({
                         );
                       })}
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-3" onMouseLeave={() => setHoveredRoom(null)}>
                       {suggestedRooms.map((room) => {
                         const active = selectedRoom?.id === room.id;
+                        const statusInfo = roomStatusInfo(room.status, room.available_beds_count);
                         return (
                           <button key={room.id} type="button" onMouseEnter={() => setHoveredRoom(room)} onFocus={() => setHoveredRoom(room)} onClick={() => { setSelectedRoom(room); setHoveredRoom(room); }} className={`w-full text-left rounded-2xl border p-4 transition-all active:scale-[0.995] ${active ? 'border-[#4f6f4a] bg-[#f2f7ef] shadow-md' : 'border-[#d8cbb8] bg-white hover:border-[#9a866b] hover:bg-[#faf8f4] hover:shadow-sm'}`}>
                             <div className="flex gap-4">
@@ -567,7 +641,7 @@ export default function CreateFromRegistrationModal({
                                   <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{room.room_type}</span>
                                   <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">{money(room.price)}</span>
                                   <span className="inline-flex items-center rounded-full border border-[#e2d8ca] bg-[#fbfaf7] px-2.5 py-1 text-[11px] font-semibold text-[#5f584f]">Tối đa {room.capacity || '—'} người</span>
-                                  <span className="inline-flex items-center rounded-full border border-[#c8d9c0] bg-[#eef6ea] px-2.5 py-1 text-[11px] font-bold text-[#4f6f4a]">{statusLabel(room.status)}</span>
+                                  <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${statusInfo.tone}`}>{statusInfo.label}</span>
                                 </div>
                                 {(room.amenities || []).length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -602,7 +676,12 @@ export default function CreateFromRegistrationModal({
                     </div>
                     {comparisonRoom ? (
                       <div className="space-y-2">
-                        <p className="font-bold text-[#3f3528]">{comparisonRoom.name}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-bold text-[#3f3528]">{comparisonRoom.name}</p>
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${isPreviewingRoom ? 'border-[#e2d8ca] bg-[#f4f1ec] text-[#7f756b]' : 'border-[#c8d9c0] bg-[#eef6ea] text-[#4f6f4a]'}`}>
+                            {isPreviewingRoom ? 'Đang xem trước' : 'Phòng đã chọn'}
+                          </span>
+                        </div>
                         {matchInfo(comparisonRoom, selectedRegistration).checks.map((item) => (
                           <div key={item.label} className="rounded-xl border border-[#eee6dc] bg-[#fbfaf7] px-3 py-2.5">
                             <div className="flex items-start gap-2">
@@ -611,8 +690,8 @@ export default function CreateFromRegistrationModal({
                               </span>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-bold text-[#5f584f]">{item.label}</p>
-                                <p className="mt-1 text-xs text-[#7f756b]">Khách: {item.need}</p>
-                                <p className="text-xs text-[#3f3528]">Phòng: {item.actual}</p>
+                                <p className="mt-1 text-xs text-[#7f756b]">{item.needPrefix || 'Khách'}: {item.need}</p>
+                                <p className="text-xs text-[#3f3528]">{item.actualPrefix || 'Phòng'}: {item.actual}</p>
                               </div>
                             </div>
                           </div>
