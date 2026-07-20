@@ -382,7 +382,8 @@ export const invoiceService = {
 
     const { data: inv, error: fErr } = await supabase
       .from('invoices')
-      .select('invoice_type, deposit_id, status')
+      // note: can de go dau duyet 'need_more' cu sau khi khach nop lai minh chung.
+      .select('invoice_type, deposit_id, status, note')
       .eq('id', invoiceId)
       .maybeSingle();
 
@@ -436,6 +437,21 @@ export const invoiceService = {
       .from('deposit_requests')
       .update({ status: DEPOSIT_STATUS.PENDING })
       .eq('id', inv.deposit_id);
+
+    // Khach da nop minh chung MOI theo yeu cau "Can bo sung" cua quan ly -> go dau duyet cu
+    // trong note, neu khong manager-deposit.service se mai map phieu ve 'need_more' va phieu
+    // khong bao gio quay lai hang cho duyet.
+    // CHI go cho 'need_more'. Khong go cho 'rejected': nhanh do da nha giuong/phong, cho phieu
+    // tu nhay lai hang cho duyet la sai nghiep vu (cho co the da co nguoi khac dat).
+    const currentNote = parseInvoiceNote((inv as any).note);
+    if (currentNote.manager_deposit_status === 'need_more') {
+      const { manager_deposit_status, reviewer_note, reviewed_at, ...restNote } = currentNote;
+      const hasOtherKeys = Object.keys(restNote).length > 0;
+      await supabase
+        .from('invoices')
+        .update({ note: hasOtherKeys ? JSON.stringify(restNote) : null })
+        .eq('id', invoiceId);
+    }
 
     return { success: true, submitted: true };
   },
