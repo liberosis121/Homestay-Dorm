@@ -29,6 +29,18 @@ const collectionPct = (paid: number, outstanding: number) => {
 // Định dạng thời gian thật từ payment_time; null/không hợp lệ → "Chưa thanh toán".
 const formatPaymentTime = (t: any) => {
   if (!t) return 'Chưa thanh toán';
+
+  // Giá trị chỉ có ngày ('2026-07-11', vd reconciliation_date) KHÔNG mang thông tin giờ.
+  // new Date() hiểu chuỗi này là 00:00 UTC nên sẽ bịa ra "07:00" ở múi giờ VN.
+  // Dựng theo giờ địa phương và chỉ hiện ngày.
+  const dateOnly = typeof t === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t);
+  if (dateOnly) {
+    const [year, month, day] = t.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('vi-VN', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  }
+
   const d = new Date(t);
   if (isNaN(d.getTime())) return 'Chưa thanh toán';
   return d.toLocaleString('vi-VN', {
@@ -79,7 +91,7 @@ const computeDashboardStats = (
   ).length;
 
   const recentActivities: any[] = [];
-  (depInvoices || []).slice(0, 3).forEach((inv: any) => {
+  (depInvoices || []).forEach((inv: any) => {
     recentActivities.push({
       id: inv.id,
       type: 'deposit',
@@ -90,7 +102,7 @@ const computeDashboardStats = (
       path: '/accountant/invoices/deposit'
     });
   });
-  (chkInvoices || []).slice(0, 2).forEach((inv: any) => {
+  (chkInvoices || []).forEach((inv: any) => {
     recentActivities.push({
       id: inv.id,
       type: 'checkin',
@@ -101,12 +113,23 @@ const computeDashboardStats = (
       path: '/accountant/invoices/checkin'
     });
   });
-  (refunds || []).slice(0, 2).forEach((r: any) => {
+  (refunds || []).forEach((r: any) => {
+    // Phiếu đối soát KHÔNG có customer_name/room_name/refund_amount ở cấp ngoài —
+    // các trường này nằm lồng trong checkouts.contracts. Đọc phẳng sẽ ra "Khách hàng"/"Phòng".
+    const refundContract = r.checkouts?.contracts || {};
+    // final_refund âm nghĩa là khấu trừ vượt tiền cọc -> khách phải TRẢ THÊM (additional_charge),
+    // không phải được hoàn. Ghi "Hoàn -5.400.000đ" là đọc ngược nghiệp vụ.
+    const finalRefund = Number(r.refund_amount ?? r.final_refund ?? 0);
+    const additionalCharge = Number(r.additional_charge ?? 0);
+    const moneyLabel = finalRefund < 0 || additionalCharge > 0
+      ? `Thu thêm ${(additionalCharge || Math.abs(finalRefund)).toLocaleString('vi-VN')} ₫`
+      : `Hoàn ${finalRefund.toLocaleString('vi-VN')} ₫`;
+
     recentActivities.push({
       id: r.id,
       type: 'refund',
-      title: `Đối soát cọc: ${r.customer_name || 'Khách hàng'}`,
-      subtitle: `${r.room_name || 'Phòng'} - Hoàn ${Number(r.refund_amount ?? r.final_refund ?? 0).toLocaleString('vi-VN')} ₫`,
+      title: `Đối soát cọc: ${r.customer_name || refundContract.customer_name || 'Khách hàng'}`,
+      subtitle: `${r.room_name || refundContract.rooms?.name || 'Phòng'} - ${moneyLabel}`,
       status: r.status,
       time: r.payment_time || r.reconciliation_date || null,
       path: '/accountant/refunds'
@@ -114,6 +137,8 @@ const computeDashboardStats = (
   });
 
   // Sắp xếp giảm dần theo thời gian; các mục chưa có thời gian (null) xuống cuối.
+  // Phải sort TOÀN BỘ rồi mới cắt: cắt trước khi sort (slice ngay lúc push) sẽ lấy nhầm
+  // các bản ghi đầu danh sách API thay vì các giao dịch mới nhất.
   recentActivities.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
 
   return {

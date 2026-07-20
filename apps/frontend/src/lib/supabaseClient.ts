@@ -408,7 +408,9 @@ export interface ManagerContract {
   start_date: string;
   end_date: string;
   duration: string;
-  status: 'active' | 'expired' | 'terminated';
+  // Khớp với CONTRACT_STATUS bên backend (types/constants.ts). 'pending_payment' =
+  // đã lập HĐ, chờ khách thanh toán hóa đơn nhận phòng thì mới lên 'active'.
+  status: 'pending_payment' | 'active' | 'expired' | 'terminated';
   terms: string;
   payment_policy: string;
   termination_policy: string;
