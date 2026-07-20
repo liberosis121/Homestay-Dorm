@@ -114,9 +114,15 @@ export default function ManagerDashboardPage() {
         const residency = residencyData.success ? residencyData.data : [];
         const handovers = handoversData.success ? handoversData.data : [];
 
-        const occupied = rooms.filter((r: any) => r.status === 'occupied').length;
+        // KHÔNG dùng cột rooms.status: nó không được cập nhật theo giường nên lệch thực tế
+        // (phòng đã kín giường vẫn ghi 'available', phòng còn giường trống lại ghi 'occupied').
+        // Tính từ số liệu giường do backend đính kèm.
+        // "Đang có người ở" = phòng có ÍT NHẤT 1 giường có người.
+        const occupied = rooms.filter((r: any) => (r.occupied_beds_count || 0) > 0).length;
         const total = rooms.length;
-        const available = rooms.filter((r: any) => r.status === 'available').length;
+        // "Sẵn sàng cho thuê" = phòng còn ít nhất 1 giường trống. Phòng chưa khai báo
+        // giường nào (total_beds = 0) không thể cho thuê nên bị loại.
+        const available = rooms.filter((r: any) => (r.available_beds_count || 0) > 0).length;
         const pendingDeposits = deposits.filter((d: any) => d.status === 'pending').length;
         const pendingResidency = residency.filter((r: any) => r.status === 'pending').length;
 
