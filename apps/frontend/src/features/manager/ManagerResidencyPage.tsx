@@ -26,7 +26,7 @@ interface RoomGroup {
   group_status: 'pending' | 'partial' | 'completed';
   deposit_status: string;   // trạng thái phiếu cọc
   is_cancelled: boolean;    // phiếu cọc đã bị hủy (rejected/cancelled/refunded)
-  latest_at: string;        // thời điểm khai báo mới nhất trong nhóm (để sắp xếp theo thời gian)
+  latest_at: string;
 }
 
 // Phiếu cọc đã bị hủy → nhóm là trạng thái CUỐI, không cho xác nhận / hủy lại.
@@ -166,7 +166,6 @@ export default function ManagerResidencyPage() {
         : (allEvaluated ? 'completed' : 'partial');
       const deposit_status = members[0].deposit_status || '';
       const is_cancelled = CANCELLED_DEPOSIT_STATUSES.includes(deposit_status);
-      // Thời điểm khai báo MỚI NHẤT trong nhóm — mốc để sắp xếp danh sách theo thời gian.
       const latest_at = members.reduce((mx, m) => {
         const t = String(m.created_at || '');
         return t > mx ? t : mx;
@@ -182,7 +181,6 @@ export default function ManagerResidencyPage() {
         latest_at,
       };
     })
-    // Mới nhất lên đầu (giảm dần theo thời gian); nhóm thiếu thời gian xuống cuối.
     .sort((a, b) => String(b.latest_at || '').localeCompare(String(a.latest_at || '')));
   }, [records]);
 
@@ -306,10 +304,7 @@ export default function ManagerResidencyPage() {
         })
       });
 
-      // 2. Also update all residency checks in this group to 'rejected'.
-      // Giữ NGUYÊN lý do thẩm định đã nhập cho thành viên đã 'không đạt'; chỉ gán lý do mặc định
-      // 'Hủy phiếu đặt cọc' cho người CHƯA có lý do (đang chờ / đạt nhưng bị hủy theo phiếu).
-      // Trước đây gán cứng 'Hủy phiếu đặt cọc' cho tất cả -> ghi đè mất lý do thật manager nhập.
+      // 2. Also update all residency checks in this group to 'rejected'
       await Promise.all(selectedGroup.members.map(async (m) => {
         const reason = (m.status === 'rejected' && m.violation_note?.trim())
           ? m.violation_note

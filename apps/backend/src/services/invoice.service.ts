@@ -342,6 +342,7 @@ export const invoiceService = {
 
       return {
         id: inv.id,
+        createdAt: inv.created_at || undefined,
         deposit_id: inv.deposit_id || undefined,
         billingPeriod,
         month,

@@ -144,8 +144,11 @@ export default function InvoicesDashboardPage() {
       return true;
     });
 
-    // Sort by due date descending (newest / most recent first)
-    return [...list].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+    return [...list].sort((a, b) => {
+      const ta = a.createdAt || a.dueDate || '';
+      const tb = b.createdAt || b.dueDate || '';
+      return String(tb).localeCompare(String(ta)) || String(b.id).localeCompare(String(a.id));
+    });
   }, [invoices, filters]);
 
   // Selected Invoice Object

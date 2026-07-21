@@ -120,26 +120,17 @@ export const residencyService = {
       return ids;
     };
 
-    // Helper: resolve phieu coc cua 1 ban ghi cu tru (dai dien lan thanh vien nhom).
-    // Moi lan khach dang ky lai se sinh 1 PHIEU COC MOI (vd PDC-007 roi PDC-008). Ban ghi cu tru
-    // KHONG luu deposit_id nen phai suy ra tu CCCD — nhung 1 CCCD co the co NHIEU phieu. Truoc day
-    // code "uu tien phieu paid" nen ban ghi cu tru cua lan dang ky MOI (phieu moi con dang rot/huy)
-    // bi gan nham ve phieu paid CU -> hien sai ma phieu coc va bi gop nham nhom.
-    // Sua: bam theo THOI DIEM tao ban ghi cu tru — lay phieu coc MOI NHAT duoc tao truoc/bang luc
-    // khai bao. Nho vay moi lan o gan dung phieu coc cua chinh lan do.
     const CANCELLED_DEPOSIT_STATUSES = ['rejected', 'cancelled', 'refunded'];
     const depositForResidency = (cccd: string, resCreatedAt?: string) => {
       const regIds = regIdsForCccd(cccd);
       const mine = (deposits || [])
         .filter(d => regIds.has(d.registration_id))
-        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); // moi -> cu
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
       if (mine.length === 0) return null;
-      // Phieu coc moi nhat duoc tao TRUOC/BANG thoi diem khai bao cu tru nay.
       if (resCreatedAt) {
         const matched = mine.find(d => String(d.created_at) <= String(resCreatedAt));
         if (matched) return matched;
       }
-      // Fallback (thieu created_at hoac lech gio): giu hanh vi cu — uu tien paid, roi phieu da-huy, roi moi nhat.
       return mine.find(d => d.status === 'paid')
         || mine.find(d => CANCELLED_DEPOSIT_STATUSES.includes(d.status))
         || mine[0];
@@ -180,7 +171,6 @@ export const residencyService = {
         violation_note: res.reject_reason || '',
         status: res.check_result || 'pending',
         confirmed: isApproved,
-        // Thoi diem khai bao cu tru — de FE sap xep danh sach theo thoi gian giam dan.
         created_at: res.created_at || '',
         deposit_ref: contract.deposit_id || dep.id || '',
         // Trang thai phieu coc — de FE biet phieu da bi HUY (rejected/cancelled/refunded) va
