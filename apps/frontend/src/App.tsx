@@ -131,10 +131,15 @@ export default function App() {
 
 function AppRoutes() {
   const { user, initialize } = useAuthStore();
+  const isInitializing = useAuthStore(state => state.isInitializing);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  if (isInitializing) {
+    return <PageFallback />;
+  }
 
   return (
     <>
