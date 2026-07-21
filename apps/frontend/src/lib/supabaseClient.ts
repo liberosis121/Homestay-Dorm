@@ -89,7 +89,7 @@ export interface CustomerDepositRequest {
   deposit_amount: number;
   expected_move_in_date: string;
   // 'pending' là giá trị thật từ DB Supabase; 'pending_sale_confirmation' là giá trị mock DB cũ.
-  status: 'pending' | 'pending_sale_confirmation' | 'pending_payment' | 'confirmed' | 'invoice_created' | 'paid' | 'cancelled';
+  status: 'pending' | 'pending_sale_confirmation' | 'pending_payment' | 'confirmed' | 'invoice_created' | 'paid' | 'cancelled' | 'rejected' | 'refunded';
   note?: string;
   created_at: string;
 }

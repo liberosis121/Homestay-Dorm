@@ -6,7 +6,7 @@ import { getMyDepositsApi } from './deposit.api';
 import { useAuthStore } from '../../stores/authStore';
 
 const getDynamicStatus = (request: CustomerDepositRequest, matchingMgrDep?: ManagerDeposit) => {
-  if (request.status === 'paid' || matchingMgrDep?.status === 'approved') {
+  if (request.status === 'paid' || request.status === 'refunded' || matchingMgrDep?.status === 'approved') {
     return {
       label: 'Đã cọc thành công',
       cls: 'bg-status-success/10 text-status-success border-status-success/20',
@@ -21,6 +21,15 @@ const getDynamicStatus = (request: CustomerDepositRequest, matchingMgrDep?: Mana
       cls: 'bg-error-container text-error border-error/20',
       icon: XCircle,
       desc: 'Yêu cầu đặt cọc đã được hủy.',
+      showPayBtn: false,
+    };
+  }
+  if (request.status === 'rejected') {
+    return {
+      label: 'Đã hủy',
+      cls: 'bg-error-container text-error border-error/20',
+      icon: XCircle,
+      desc: 'Phiếu cọc đã bị hủy (không đạt điều kiện lưu trú hoặc bị từ chối). Nếu đã thanh toán, khoản cọc sẽ được hoàn trả.',
       showPayBtn: false,
     };
   }
