@@ -120,20 +120,29 @@ export const residencyService = {
       return ids;
     };
 
-    // Helper: resolve phieu coc cua 1 CCCD (dai dien lan thanh vien nhom).
-    // Uu tien phieu DA THANH TOAN (paid); neu khong con phieu paid — vi da bi HUY sau khi
-    // tham dinh cu tru rot (deposit_requests.status = 'rejected'/'cancelled'/'refunded') — thi
-    // lay phieu da-huy gan nhat. Nho vay man Kiem tra cu tru van hien dung MA PHIEU COC + TEN
-    // PHONG cua phieu cu, thay vi roi ve "unknown"/"Phong chua xep".
+    // Helper: resolve phieu coc cua 1 ban ghi cu tru (dai dien lan thanh vien nhom).
+    // Moi lan khach dang ky lai se sinh 1 PHIEU COC MOI (vd PDC-007 roi PDC-008). Ban ghi cu tru
+    // KHONG luu deposit_id nen phai suy ra tu CCCD — nhung 1 CCCD co the co NHIEU phieu. Truoc day
+    // code "uu tien phieu paid" nen ban ghi cu tru cua lan dang ky MOI (phieu moi con dang rot/huy)
+    // bi gan nham ve phieu paid CU -> hien sai ma phieu coc va bi gop nham nhom.
+    // Sua: bam theo THOI DIEM tao ban ghi cu tru — lay phieu coc MOI NHAT duoc tao truoc/bang luc
+    // khai bao. Nho vay moi lan o gan dung phieu coc cua chinh lan do.
     const CANCELLED_DEPOSIT_STATUSES = ['rejected', 'cancelled', 'refunded'];
-    const depositByCccd = (cccd: string) => {
+    const depositForResidency = (cccd: string, resCreatedAt?: string) => {
       const regIds = regIdsForCccd(cccd);
       const mine = (deposits || [])
         .filter(d => regIds.has(d.registration_id))
-        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); // moi -> cu
+      if (mine.length === 0) return null;
+      // Phieu coc moi nhat duoc tao TRUOC/BANG thoi diem khai bao cu tru nay.
+      if (resCreatedAt) {
+        const matched = mine.find(d => String(d.created_at) <= String(resCreatedAt));
+        if (matched) return matched;
+      }
+      // Fallback (thieu created_at hoac lech gio): giu hanh vi cu — uu tien paid, roi phieu da-huy, roi moi nhat.
       return mine.find(d => d.status === 'paid')
         || mine.find(d => CANCELLED_DEPOSIT_STATUSES.includes(d.status))
-        || null;
+        || mine[0];
     };
 
     // 3. Map into frontend format
@@ -142,7 +151,7 @@ export const residencyService = {
       // Uu tien phieu coc qua hop dong; neu chua co HD (buoc 9) thi resolve phieu coc qua CCCD.
       const dep = (contract.deposit_id
         ? deposits?.find(d => d.id === contract.deposit_id)
-        : depositByCccd(res.cccd)) || {};
+        : depositForResidency(res.cccd, res.created_at)) || {};
       const customer = customers?.find(c => c.cccd === res.cccd) || {};
       const room = rooms?.find(r => r.id === dep.room_id) || {};
 
@@ -171,6 +180,8 @@ export const residencyService = {
         violation_note: res.reject_reason || '',
         status: res.check_result || 'pending',
         confirmed: isApproved,
+        // Thoi diem khai bao cu tru — de FE sap xep danh sach theo thoi gian giam dan.
+        created_at: res.created_at || '',
         deposit_ref: contract.deposit_id || dep.id || '',
         // Trang thai phieu coc — de FE biet phieu da bi HUY (rejected/cancelled/refunded) va
         // khong cho xac nhan lai ket qua kiem tra cho nhom da huy.
