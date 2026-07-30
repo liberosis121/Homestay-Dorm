@@ -26,6 +26,18 @@ router.get('/deposits', async (req, res) => {
   }
 });
 
+// Anh minh chung tai RIENG khi manager mo drawer chi tiet. Truoc day anh base64 di kem
+// GET /deposits nen moi lan mo danh sach deu keo theo vai MB du nguoi dung khong xem tam nao.
+router.get('/deposits/:id/evidence', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const evidenceUrl = await managerDepositService.getDepositEvidence(id);
+    sendSuccess(res, { evidence_url: evidenceUrl }, 'Fetched deposit evidence successfully');
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 router.patch('/deposits/:id/status', async (req, res) => {
   try {
     const { id } = req.params;

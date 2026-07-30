@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { getBedsByDepositIds } from '../utils/deposit-beds';
+import { INVOICE_LIST_COLUMNS } from '../types/constants';
 
 export const depositInvoiceRepo = {
   /**
@@ -36,7 +37,8 @@ export const depositInvoiceRepo = {
     // Fetch song song các bang lien quan
     const [roomsRes, regsRes] = await Promise.all([
       roomIds.length > 0 ? supabase.from('rooms').select('id, name, branch_id').in('id', roomIds) : { data: [] },
-      regIds.length > 0 ? supabase.from('rental_registrations').select('id, cccd').in('id', regIds) : { data: [] }
+      // expected_move_in_date: ke toan can biet ngay KH du kien vao o de uu tien lap hoa don.
+      regIds.length > 0 ? supabase.from('rental_registrations').select('id, cccd, expected_move_in_date').in('id', regIds) : { data: [] }
     ]);
 
     const rooms = roomsRes.data || [];
@@ -71,6 +73,7 @@ export const depositInvoiceRepo = {
         rental_registrations: reg ? {
           id: reg.id,
           cccd: reg.cccd,
+          expected_move_in_date: reg.expected_move_in_date || null,
           customers: customer ? {
             user_id: customer.user_id,
             profiles: {
@@ -102,8 +105,12 @@ export const depositInvoiceRepo = {
   getDepositInvoices: async () => {
     const { data: invoices, error } = await supabase
       .from('invoices')
-      .select('*')
-      .eq('invoice_type', 'deposit');
+      // KHONG dung select('*'): se keo theo `evidence_url` (anh base64, co ban ghi 781 KB)
+      // trong khi man hinh ke toan khong he hien anh nay. Xem INVOICE_LIST_COLUMNS.
+      .select(INVOICE_LIST_COLUMNS)
+      .eq('invoice_type', 'deposit')
+      // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`[DepositInvoiceRepo] Loi khi lay hoa don coc: ${error.message}`);
@@ -186,8 +193,13 @@ export const depositInvoiceRepo = {
       };
     });
 
-    // Sort in-memory by ID descending
-    return result.sort((a, b) => b.id.localeCompare(a.id));
+    // Moi nhat len dau theo THOI GIAN LAP. Truoc day sort theo chuoi id giam dan, nhung id
+    // tron giua 'HDTT-xxx' va UUID nen thu tu ra vo nghia (khong theo thoi gian).
+    // Chot them id de thu tu on dinh khi trung created_at.
+    return result.sort((a, b) =>
+      String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      || String(b.id).localeCompare(String(a.id))
+    );
   },
 
   /**

@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { calculateCurrentDepositMonthlyRent } from '../utils/group-refund';
+import { INVOICE_LIST_COLUMNS } from '../types/constants';
 
 const parseInvoiceNote = (note: string | null | undefined): Record<string, any> => {
   if (!note) return {};
@@ -17,6 +18,7 @@ const buildManagerReviewNote = (status: string, reviewerNote?: string) => JSON.s
   reviewed_at: new Date().toISOString()
 });
 
+
 export const managerDepositService = {
   getDeposits: async (filters?: { status?: string; search?: string }, managerId?: string) => {
     // 1. Fetch deposit_requests from DB
@@ -24,6 +26,8 @@ export const managerDepositService = {
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
+    // Moi nhat len dau: danh sach nghiep vu luon xem theo thu tu phat sinh giam dan.
+    query = query.order('created_at', { ascending: false });
     const { data: deposits, error: depErr } = await query;
     if (depErr) throw depErr;
     if (!deposits || deposits.length === 0) return [];
@@ -34,14 +38,20 @@ export const managerDepositService = {
       { data: rooms },
       { data: beds },
       { data: registrations },
-      { data: customers }
+      { data: customers },
+      { data: invoicesWithEvidence }
     ] = await Promise.all([
-      supabase.from('invoices').select('*').eq('invoice_type', 'deposit'),
+      supabase.from('invoices').select(INVOICE_LIST_COLUMNS).eq('invoice_type', 'deposit'),
       supabase.from('rooms').select('*'),
       supabase.from('beds').select('*'),
       supabase.from('rental_registrations').select('*'),
-      supabase.from('customers').select('*')
+      supabase.from('customers').select('*'),
+      // Chi lay ID cua nhung hoa don CO anh minh chung (payload khong dang ke) de FE biet
+      // truoc nen hien anh hay hien o trong, ma khong phai keo ca anh ve.
+      supabase.from('invoices').select('id').eq('invoice_type', 'deposit').not('evidence_url', 'is', null)
     ]);
+
+    const evidenceInvoiceIds = new Set((invoicesWithEvidence || []).map((r: any) => r.id));
 
     // Bo sung du lieu cho coc NHOM: danh sach giuong (deposit_beds) + thanh vien nhom.
     const depositIds = deposits.map((d) => d.id);
@@ -93,8 +103,21 @@ export const managerDepositService = {
 
     // 3. Merge related details into ManagerDeposit format expected by the frontend
     // NOTE: include ALL deposits even if no invoice exists yet (use graceful fallbacks)
+    // Mot phieu coc co the co NHIEU hoa don coc (khach thanh toan lai sau khi bi tu choi /
+    // yeu cau bo sung). Truoc day dung invoices.find() -> lay bat ky ban ghi nao Postgres
+    // tra ve truoc, nen trang thai duyet hien thi co the la cua hoa don CU.
+    // Chot tuong minh: luon lay hoa don MOI NHAT cua moi phieu.
+    const newestInvoiceByDeposit = new Map<string, any>();
+    for (const inv of invoices || []) {
+      if (!inv.deposit_id) continue;
+      const current = newestInvoiceByDeposit.get(inv.deposit_id);
+      if (!current || String(inv.created_at || '') > String(current.created_at || '')) {
+        newestInvoiceByDeposit.set(inv.deposit_id, inv);
+      }
+    }
+
     const result_all = deposits.map(dep => {
-        const invoice = invoices?.find(i => i.deposit_id === dep.id) ?? {};
+        const invoice = newestInvoiceByDeposit.get(dep.id) ?? {};
         const room = rooms?.find(r => r.id === dep.room_id) ?? {};
         const registration = registrations?.find(r => r.id === dep.registration_id) ?? {};
         const customer = customers?.find(c => c.cccd === registration.cccd) ?? {};
@@ -205,7 +228,10 @@ export const managerDepositService = {
           contract_occupants_count: contractOccupantsCount,
           has_rejected_occupant: hasRejectedOccupant,
           deposit_date: dep.deposit_time || dep.created_at,
-          bill_image_url: (invoice as any).evidence_url || '',
+          // Anh minh chung KHONG di kem danh sach nua (xem INVOICE_LIST_COLUMNS).
+          // FE tai rieng qua GET /manager/deposits/:id/evidence khi mo drawer chi tiet.
+          bill_image_url: '',
+          has_evidence: !!(invoice as any).id && evidenceInvoiceIds.has((invoice as any).id),
           bank_name: (invoice as any).payment_method === 'transfer' ? 'Chuyển khoản' : ((invoice as any).payment_method || 'Tiền mặt'),
           account_number: (invoice as any).reconciliation_id || '',
           status: frontendStatus,
@@ -236,6 +262,26 @@ export const managerDepositService = {
     }
 
     return result;
+  },
+
+  /**
+   * Anh minh chung chuyen khoan cua MOT phieu coc — tach khoi danh sach de danh sach khong
+   * phai cong them vai MB base64 (xem INVOICE_LIST_COLUMNS).
+   *
+   * Lay hoa don MOI NHAT cua phieu, dung dung tieu chi ma getDeposits dung khi dung
+   * newestInvoiceByDeposit — neu khac nhau thi anh hien ra se khong khop voi trang thai
+   * duyet dang hien tren cung drawer.
+   */
+  getDepositEvidence: async (depositId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('evidence_url')
+      .eq('invoice_type', 'deposit')
+      .eq('deposit_id', depositId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return (data && data[0] ? (data[0] as any).evidence_url : null) || null;
   },
 
   updateStatus: async (id: string, newStatus: string, reviewerNote?: string) => {
@@ -271,11 +317,16 @@ export const managerDepositService = {
         .eq('deposit_id', id)
         .eq('invoice_type', 'deposit');
     } else if (newStatus === 'rejected') {
+      // CHỈ từ chối hóa đơn cọc CHƯA thu (khách chưa thanh toán / minh chứng bị từ chối).
+      // KHÔNG lật hóa đơn cọc ĐÃ THU ('paid') về 'rejected' — vì khi phiếu cọc bị hủy do rớt điều
+      // kiện lưu trú, tiền cọc đã thu sẽ được xử lý qua phiếu HOÀN CỌC riêng; hóa đơn cọc phải giữ
+      // nguyên trạng thái "Đã thanh toán".
       await supabase
         .from('invoices')
         .update({ status: 'rejected', note: reviewNote })
         .eq('deposit_id', id)
-        .eq('invoice_type', 'deposit');
+        .eq('invoice_type', 'deposit')
+        .neq('status', 'paid');
 
       // Release reserved bed/room resources
       const { data: dep } = await supabase

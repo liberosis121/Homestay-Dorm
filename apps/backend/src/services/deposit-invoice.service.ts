@@ -7,8 +7,11 @@ export const depositInvoiceService = {
    * Lay danh sach cac phieu dat coc cho lap hoa don — CHI trong chi nhanh cua ke toan.
    */
   getPendingRequests: async (staffUserId?: string) => {
-    const requests = await depositInvoiceRepo.getPendingDepositRequests();
-    const branchId = await getStaffBranchId(staffUserId);
+    // Hai lenh doc doc lap nhau -> chay song song, bot 1 luot di-ve Supabase.
+    const [requests, branchId] = await Promise.all([
+      depositInvoiceRepo.getPendingDepositRequests(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(requests, branchId, (r: any) => r.branch_id);
   },
 
@@ -16,8 +19,10 @@ export const depositInvoiceService = {
    * Lay hoa don dat coc da lap — CHI trong chi nhanh cua ke toan.
    */
   getDepositInvoices: async (staffUserId?: string) => {
-    const invoices = await depositInvoiceRepo.getDepositInvoices();
-    const branchId = await getStaffBranchId(staffUserId);
+    const [invoices, branchId] = await Promise.all([
+      depositInvoiceRepo.getDepositInvoices(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(invoices, branchId, (i: any) => i.branch_id);
   },
 

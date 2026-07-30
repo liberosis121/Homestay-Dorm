@@ -26,6 +26,7 @@ interface MockRoom {
   amenities?: string[];
   image_url?: string;
   status?: string;
+  available_beds_count?: number;
 }
 
 interface MockBranch {
@@ -142,6 +143,8 @@ const SaleSchedulesPage: React.FC = () => {
         amenities: r.amenities,
         image_url: r.image_url,
         status: r.status,
+        // Cần cho badge trạng thái: phòng 'partial' hiển thị số giường còn trống.
+        available_beds_count: r.available_beds_count,
       })));
       // Extract branches từ rooms (mỏi phòng có branches nếu API join)
       const branchMap = new Map<string, MockBranch>();

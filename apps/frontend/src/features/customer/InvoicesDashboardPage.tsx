@@ -144,8 +144,11 @@ export default function InvoicesDashboardPage() {
       return true;
     });
 
-    // Sort by due date descending (newest / most recent first)
-    return [...list].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+    return [...list].sort((a, b) => {
+      const ta = a.createdAt || a.dueDate || '';
+      const tb = b.createdAt || b.dueDate || '';
+      return String(tb).localeCompare(String(ta)) || String(b.id).localeCompare(String(a.id));
+    });
   }, [invoices, filters]);
 
   // Selected Invoice Object
@@ -158,6 +161,13 @@ export default function InvoicesDashboardPage() {
   };
 
   const handlePayAction = (invoiceId: string) => {
+    // Hóa đơn ĐẶT CỌC dùng luồng nộp minh chứng chờ Quản lý duyệt (giống nút ở Lịch sử đặt cọc),
+    // KHÔNG dùng trang thanh toán tức thời — vì cọc phải chờ duyệt rồi Kế toán mới xác nhận đã thu.
+    const inv = invoices.find((i) => i.id === invoiceId);
+    if (inv?.type === 'deposit') {
+      navigate('/customer/deposit', { state: { depositId: inv.deposit_id, from: '/customer/invoices' } });
+      return;
+    }
     navigate(`/customer/payment/${invoiceId}`);
   };
 

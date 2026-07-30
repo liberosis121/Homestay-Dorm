@@ -69,9 +69,13 @@ export default function DepositRegistrationPage() {
 
     if (!depositRequest) {
       setIsLoading(true);
+      // Điều hướng từ tab "Hóa đơn & Thanh toán" chỉ truyền depositId → ưu tiên chọn đúng phiếu cọc đó.
+      const targetDepositId: string | undefined = location.state?.depositId;
       getMyDepositsApi()
         .then((deposits) => {
-          const found = deposits.find(d => d.status === 'invoice_created') || deposits[0];
+          const found = (targetDepositId && deposits.find(d => d.id === targetDepositId))
+            || deposits.find(d => d.status === 'invoice_created')
+            || deposits[0];
           if (found) {
             setDepositRequest(found);
           } else {

@@ -15,7 +15,12 @@ app.use(helmet());
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  // Moi request co header Authorization deu KHONG phai "simple request" nen trinh duyet
+  // bat buoc gui 1 request OPTIONS (preflight) di truoc. Khong khai bao maxAge thi ket qua
+  // preflight gan nhu khong duoc cache -> MOI lan goi API deu ton gap doi so round-trip.
+  // 24h (gioi han tren cua Chrome) -> preflight chi con 1 lan cho ca phien lam viec.
+  maxAge: 86400
 }));
 // Minh chứng thanh toán được gửi dưới dạng data URI base64 nên body có thể lớn.
 // Mặc định express.json() chỉ cho 100KB -> nâng lên 10MB để không bị PayloadTooLargeError.

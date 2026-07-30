@@ -10,8 +10,11 @@ export const monthlyInvoiceService = {
    * Lay danh sach hoa don dinh ky — CHI trong chi nhanh cua ke toan.
    */
   getInvoices: async (staffUserId?: string) => {
-    const invoices = await monthlyInvoiceRepo.getMonthlyInvoices();
-    const branchId = await getStaffBranchId(staffUserId);
+    // Hai lenh doc doc lap nhau -> chay song song, bot 1 luot di-ve Supabase.
+    const [invoices, branchId] = await Promise.all([
+      monthlyInvoiceRepo.getMonthlyInvoices(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(invoices, branchId, (i: any) => i.branch_id);
   },
 
@@ -25,8 +28,10 @@ export const monthlyInvoiceService = {
     const statuses = purpose === 'checkin'
       ? [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.PENDING_PAYMENT]
       : [CONTRACT_STATUS.ACTIVE];
-    const contracts = await monthlyInvoiceRepo.getActiveContracts(statuses);
-    const branchId = await getStaffBranchId(staffUserId);
+    const [contracts, branchId] = await Promise.all([
+      monthlyInvoiceRepo.getActiveContracts(statuses),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(contracts, branchId, (c: any) => c.branch_id);
   },
 

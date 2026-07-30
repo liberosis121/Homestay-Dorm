@@ -154,6 +154,12 @@ export default function BedAvailability({
                 </div>
               </div>
 
+              <div className="text-right shrink-0">
+                <p className="font-label-md text-label-md text-on-surface font-bold">
+                  {(Number(bed.price) || 0).toLocaleString('vi-VN')}đ
+                </p>
+                <p className="text-[11px] text-on-surface-variant">/tháng</p>
+              </div>
             </div>
           );
         })}

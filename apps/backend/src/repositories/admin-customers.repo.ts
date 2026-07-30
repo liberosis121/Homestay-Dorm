@@ -31,9 +31,12 @@ export interface DbCustomerAdmin {
 export const adminCustomersRepo = {
   findAll: async (): Promise<DbCustomerAdmin[]> => {
     // 1. Fetch all customer profiles (role = 'customer' or role = 'locked' but not an employee)
+    // Moi nhat len dau. PHAI sap xep o day: service se format created_at thanh chuoi
+    // vi-VN ('14/7/2026') nen frontend khong con so sanh duoc theo thoi gian nua.
     const { data: profiles, error: pErr } = await supabase
       .from('profiles')
-      .select('*');
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (pErr) throw pErr;
 

@@ -201,3 +201,22 @@ export const MAX_PENDING_REGISTRATIONS_PER_CUSTOMER = 1;
  * Hoàn = giá_giường × 2 tháng × số_người_rớt × tỉ_lệ_này. Đổi tại đây nếu muốn tỉ lệ khác.
  */
 export const GROUP_RESIDENCY_REFUND_RATE = 0.8;
+
+// ============================================================
+// 10. HIỆU NĂNG TRUY VẤN
+// ============================================================
+/**
+ * Danh sách cột của bảng `invoices` dùng cho các API TRẢ VỀ DANH SÁCH —
+ * cố ý KHÔNG chứa `evidence_url`.
+ *
+ * Lý do: `evidence_url` lưu ảnh minh chứng chuyển khoản dưới dạng data URI base64 nhúng
+ * thẳng trong DB (đã có bản ghi 781 KB). Dùng `select('*')` sẽ kéo toàn bộ số ảnh đó về
+ * mỗi lần mở danh sách — đo được 700ms / 1.54MB, so với 81ms / 3.3KB khi bỏ cột này.
+ * Ảnh chỉ được tải riêng đúng lúc người dùng mở chi tiết
+ * (GET /manager/deposits/:id/evidence).
+ *
+ * ⚠️ Khi thêm cột mới vào bảng `invoices`, nhớ bổ sung vào đây, nếu không cột đó sẽ
+ * không xuất hiện trong các API danh sách.
+ */
+export const INVOICE_LIST_COLUMNS =
+  'id, amount, payment_method, payment_time, status, invoice_type, deposit_id, contract_id, water_record_id, reconciliation_id, staff_id, created_at, note, due_date';

@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Calendar, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
@@ -12,10 +13,29 @@ const T = {
 
 interface KPI { label: string; value: string | number; sub: string; color: string; bg: string; icon: string; }
 
+/**
+ * Thời điểm phát sinh của yêu cầu chờ xử lý. Trước đây hiển thị chuỗi cứng "Mới nhận"
+ * nên phiếu tồn hàng tuần cũng trông như vừa đến.
+ * Chuỗi chỉ có ngày ('2026-07-14') được dựng theo giờ địa phương — new Date() hiểu là
+ * 00:00 UTC nên sẽ bịa ra giờ 07:00 ở múi giờ VN.
+ */
+const formatActivityTime = (value?: string | null): string => {
+  if (!value) return 'Chưa rõ thời gian';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('vi-VN', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  }
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return 'Chưa rõ thời gian';
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+};
+
 export default function ManagerDashboardPage() {
   const { user } = useAuthStore();
-  const [kpis, setKpis] = useState<KPI[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   const todayLabel = useMemo(() => {
     return new Date().toLocaleDateString('vi-VN', { 
@@ -89,38 +109,60 @@ export default function ManagerDashboardPage() {
     return { 'Content-Type': 'application/json' };
   };
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const headers = await getAuthHeaders();
-        
-        // Fetch all data in parallel
-        const [roomsRes, depositsRes, residencyRes, handoversRes] = await Promise.all([
-          fetch(`${API_BASE}/rooms`, { headers }),
-          fetch(`${API_BASE}/deposits`, { headers }),
-          fetch(`${API_BASE}/residency`, { headers }),
-          fetch(`${API_BASE}/handovers`, { headers })
-        ]);
+  /**
+   * Tải dữ liệu dashboard qua React Query thay vì useEffect thủ công.
+   * Lợi ích: rời trang rồi quay lại trong 60 giây sẽ dùng lại dữ liệu đã có (xem staleTime
+   * ở main.tsx) thay vì gọi lại 4 API, và gộp luôn cú gọi đôi do StrictMode gây ra ở dev.
+   * Phần tính KPI / hoạt động bên dưới giữ NGUYÊN logic cũ, chỉ chuyển sang useMemo.
+   */
+  const { data, refetch, isFetching } = useQuery({
+    queryKey: ['manager', 'dashboard'],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
 
-        const [roomsData, depositsData, residencyData, handoversData] = await Promise.all([
-          roomsRes.json(),
-          depositsRes.json(),
-          residencyRes.json(),
-          handoversRes.json()
-        ]);
+      // Fetch all data in parallel
+      const [roomsRes, depositsRes, residencyRes, handoversRes] = await Promise.all([
+        fetch(`${API_BASE}/rooms`, { headers }),
+        fetch(`${API_BASE}/deposits`, { headers }),
+        fetch(`${API_BASE}/residency`, { headers }),
+        fetch(`${API_BASE}/handovers`, { headers })
+      ]);
 
-        const rooms = roomsData.success ? roomsData.data : [];
-        const deposits = depositsData.success ? depositsData.data : [];
-        const residency = residencyData.success ? residencyData.data : [];
-        const handovers = handoversData.success ? handoversData.data : [];
+      const [roomsData, depositsData, residencyData, handoversData] = await Promise.all([
+        roomsRes.json(),
+        depositsRes.json(),
+        residencyRes.json(),
+        handoversRes.json()
+      ]);
 
-        const occupied = rooms.filter((r: any) => r.status === 'occupied').length;
-        const total = rooms.length;
-        const available = rooms.filter((r: any) => r.status === 'available').length;
-        const pendingDeposits = deposits.filter((d: any) => d.status === 'pending').length;
-        const pendingResidency = residency.filter((r: any) => r.status === 'pending').length;
+      return {
+        rooms: roomsData.success ? roomsData.data : [],
+        deposits: depositsData.success ? depositsData.data : [],
+        residency: residencyData.success ? residencyData.data : [],
+        handovers: handoversData.success ? handoversData.data : []
+      };
+    }
+  });
 
-        setKpis([
+  const kpis: KPI[] = useMemo(() => {
+    // Chưa có dữ liệu (đang tải hoặc lỗi) thì không hiện thẻ KPI nào — giống hệt hành vi cũ
+    // khi setKpis chưa từng được gọi.
+    if (!data) return [];
+    const { rooms, deposits, residency } = data;
+
+    // KHÔNG dùng cột rooms.status: nó không được cập nhật theo giường nên lệch thực tế
+    // (phòng đã kín giường vẫn ghi 'available', phòng còn giường trống lại ghi 'occupied').
+    // Tính từ số liệu giường do backend đính kèm.
+    // "Đang có người ở" = phòng có ÍT NHẤT 1 giường có người.
+    const occupied = rooms.filter((r: any) => (r.occupied_beds_count || 0) > 0).length;
+    const total = rooms.length;
+    // "Sẵn sàng cho thuê" = phòng còn ít nhất 1 giường trống. Phòng chưa khai báo
+    // giường nào (total_beds = 0) không thể cho thuê nên bị loại.
+    const available = rooms.filter((r: any) => (r.available_beds_count || 0) > 0).length;
+    const pendingDeposits = deposits.filter((d: any) => d.status === 'pending').length;
+    const pendingResidency = residency.filter((r: any) => r.status === 'pending').length;
+
+    return [
           {
             label: 'Tỷ lệ lấp đầy',
             value: total ? `${Math.round((occupied / total) * 100)}%` : '0%',
@@ -153,27 +195,32 @@ export default function ManagerDashboardPage() {
             bg: T.redBg,
             icon: 'badge',
           },
-        ]);
+        ];
+  }, [data]);
 
-        const activities = [
-          ...deposits.filter((d: any) => d.status === 'pending').slice(0, 3).map((d: any) => ({
-            icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, badges: [d.room_name, `${(d.amount / 1000000).toFixed(1)}Mđ`], time: 'Mới nhận', link: '/manager/deposits'
-          })),
-          ...handovers.filter((h: any) => h.status === 'pending' || h.status === 'partial').slice(0, 2).map((h: any) => ({
-            icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, badges: [h.room_name], time: 'Mới nhận', link: '/manager/handovers'
-          })),
-          ...residency.filter((r: any) => r.status === 'pending').slice(0, 2).map((r: any) => ({
-            icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, badges: [r.room_name, `CCCD: ${r.id_number}`], time: 'Mới nhận', link: '/manager/residency-checks'
-          })),
-        ].slice(0, 6);
-        setRecentActivity(activities);
-      } catch (err) {
-        console.error('Error loading dashboard data:', err);
-      }
-    };
+  const recentActivity = useMemo(() => {
+    if (!data) return [];
+    const { deposits, residency, handovers } = data;
 
-    loadDashboardData();
-  }, []);
+        // Mỗi nhóm phải TỰ SẮP XẾP mới nhất trước rồi mới cắt hạn mức. Cắt theo thứ tự
+        // API trả về (như trước đây) sẽ giữ nhầm bản ghi cũ và bỏ sót bản ghi mới nhất.
+        const newestFirst = (list: any[]) =>
+          [...list].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+
+        return [
+          ...newestFirst(deposits.filter((d: any) => d.status === 'pending')).slice(0, 3).map((d: any) => ({
+            icon: 'payments', color: T.amber, bg: T.amberBg, title: `Yêu cầu đặt cọc mới: ${d.customer_name}`, badges: [d.room_name, `${((Number(d.amount) || 0) / 1000000).toFixed(1)}Mđ`], time: d.created_at || null, link: '/manager/deposits'
+          })),
+          ...newestFirst(handovers.filter((h: any) => h.status === 'pending' || h.status === 'partial')).slice(0, 2).map((h: any) => ({
+            icon: 'assignment', color: T.primary, bg: T.primaryLight, title: `Biên bản bàn giao chờ ký: ${h.customer_name}`, badges: [h.room_name], time: h.created_at || null, link: '/manager/handovers'
+          })),
+          ...newestFirst(residency.filter((r: any) => r.status === 'pending')).slice(0, 2).map((r: any) => ({
+            icon: 'how_to_reg', color: T.sage, bg: T.sageBg, title: `Hồ sơ lưu trú mới: ${r.customer_name}`, badges: [r.room_name, `CCCD: ${r.id_number}`], time: r.created_at || null, link: '/manager/residency-checks'
+          })),
+        ]
+          .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
+          .slice(0, 6);
+  }, [data]);
 
 
   return (
@@ -190,9 +237,12 @@ export default function ManagerDashboardPage() {
             {todayLabel}
           </p>
         </div>
+        {/* Trước đây nút này gọi window.location.reload() — tải lại TOÀN BỘ app (kể cả
+            khởi tạo phiên đăng nhập) chỉ để làm mới 4 con số. Giờ chỉ gọi lại đúng 4 API. */}
         <button
           type="button"
-          onClick={() => window.location.reload()}
+          onClick={() => refetch()}
+          disabled={isFetching}
           style={{
             background: T.primaryLight,
             border: `1.5px solid ${T.border}`,
@@ -201,7 +251,8 @@ export default function ManagerDashboardPage() {
             fontSize: 12,
             fontWeight: 700,
             color: T.primary,
-            cursor: 'pointer',
+            cursor: isFetching ? 'default' : 'pointer',
+            opacity: isFetching ? 0.6 : 1,
             transition: 'all 0.15s ease-in-out',
             display: 'flex',
             alignItems: 'center',
@@ -209,7 +260,8 @@ export default function ManagerDashboardPage() {
           }}
           className="hover:bg-primary hover:text-white hover:border-primary active:scale-[0.98]"
         >
-          <RefreshCw className="w-3.5 h-3.5" /> Làm mới dữ liệu
+          <RefreshCw className={`w-3.5 h-3.5${isFetching ? ' animate-spin' : ''}`} />
+          {isFetching ? 'Đang tải…' : 'Làm mới dữ liệu'}
         </button>
       </div>
 
@@ -313,7 +365,7 @@ export default function ManagerDashboardPage() {
                     </span>
                   ))}
                 </div>
-                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 6 }}>{act.time}</span>
+                <span style={{ color: T.textFaint, fontSize: 10.5, display: 'block', marginTop: 6 }}>{formatActivityTime(act.time)}</span>
               </div>
               <div style={{
                 opacity: 0,

@@ -38,6 +38,7 @@ export interface UserProfile {
 interface AuthState {
   user: UserProfile | null;
   loading: boolean;
+  isInitializing: boolean;
   error: string | null;
   isLogoutConfirmOpen: boolean;
 
@@ -65,6 +66,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: false,
+  isInitializing: true,
   error: null,
   isLogoutConfirmOpen: false,
 
@@ -178,7 +180,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   //   → Nếu token đã hết hạn, /me sẽ trả về 401 → interceptor tự xóa token và đá về login.
   initialize: async () => {
     const token = localStorage.getItem('access_token');
-    if (!token) return; // Không có token → không cần làm gì
+    if (!token) {
+      set({ isInitializing: false }); // Không có token → không cần làm gì
+      return;
+    }
 
     set({ loading: true });
     try {
@@ -189,10 +194,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         ...cachedProfile,
         ...result.data, // Luôn cập nhật từ server mới nhất
       };
-      set({ user: userProfile, loading: false });
+      set({ user: userProfile, loading: false, isInitializing: false });
     } catch {
       // Token hết hạn hoặc không hợp lệ — interceptor đã xử lý rồi
-      set({ user: null, loading: false });
+      set({ user: null, loading: false, isInitializing: false });
     }
   },
 }));

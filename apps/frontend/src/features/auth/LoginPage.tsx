@@ -48,7 +48,7 @@ export default function LoginPage() {
     window.location.href = oauthUrl;
   };
 
-  const fillCredential = (presetEmail: string, presetPassword = '12345678') => {
+  const fillCredential = (presetEmail: string, presetPassword = '123456') => {
     setEmail(presetEmail);
     setPassword(presetPassword);
   };
@@ -215,7 +215,7 @@ export default function LoginPage() {
                     { email: 'sale@homestay.com', name: 'Sale (CN Quận 9)' },
                     { email: 'btlui@gmail.com', name: 'Sale (CN Quận 5)' },
                     { email: 'tbn@gmail.com', name: 'Sale (CN Quận 10)' },
-                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)', password: '12345678' },
+                    { email: 'khach_dangthue@homestay.com', name: 'Khách hàng đang thuê (Đang ở)', password: '123456' },
                     { email: 'khach_cu@homestay.com', name: 'Khách hàng cũ (Đã thanh lý)' }
                   ].map((p) => (
                     <button

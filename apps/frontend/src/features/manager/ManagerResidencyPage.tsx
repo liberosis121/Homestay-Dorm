@@ -26,6 +26,7 @@ interface RoomGroup {
   group_status: 'pending' | 'partial' | 'completed';
   deposit_status: string;   // trạng thái phiếu cọc
   is_cancelled: boolean;    // phiếu cọc đã bị hủy (rejected/cancelled/refunded)
+  latest_at: string;
 }
 
 // Phiếu cọc đã bị hủy → nhóm là trạng thái CUỐI, không cho xác nhận / hủy lại.
@@ -160,11 +161,15 @@ export default function ManagerResidencyPage() {
     return Object.entries(map).map(([key, members]) => {
       const allPending = members.every(m => m.status === 'pending');
       const allEvaluated = members.every(m => m.status === 'approved' || m.status === 'rejected');
-      const group_status = allPending
+      const group_status: RoomGroup['group_status'] = allPending
         ? 'pending'
         : (allEvaluated ? 'completed' : 'partial');
       const deposit_status = members[0].deposit_status || '';
       const is_cancelled = CANCELLED_DEPOSIT_STATUSES.includes(deposit_status);
+      const latest_at = members.reduce((mx, m) => {
+        const t = String(m.created_at || '');
+        return t > mx ? t : mx;
+      }, '');
       return {
         room_id: members[0].room_id,
         room_name: members[0].room_name,
@@ -173,8 +178,10 @@ export default function ManagerResidencyPage() {
         group_status,
         deposit_status,
         is_cancelled,
+        latest_at,
       };
-    });
+    })
+    .sort((a, b) => String(b.latest_at || '').localeCompare(String(a.latest_at || '')));
   }, [records]);
 
   const filteredGroups = useMemo(() => {
@@ -299,12 +306,15 @@ export default function ManagerResidencyPage() {
 
       // 2. Also update all residency checks in this group to 'rejected'
       await Promise.all(selectedGroup.members.map(async (m) => {
+        const reason = (m.status === 'rejected' && m.violation_note?.trim())
+          ? m.violation_note
+          : 'Hủy phiếu đặt cọc';
         return fetch(`${API_BASE}/residency/${m.id}/status`, {
           method: 'PATCH',
           headers,
           body: JSON.stringify({
             status: 'rejected',
-            violation_note: 'Hủy phiếu đặt cọc'
+            violation_note: reason
           })
         });
       }));
@@ -572,7 +582,7 @@ export default function ManagerResidencyPage() {
                       : { label: 'Chờ kiểm tra', bg: T.amberBg, color: T.amber };
 
                 return (
-                  <tr key={g.room_id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
+                  <tr key={g.deposit_ref || g.room_id} style={{ borderBottom: `1px solid ${T.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
                     className="hover:bg-[#FAF2E8] transition-colors duration-150"
                     onClick={() => openGroup(g)}>
                     <td style={{ padding: '14px 16px 14px 24px', fontSize: 12, fontWeight: 700, color: T.primary, fontFamily: "'Lexend', sans-serif", whiteSpace: 'nowrap' }}>{formatShortId(g.deposit_ref, 'deposit')}</td>

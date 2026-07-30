@@ -26,25 +26,25 @@ export default function BookingPanel({
   roomStatus
 }: Props) {
   const count = selectedBeds.length;
-  
+
   // Resolve selected bed objects
   const selectedBedObjs = beds.filter(b => selectedBeds.includes(b.id));
 
-  // Dynamic calculations
-  let baseRent = 0;
-  let discount = 0;
-  
-  if (isFullRoomSelected) {
-    // 5% discount for full room package booking
-    const originalRent = beds.length * roomPrice;
-    discount = originalRent * 0.05;
-    baseRent = originalRent - discount;
-  } else {
-    // Sum of selected bed prices
-    baseRent = selectedBedObjs.reduce((sum, b) => sum + b.price, 0);
-  }
+  // beds.price is the single source of truth for money: the backend charges
+  // deposits off it (customer-deposit.service.ts). rooms.price is only a
+  // catalog/filter value and does not always match, so it is a fallback here.
+  const bedPrices = beds.map(b => Number(b.price) || 0).filter(p => p > 0);
+  const minBedPrice = bedPrices.length ? Math.min(...bedPrices) : roomPrice;
+  const maxBedPrice = bedPrices.length ? Math.max(...bedPrices) : roomPrice;
+  const hasMixedBedPrices = minBedPrice !== maxBedPrice;
 
-  const waterCost = Math.max(1, count) * 100000; // 100k per person
+  // Dynamic calculations
+  const baseRent = isFullRoomSelected
+    ? bedPrices.reduce((sum, p) => sum + p, 0)
+    : selectedBedObjs.reduce((sum, b) => sum + (Number(b.price) || 0), 0);
+
+  const waterRatePerPerson = 100000;
+  const waterCost = count * waterRatePerPerson;
   const electricityRate = '4.000đ/kwh';
 
   // Availability text and indicator styles
@@ -96,7 +96,7 @@ export default function BookingPanel({
         <p className="text-[12px] font-bold text-primary mb-2 uppercase tracking-wide">Giường lựa chọn</p>
         {count === 0 ? (
           <p className="text-xs text-on-surface-variant italic">
-            Chưa chọn giường nào. Vui lòng tích chọn trên sơ đồ phòng.
+            Nhân viên Sale sẽ xếp giường cụ thể sau khi tiếp nhận phiếu đăng ký của bạn.
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
@@ -122,26 +122,26 @@ export default function BookingPanel({
       <div className="border-t border-b border-outline-variant py-4 space-y-3">
         <div className="flex justify-between items-center text-body-md">
           <span className="text-on-surface-variant flex items-center gap-1.5">
-            Tiền thuê {isFullRoomSelected ? 'phòng' : count > 1 ? `(${count} giường)` : 'giường'}
+            {count === 0
+              ? hasMixedBedPrices ? 'Giá giường từ' : 'Đơn giá mỗi giường'
+              : `Tiền thuê ${isFullRoomSelected ? 'phòng' : count > 1 ? `(${count} giường)` : 'giường'}`}
           </span>
           <div className="text-right">
-            {discount > 0 && (
-              <p className="text-[11px] text-error line-through">
-                {(beds.length * roomPrice).toLocaleString('vi-VN')}đ
+            <p className="font-bold text-on-surface">
+              {count === 0
+                ? `${minBedPrice.toLocaleString('vi-VN')}đ`
+                : `${baseRent.toLocaleString('vi-VN')}đ`}
+              {count === 0 && (
+                <span className="text-[10px] font-normal text-on-surface-variant"> /tháng</span>
+              )}
+            </p>
+            {count === 0 && hasMixedBedPrices && (
+              <p className="text-[11px] text-on-surface-variant">
+                đến {maxBedPrice.toLocaleString('vi-VN')}đ tuỳ giường
               </p>
             )}
-            <p className="font-bold text-on-surface">
-              {baseRent > 0 ? `${baseRent.toLocaleString('vi-VN')}đ` : '0đ'}
-            </p>
           </div>
         </div>
-        
-        {discount > 0 && (
-          <div className="flex justify-between text-xs text-status-success font-medium">
-            <span>Ưu đãi thuê nguyên phòng (-5%)</span>
-            <span>-{discount.toLocaleString('vi-VN')}đ</span>
-          </div>
-        )}
 
         <div className="flex justify-between text-body-md">
           <span className="text-on-surface-variant">Điện (Tạm tính)</span>
@@ -150,8 +150,10 @@ export default function BookingPanel({
         <div className="flex justify-between text-body-md">
           <span className="text-on-surface-variant">Nước (Cố định)</span>
           <span className="font-bold text-on-surface">
-            {count > 0 ? `${waterCost.toLocaleString('vi-VN')}đ` : '0đ'} 
-            <span className="text-[10px] font-normal text-on-surface-variant"> /tháng</span>
+            {count > 0 ? `${waterCost.toLocaleString('vi-VN')}đ` : `${waterRatePerPerson.toLocaleString('vi-VN')}đ`}
+            <span className="text-[10px] font-normal text-on-surface-variant">
+              {count > 0 ? ' /tháng' : ' /người/tháng'}
+            </span>
           </span>
         </div>
       </div>

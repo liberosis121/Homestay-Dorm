@@ -32,7 +32,7 @@ export interface DepositRequest {
   deposit_time: string;
   payment_deadline: string;
   expected_move_in_date: string;
-  status: 'pending_sale_confirmation' | 'pending_payment' | 'paid' | 'rejected' | 'cancelled' | 'invoice_created';
+  status: 'pending_sale_confirmation' | 'pending_payment' | 'paid' | 'rejected' | 'cancelled' | 'invoice_created' | 'refunded';
   created_at: string;
   // Nhóm: tên các giường của phiếu; cờ đại diện + quyền thanh toán.
   bed_names?: string[];
@@ -44,10 +44,11 @@ export interface DepositRequest {
  * Ánh xạ dữ liệu đặt cọc từ Database sang định dạng hiển thị của Frontend.
  */
 const mapDepositResponse = (d: any): DepositRequest => {
-  let status: 'pending_sale_confirmation' | 'pending_payment' | 'paid' | 'rejected' | 'cancelled' | 'invoice_created' = 'invoice_created';
+  let status: 'pending_sale_confirmation' | 'pending_payment' | 'paid' | 'rejected' | 'cancelled' | 'invoice_created' | 'refunded' = 'invoice_created';
   if (d.status === 'paid') status = 'paid';
   else if (d.status === 'rejected') status = 'rejected';
   else if (d.status === 'cancelled') status = 'cancelled';
+  else if (d.status === 'refunded') status = 'refunded';
   else if (d.status === 'pending') status = 'pending_payment';
 
   // Ngày dự kiến vào ở là dữ liệu nghiệp vụ của phiếu đăng ký thuê,

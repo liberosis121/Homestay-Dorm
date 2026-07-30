@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { cancelLeaseRegistrationApi, createLeaseRegistrationApi, getMyLeaseRegistrationsApi, type LeaseRegistration } from './lease.api';
 import { getBranchesApi } from '../rooms/rooms.api';
 import { fetchProfile } from './services/profile.service';
+import { AMENITY_LABELS, getAmenityLabel } from '../../lib/amenities';
 
 type InterestedRoomState = {
   interestedRoomId?: string;
@@ -289,7 +290,7 @@ export const RegisterLeasePage: React.FC = () => {
         other_criteria: [
           interested.interestedRoomName ? `Phòng quan tâm: ${interested.interestedRoomName}` : '',
           form.note,
-          form.amenities.join(', '),
+          form.amenities.map(getAmenityLabel).join(', '),
           form.viewingTimeNote,
         ].filter(Boolean).join(' | ') || undefined,
       });
@@ -543,13 +544,7 @@ export const RegisterLeasePage: React.FC = () => {
                 <div>
                   <p className="block text-sm font-label-md text-on-surface-variant ml-2 mb-2">Tiện ích mong muốn</p>
                   <div className="flex flex-wrap gap-2">
-                    {[
-                      ['AC', 'Máy lạnh'],
-                      ['Wifi', 'Wifi mạnh'],
-                      ['Private WC', 'WC riêng'],
-                      ['Kitchen', 'Bếp chung'],
-                      ['Washing Machine', 'Máy giặt'],
-                    ].map(([value, label]) => {
+                    {Object.entries(AMENITY_LABELS).map(([value, label]) => {
                       const active = form.amenities.includes(value);
                       return (
                         <button

@@ -136,10 +136,14 @@ export const authService = {
     let branchName: string | undefined = undefined;
 
     if (profile.role === USER_ROLE.CUSTOMER) {
-      rentingRoomName = await profileRepo.getRentingRoomName(data.user.id);
-      hasContractHistory = await profileRepo.hasContractHistory(data.user.id);
-      stayStatus = await profileRepo.getCustomerStayStatus(data.user.id);
-      canRequestCheckout = await profileRepo.canRequestCheckout(data.user.id);
+      // 4 hàm độc lập, chỉ đọc — chạy song song thay vì xếp hàng. Đây là lý do chính khiến
+      // POST /auth/login mất tới ~2.4 giây với tài khoản khách hàng.
+      [rentingRoomName, hasContractHistory, stayStatus, canRequestCheckout] = await Promise.all([
+        profileRepo.getRentingRoomName(data.user.id),
+        profileRepo.hasContractHistory(data.user.id),
+        profileRepo.getCustomerStayStatus(data.user.id),
+        profileRepo.canRequestCheckout(data.user.id)
+      ]);
     } else {
       // Load branch name for employees
       const { data: employee } = await supabase
@@ -260,10 +264,16 @@ export const authService = {
           customerDetails = newCustomer;
         }
       }
-      const rentingRoomName = await profileRepo.getRentingRoomName(userId);
-      const hasContractHistory = await profileRepo.hasContractHistory(userId);
-      const stayStatus = await profileRepo.getCustomerStayStatus(userId);
-      const canRequestCheckout = await profileRepo.canRequestCheckout(userId);
+      // Song song hoá như ở login/findById — 4 hàm độc lập, chỉ đọc.
+      // customerDetails vừa đọc từ bảng customers nên đã có cccd -> truyền xuống để chuỗi
+      // con khỏi truy vấn lại bảng đó.
+      const knownCccd = (customerDetails as any)?.cccd ?? null;
+      const [rentingRoomName, hasContractHistory, stayStatus, canRequestCheckout] = await Promise.all([
+        profileRepo.getRentingRoomName(userId, knownCccd),
+        profileRepo.hasContractHistory(userId, knownCccd),
+        profileRepo.getCustomerStayStatus(userId, knownCccd),
+        profileRepo.canRequestCheckout(userId)
+      ]);
       return {
         ...profile,
         renting_room_name: rentingRoomName,

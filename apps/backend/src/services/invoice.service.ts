@@ -193,14 +193,23 @@ export const invoiceService = {
         && inv.reconciliation_id === null
         && inv.deposit_id !== null
         && invoiceNote.source === 'group_residency_partial';
+      // Hoan coc do HUY PHIEU COC (chua ky HD): hoa don refund gan deposit_id, khong co reconciliation.
+      // Van la "Hoan coc" (tien tra lai khach), KHONG phai phi phat sinh.
+      const isCancellationRefund =
+        inv.invoice_type === 'refund'
+        && inv.reconciliation_id === null
+        && inv.deposit_id !== null
+        && invoiceNote.source === 'pre_contract_cancellation';
       const isDeposit = inv.invoice_type === 'deposit' && inv.deposit_id !== null;
-      const isRefund = (inv.invoice_type === 'refund' && inv.reconciliation_id !== null) || isGroupResidencyPartialRefund;
+      const isRefund = (inv.invoice_type === 'refund' && inv.reconciliation_id !== null)
+        || isGroupResidencyPartialRefund
+        || isCancellationRefund;
       const isCheckin = isCheckinInvoice(inv);
       const isMonthly = inv.invoice_type === 'monthly' && !isCheckin;
       const isRentInvoice = isMonthly || isCheckin;
       const isService = inv.invoice_type === 'service' || (inv.invoice_type === 'deposit' && inv.deposit_id === null);
       const isIncidentalCost = inv.invoice_type === 'liquidation'
-        || (inv.invoice_type === 'refund' && inv.reconciliation_id === null && !isGroupResidencyPartialRefund);
+        || (inv.invoice_type === 'refund' && inv.reconciliation_id === null && !isGroupResidencyPartialRefund && !isCancellationRefund);
 
       // Billing Period
       let rawPeriod = '';
@@ -276,6 +285,8 @@ export const invoiceService = {
         serviceDetails = 'Phí đăng ký dịch vụ phát sinh';
       } else if (isGroupResidencyPartialRefund) {
         serviceDetails = 'Hoàn cọc do loại thành viên không đạt điều kiện lưu trú';
+      } else if (isCancellationRefund) {
+        serviceDetails = 'Hoàn cọc do hủy phiếu cọc (chưa lập hợp đồng thuê)';
       }
 
       // Hạn thanh toán được CHỐT lúc lập hóa đơn (invoices.due_date) — dùng chung cho khách hàng,
@@ -305,6 +316,11 @@ export const invoiceService = {
       let status: 'paid' | 'pending' | 'unpaid' | 'overdue' = 'unpaid';
       if (inv.status === 'paid') {
         status = 'paid';
+      } else if (isDeposit && inv.payment_time) {
+        // Hóa đơn cọc ĐÃ THU tiền (có payment_time) thì luôn là "Đã thanh toán", KỂ CẢ khi phiếu cọc
+        // bị hủy sau đó do rớt điều kiện lưu trú (lúc đó invoices.status có thể bị đánh 'rejected').
+        // Tiền cọc đã thu được hoàn lại qua phiếu HOÀN CỌC riêng, không đưa hóa đơn cọc về diện phải trả.
+        status = 'paid';
       } else if (inv.status === 'pending') {
         status = 'pending';
       } else {
@@ -326,6 +342,7 @@ export const invoiceService = {
 
       return {
         id: inv.id,
+        createdAt: inv.created_at || undefined,
         deposit_id: inv.deposit_id || undefined,
         billingPeriod,
         month,
@@ -366,7 +383,8 @@ export const invoiceService = {
 
     const { data: inv, error: fErr } = await supabase
       .from('invoices')
-      .select('invoice_type, deposit_id, status')
+      // note: can de go dau duyet 'need_more' cu sau khi khach nop lai minh chung.
+      .select('invoice_type, deposit_id, status, note')
       .eq('id', invoiceId)
       .maybeSingle();
 
@@ -420,6 +438,21 @@ export const invoiceService = {
       .from('deposit_requests')
       .update({ status: DEPOSIT_STATUS.PENDING })
       .eq('id', inv.deposit_id);
+
+    // Khach da nop minh chung MOI theo yeu cau "Can bo sung" cua quan ly -> go dau duyet cu
+    // trong note, neu khong manager-deposit.service se mai map phieu ve 'need_more' va phieu
+    // khong bao gio quay lai hang cho duyet.
+    // CHI go cho 'need_more'. Khong go cho 'rejected': nhanh do da nha giuong/phong, cho phieu
+    // tu nhay lai hang cho duyet la sai nghiep vu (cho co the da co nguoi khac dat).
+    const currentNote = parseInvoiceNote((inv as any).note);
+    if (currentNote.manager_deposit_status === 'need_more') {
+      const { manager_deposit_status, reviewer_note, reviewed_at, ...restNote } = currentNote;
+      const hasOtherKeys = Object.keys(restNote).length > 0;
+      await supabase
+        .from('invoices')
+        .update({ note: hasOtherKeys ? JSON.stringify(restNote) : null })
+        .eq('id', invoiceId);
+    }
 
     return { success: true, submitted: true };
   },

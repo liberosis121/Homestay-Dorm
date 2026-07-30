@@ -13,6 +13,7 @@ const T = {
 };
 
 const STATUS_CFG: Record<ManagerContract['status'], { label: string; bg: string; text: string; icon: string }> = {
+  pending_payment: { label: 'Chờ thanh toán', bg: T.amberBg, text: T.amber, icon: 'pending' },
   active: { label: 'Đang hiệu lực', bg: T.sageBg, text: T.sage, icon: 'verified' },
   expired: { label: 'Đã hết hạn', bg: T.primaryLight, text: T.textMuted, icon: 'schedule' },
   terminated: { label: 'Đã thanh lý', bg: T.redBg, text: T.red, icon: 'cancel' },
@@ -23,6 +24,16 @@ const DEPOSIT_TYPE_CONFIG = {
   room: { label: 'Thuê cá nhân', icon: 'person', bg: T.blueBg, text: T.blue },
   bed: { label: 'Thuê cá nhân', icon: 'person', bg: T.sageBg, text: T.sage },
 };
+
+/**
+ * Luôn lấy cấu hình hiển thị qua 2 hàm này. Truy cập thẳng STATUS_CFG[status] sẽ trả
+ * undefined khi backend thêm trạng thái mới, và đọc .bg trên undefined làm trắng cả trang.
+ */
+const getStatusCfg = (status?: string) =>
+  STATUS_CFG[status as ManagerContract['status']] || STATUS_CFG.active;
+
+const getDepositTypeCfg = (type?: string) =>
+  DEPOSIT_TYPE_CONFIG[type as keyof typeof DEPOSIT_TYPE_CONFIG] || DEPOSIT_TYPE_CONFIG.bed;
 
 export default function ManagerContractsPage() {
   const { isSubmitting, guard } = useSubmitLock();
@@ -131,7 +142,7 @@ export default function ManagerContractsPage() {
   };
 
   const counts = useMemo(() => {
-    const c = { all: contracts.length, active: 0, expired: 0, terminated: 0 };
+    const c = { all: contracts.length, pending_payment: 0, active: 0, expired: 0, terminated: 0 };
     contracts.forEach(item => {
       if (c[item.status] !== undefined) {
         c[item.status]++;
@@ -353,6 +364,7 @@ export default function ManagerContractsPage() {
         <div className="flex flex-wrap gap-2">
           {[
             { key: 'all', label: 'Tất cả', color: T.primary, bg: T.primaryLight },
+            { key: 'pending_payment', label: 'Chờ thanh toán', color: T.amber, bg: T.amberBg },
             { key: 'active', label: 'Đang hiệu lực', color: T.sage, bg: T.sageBg },
             { key: 'expired', label: 'Đã hết hạn', color: T.textMuted, bg: T.primaryLight },
             { key: 'terminated', label: 'Đã thanh lý', color: T.red, bg: T.redBg }
@@ -439,8 +451,8 @@ export default function ManagerContractsPage() {
                   </td>
                 </tr>
               ) : filteredContracts.map(c => {
-                const statusMeta = STATUS_CFG[c.status] || STATUS_CFG.active;
-                const typeCfg = DEPOSIT_TYPE_CONFIG[c.deposit_type];
+                const statusMeta = getStatusCfg(c.status);
+                const typeCfg = getDepositTypeCfg(c.deposit_type);
 
                 return (
                   <tr key={c.id}
@@ -560,29 +572,32 @@ export default function ManagerContractsPage() {
               </div>
 
               {/* Status Badge */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: STATUS_CFG[selected.status].bg, color: STATUS_CFG[selected.status].text,
-                  fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-                  border: `1px solid ${STATUS_CFG[selected.status].text}1A`
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{STATUS_CFG[selected.status].icon}</span>
-                  {STATUS_CFG[selected.status].label}
-                </span>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: DEPOSIT_TYPE_CONFIG[selected.deposit_type].bg,
-                  color: DEPOSIT_TYPE_CONFIG[selected.deposit_type].text,
-                  fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-                  border: `1px solid ${DEPOSIT_TYPE_CONFIG[selected.deposit_type].text}1A`
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-                    {DEPOSIT_TYPE_CONFIG[selected.deposit_type].icon}
-                  </span>
-                  {DEPOSIT_TYPE_CONFIG[selected.deposit_type].label}
-                </span>
-              </div>
+              {(() => {
+                const st = getStatusCfg(selected.status);
+                const dt = getDepositTypeCfg(selected.deposit_type);
+                return (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      background: st.bg, color: st.text,
+                      fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                      border: `1px solid ${st.text}1A`
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{st.icon}</span>
+                      {st.label}
+                    </span>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      background: dt.bg, color: dt.text,
+                      fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                      border: `1px solid ${dt.text}1A`
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{dt.icon}</span>
+                      {dt.label}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Drawer Body */}
@@ -624,7 +639,7 @@ export default function ManagerContractsPage() {
                         { label: 'Loại phòng', val: selected.room_type || 'N/A' },
                         { label: 'Tầng', val: selected.floor_number !== undefined ? `${selected.floor_number}` : 'N/A' },
                         ...(selected.bed_name ? [{ label: 'Vị trí giường', val: selected.bed_name, highlight: true }] : []),
-                        { label: 'Loại hình thuê', val: DEPOSIT_TYPE_CONFIG[selected.deposit_type].label },
+                        { label: 'Loại hình thuê', val: getDepositTypeCfg(selected.deposit_type).label },
                         { label: 'Thời hạn hợp đồng', val: selected.duration },
                         { label: 'Ngày bắt đầu', val: selected.start_date.split('-').reverse().join('/') },
                         { label: 'Ngày kết thúc', val: selected.end_date.split('-').reverse().join('/') },

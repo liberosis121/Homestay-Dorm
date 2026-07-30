@@ -89,7 +89,7 @@ export interface CustomerDepositRequest {
   deposit_amount: number;
   expected_move_in_date: string;
   // 'pending' là giá trị thật từ DB Supabase; 'pending_sale_confirmation' là giá trị mock DB cũ.
-  status: 'pending' | 'pending_sale_confirmation' | 'pending_payment' | 'confirmed' | 'invoice_created' | 'paid' | 'cancelled';
+  status: 'pending' | 'pending_sale_confirmation' | 'pending_payment' | 'confirmed' | 'invoice_created' | 'paid' | 'cancelled' | 'rejected' | 'refunded';
   note?: string;
   created_at: string;
 }
@@ -284,6 +284,8 @@ export interface PayoutRecord {
   deposit_original?: number;
   /** Phieu hoan coc mot phan cho nguoi rot dieu kien luu tru (chua co hop dong -> khong thanh ly HD). */
   is_group_partial_refund?: boolean;
+  /** Hoan coc GAN voi hop dong (doi soat checkout). false = hoan coc do huy phieu coc / nhom -> khong co buoc thanh ly HD. */
+  has_contract?: boolean;
 }
 
 // ─── Manager Phase Interfaces ────────────────────────────────────────────────
@@ -301,7 +303,15 @@ export interface ManagerDeposit {
   monthly_rent?: number;
   amount: number;
   deposit_date: string;
+  /**
+   * LUÔN rỗng khi lấy từ API danh sách — ảnh minh chứng (base64, có bản ghi 781 KB) đã được
+   * tách khỏi danh sách để trang không phải tải vài MB mỗi lần mở.
+   * Ảnh thật lấy riêng qua GET /manager/deposits/:id/evidence khi mở drawer chi tiết.
+   * Trường này giữ lại để tương thích với dữ liệu mock cũ.
+   */
   bill_image_url: string;
+  /** Phiếu này có ảnh minh chứng hay không — để hiển thị đúng ô trống mà không cần tải ảnh. */
+  has_evidence?: boolean;
   bank_name: string;
   account_number: string;
   status: 'pending' | 'approved' | 'rejected' | 'need_more' | 'expired';
@@ -406,7 +416,9 @@ export interface ManagerContract {
   start_date: string;
   end_date: string;
   duration: string;
-  status: 'active' | 'expired' | 'terminated';
+  // Khớp với CONTRACT_STATUS bên backend (types/constants.ts). 'pending_payment' =
+  // đã lập HĐ, chờ khách thanh toán hóa đơn nhận phòng thì mới lên 'active'.
+  status: 'pending_payment' | 'active' | 'expired' | 'terminated';
   terms: string;
   payment_policy: string;
   termination_policy: string;

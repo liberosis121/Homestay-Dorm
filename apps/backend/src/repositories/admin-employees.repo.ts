@@ -25,9 +25,13 @@ const formatDate = (dateStr: string | null): string => {
 export const adminEmployeesRepo = {
   findAll: async (): Promise<DbEmployeeAdmin[]> => {
     // 1. Fetch all employees from nhan_vien table
+    // Moi nhat len dau. PHAI sap xep o day: joinDate duoc format thanh chuoi dd/MM/yyyy
+    // ngay ben duoi nen frontend khong con so sanh duoc theo thoi gian nua.
     const { data: employees, error: eErr } = await supabase
       .from('employees')
-      .select('*');
+      .select('*')
+      .order('join_date', { ascending: false })
+      .order('id', { ascending: false });
 
     if (eErr) throw eErr;
 

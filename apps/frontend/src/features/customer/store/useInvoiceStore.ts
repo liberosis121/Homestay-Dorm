@@ -3,6 +3,8 @@ import { fetchMyInvoices, payInvoiceApi } from '../services/invoice.service';
 
 export interface Invoice {
   id: string; // e.g. HDTT-M01 or HD-2024-10-01
+  createdAt?: string;
+  deposit_id?: string; // gắn với phiếu cọc (chỉ hóa đơn loại 'deposit') — dùng để điều hướng sang trang thanh toán cọc
   billingPeriod: string; // e.g. "Tháng 10/2024"
   month: number;
   year: number;

@@ -7,8 +7,11 @@ export const saleContractService = {
    * Chi nhanh cua hop dong suy ra qua: contract -> deposit_requests -> rooms.branch_id.
    */
   getAllContracts: async (staffUserId?: string) => {
-    const contracts = await saleContractRepo.findAll();
-    const branchId = await getStaffBranchId(staffUserId);
+    // Hai lenh doc doc lap nhau -> chay song song, bot 1 luot di-ve Supabase.
+    const [contracts, branchId] = await Promise.all([
+      saleContractRepo.findAll(),
+      getStaffBranchId(staffUserId)
+    ]);
     return scopeToBranch(
       contracts,
       branchId,
